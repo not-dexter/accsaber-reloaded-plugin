@@ -1,26 +1,23 @@
-﻿using AccSaber.Installers;
+﻿using AccSaber.Configuration;
+using AccSaber.Installers;
 using IPA;
-using IPA.Loader;
-using IPA.Logging;
+using IPA.Config;
+using IPA.Config.Stores;
 using SiraUtil.Zenject;
+using IPALogger = IPA.Logging.Logger;
 
 namespace AccSaber
 {
-    [Plugin(RuntimeOptions.DynamicInit), NoEnableDisable]
-    public class Plugin
-    {
-        public static Hive.Versioning.Version version;
-        
-        public static Logger _logger;
-
+	[Plugin(RuntimeOptions.DynamicInit), NoEnableDisable]
+	public class Plugin
+	{
         [Init]
-        public Plugin(Logger logger, PluginMetadata metadata, Zenjector zenjector)
-        {
-            version = metadata.HVersion;
-            _logger = logger;
+		public void Init(Zenjector zenjector, IPALogger logger, Config config)
+		{
+			zenjector.UseLogger(logger);
+			zenjector.UseHttpService();
             
-            zenjector.UseLogger(_logger);
-            zenjector.Install<MenuInstaller>(Location.Menu);
-        }
-    }
+			zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
+		}
+	}
 }

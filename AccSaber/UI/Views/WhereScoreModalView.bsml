@@ -1,0 +1,13 @@
+﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+    <modal id="modal" show-event="open-modal" hide-event="close-modal" clickerino-offerino-closerino="true" size-delta-x="95" size-delta-y="52" move-to-center="true">
+        <vertical horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pref-width="90" pref-height="50" spacing="2">
+            <text text="Why is this tab empty?" bold="true" font-align="Center" font-size="7" />
+            <text
+                    text="This tab is still in development.&lt;br&gt;Check to see if there is a newer version that may have added it!"
+                    word-wrapping="true" 
+                    align="Center"
+            />
+            <button text="Okay" click-event="close-modal" />
+        </vertical>
+    </modal>
+</bg>

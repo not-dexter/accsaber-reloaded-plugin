@@ -1,0 +1,19 @@
+﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+    <horizontal pref-width='87' anchor-pos-y='10.3' pref-height='7' horizontal-fit='PreferredSize' child-align='UpperLeft' child-expand-width='false' spacing='1'>
+        <text text='~prompt-text' anchor-pos-x='0' anchor-pos-y='10' align='BottomLeft' font-size='3.5' italics='true' rich-text='true' />
+        <loading-indicator active='~loading-active' preserve-aspect='true' pref-width='4' pref-height='4' />
+    </horizontal>
+    <horizontal id='container' pref-width='91' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' spacing='2' bg='round-rect-panel' bg-color='#0078B9' pad='2'>
+        <vertical pref-width='10' pref-height='10'>
+          <clickable-image id='logo' src='AccSaber.Resources.AccSaber.png' on-click='logo-clicked' preserve-aspect='true' pref-width='10' pref-height='10' hover-hint='Open Accsaber Reloaded' />
+        </vertical>
+        <vertical pref-width='0.5' pref-height='10'>
+            <image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='0.5' pref-height='10' size-delta-x='0.5' size-delta-y='10' />
+        </vertical>
+        <vertical pref-width='70' pref-height='10' pad-bottom='2' spacing='1'>
+            <text text='~overall-ranking-text' font-size='3.5' italics='true' rich-text='true' />
+            <text text='~category-ranking-text' font-size='3.5' italics='true' rich-text='true' />
+            <text text='~map-complexity-text' font-size='3.25' italics='true' rich-text='true' />
+        </vertical>
+    </horizontal>
+</bg>
