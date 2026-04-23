@@ -35,6 +35,8 @@ namespace AccSaber.UI.ViewControllers
 		private string _categoryValue = "Overall";
 		private string _username = "";
 		private string _rank = null!;
+		private string _rankDiff = null!;
+		private string _countryDiff = null!;
 		private string _country = null!;
 		private string _title = null!;
 		private string _level = null!;
@@ -145,6 +147,7 @@ namespace AccSaber.UI.ViewControllers
 				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Country)));
 			}
 		}
+
 		[UIValue("title")]
 		private string Title
 		{
@@ -320,7 +323,7 @@ namespace AccSaber.UI.ViewControllers
 					if (_userOverall is null)
 					{
 						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId);
+						var userInfo = await _accSaberStore.GetUserFromId(_userId, null, true);
 						_userOverall = userInfo;
 					}
 
@@ -333,7 +336,7 @@ namespace AccSaber.UI.ViewControllers
 					if (_userTrue is null)
 					{
 						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.True);
+						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.True, true);
 						_userTrue = userInfo;
 					}
 
@@ -345,7 +348,7 @@ namespace AccSaber.UI.ViewControllers
 					if (_userStandard is null)
 					{
 						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Standard);
+						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Standard, true);
 						_userStandard = userInfo;
 					}
 
@@ -357,7 +360,7 @@ namespace AccSaber.UI.ViewControllers
 					if (_userTech is null)
 					{
 						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Tech);
+						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Tech, true);
 						_userTech = userInfo;
 					}
 
@@ -385,11 +388,29 @@ namespace AccSaber.UI.ViewControllers
                 _ => "#f472b6",
             };
 
-            Username = $"{userInfo.PlayerName}";
-			Rank = $"#{userInfo.Rank}";
-			Country = $"#{userInfo.CountryRank}";
+
+			string StatDiff(float stat)
+            {
+				if (stat != 0)
+					return (stat < 0) ? $"<color=#ef4444><size=75%>▼{Math.Abs(stat):F2}</size></color>" : $"<color=#22c55e><size=75%>▲{Math.Abs(stat):F2}</size></color>";
+				else
+					return "";
+			}
+			string StatDiffInt(int stat)
+			{
+				if (stat != 0)
+					return (stat < 0) ? $"<color=#ef4444><size=75%>▼{Math.Abs(stat)}</size></color>" : $"<color=#22c55e><size=75%>▲{Math.Abs(stat)}</size></color>";
+				else
+					return "";
+			}
+
+			// this stat diff positioning fix is so lazy LMAO
+
+			Username = $"{userInfo.PlayerName}";
+			Rank = userInfo.StatsDiff.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.RankingDiff * -1)}</size></color>  #{userInfo.Rank}  {StatDiffInt(userInfo.StatsDiff.RankingDiff * -1)}" : $"#{userInfo.Rank}";
+			Country = userInfo.StatsDiff.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.CountryDiff * -1)}</size></color>  #{userInfo.CountryRank}  {StatDiffInt(userInfo.StatsDiff.CountryDiff * -1)}" : $"#{userInfo.CountryRank}";
 			Title = $"{"<color=" + _color + ">" +userInfo.LevelData.PlayerTitle}</color>";
-			Ap = $"{userInfo.AP:N2} AP";
+			Ap = userInfo.StatsDiff.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.ApDiff * -1):F2}</size></color>  {userInfo.AP:N2} AP  {StatDiff(userInfo.StatsDiff.ApDiff)}": $"{userInfo.AP:N2} AP";
 			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
 			Plays = $"{userInfo.RankedPlays} ranked plays";

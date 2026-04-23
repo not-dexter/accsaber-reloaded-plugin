@@ -25,6 +25,37 @@ namespace AccSaber.Models
 		public float ProgressPercent { get; set; }
 
 	}
+
+	internal class StatsDiff : Model
+	{
+		[JsonProperty("apDiff")]
+		public float ApDiff { get; set; }
+
+		[JsonProperty("averageAccDiff")]
+		public float AverageAccDiff { get; set; }
+
+		[JsonProperty("averageApDiff")]
+		public float AverageApDiff { get; set; }
+
+		[JsonProperty("rankingDiff")]
+		public int RankingDiff { get; set; }
+
+		[JsonProperty("countryRankingDiff")]
+		public int CountryDiff { get; set; }
+
+		[JsonProperty("milestoneSetBonusXpDiff")]
+		public float MilestoneSetBonusXpDiff { get; set; }
+
+		[JsonProperty("milestoneXpDiff")]
+		public float MilestoneXpDiff { get; set; }
+		[JsonProperty("rankedPlaysDiff")]
+		public int RankedPlaysDiff { get; set; }
+
+		[JsonProperty("scoreXpDiff")]
+		public float ScoreXpDiff { get; set; }
+
+	}
+
 	internal class AccSaberUser : Model
 	{
 		[JsonProperty("ranking")]
@@ -65,5 +96,6 @@ namespace AccSaber.Models
 
 		[JsonProperty("accChamp")]
 		public bool AccChamp { get; set; }
+		public StatsDiff StatsDiff { get; set; } = null!;
 	}
 }

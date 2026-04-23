@@ -240,23 +240,28 @@ namespace AccSaber.Managers
 			}
 		}
 
-		public async Task<AccSaberUser> GetUserFromId(string id, AccSaberMapCategories? category = null) // TODO: rewrite this mess
+		public async Task<AccSaberUser> GetUserFromId(string id, AccSaberMapCategories? category = null, bool statsDiff = false) // TODO: rewrite this mess
 		{ 
 			string wantedCategory = "";
+			string urlCategory = "";
 
 			switch (category)
 			{
 				case AccSaberMapCategories.Standard:
 					wantedCategory = "b0000000-0000-0000-0000-000000000002";
+					urlCategory = "standard_acc";
 					break;
 				case AccSaberMapCategories.True:
 					wantedCategory = "b0000000-0000-0000-0000-000000000001";
+					urlCategory = "true_acc";
 					break;
 				case AccSaberMapCategories.Tech:
 					wantedCategory = "b0000000-0000-0000-0000-000000000003";
+					urlCategory = "tech_acc";
 					break;
 				case null:
 					wantedCategory = "b0000000-0000-0000-0000-000000000005";
+					urlCategory = "overall";
 					break;
 			}
 
@@ -284,6 +289,7 @@ namespace AccSaber.Managers
 					{
                         if (categories[i]["categoryId"]!.ToString() != wantedCategory)
                             continue;
+						
 
 						var newUser = new AccSaberUser
 						{
@@ -313,7 +319,23 @@ namespace AccSaber.Managers
 
 							AccChamp = true,
 						};
-			
+
+						if (statsDiff)
+						{ 
+							var categoryDiff = await client.GetAsync($"https://api.accsaberreloaded.com/v1/users/{id}/stats-diff?category={urlCategory}");
+
+							if (categoryDiff is not null)
+							{
+								var parsedStr = await categoryDiff.Content.ReadAsStringAsync();
+
+								if (parsedStr != null)
+								{
+									var parsed = JObject.Parse(parsedStr);
+									newUser.StatsDiff = JsonConvert.DeserializeObject<StatsDiff>(parsed.ToString());
+								}
+							}
+						}
+
 						return newUser;
 					}
 				}
