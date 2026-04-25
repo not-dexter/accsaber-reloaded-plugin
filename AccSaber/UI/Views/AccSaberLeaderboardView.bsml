@@ -20,5 +20,16 @@
     <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button10' hover-hint='Info' on-click="b-10-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='-22'/>
 
     <page-button direction='Up' anchor-pos-x='-42.75' anchor-pos-y='-2.5' active='~up-enabled' pref-width='6.5' on-click='up-clicked' />
-    <page-button id="down-button" direction='Down' anchor-pos-x='-42.75' anchor-pos-y='-37.5' active='~down-enabled' pref-width='6.5' on-click='down-clicked' />
+    <page-button id="down-button" direction='Down' anchor-pos-x='-42.75' anchor-pos-y='-37.5' active='~down-enabled' pref-width='6.5' on-click='down-clicked' /> 
+  
+    <horizontal id='milestone-container' bg="panel-top" pad="2" horizontal-fit="PreferredSize" pref-width='80' min-height='15' max-height='25' anchor-pos-x='0' anchor-pos-y='75' active='false'>
+      <vertical horizontal-fit="PreferredSize" pref-width='75'>
+        <text id="milestone" text="" horizontal-fit="PreferredSize" align="Center" font-size="5"></text>
+        <text id="milestone-desc" text="" word-wrapping="true" align="Center" font-size="3"></text>
+          <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
+            <image id='progress-bar' image-color='#ffffff' pref-width='75' pref-height='1'/>
+            <image id='progress-bar-inverse' src='AccSaber.Resources.Pixel.png' image-color='#ffffff00' pref-width='85' pref-height='1'/>
+          </horizontal>
+      </vertical>
+    </horizontal>
 </bg>

@@ -34,6 +34,7 @@ namespace AccSaber.Managers
 		private AccSaberUser _currentUserStandard = new();
 		private AccSaberUser _currentUserTech = new();
 		public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
+		public List<AccSaberMilestone>_currentUserMilestones = new();
 
 		private AccSaberRankedMap? _currentRankedMap;
 
@@ -144,6 +145,29 @@ namespace AccSaber.Managers
 			return rankedMaps;
 		}
 
+		public async Task<List<AccSaberMilestone>> GetUserMilestones()
+		{
+			var platformUser = await GetPlatformUserInfo();
+
+			if (platformUser is not null)
+			{
+				var response = await client.GetAsync($"https://accsaberreloaded.com/v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt");
+
+				if (response is not null)
+				{
+					var parsedStr = await response.Content.ReadAsStringAsync();
+
+					if (parsedStr != null)
+					{
+						var parsed = JArray.Parse(parsedStr);
+
+						return JsonConvert.DeserializeObject<List<AccSaberMilestone>>(parsed.ToString());
+					}
+				}
+			}
+
+			return new List<AccSaberMilestone>();
+		}
 		private async Task UpdateAccSaberInfo(DateTime? lastAPIUpdateTime = null)
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();
@@ -393,6 +417,7 @@ namespace AccSaber.Managers
 		public async void Initialize()
 		{
 			RankedMaps = await GetRankedMaps();
+			_currentUserMilestones = await GetUserMilestones();
 			await Task.Delay(1000);
 			await UpdateAccSaberInfo();
 			await ListenForScores();

@@ -35,8 +35,6 @@ namespace AccSaber.UI.ViewControllers
 		private string _categoryValue = "Overall";
 		private string _username = "";
 		private string _rank = null!;
-		private string _rankDiff = null!;
-		private string _countryDiff = null!;
 		private string _country = null!;
 		private string _title = null!;
 		private string _level = null!;

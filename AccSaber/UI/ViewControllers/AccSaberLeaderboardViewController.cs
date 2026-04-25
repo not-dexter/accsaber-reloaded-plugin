@@ -1,12 +1,18 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Media;
 using System.Threading.Tasks;
 using AccSaber.LeaderboardSources;
 using AccSaber.Managers;
 using AccSaber.Models;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -25,6 +31,9 @@ namespace AccSaber.UI.ViewControllers
 		private AccSaberStore _accSaberStore = null!;
 		private List<ILeaderboardSource> _leaderboardSources = null!;
 		private LeaderboardUserModalController _leaderboardUserModalController = null!;
+		private float _progressTarget = 0;
+		private float _progressDuration = 15;
+		private float _progress = 1;
 
 		[Inject]
         public void Construct(AccSaberStore accSaberStore, List<ILeaderboardSource> leaderboardSources, LeaderboardUserModalController leaderboardUserModalController)
@@ -36,10 +45,27 @@ namespace AccSaber.UI.ViewControllers
 
 		[UIComponent("leaderboard")]
 		private readonly LeaderboardTableView? _leaderboard = null!;
-		
+
+		[UIComponent("milestone-container")]
+		private readonly HorizontalLayoutGroup? _milestoneContainer = null!;
+
 		[UIComponent("vertical-icon-segments")]
 		private readonly IconSegmentedControl? _iconSegmentedControl = null!;
 
+		[UIComponent("milestone")]
+		private readonly TextMeshProUGUI? _milestone = null!;
+
+		[UIComponent("milestone-desc")]
+		private readonly TextMeshProUGUI? _milestoneDesc = null!;
+
+		[UIComponent("progress-bar")]
+		private readonly LayoutElement _progressBar = null!;
+
+		[UIComponent("progress-bar-inverse")]
+		private readonly LayoutElement _progressBarInverse = null!;
+
+		[UIComponent("progress-bar")]
+		private readonly ImageView _progressBarImage = null!;
 
 		#region Info Buttons
 
@@ -128,7 +154,7 @@ namespace AccSaber.UI.ViewControllers
 			{
 				leaderboardTableCell.transform.Find("PlayerName").GetComponent<CurvedTextMeshPro>().richText = true;
 			}
-			
+
 			_loadingControl = _leaderboard.transform.GetComponentInChildren<LoadingControl>(true);
 
 			_infoButtons = new List<Button>(10);
@@ -245,6 +271,8 @@ namespace AccSaber.UI.ViewControllers
 			{
 				leaderboardSource.ClearCache();
 			}
+
+			PageNumber = 0;
 		}
 
 		protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
@@ -358,18 +386,48 @@ namespace AccSaber.UI.ViewControllers
 
 			PageNumber = 0;
 		}
-
-		private void AccSaberStoreOnOnAccSaberScoreUpdated()
+		void Update()
 		{
-			foreach (var leaderboardSource in _leaderboardSources)
+			if (_progressDuration < 0)
 			{
-				leaderboardSource.ClearCache();
+				_progressDuration = 0.001f;
 			}
+			_progress = Mathf.MoveTowards(_progress, _progressTarget, (1 / _progressDuration) * Time.deltaTime);		
 
-			PageNumber = 0;
+			const float barLen = 75f;
+			_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * _progress);
+			_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - _progress));
 		}
 
-		private void AccSaberStoreOnOnUpdatedFromAccSaberAPI(bool obj)
+		async Task ShowMilestone(AccSaberMilestone milestone)
+        {
+			var _color = milestone.Tier switch
+			{
+				"bronze" => "#cd7f32",
+				"silver" => "#c0c0c0",
+				"gold" => "#ffd700",
+				"platinum" => "#36cfb0",
+				"diamond" => "#b9f2ff",
+				"apex" => "#a855f7",
+				_ => "#f472b6",
+			};
+
+			await Task.Delay(200);
+			_milestoneContainer!.gameObject.SetActive(true);
+			_progress = 1;
+			_milestone!.text = $"<color={_color}>{milestone.Title}</color>";
+			_milestoneDesc!.text = milestone.Description;
+			await _progressBarImage.SetImageAsync("AccSaber.Resources.Pixel.png", false);
+			if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
+				_progressBarImage.color = newCol;
+			await Task.Delay(15000);
+			_milestone!.text =	"";
+			_milestoneDesc!.text = "";
+			_progressBarImage.sprite = null;
+			_milestoneContainer!.gameObject.SetActive(false);
+		}
+
+		private async void AccSaberStoreOnOnAccSaberScoreUpdated()
 		{
 			foreach (var leaderboardSource in _leaderboardSources)
 			{
@@ -377,20 +435,31 @@ namespace AccSaber.UI.ViewControllers
 			}
 
 			PageNumber = 0;
+
+			await Task.Delay(5000); // bit of delay to let the milestones update in the backend. will switch to the milestone completion websocket when thats finished
+			List<AccSaberMilestone> newMilestones = await _accSaberStore.GetUserMilestones();
+			if (_accSaberStore._currentUserMilestones.Count < newMilestones.Count)
+			{
+				var updatedMilestones = newMilestones.Take(newMilestones.Count - _accSaberStore._currentUserMilestones.Count).ToList();
+
+				foreach (var milestone in updatedMilestones)
+				{
+					await ShowMilestone(milestone);
+					_accSaberStore._currentUserMilestones.Insert(0, milestone);
+				}
+			}
 		}
 
 		public void Initialize()
 		{
 			_accSaberStore.OnAccSaberRankedMapUpdated += AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnAccSaberScoreUpdated += AccSaberStoreOnOnAccSaberScoreUpdated;
-			_accSaberStore.OnUpdatedFromAccSaberAPI += AccSaberStoreOnOnUpdatedFromAccSaberAPI;
 		}
 
 		public void Dispose()
 		{
 			_accSaberStore.OnAccSaberRankedMapUpdated -= AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnAccSaberScoreUpdated -= AccSaberStoreOnOnAccSaberScoreUpdated;
-			_accSaberStore.OnUpdatedFromAccSaberAPI -= AccSaberStoreOnOnUpdatedFromAccSaberAPI;
 		}
 	}
 }
