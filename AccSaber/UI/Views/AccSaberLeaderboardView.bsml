@@ -27,7 +27,7 @@
         <text id="milestone" text="" horizontal-fit="PreferredSize" align="Center" font-size="5"></text>
         <text id="milestone-desc" text="" word-wrapping="true" align="Center" font-size="3"></text>
           <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
-            <image id='progress-bar' image-color='#ffffff' pref-width='75' pref-height='1'/>
+            <image id='progress-bar' src='AccSaber.Resources.Pixel.png' image-color='#ffffff' pref-width='75' pref-height='1'/>
             <image id='progress-bar-inverse' src='AccSaber.Resources.Pixel.png' image-color='#ffffff00' pref-width='85' pref-height='1'/>
           </horizontal>
       </vertical>

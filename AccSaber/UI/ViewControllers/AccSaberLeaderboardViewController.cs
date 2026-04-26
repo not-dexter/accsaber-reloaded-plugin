@@ -417,13 +417,11 @@ namespace AccSaber.UI.ViewControllers
 			_progress = 1;
 			_milestone!.text = $"<color={_color}>{milestone.Title}</color>";
 			_milestoneDesc!.text = milestone.Description;
-			await _progressBarImage.SetImageAsync("AccSaber.Resources.Pixel.png", false);
 			if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
 				_progressBarImage.color = newCol;
 			await Task.Delay(15000);
 			_milestone!.text =	"";
 			_milestoneDesc!.text = "";
-			_progressBarImage.sprite = null;
 			_milestoneContainer!.gameObject.SetActive(false);
 		}
 
