@@ -1,0 +1,11 @@
+﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+  <vertical pref-width='120'>
+    <horizontal bg="panel-top" horizontal-fit="PreferredSize" pref-width="120">
+      <text text="News" align="Center" font-size="7" />
+    </horizontal>
+    <horizontal pref-width="120" spacing="1" horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
+      <vertical bg="panel-top" bg-color="black" skew="0" pref-width="105" pref-height="60" pad="2">
+      </vertical>
+    </horizontal>
+  </vertical>
+</bg>

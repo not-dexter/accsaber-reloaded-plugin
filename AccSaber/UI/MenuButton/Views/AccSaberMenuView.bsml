@@ -1,0 +1,76 @@
+﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+  <vertical pref-width='120'>
+    <horizontal bg="panel-top" horizontal-fit="PreferredSize" pref-width="120">
+      <text text="Profile" align="Center" font-size="7" />
+   </horizontal>
+    <horizontal pref-width="120" spacing="1" horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
+      <vertical bg="panel-top" bg-color="black" skew="0" pref-width="120" pref-height="60" pad="2">
+      <loading-indicator active="~is-loading" preserve-aspect="true" pref-width="10" pref-height="10"/>
+        <horizontal horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pref-width="105" spacing="-1" active="~is-not-loading">
+          <vertical horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pad-left="0" pref-width="25" pref-height="55">
+            <text text="~username" align="Center" horizontal-fit="PreferredSize"  bold="true"/>
+            <text text="~title" align="Center" font-size="3.5" />
+            <img id="profile-image" spacing='0' pad="0" preserve-aspect="true" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pref-width="18" pref-height="18"/>
+            <text text="~level" align="Center" font-size="2.5"/>
+            <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
+              <vertical pref-width='2.5'/>
+              <image id='progress-bar' image-color='#fbbf24' pref-width='20' pref-height='1'/>
+              <image id='progress-bar-inverse' src='AccSaber.Resources.Pixel.png' image-color='#CCC' pref-width='30' pref-height='1'/>
+            </horizontal>
+            <text text="~xp" align="Center" font-size="2.5"/>
+            <vertical pref-height="25" >
+              <horizontal horizontal-fit="PreferredSize" pref-width="25">
+                <vertical vertical-fit="PreferredSize" pref-height="6">
+                  <text text="Global" align="Center" font-size="3.5"/>
+                  <text text="~rank" align="Center" font-size="3"/>
+                </vertical>
+                <vertical vertical-fit="PreferredSize" pref-height="6">
+                  <text text="Country" align="Center" font-size="3.5"/>
+                  <text text="~country" align="Center" font-size="3"/>
+                </vertical>
+              </horizontal>
+              <text text="~ap" align="Center" font-size="3.5"/>
+              <text text="~plays" align="Center" font-size="3.5"/>
+              <text text="~headset" align="Center" font-size="3.5"/>
+            </vertical>
+            <dropdown-list-setting id="category-dropdown" skew="0"  anchor-pos-x='5.5' text="" align="Center" value="category-value" choices="category-choices" formatter="format-category" bind-value="true" apply-on-change="true"/>
+          </vertical>
+          <vertical pref-width='0.5' pref-height='55'>
+          </vertical>
+          <vertical id="user-info" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pref-width="80" pref-height="55" spacing="1" pad-left="15" >
+            <custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells'>
+              <vertical id='background-container' bg='round-rect-panel' horizontal-fit='Unconstrained' pad='1'>
+                <horizontal>
+                  <vertical pad-top='1' pad-bottom='1' pref-width='7'>
+                    <image id='cover' pref-height='6' pref-width='6' preserve-aspect="true" src='~map-cover'/>
+                  </vertical>
+                  <vertical pad-top='1' pad-bottom='1' pref-width='15'>
+                    <text text='~map-name' align='Left' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>
+                    <text text='~map-author' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>       
+                  </vertical>
+                  <vertical pad-top='1' pad-bottom='1' pref-width='8'>
+                    <text text='~map-diff' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
+                  </vertical>
+                  <vertical pad-top='1' pad-bottom='1' pref-width='8'>
+                    <text text='~score-acc' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
+                  </vertical>
+                  <vertical pad-top='1' pad-bottom='1' pref-width='10'>
+                   <text text='~score-ap' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
+                  </vertical>
+                  <vertical pad-top='1' pad-bottom='1' pref-width='8'>
+                    <text text='~map-category' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
+                  </vertical>
+                </horizontal>
+              </vertical>
+            </custom-list>
+            <horizontal>
+              <button text='Previous' on-click='prev-clicked' pref-width="18"/>
+              <text text='~pagnation' align='Center' />
+              <button text='Next' on-click='next-clicked' pref-width="18"/>
+            </horizontal>
+          </vertical>
+        </horizontal>
+      </vertical>
+    </horizontal>
+  </vertical>
+</bg>

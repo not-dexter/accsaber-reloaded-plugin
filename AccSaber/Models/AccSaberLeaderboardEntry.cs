@@ -15,6 +15,24 @@ namespace AccSaber.Models
 		[JsonProperty("userId")]
 		public string PlayerId { get; set; } = null!;
 
+		[JsonProperty("songName")]
+		public string SongName { get; set; } = null!;
+
+		[JsonProperty("songAuthor")]
+		public string SongAuthor { get; set; } = null!;
+
+		[JsonProperty("coverUrl")]
+		public string CoverUrl { get; set; } = null!;
+
+		[JsonProperty("difficulty")]
+		public string Difficulty { get; set; } = null!;
+
+		[JsonProperty("categoryId")]
+		public string CategoryId { get; set; } = null!;
+
+		[JsonProperty("avatarUrl")]
+		public string AvatarURL { get; set; } = null!;
+
 		[JsonProperty("userName")]
 		public string PlayerName { get; set; } = null!;
 
@@ -32,6 +50,20 @@ namespace AccSaber.Models
 
 		[JsonProperty("modifierIds")]
 		public List<string> Modifiers { get; set; } = null!;
+
+		[JsonProperty("badCuts")]
+		public int BadCuts { get; set; }
+
+		[JsonProperty("wallHits")]
+		public int WallHits { get; set; }
+
+		[JsonProperty("bombHits")]
+		public int BombHits { get; set; }
+
+		[JsonProperty("misses")]
+		public int Misses { get; set; }
+
+		public bool FC => (Misses + BombHits + BadCuts + WallHits == 0);
 
 		[JsonProperty("timeSet")]
 		public DateTime TimeSet { get; set; }

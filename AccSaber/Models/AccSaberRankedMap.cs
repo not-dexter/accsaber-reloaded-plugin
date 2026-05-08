@@ -11,6 +11,15 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal sealed class AccSaberRankedMap : Model
     {
+        [JsonProperty("status")]
+        public string RankedStatus { get; set; } = null!;
+
+        [JsonProperty("criteriaStatus")]
+        public string CriteriaStatus { get; set; } = null!;
+
+        [JsonProperty("autoCriteriaStatus")]
+        public string AutoCriteriaStatus { get; set; } = null!;
+
         [JsonProperty("songName")]
         public string SongName { get; set; } = null!;
 

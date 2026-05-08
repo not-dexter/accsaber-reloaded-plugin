@@ -21,7 +21,6 @@ namespace AccSaber.Managers
 		private readonly SiraLog _log;
 		private readonly WebUtils _webUtils;
 		private readonly IPlatformUserModel _platformUserModel;
-		private static readonly HttpClient client = new();
 
 		public event Action<AccSaberRankedMap?>? OnAccSaberRankedMapUpdated;
 		public event Action? OnAccSaberScoreUpdated;
@@ -36,12 +35,15 @@ namespace AccSaber.Managers
 		public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
 		public List<AccSaberMilestone>_currentUserMilestones = new();
 
+		private AccSaberAuth _accSaberAuth = null!;
+
 		private AccSaberRankedMap? _currentRankedMap;
 
-		public AccSaberStore(SiraLog log, WebUtils webUtils, IPlatformUserModel platformUserModel)
+		public AccSaberStore(SiraLog log, WebUtils webUtils, IPlatformUserModel platformUserModel, AccSaberAuth accSaberAuth)
 		{
 			_log = log;
 			_webUtils = webUtils;
+			_accSaberAuth = accSaberAuth;
 			_platformUserModel = platformUserModel;
 		}
 		public enum AccSaberMapCategories
@@ -50,7 +52,8 @@ namespace AccSaber.Managers
 			Standard,
 			Tech
 		}
-		
+
+
 		public AccSaberRankedMap? CurrentRankedMap
 		{
 			get => _currentRankedMap;
@@ -63,12 +66,7 @@ namespace AccSaber.Managers
 
 		private async Task<Dictionary<string, AccSaberRankedMap>> GetRankedMaps()
 		{
-			HttpClient client = new();
-			client.DefaultRequestHeaders
-			.Accept
-			.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
-
-			var response = await client.GetAsync("https://api.accsaberreloaded.com/v1/maps?status=RANKED&size=99999");
+			var response = await Plugin.WebClient.GetAsync("/v1/maps?size=99999");
 
 			if (response == null)
 			{
@@ -108,6 +106,9 @@ namespace AccSaber.Managers
 
 							AccSaberRankedMap newMap = new()
 							{
+								RankedStatus = diff.RankedStatus,
+								CriteriaStatus = diff.CriteriaStatus,
+								AutoCriteriaStatus = diff.AutoCriteriaStatus,
 								SongName = map.SongName,
 								SongSubName = map.SongSubName,
 								SongAuthorName = map.SongAuthorName,
@@ -151,7 +152,7 @@ namespace AccSaber.Managers
 
 			if (platformUser is not null)
 			{
-				var response = await client.GetAsync($"https://accsaberreloaded.com/v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt");
+				var response = await Plugin.WebClient.GetAsync($"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt");
 
 				if (response is not null)
 				{
@@ -165,7 +166,6 @@ namespace AccSaber.Managers
 					}
 				}
 			}
-
 			return new List<AccSaberMilestone>();
 		}
 		private async Task UpdateAccSaberInfo(DateTime? lastAPIUpdateTime = null)
@@ -235,7 +235,7 @@ namespace AccSaber.Managers
 						if (result.MessageType == WebSocketMessageType.Close)
 						{
 							await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-							_ = ListenForScores();
+							await ListenForScores();
 						}
 						ms.Write(messageBuffer.Array, messageBuffer.Offset, result.Count);
 					}
@@ -260,7 +260,12 @@ namespace AccSaber.Managers
 			catch (OperationCanceledException)
 			{
 				_log.Info("[WS] The remote party closed the WebSocket connection without completing the close handshake.");
-                _ = ListenForScores();
+				await ListenForScores();
+			}
+			catch (Exception e)
+            {
+				_log.Info(e);
+				await ListenForScores();
 			}
 		}
 
@@ -289,9 +294,9 @@ namespace AccSaber.Managers
 					break;
 			}
 
-			var userCall = await client.GetAsync($"https://api.accsaberreloaded.com/v1/users/{id}");
+			var userCall = await Plugin.WebClient.GetAsync($"/v1/users/{id}");
 
-			var statisticsCall = await client.GetAsync($"https://api.accsaberreloaded.com/v1/users/{id}/statistics/all");
+			var statisticsCall = await Plugin.WebClient.GetAsync($"/v1/users/{id}/statistics/all");
 
 			if (userCall == null || statisticsCall == null)
 			{
@@ -346,7 +351,7 @@ namespace AccSaber.Managers
 
 						if (statsDiff)
 						{ 
-							var categoryDiff = await client.GetAsync($"https://api.accsaberreloaded.com/v1/users/{id}/stats-diff?category={urlCategory}");
+							var categoryDiff = await Plugin.WebClient.GetAsync($"/v1/users/{id}/stats-diff?category={urlCategory}");
 
 							if (categoryDiff is not null)
 							{
@@ -417,6 +422,7 @@ namespace AccSaber.Managers
 		public async void Initialize()
 		{
 			RankedMaps = await GetRankedMaps();
+			await _accSaberAuth.Login();
 			_currentUserMilestones = await GetUserMilestones();
 			await Task.Delay(1000);
 			await UpdateAccSaberInfo();

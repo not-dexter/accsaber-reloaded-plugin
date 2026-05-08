@@ -11,6 +11,7 @@ using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
+using SiraUtil.Logging;
 
 namespace AccSaber.LeaderboardSources
 {
@@ -19,14 +20,16 @@ namespace AccSaber.LeaderboardSources
 		private readonly List<List<AccSaberLeaderboardEntry>> _cachedEntries = new();
 		
 		private readonly WebUtils _webUtils;
+		private SiraLog _log;
 		private readonly AccSaberStore _accSaberStore;
 		private PluginConfig _pluginConfig = null!;
 
-		public CountryLeaderboardSource(WebUtils webUtils, AccSaberStore accSaberStore, PluginConfig pluginConfig)
+		public CountryLeaderboardSource(WebUtils webUtils, AccSaberStore accSaberStore, PluginConfig pluginConfig, SiraLog log)
 		{
 			_webUtils = webUtils;
 			_accSaberStore = accSaberStore;
 			_pluginConfig = pluginConfig;
+			_log = log;
 		}
 
 		public string HoverHint => "Country";
@@ -34,6 +37,8 @@ namespace AccSaber.LeaderboardSources
 		public Task<Sprite> Icon => BeatSaberMarkupLanguage.Utilities.LoadSpriteFromAssemblyAsync("AccSaber.Resources.country.png");
 
 		public bool Scrollable => true;
+
+		public int TotalPages { get; set; }
 
 		public async Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberRankedMap rankedMap, CancellationToken cancellationToken = default, int page = 0)
 		{
@@ -48,12 +53,7 @@ namespace AccSaber.LeaderboardSources
 				return null;
 			}
 
-			HttpClient client = new();
-			client.DefaultRequestHeaders
-			.Accept
-			.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
-
-			var response = await client.GetAsync($"https://api.accsaberreloaded.com/v1/maps/difficulties/leaderboard/{rankedMap.BlLeaderboardId}/scores?page={page}&country={_accSaberStore.GetCurrentCategoryUserAsync().Result.Country}&size=10");
+			var response = await Plugin.WebClient.GetAsync($"/v1/maps/difficulties/leaderboard/{rankedMap.BlLeaderboardId}/scores?page={page}&country={_accSaberStore.GetCurrentCategoryUserAsync().Result.Country}&size=10");
 
 			if (response is null)
 			{
@@ -68,6 +68,8 @@ namespace AccSaber.LeaderboardSources
 			{
 				var parsed = JObject.Parse(parsedStr);
 
+				TotalPages = parsed["totalPages"]!.ToObject<int>();
+
 				if (parsed["content"] is JArray content)
 				{
 					var scores = JsonConvert.DeserializeObject<List<AccSaberLeaderboardEntry>>(content.ToString());
@@ -78,6 +80,7 @@ namespace AccSaber.LeaderboardSources
 						{
 							Rank = leaderboard.Any() ? leaderboard.Count + 1 + page * 10 : 1 + page * 10,
 							PlayerId = score.PlayerId,
+							AvatarURL = score.AvatarURL,
 							PlayerName = score.PlayerName,
 							Accuracy = score.Accuracy,
 							Score = score.Score,

@@ -36,9 +36,9 @@ namespace AccSaber.LeaderboardSources
 
 		public Task<Sprite> Icon => BeatSaberMarkupLanguage.Utilities.LoadSpriteFromAssemblyAsync("AccSaber.Resources.friend.png");
 
+		public int TotalPages { get; set; }
 		public bool Scrollable => true;
 
-		// This is more of a placeholder while we wait on the full friends system for reloaded but it works for now
 		public async Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberRankedMap rankedMap, CancellationToken cancellationToken = default, int page = 0)
 		{
 			if (_cachedEntries.Count >= page + 1)
@@ -46,84 +46,48 @@ namespace AccSaber.LeaderboardSources
 				return _cachedEntries[page];
 			}
 
-			var userInfo = await _accSaberStore.GetPlatformUserInfo();
-			if (userInfo is null)
+			var response = await Plugin.WebClient.GetAsync($"/v1/maps/difficulties/leaderboard/{rankedMap.BlLeaderboardId}/scores?page={page}&size=10&relation=follower");
+
+
+			if (response is null)
 			{
 				return null;
 			}
-
-			var diff = (rankedMap.Difficulty == "EXPERTPLUS") ? "EXPERT_PLUS" : rankedMap.Difficulty;
-
-			HttpClient client = new();
-			client.DefaultRequestHeaders
-			.Accept
-			.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
-
-			var scoresList = new List<AccSaberLeaderboardEntry>();
 
 			var leaderboard = new List<AccSaberLeaderboardEntry>();
 
-			var ownScore = await client.GetAsync($"https://api.accsaberreloaded.com/v1/users/{_accSaberStore.GetCurrentUser().Result.PlayerId}/scores/by-hash/{rankedMap.SongHash}?difficulty={diff}&characteristic=Standard");
+			var parsedStr = await response.Content.ReadAsStringAsync();
 
-			if (ownScore is null)
+			if (parsedStr != null)
 			{
-				return null;
-			}
+				var parsed = JObject.Parse(parsedStr);
 
-			if (ownScore.StatusCode != System.Net.HttpStatusCode.NotFound)
-			{
-				var parsedStr = await ownScore.Content.ReadAsStringAsync();
+				TotalPages = parsed["totalPages"]!.ToObject<int>();
 
-				if (parsedStr != null)
+				if (parsed["content"] is JArray content)
 				{
-					var parsed = JObject.Parse(parsedStr);
+					var scores = JsonConvert.DeserializeObject<List<AccSaberLeaderboardEntry>>(content.ToString());
 
-					var score = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(parsed.ToString());
+					foreach (var score in scores)
+					{
+						AccSaberLeaderboardEntry newScore = new()
+						{
+							Rank = leaderboard.Any() ? leaderboard.Count + 1 + page * 10 : 1 + page * 10,
+							PlayerId = score.PlayerId,
+							AvatarURL = score.AvatarURL,
+							PlayerName = score.PlayerName,
+							Accuracy = score.Accuracy,
+							Score = score.Score,
+							AP = score.AP,
+							Modifiers = score.Modifiers,
+							AccChamp = score.AccChamp,
+							TimeSet = score.TimeSet
+						};
 
-					scoresList.Add(score);
+						leaderboard.Add(newScore);
+					}
 				}
 			}
-
-			foreach (var friend in _pluginConfig.Friends)
-			{
-				var response = await client.GetAsync($"https://api.accsaberreloaded.com/v1/users/{friend}/scores/by-hash/{rankedMap.SongHash}?difficulty={diff}&characteristic=Standard");
-
-				if (response is null)
-				{
-					return null;
-				}
-
-				if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-					continue;
-
-				var parsedStr = await response.Content.ReadAsStringAsync();
-
-				if (parsedStr != null)
-				{
-					var parsed = JObject.Parse(parsedStr);
-
-					var score = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(parsed.ToString());
-
-					scoresList.Add(score);
-										
-				}
-				scoresList.OrderByDescending(o => o.Score);
-			}
-			 
-			var newscoresList = scoresList.OrderByDescending(x => x.Score)
-				  .ThenBy(x => x.TimeSet)
-				  .ToList();
-
-			var scorepage = (page == 0) ? newscoresList.Take(10).ToList() : newscoresList.Skip(10 * page).Take(10).ToList();
-
-			foreach (var score in scorepage)
-			{
-				var index = scorepage.FindIndex(a => a == score);
-				score.Rank = scoresList.Any() ? index + 1 + page * 10 : 1 + page * 10;
-				leaderboard.Add(score);
-			}
-
-
 
 			_cachedEntries.Add(leaderboard);
 			return leaderboard;

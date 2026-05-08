@@ -32,6 +32,7 @@ namespace AccSaber.UI.ViewControllers
 		private bool _parsed;
 		private bool _firstLoad;
 		private bool _isLoading;
+		private bool _relationLoading;
 		private string _categoryValue = "Overall";
 		private string _username = "";
 		private string _rank = null!;
@@ -72,11 +73,13 @@ namespace AccSaber.UI.ViewControllers
 		private CanvasGroup? _userInfoCanvasGroup;
 		
 		private readonly AccSaberStore _accSaberStore;
+		private readonly AccSaberAuth _accSaberAuth;
 		private readonly TimeTweeningManager _timeTweeningManager;
 
-		public LeaderboardUserModalController(AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, PluginConfig pluginConfig)
+		public LeaderboardUserModalController(AccSaberStore accSaberStore, AccSaberAuth accSaberAuth, TimeTweeningManager timeTweeningManager, PluginConfig pluginConfig)
 		{
 			_accSaberStore = accSaberStore;
+			_accSaberAuth = accSaberAuth;
 			_timeTweeningManager = timeTweeningManager;
 			_pluginConfig = pluginConfig;
 		}
@@ -216,6 +219,17 @@ namespace AccSaber.UI.ViewControllers
 		[UIObject("add-friend")]
 		private readonly GameObject _addFriendButton = null!;
 
+		[UIValue("relation-loading")]
+		private bool RelationLoading
+		{
+			get => _relationLoading;
+			set
+			{
+				_relationLoading = value;
+				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RelationLoading)));
+			}
+		}
+
 		[UIAction("format-category")]
 		private string FormatCategory(string value)
 		{
@@ -228,20 +242,32 @@ namespace AccSaber.UI.ViewControllers
 		}
 
 		[UIAction("add-friend-clicked")]
-		private void AddFriendClicked()
+		private async void AddFriendClicked()
 		{
 			if (_userId is null)
 				return;
 
-			if (_pluginConfig.IsFriend(_userId))
+			if (_accSaberAuth.IsFriend(_userId))
 			{
-				_pluginConfig.RemoveFriend(_userId);
+				_addFriendButton.gameObject.GetComponent<Button>().enabled = false;
+				_addFriendButton.gameObject.SetActive(false);
+				RelationLoading = true;
+				await _accSaberAuth.RemoveRelation(AccSaberAuth.Relation.Follower, _userId);
+				RelationLoading = false;
 				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
+				_addFriendButton.gameObject.SetActive(true);
+				_addFriendButton.gameObject.GetComponent<Button>().enabled = true;
 			}
 			else
 			{
-				_pluginConfig.AddFriend(_userId);
+				_addFriendButton.gameObject.GetComponent<Button>().enabled = false;
+				_addFriendButton.gameObject.SetActive(false);
+				RelationLoading = true;
+				await _accSaberAuth.CreateRelation(AccSaberAuth.Relation.Follower, _userId);
+				RelationLoading = false;
 				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
+				_addFriendButton.gameObject.SetActive(true);
+				_addFriendButton.gameObject.GetComponent<Button>().enabled = true;
 			}
 		}
 		private void Parse(Transform parentTransform)
@@ -276,7 +302,7 @@ namespace AccSaber.UI.ViewControllers
 			_firstLoad = true;
 
 
-			if (!_pluginConfig.IsFriend(userId) && _accSaberStore.GetCurrentUser().Result.PlayerId != userId)
+			if (!_accSaberAuth.IsFriend(userId) && _accSaberStore.GetCurrentUser().Result.PlayerId != userId)
 			{
 				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
 				_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);

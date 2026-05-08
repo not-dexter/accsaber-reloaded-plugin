@@ -31,6 +31,7 @@
                   <text text="~plays" align="Center" font-size="3.5"/>
                   <text text="~headset" align="Center" font-size="3.5"/>
                   <button id="add-friend" align="Center" on-click='add-friend-clicked' active="true"/>
+                  <loading-indicator active="~relation-loading" preserve-aspect="true" pref-width="7" pref-height="7"/>
                 </vertical>
             </horizontal>
         </vertical>

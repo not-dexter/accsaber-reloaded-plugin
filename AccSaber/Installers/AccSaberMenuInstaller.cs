@@ -3,6 +3,8 @@ using AccSaber.LeaderboardSources;
 using AccSaber.Managers;
 using AccSaber.UI;
 using AccSaber.UI.ViewControllers;
+using AccSaber.UI.MenuButton;
+using AccSaber.UI.MenuButton.ViewControllers;
 using AccSaber.Utils;
 using Zenject;
 
@@ -19,9 +21,17 @@ namespace AccSaber.Installers
 		
 		public override void InstallBindings()
 		{
+			Plugin.Container = Container;
+
 			Container.BindInstance(_pluginConfig).AsSingle();
+			Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
+			Container.Bind<AccSaberNewsViewController>().FromNewComponentAsViewController().AsSingle();
+			Container.Bind<AccSaberMenuViewController>().FromNewComponentAsViewController().AsSingle();
+			Container.Bind<AccSaberMilestoneViewController>().FromNewComponentAsViewController().AsSingle();
+			Container.Bind<AccSaberMainFlowCoordinator>().FromNewComponentOnNewGameObject().AsSingle();
 
 			Container.Bind<WebUtils>().AsSingle();
+			Container.Bind<AccSaberAuth>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberStore>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberManager>().AsSingle();
 			Container.BindInterfacesTo<AccSaberCustomLeaderboard>().AsSingle();

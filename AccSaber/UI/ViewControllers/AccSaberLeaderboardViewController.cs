@@ -26,9 +26,12 @@ namespace AccSaber.UI.ViewControllers
 		private int _pageNumber = 0;
 		private int _selectedCellIndex;
 		private List<Button>? _infoButtons;
+		private List<ImageView>? _pfps;
 		private LoadingControl? _loadingControl;
 
 		private AccSaberStore _accSaberStore = null!;
+		private AccSaberPanelViewController _accSaberPanelView = null!;
+		private AccSaberAuth _accSaberAuth = null!;
 		private List<ILeaderboardSource> _leaderboardSources = null!;
 		private LeaderboardUserModalController _leaderboardUserModalController = null!;
 		private float _progressTarget = 0;
@@ -36,11 +39,13 @@ namespace AccSaber.UI.ViewControllers
 		private float _progress = 1;
 
 		[Inject]
-        public void Construct(AccSaberStore accSaberStore, List<ILeaderboardSource> leaderboardSources, LeaderboardUserModalController leaderboardUserModalController)
+        public void Construct(AccSaberStore accSaberStore, List<ILeaderboardSource> leaderboardSources, LeaderboardUserModalController leaderboardUserModalController, AccSaberPanelViewController accSaberPanelView, AccSaberAuth accSaberAuth)
         {
 			_accSaberStore = accSaberStore;
+			_accSaberPanelView = accSaberPanelView;
 			_leaderboardSources = leaderboardSources;
 			_leaderboardUserModalController = leaderboardUserModalController;
+			_accSaberAuth = accSaberAuth;
 		}
 
 		[UIComponent("leaderboard")]
@@ -101,7 +106,41 @@ namespace AccSaber.UI.ViewControllers
 		private readonly Button? _button10 = null!;
 
 		#endregion
-		
+
+		#region Profile Pictures
+
+		[UIComponent("pfp1")]
+		private readonly ImageView? _pfp1 = null!;
+
+		[UIComponent("pfp2")]
+		private readonly ImageView? _pfp2 = null!;
+
+		[UIComponent("pfp3")]
+		private readonly ImageView? _pfp3 = null!;
+
+		[UIComponent("pfp4")]
+		private readonly ImageView? _pfp4 = null!;
+
+		[UIComponent("pfp5")]
+		private readonly ImageView? _pfp5 = null!;
+
+		[UIComponent("pfp6")]
+		private readonly ImageView? _pfp6 = null!;
+
+		[UIComponent("pfp7")]
+		private readonly ImageView? _pfp7 = null!;
+
+		[UIComponent("pfp8")]
+		private readonly ImageView? _pfp8 = null!;
+
+		[UIComponent("pfp9")]
+		private readonly ImageView? _pfp9 = null!;
+
+		[UIComponent("pfp10")]
+		private readonly ImageView? _pfp10 = null!;
+
+		#endregion
+
 		private int SelectedCellIndex
 		{
 			get => _selectedCellIndex;
@@ -134,8 +173,8 @@ namespace AccSaber.UI.ViewControllers
 		private bool UpEnabled => PageNumber != 0 && _leaderboardSources[SelectedCellIndex].Scrollable;
 
 		[UIValue("down-enabled")]
-		private bool DownEnabled => _leaderboardSources[SelectedCellIndex].Scrollable;
-		
+		private bool DownEnabled => PageNumber + 1 < _leaderboardSources[SelectedCellIndex].TotalPages && _leaderboardSources[SelectedCellIndex].Scrollable;
+
 		[UIAction("#post-parse")]
 		private async Task PostParse()
 		{
@@ -168,6 +207,18 @@ namespace AccSaber.UI.ViewControllers
 			ChangeButtonScale(_button8!, 0.425f);
 			ChangeButtonScale(_button9!, 0.425f);
 			ChangeButtonScale(_button10!, 0.425f);
+
+			_pfps = new List<ImageView>(10);
+			SetImageSprites(_pfp1!, 0.225f);
+			SetImageSprites(_pfp2!, 0.225f);
+			SetImageSprites(_pfp3!, 0.225f);
+			SetImageSprites(_pfp4!, 0.225f);
+			SetImageSprites(_pfp5!, 0.225f);
+			SetImageSprites(_pfp6!, 0.225f);
+			SetImageSprites(_pfp7!, 0.225f);
+			SetImageSprites(_pfp8!, 0.225f);
+			SetImageSprites(_pfp9!, 0.225f);
+			SetImageSprites(_pfp10!, 0.225f);
 		}
 
 		[UIAction("up-clicked")]
@@ -266,13 +317,11 @@ namespace AccSaber.UI.ViewControllers
 			{
 				return;
 			}
-			
-			foreach (var leaderboardSource in _leaderboardSources)
-			{
-				leaderboardSource.ClearCache();
-			}
+
+			await _accSaberAuth.Login();
 
 			PageNumber = 0;
+
 		}
 
 		protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
@@ -290,11 +339,18 @@ namespace AccSaber.UI.ViewControllers
 
 			var scores = new List<LeaderboardTableView.ScoreData>();
 			var userScorePos = -1;
-
 			if (leaderboardEntries is null || leaderboardEntries.Count == 0)
 			{
-				scores.Add(new LeaderboardTableView.ScoreData(0, "", 0, false));
-				ToggleInfoButtons(false);
+				if (_accSaberStore.CurrentRankedMap is not null && _accSaberStore.CurrentRankedMap.RankedStatus != "RANKED")
+				{
+					scores.Add(new LeaderboardTableView.ScoreData(0, "  Unranked maps do not have leaderboards", 0, false));
+					ToggleInfoButtons(false);
+				}
+				else
+				{
+					scores.Add(new LeaderboardTableView.ScoreData(0, "", 0, false));
+					ToggleInfoButtons(false);
+				}
 			}
 			else
 			{	
@@ -317,6 +373,14 @@ namespace AccSaber.UI.ViewControllers
 						hoverHint.text = $"Score Set: {leaderboardEntries[i].TimeSet}";
 					}
 
+					if(_pfps != null)
+                    {
+						_pfps[i].gameObject.SetActive(true);
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                        _pfps[i].SetImageAsync(leaderboardEntries[i].AvatarURL, true);
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                    }
+
 					if (leaderboardEntries[i].PlayerId == userId)
 					{
 						userScorePos = i;
@@ -328,7 +392,7 @@ namespace AccSaber.UI.ViewControllers
 			{
 				_loadingControl?.Hide();
                 _leaderboard.SetScores(scores, userScorePos);
-                NotifyPropertyChanged(nameof(UpEnabled));
+				NotifyPropertyChanged(nameof(UpEnabled));
 				NotifyPropertyChanged(nameof(DownEnabled));
 			}
 		}
@@ -340,6 +404,7 @@ namespace AccSaber.UI.ViewControllers
 			
 			_loadingControl?.ShowLoading();
 			ToggleInfoButtons(false);
+			TogglePfps(false);
 		}
 
 		private void ToggleInfoButtons(bool value)
@@ -352,7 +417,16 @@ namespace AccSaber.UI.ViewControllers
 				button.gameObject.SetActive(value);
 			}
 		}
-		
+		private void TogglePfps(bool value)
+		{
+			if (_pfps == null)
+				return;
+
+			foreach (var pfp in _pfps)
+			{
+				pfp.gameObject.SetActive(value);
+			}
+		}
 		private void ChangeButtonScale(Button button, float scale)
 		{
 			var buttonTransform = button.transform;
@@ -360,7 +434,14 @@ namespace AccSaber.UI.ViewControllers
 			buttonTransform.localScale = localScale * scale;
 			_infoButtons?.Add(button);
 		}
-		
+		private void SetImageSprites(ImageView pfp, float scale)
+		{
+			pfp.material = Resources.FindObjectsOfTypeAll<Material>().Last(x => x.name == "UINoGlowRoundEdge");
+			var pfpTransform = pfp.transform;
+			var localScale = pfpTransform.localScale;
+			pfpTransform.localScale = localScale * scale;
+			_pfps?.Add(pfp);
+		}
 		private void InfoButtonClicked(int index)
 		{
 			if (_infoButtons is null)
@@ -443,21 +524,42 @@ namespace AccSaber.UI.ViewControllers
 				foreach (var milestone in updatedMilestones)
 				{
 					await ShowMilestone(milestone);
-					_accSaberStore._currentUserMilestones.Insert(0, milestone);
 				}
+				_accSaberStore._currentUserMilestones = newMilestones;
 			}
+		}
+
+		private void AccSaberAuthRelationStatusChanged()
+        {
+			foreach (var leaderboardSource in _leaderboardSources)
+			{
+				if (leaderboardSource.HoverHint == "Friends")
+					leaderboardSource.ClearCache();
+			}
+		}
+
+		private void OnPanelLogoClicked()
+        {
+			if (_leaderboard is null)
+				return;
+
+			_leaderboardUserModalController.ShowModal(_leaderboard.transform, _accSaberStore.GetCurrentUser().Result.PlayerId);
 		}
 
 		public void Initialize()
 		{
 			_accSaberStore.OnAccSaberRankedMapUpdated += AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnAccSaberScoreUpdated += AccSaberStoreOnOnAccSaberScoreUpdated;
+			_accSaberAuth.RelationStatusChanged += AccSaberAuthRelationStatusChanged;
+			_accSaberPanelView.OnPanelLogoClicked += OnPanelLogoClicked;
 		}
 
 		public void Dispose()
 		{
 			_accSaberStore.OnAccSaberRankedMapUpdated -= AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnAccSaberScoreUpdated -= AccSaberStoreOnOnAccSaberScoreUpdated;
+			_accSaberAuth.RelationStatusChanged -= AccSaberAuthRelationStatusChanged;
+			_accSaberPanelView.OnPanelLogoClicked -= OnPanelLogoClicked;
 		}
 	}
 }

@@ -34,6 +34,7 @@ namespace AccSaber.UI.ViewControllers
 		private PluginConfig _pluginConfig = null!;
 		private AccSaberStore _accSaberStore = null!;
 		private TimeTweeningManager _timeTweeningManager = null!;
+		public event Action? OnPanelLogoClicked;
 
 		[Inject]
 		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager)
@@ -62,11 +63,11 @@ namespace AccSaber.UI.ViewControllers
 
 			if (!_container.gameObject.activeInHierarchy)
 			{
-				SetBannerColor(mapInfo.CategoryId);
+				SetBannerColor(mapInfo.RankedStatus == "RANKED" ? mapInfo.CategoryId : mapInfo.RankedStatus);
 			}
 			else
 			{
-				TweenBannerColor(mapInfo.CategoryId);	
+				TweenBannerColor(mapInfo.RankedStatus == "RANKED" ? mapInfo.CategoryId : mapInfo.RankedStatus);	
 			}
 		}
 
@@ -190,9 +191,20 @@ namespace AccSaber.UI.ViewControllers
 				_timeTweeningManager.KillAllTweens(this);
 				if (_accSaberStore.CurrentRankedMap?.CategoryId != null)
 				{
-					SetBannerColor(_accSaberStore.CurrentRankedMap.CategoryId);
+					SetBannerColor(_accSaberStore.CurrentRankedMap.RankedStatus == "RANKED" ? _accSaberStore.CurrentRankedMap.CategoryId : _accSaberStore.CurrentRankedMap.RankedStatus);
 				}
 			}
+		}
+		private string GetCategoryName(string category)
+		{
+			return category switch
+			{
+				"b0000000-0000-0000-0000-000000000001" => "True",
+				"b0000000-0000-0000-0000-000000000002" => "Standard",
+				"b0000000-0000-0000-0000-000000000003" => "Tech",
+
+				_ => "Overall"
+			};
 		}
 
 		private Color GetCategoryColor(string category)
@@ -202,6 +214,8 @@ namespace AccSaber.UI.ViewControllers
 				"b0000000-0000-0000-0000-000000000001" => new Color(0.015f, 0.906f, 0.176f, 1),
 				"b0000000-0000-0000-0000-000000000002" => new Color(0.039f, 0.573f, 0.918f, 1),
 				"b0000000-0000-0000-0000-000000000003" => new Color(0.902f, 0.027f, 0.027f, 1),
+				"QUALIFIED" => new Color(1f, 1f, 0f, 1),
+				"QUEUE" => new Color(1f, 1f, 0f, 1),
 				_ => Color.gray
 			};
 		}
@@ -253,7 +267,7 @@ namespace AccSaber.UI.ViewControllers
 					return;
 				}
 				
-				SetBannerColor(_accSaberStore.CurrentRankedMap.CategoryId);
+				SetBannerColor(_accSaberStore.CurrentRankedMap.RankedStatus == "RANKED" ? _accSaberStore.CurrentRankedMap.CategoryId : _accSaberStore.CurrentRankedMap.RankedStatus);
 			}
 		}
 
@@ -264,7 +278,8 @@ namespace AccSaber.UI.ViewControllers
 			if (!_logoClickable)
 				return;
 
-			System.Diagnostics.Process.Start("https://accsaberreloaded.com/");
+			OnPanelLogoClicked!.Invoke();
+			//System.Diagnostics.Process.Start("https://accsaberreloaded.com/");
 		}
 
 		[UIValue("loading-active")]
@@ -288,15 +303,20 @@ namespace AccSaber.UI.ViewControllers
 				NotifyPropertyChanged();
 			}
 		}
+
 		[UIValue("overall-ranking-text")]
-		private string OverallRankingText =>
-			$"<color=#EDFF55>Ranking:</color> #{_accSaberStore.GetCurrentOverallUser().Rank} <size=75%>(<color=#00FFAE>{_accSaberStore.GetCurrentOverallUser().AP:N2} AP</color>)";
+		private string OverallRankingText => _accSaberStore.CurrentRankedMap!.RankedStatus == "RANKED" ?
+			$"<color=#EDFF55>Ranking:</color> #{_accSaberStore.GetCurrentOverallUser().Rank} <size=75%>(<color=#00FFAE>{_accSaberStore.GetCurrentOverallUser().AP:N2} AP</color>)" :
+			$"<color=#EDFF55>Status:</color> {_accSaberStore.CurrentRankedMap.RankedStatus}";
 
 		[UIValue("category-ranking-text")]
-		private string CategoryRankingText =>
-			$"<color=#EDFF55>Category Ranking:</color> #{_accSaberStore.GetCurrentCategoryUser().Rank} <size=75%>(<color=#00FFAE>{_accSaberStore.GetCurrentCategoryUser().AP:N2} AP</color>)";
+		private string CategoryRankingText => _accSaberStore.CurrentRankedMap!.RankedStatus == "RANKED" ?
+			$"<color=#EDFF55>Category Ranking:</color> #{_accSaberStore.GetCurrentCategoryUser().Rank} <size=75%>(<color=#00FFAE>{_accSaberStore.GetCurrentCategoryUser().AP:N2} AP</color>)" :
+			$"<color=#EDFF55>Criteria:</color> {_accSaberStore.CurrentRankedMap.CriteriaStatus}";
         
 		[UIValue("map-complexity-text")]
-		private string MapComplexityText => $"<color=#EDFF55>Map Complexity:</color> {Math.Round(_accSaberStore.CurrentRankedMap!.Complexity, 2)}";
+		private string MapComplexityText => _accSaberStore.CurrentRankedMap!.RankedStatus == "RANKED" ?
+			$"<color=#EDFF55>Map Complexity:</color> {Math.Round(_accSaberStore.CurrentRankedMap!.Complexity, 2)}" :
+			$"<color=#EDFF55>Category:</color> {GetCategoryName(_accSaberStore.CurrentRankedMap.CategoryId)}";
 	}
 }

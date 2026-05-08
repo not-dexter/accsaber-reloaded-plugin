@@ -32,7 +32,8 @@ namespace AccSaber.LeaderboardSources
 		public Task<Sprite> Icon => BeatSaberMarkupLanguage.Utilities.LoadSpriteFromAssemblyAsync("AccSaber.Resources.GlobalIcon.png");
 		
 		public bool Scrollable => true;
-		
+
+		public int TotalPages { get; set; }
 		public async Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberRankedMap rankedMap, CancellationToken cancellationToken = default, int page = 0)
 		{
 			if (_cachedEntries.Count >= page + 1)
@@ -40,13 +41,7 @@ namespace AccSaber.LeaderboardSources
 				return _cachedEntries[page];
 			}
 
-			HttpClient client = new();
-			client.DefaultRequestHeaders
-			.Accept
-			.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
-
-
-			var response = await client.GetAsync($"https://api.accsaberreloaded.com/v1/maps/difficulties/leaderboard/{rankedMap.BlLeaderboardId}/scores?page={page}&size=10");
+			var response = await Plugin.WebClient.GetAsync($"/v1/maps/difficulties/leaderboard/{rankedMap.BlLeaderboardId}/scores?page={page}&size=10");
 
 
 			if (response is null)
@@ -61,6 +56,8 @@ namespace AccSaber.LeaderboardSources
 			if (parsedStr != null)
 			{
 				var parsed = JObject.Parse(parsedStr);
+
+				TotalPages = parsed["totalPages"]!.ToObject<int>();
 
 				if (parsed["content"] is JArray content)
 				{

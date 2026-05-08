@@ -29,6 +29,8 @@ namespace AccSaber.LeaderboardSources
 		public string HoverHint => "Around Me";
 
 		public Task<Sprite> Icon => BeatSaberMarkupLanguage.Utilities.LoadSpriteFromAssemblyAsync("AccSaber.Resources.PlayerIcon.png");
+
+		public int TotalPages { get; set; }
 		
 		public bool Scrollable => false;
 		public async Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberRankedMap rankedMap, CancellationToken cancellationToken = default, int page = 0)
@@ -44,15 +46,10 @@ namespace AccSaber.LeaderboardSources
 				return null;
 			}
 
-			HttpClient client = new();
-			client.DefaultRequestHeaders
-			.Accept
-			.Add(new MediaTypeWithQualityHeaderValue("application/json"));//ACCEPT header
-
 			if (_accSaberStore.CurrentRankedMap is null)
 				return null;
 
-			var response = await client.GetAsync($"https://api.accsaberreloaded.com/v1/maps/difficulties/leaderboard/{_accSaberStore.CurrentRankedMap.BlLeaderboardId}/scores-around/{userInfo.platformUserId}?above=4&below=5");
+			var response = await Plugin.WebClient.GetAsync($"/v1/maps/difficulties/leaderboard/{_accSaberStore.CurrentRankedMap.BlLeaderboardId}/scores-around/{userInfo.platformUserId}?above=4&below=5");
 
 			if (response is null)
 			{
@@ -66,6 +63,8 @@ namespace AccSaber.LeaderboardSources
 			if (parsedStr != null)
 			{
 				var parsed = JObject.Parse(parsedStr);
+
+				TotalPages = 1;
 
 				if (parsed["playerScore"] is JToken playerScore && parsed["scoresAbove"] is JArray scoresAbove && parsed["scoresBelow"] is JArray scoresBelow)
 				{

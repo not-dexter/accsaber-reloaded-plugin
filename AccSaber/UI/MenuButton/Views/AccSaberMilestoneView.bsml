@@ -1,0 +1,26 @@
+﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+  <vertical pref-width='120'>
+    <horizontal bg="panel-top" horizontal-fit="PreferredSize" pref-width="120">
+      <text text="Milestones" align="Center" font-size="7" />
+    </horizontal>
+    <horizontal pref-width="120" spacing="1" horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
+      <vertical bg="panel-top" bg-color="black" skew="0" pref-width="105" pref-height="60" pad="2">
+      <loading-indicator active="~is-loading" preserve-aspect="true" pref-width="10" pref-height="10"/>
+        <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' stick-scrolling='true' active="~is-not-loading">
+          <vertical id='background-container' bg='panel-top' skew='0' horizontal-fit='Unconstrained' pad='1' pad-bottom='2'>
+            <horizontal>
+              <vertical pad-top='3' pad-bottom='3' pref-width='100' horizontal-fit='PreferredSize' >
+                <text text='~milestone-name' align='Left' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>
+                <text text='~milestone-desc' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='true'/>
+              </vertical>
+            </horizontal>
+          </vertical>
+        </custom-list>
+      </vertical>
+      <vertical preferred-width='4'>
+        <page-button event-click='milestone-list#PageUp' direction='Up' pref-height='3' pref-width='4'/>
+        <page-button event-click='milestone-list#PageDown' direction='Down' pref-height='3' pref-width='4'/>
+      </vertical>
+    </horizontal>
+  </vertical>
+</bg>

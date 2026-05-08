@@ -27,6 +27,9 @@
             <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatmapCore.dll</HintPath>
             <Private>False</Private>
         </Reference>
+        <Reference Include="BGNetCore">
+          <HintPath>..\..\..\..\BSManager\BSInstances\1.39.1\Beat Saber_Data\Managed\BGNetCore.dll</HintPath>
+        </Reference>
 		<Reference Include="DataModels">
 			<HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\DataModels.dll</HintPath>
             <Private>False</Private>
@@ -157,6 +160,16 @@
     <ItemGroup>
       <None Remove="manifest.json" />
       <None Remove="Resources\friend.png" />
+      <None Remove="UI\MenuButton\Views\AccSaberMenuView.bsml" />
+      <None Remove="UI\MenuButton\Views\AccSaberMilestoneView.bsml" />
+      <None Remove="UI\MenuButton\Views\AccSaberNewsView.bsml" />
       <EmbeddedResource Include="manifest.json" />
+      <EmbeddedResource Include="UI\MenuButton\Views\AccSaberNewsView.bsml">
+        <SubType>Code</SubType>
+      </EmbeddedResource>
+      <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMilestoneView.bsml">
+        <SubType>Code</SubType>
+      </EmbeddedResource>
+      <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMenuView.bsml" />
     </ItemGroup>
 </Project>

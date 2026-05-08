@@ -5,7 +5,7 @@
     </horizontal>
     <horizontal id='container' pref-width='91' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' spacing='2' bg='round-rect-panel' bg-color='#0078B9' pad='2'>
         <vertical pref-width='10' pref-height='10'>
-          <clickable-image id='logo' src='AccSaber.Resources.AccSaber.png' on-click='logo-clicked' preserve-aspect='true' pref-width='10' pref-height='10' hover-hint='Open Accsaber Reloaded' />
+          <clickable-image id='logo' src='AccSaber.Resources.AccSaber.png' on-click='logo-clicked' preserve-aspect='true' pref-width='10' pref-height='10' hover-hint='Open your profile' />
         </vertical>
         <vertical pref-width='0.5' pref-height='10'>
             <image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='0.5' pref-height='10' size-delta-x='0.5' size-delta-y='10' />

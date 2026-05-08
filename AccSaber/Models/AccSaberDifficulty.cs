@@ -13,6 +13,15 @@ namespace AccSaber.Models
 		[JsonProperty("active")]
 		public bool Active { get; set; }
 
+		[JsonProperty("status")]
+		public string RankedStatus { get; set; } = null!;
+
+		[JsonProperty("criteriaStatus")]
+		public string CriteriaStatus { get; set; } = null!;
+
+		[JsonProperty("autoCriteriaStatus")]
+		public string AutoCriteriaStatus { get; set; } = null!;
+
 		[JsonProperty("blLeaderboardId")]
 		public string BlLeaderboardId { get; set; } = null!;
 
