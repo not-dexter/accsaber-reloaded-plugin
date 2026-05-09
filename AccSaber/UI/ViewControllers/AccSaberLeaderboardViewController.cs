@@ -516,7 +516,7 @@ namespace AccSaber.UI.ViewControllers
 			PageNumber = 0;
 
 			await Task.Delay(5000); // bit of delay to let the milestones update in the backend. will switch to the milestone completion websocket when thats finished
-			List<AccSaberMilestone> newMilestones = await _accSaberStore.GetUserMilestones();
+			List<AccSaberMilestone> newMilestones = await _accSaberStore.GetUserMilestones(true);
 			if (_accSaberStore._currentUserMilestones.Count < newMilestones.Count)
 			{
 				var updatedMilestones = newMilestones.Take(newMilestones.Count - _accSaberStore._currentUserMilestones.Count).ToList();

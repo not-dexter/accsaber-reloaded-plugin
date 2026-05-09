@@ -38,7 +38,10 @@
           <vertical pref-width='0.5' pref-height='55'>
           </vertical>
           <vertical id="user-info" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pref-width="80" pref-height="55" spacing="1" pad-left="15" >
-            <custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells'>
+            <vertical active="~scores-is-loading" vertical-fit="PreferredSize" pref-width="10" pref-height="45">
+              <loading-indicator  preserve-aspect="true" vertical-fit="PreferredSize" pref-width="10" pref-height="10"/>
+            </vertical>
+            <custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' active="~scores-is-not-loading">
               <vertical id='background-container' bg='round-rect-panel' horizontal-fit='Unconstrained' pad='1'>
                 <horizontal>
                   <vertical pad-top='1' pad-bottom='1' pref-width='7'>

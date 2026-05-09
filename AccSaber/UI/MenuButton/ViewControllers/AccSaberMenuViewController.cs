@@ -34,6 +34,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool _parsed;
         private bool _firstLoad;
         private bool _isLoading;
+		private bool _isScoresLoading;
 		private int _pageNumber = 0;
 		private int _maxPage = 1;
 		private string _categoryValue = "Overall";
@@ -83,6 +84,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _accSaberStore = accSaberStore;
 			_timeTweeningManager = timeTweeningManager;
 		}
+
+
 		private int PageNumber
 		{
 			get => _pageNumber;
@@ -107,6 +110,21 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !_isLoading;
+
+		[UIValue("scores-is-loading")]
+		private bool IsScoresLoading
+		{
+			get => _isScoresLoading;
+			set
+			{
+				_isScoresLoading = value;
+				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsScoresLoading)));
+				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsScoresNotLoading)));
+			}
+		}
+
+		[UIValue("scores-is-not-loading")]
+		private bool IsScoresNotLoading => !_isScoresLoading;
 
 		[UIValue("category-value")]
 		private string CategoryValue
@@ -262,8 +280,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_parsed = true;
 			}
 			IsLoading = true;
-			var userInfo = _accSaberStore.GetCurrentUser().Result;
-			_userId = userInfo.PlayerId;
 			_firstLoad = true;
 			CategoryValue = "Overall";
         }
@@ -287,16 +303,20 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		}
 		private async Task UpdateUserInfo()
 		{
-			if (_userId is null)
-			{
+			var user = await _accSaberStore.GetPlatformUserInfo();
+
+			if (user is null)
 				return;
-			}
+
+			_userId = user.platformUserId;
+
 			switch (CategoryValue)
 			{
 				case "Overall":
 					{
 						if (_userOverall is null)
 						{
+							IsLoading = true;
 							var userInfo = await _accSaberStore.GetUserFromId(_userId, null, true);
 							_userOverall = userInfo;
 						}
@@ -309,6 +329,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					{
 						if (_userTrue is null)
 						{
+							IsLoading = true;
 							var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.True, true);
 							_userTrue = userInfo;
 						}
@@ -320,6 +341,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					{
 						if (_userStandard is null)
 						{
+							IsLoading = true;
 							var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Standard, true);
 							_userStandard = userInfo;
 						}
@@ -331,6 +353,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					{
 						if (_userTech is null)
 						{
+							IsLoading = true;
 							var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Tech, true);
 							_userTech = userInfo;
 						}
@@ -421,7 +444,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		private async Task RefreshScores()
         {
-
+			IsScoresLoading = true;
 			_scoreCells.Clear();
 			_topScoresList.Data.Clear();
 			var CategoryId = _categoryValue switch
@@ -458,6 +481,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty, score.Accuracy.ToString(), score.AP.ToString(), score.CategoryId, score.CoverUrl));
 					}
 					_topScoresList.TableView.ReloadData();
+					IsScoresLoading = false;
 				}
 			}
 

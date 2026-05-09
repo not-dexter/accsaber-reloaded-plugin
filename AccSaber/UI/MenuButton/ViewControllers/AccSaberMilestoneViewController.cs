@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using HMUI;
 using System.Threading.Tasks;
 using BeatSaberMarkupLanguage.Components;
+using AccSaber.Models;
+using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -22,15 +24,20 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private string? _userId;
 		private bool _parsed;
 		private bool _isLoading;
+		private Tabs _currentTab;
 
 		private AccSaberStore _accSaberStore = null!;
 
+		private List<AccSaberMilestone> _milestones = null!;
+
 		[UIComponent("milestone-list")]
-		private readonly CustomCellListTableData _topScoresList = null!;
+		private readonly CustomCellListTableData _milestonesList = null!;
 
 		[UIValue("milestone-cells")]
         private readonly List<MilestoneCell> _milestoneCells = new List<MilestoneCell>();
 
+		[UIComponent("tab-selector")]
+		private readonly TabSelector _tabSelector = null!;
 
 		[UIValue("is-loading")]
 		private bool IsLoading
@@ -42,6 +49,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading)));
 				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotLoading)));
 			}
+		}
+
+		private enum Tabs { 
+			Completed = 0,
+			Progress = 1
 		}
 
 		[UIValue("is-not-loading")]
@@ -60,25 +72,42 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			{
 				_parsed = true;
 			}
+			_currentTab = Tabs.Completed;
 			IsLoading = true;
-			var userInfo = _accSaberStore.GetCurrentUser().Result;
-			_userId = userInfo.PlayerId;
-			SetMilestones();
+			_ = SetMilestones(_currentTab);
 		}
 
-        private void SetMilestones()
+		[UIAction("tab-selected")]
+		void TabSelected(SegmentedControl segmentedControl, int index)
+		{
+			IsLoading = true;
+			_currentTab = (Tabs)segmentedControl.selectedCellNumber;
+			_ = SetMilestones(_currentTab);	 
+
+		}
+
+		private async Task SetMilestones(Tabs tab)
         {
-            if (_userId is null)
+			_milestoneCells.Clear();
+			_milestonesList.Data.Clear();
+
+			var user = await _accSaberStore.GetPlatformUserInfo();
+
+            if (user is null)
             {
 				return;
             }
 
 
-            foreach (var milestone in _accSaberStore._currentUserMilestones)
+			_userId = user.platformUserId;
+
+			_milestones = await _accSaberStore.GetUserMilestones(tab == Tabs.Completed);
+
+			foreach (var milestone in _milestones)
             {
-                _milestoneCells.Add(new MilestoneCell(milestone.Title, milestone.Description, milestone.Tier));
+                _milestoneCells.Add(new MilestoneCell(milestone.Title, milestone.Description, milestone.Tier, milestone.Completed, milestone.NormalizedProgress));
             }
-            _topScoresList.TableView.ReloadData();
+			_milestonesList.TableView.ReloadData();
 			IsLoading = false;
         }
         internal class MilestoneCell
@@ -93,9 +122,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			[UIValue("milestone-color")]
 			private readonly string _milestoneColor;
 
-
+			[UIValue("milestone-progress")]
+			private readonly string _milestoneProgress;
 			#endregion
-			public MilestoneCell(string milestoneName, string milestoneDesc, string tier)
+			public MilestoneCell(string milestoneName, string milestoneDesc, string tier, bool completed, float progress)
 			{
 
 				_milestoneColor = tier switch
@@ -110,9 +140,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				};
 
 				_milestoneName = $"<color={_milestoneColor}>{milestoneName}</color>"; ;
-				_milestoneDesc = milestoneDesc; 
+				_milestoneDesc = milestoneDesc;
+				_milestoneProgress = completed ? "<color=#22c55e>Completed</color>" : $"{progress * 100:F1}%";
 			}
-
 		}
 	}
 }

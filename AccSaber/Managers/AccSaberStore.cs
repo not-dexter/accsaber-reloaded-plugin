@@ -146,13 +146,13 @@ namespace AccSaber.Managers
 			return rankedMaps;
 		}
 
-		public async Task<List<AccSaberMilestone>> GetUserMilestones()
+		public async Task<List<AccSaberMilestone>> GetUserMilestones(bool completed)
 		{
 			var platformUser = await GetPlatformUserInfo();
 
 			if (platformUser is not null)
 			{
-				var response = await Plugin.WebClient.GetAsync($"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt");
+				var response = await Plugin.WebClient.GetAsync(completed ? $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt" : $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=progress");
 
 				if (response is not null)
 				{
@@ -161,8 +161,22 @@ namespace AccSaber.Managers
 					if (parsedStr != null)
 					{
 						var parsed = JArray.Parse(parsedStr);
+						if (completed)
+							return JsonConvert.DeserializeObject<List<AccSaberMilestone>>(parsed.ToString());
+						else
+                        {
+							List<AccSaberMilestone> newMilestones = new();
+							var milestones = JsonConvert.DeserializeObject<List<AccSaberMilestone>>(parsed.ToString());
 
-						return JsonConvert.DeserializeObject<List<AccSaberMilestone>>(parsed.ToString());
+							foreach (var milestone in milestones)
+                            {
+								if (milestone.Completed == true)
+									continue;
+
+								newMilestones.Add(milestone);
+                            }
+							return newMilestones;
+						}
 					}
 				}
 			}
@@ -423,7 +437,7 @@ namespace AccSaber.Managers
 		{
 			RankedMaps = await GetRankedMaps();
 			await _accSaberAuth.Login();
-			_currentUserMilestones = await GetUserMilestones();
+			_currentUserMilestones = await GetUserMilestones(true);
 			await Task.Delay(1000);
 			await UpdateAccSaberInfo();
 			await ListenForScores();
