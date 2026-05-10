@@ -10,6 +10,8 @@ using Newtonsoft.Json.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using UnityEngine;
+using System.Reflection;
+using AccSaber.Consts;
 
 namespace AccSaber.LeaderboardSources
 {
@@ -27,9 +29,7 @@ namespace AccSaber.LeaderboardSources
 		}
 		
 		public string HoverHint => "Around Me";
-
-		public Task<Sprite> Icon => BeatSaberMarkupLanguage.Utilities.LoadSpriteFromAssemblyAsync("AccSaber.Resources.PlayerIcon.png");
-
+		public Task<Sprite> Icon => VersionUtils.LoadSpriteFromAssemblyAsync(ResourcePaths.PLAYER_ICON);
 		public int TotalPages { get; set; }
 		
 		public bool Scrollable => false;

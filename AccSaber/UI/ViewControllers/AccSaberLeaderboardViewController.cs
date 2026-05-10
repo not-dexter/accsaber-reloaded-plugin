@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using AccSaber.LeaderboardSources;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.ViewControllers;

@@ -274,7 +274,7 @@ namespace AccSaber.UI.ViewControllers
 		{
 			if (!_parsed)
 			{
-				BSMLParser.Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), "AccSaber.UI.Views.LeaderboardUserModal.bsml"), parentTransform.gameObject, this);
+				VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), "AccSaber.UI.Views.LeaderboardUserModal.bsml"), parentTransform.gameObject, this);
 				_modalView.name = "AccSaberLeaderboardUserModal";
 				_modalView.blockerClickedEvent += OnModalClosed;
 

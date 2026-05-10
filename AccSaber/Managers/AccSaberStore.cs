@@ -392,18 +392,12 @@ namespace AccSaber.Managers
 		public async Task<UserInfo?> GetPlatformUserInfo()
 		{
 			// GetUserInfo caches the result, no need to do it ourselves
-			return await _platformUserModel.GetUserInfo(CancellationToken.None);
+			return await _platformUserModel.GetUserInfo();
 		}
 
 		public async Task<AccSaberUser> GetCurrentCategoryUserAsync()
 		{
-			return _currentRankedMap?.Category switch
-			{
-				AccSaberMapCategories.True => await GetCurrentUser(AccSaberMapCategories.True),
-				AccSaberMapCategories.Standard => await GetCurrentUser(AccSaberMapCategories.Standard),
-				AccSaberMapCategories.Tech => await GetCurrentUser(AccSaberMapCategories.Tech),
-				_ => await GetCurrentUser()
-			};
+			return await GetCurrentUser(_currentRankedMap?.Category);
 		}
 
 		public AccSaberUser GetCurrentOverallUser()

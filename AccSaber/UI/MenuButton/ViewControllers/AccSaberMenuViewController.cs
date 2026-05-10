@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using Tweening;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using AccSaber.Consts;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -420,7 +421,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			{
 				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
 				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
-				await _progressBarImage.SetImageAsync("AccSaber.Resources.Pixel.png", false);
+				await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
 				await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
 				if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
 					_progressBarImage.color = newCol;
@@ -446,7 +447,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
 			IsScoresLoading = true;
 			_scoreCells.Clear();
-			_topScoresList.Data.Clear();
+			_topScoresList.Data().Clear();
 			var CategoryId = _categoryValue switch
 			{
 				"Overall" => "",
@@ -480,7 +481,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					{
 						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty, score.Accuracy.ToString(), score.AP.ToString(), score.CategoryId, score.CoverUrl));
 					}
-					_topScoresList.TableView.ReloadData();
+					_topScoresList.TableView().ReloadData();
 					IsScoresLoading = false;
 				}
 			}

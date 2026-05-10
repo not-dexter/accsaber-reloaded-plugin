@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using SiraUtil.Logging;
+using AccSaber.Consts;
 
 namespace AccSaber.LeaderboardSources
 {
@@ -34,7 +35,7 @@ namespace AccSaber.LeaderboardSources
 		
 		public string HoverHint => "Friends";
 
-		public Task<Sprite> Icon => BeatSaberMarkupLanguage.Utilities.LoadSpriteFromAssemblyAsync("AccSaber.Resources.friend.png");
+		public Task<Sprite> Icon => VersionUtils.LoadSpriteFromAssemblyAsync(ResourcePaths.FRIEND);
 
 		public int TotalPages { get; set; }
 		public bool Scrollable => true;

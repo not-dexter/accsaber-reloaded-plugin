@@ -1,15 +1,16 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Utils;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using UnityEngine;
 using SiraUtil.Logging;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
 
 namespace AccSaber.LeaderboardSources
 {
@@ -29,7 +30,7 @@ namespace AccSaber.LeaderboardSources
 
 		public string HoverHint => "Global";
 
-		public Task<Sprite> Icon => BeatSaberMarkupLanguage.Utilities.LoadSpriteFromAssemblyAsync("AccSaber.Resources.GlobalIcon.png");
+		public Task<Sprite> Icon => VersionUtils.LoadSpriteFromAssemblyAsync(ResourcePaths.GLOBAL_ICON);
 		
 		public bool Scrollable => true;
 

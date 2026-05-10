@@ -28,7 +28,7 @@ namespace AccSaber.UI.MenuButton
             _accSaberMilestoneViewController = accSaberMilestoneViewController;
         }
 
-        public override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+        protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
             if (firstActivation)
             {
@@ -44,7 +44,7 @@ namespace AccSaber.UI.MenuButton
         }
 
 
-        public override void BackButtonWasPressed(ViewController topViewController)
+        protected override void BackButtonWasPressed(ViewController topViewController)
         {
             _mainFlowCoordinator.DismissFlowCoordinator(this);
         }

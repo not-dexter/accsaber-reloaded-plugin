@@ -1,4 +1,5 @@
 ﻿using AccSaber.UI.MenuButton;
+using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.MenuButtons;
 using System;
@@ -21,7 +22,7 @@ namespace AccSaber.Managers
 
         public void Initialize()
         {
-            MenuButtons.Instance.RegisterButton(_menuButton);
+            VersionUtils.MenuButtons_Instance.RegisterButton(_menuButton);
         }
 
         private void PresentFlowCoordinator()
@@ -31,7 +32,7 @@ namespace AccSaber.Managers
 
         public void Dispose()
         {
-            MenuButtons.Instance.UnregisterButton(_menuButton);
+            VersionUtils.MenuButtons_Instance.UnregisterButton(_menuButton);
         }
     }
 }

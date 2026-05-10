@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using BeatSaberMarkupLanguage.Components;
 using AccSaber.Models;
 using UnityEngine;
+using AccSaber.Utils;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -89,7 +90,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private async Task SetMilestones(Tabs tab)
         {
 			_milestoneCells.Clear();
-			_milestonesList.Data.Clear();
+			_milestonesList.Data().Clear();
 
 			var user = await _accSaberStore.GetPlatformUserInfo();
 
@@ -107,7 +108,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 _milestoneCells.Add(new MilestoneCell(milestone.Title, milestone.Description, milestone.Tier, milestone.Completed, milestone.NormalizedProgress));
             }
-			_milestonesList.TableView.ReloadData();
+			_milestonesList.TableView().ReloadData();
 			IsLoading = false;
         }
         internal class MilestoneCell

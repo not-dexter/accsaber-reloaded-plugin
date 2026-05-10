@@ -29,7 +29,7 @@ namespace AccSaber.Managers
 
             var platformUserModel = Plugin.Container.TryResolve<IPlatformUserModel>();
             var authToken = await platformUserModel.GetUserAuthToken();
-            var userInfo = await platformUserModel.GetUserInfo(CancellationToken.None);
+            var userInfo = await platformUserModel.GetUserInfo();
             var token = "";
             var provider = "";
 
@@ -40,7 +40,7 @@ namespace AccSaber.Managers
                     provider = "steamTicket";
                     break;
                 case UserInfo.Platform.Oculus:
-                    token = authToken.token + "," + (await platformUserModel.RequestXPlatformAccessToken(CancellationToken.None)).token;
+                    token = GetOculusToken();
                     provider = "oculusTicket";
                     break;
             }
@@ -64,6 +64,30 @@ namespace AccSaber.Managers
                     await Task.Delay(5000);
                 }
             }
+        }
+        private string GetOculusToken()
+        {
+#if NEW_VERSION
+            return authToken.token + "," + platformUserModel.RequestXPlatformAccessToken(CancellationToken.None).GetAwaiter().GetResult().token;
+#else
+            string token = "";
+            Oculus.Platform.Users.GetLoggedInUser().OnComplete(delegate (Oculus.Platform.Message<Oculus.Platform.Models.User> loggedInMessage) {
+                if (!loggedInMessage.IsError)
+                {
+                    Oculus.Platform.Users.GetUserProof().OnComplete(delegate (Oculus.Platform.Message<Oculus.Platform.Models.UserProof> userProofMessage) {
+                        if (!userProofMessage.IsError)
+                        {
+                            Oculus.Platform.Users.GetAccessToken().OnComplete(delegate (Oculus.Platform.Message<string> authTokenMessage)
+                            {
+                                token = userProofMessage.Data.Value + "," + authTokenMessage.Data;
+                            });
+
+                        }
+                    });
+                }
+            });
+            return token;
+#endif
         }
 
         internal class AuthResponse
