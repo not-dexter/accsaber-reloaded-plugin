@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using AccSaber.Configuration;
 using AccSaber.Managers;
@@ -45,7 +46,7 @@ namespace AccSaber.UI.ViewControllers
 			_timeTweeningManager = timeTweeningManager;
 		}
         
-		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberRankedMap? mapInfo)
+		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberDifficulty? mapInfo)
 		{
 			if (mapInfo is null || !_parsed)
 			{
@@ -305,17 +306,33 @@ namespace AccSaber.UI.ViewControllers
 		}
 
 		[UIValue("overall-ranking-text")]
-		private string OverallRankingText => _accSaberStore.CurrentRankedMap!.RankedStatus == "RANKED" ?
-			$"<color=#EDFF55>Ranking:</color> #{_accSaberStore.GetCurrentOverallUser().Rank} <size=75%>(<color=#00FFAE>{_accSaberStore.GetCurrentOverallUser().AP:N2} AP</color>)" :
-			$"<color=#EDFF55>Status:</color> {_accSaberStore.CurrentRankedMap.RankedStatus}";
+		private string OverallRankingText
+		{
+			get
+			{
+				PlayerStats? currentOverallUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == APCategory.Overall);
 
-		[UIValue("category-ranking-text")]
-		private string CategoryRankingText => _accSaberStore.CurrentRankedMap!.RankedStatus == "RANKED" ?
-			$"<color=#EDFF55>Category Ranking:</color> #{_accSaberStore.GetCurrentCategoryUser().Rank} <size=75%>(<color=#00FFAE>{_accSaberStore.GetCurrentCategoryUser().AP:N2} AP</color>)" :
-			$"<color=#EDFF55>Criteria:</color> {_accSaberStore.CurrentRankedMap.CriteriaStatus}";
-        
-		[UIValue("map-complexity-text")]
-		private string MapComplexityText => _accSaberStore.CurrentRankedMap!.RankedStatus == "RANKED" ?
+                if (_accSaberStore.CurrentRankedMap!.Status == MapStatus.Ranked)
+					return $"<color=#EDFF55>Ranking:</color> #{currentOverallUser?.Rank} <size=75%>(<color=#00FFAE>{currentOverallUser?.AP:N2} AP</color>)";
+				return $"<color=#EDFF55>Status:</color> {_accSaberStore.CurrentRankedMap.RankedStatus}";
+            }
+		}
+
+        [UIValue("category-ranking-text")]
+        private string CategoryRankingText
+        {
+            get
+            {
+                PlayerStats? currentCategoryUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == _accSaberStore.CurrentRankedMap?.Category);
+
+                if (_accSaberStore.CurrentRankedMap!.Status == MapStatus.Ranked)
+                    return $"<color=#EDFF55>Category Ranking:</color> #{currentCategoryUser?.Rank} <size=75%>(<color=#00FFAE>{currentCategoryUser?.AP:N2} AP</color>)";
+                return $"<color=#EDFF55>Criteria:</color> {_accSaberStore.CurrentRankedMap.CriteriaStatus}";
+            }
+        }
+
+        [UIValue("map-complexity-text")]
+		private string MapComplexityText => _accSaberStore.CurrentRankedMap!.Status == MapStatus.Ranked ?
 			$"<color=#EDFF55>Map Complexity:</color> {Math.Round(_accSaberStore.CurrentRankedMap!.Complexity, 2)}" :
 			$"<color=#EDFF55>Category:</color> {GetCategoryName(_accSaberStore.CurrentRankedMap.CategoryId)}";
 	}

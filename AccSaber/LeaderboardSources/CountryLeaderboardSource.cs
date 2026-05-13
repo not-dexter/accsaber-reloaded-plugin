@@ -1,35 +1,24 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
-using AccSaber.Configuration;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
 using SiraUtil.Logging;
 using AccSaber.Consts;
+using AccSaber.API;
 
 namespace AccSaber.LeaderboardSources
 {
-	internal sealed class CountryLeaderboardSource : ILeaderboardSource
+	internal sealed class CountryLeaderboardSource : LeaderboardSource, ILeaderboardSource
 	{
-		private readonly List<List<AccSaberLeaderboardEntry>> _cachedEntries = new();
-		
-		private readonly WebUtils _webUtils;
-		private SiraLog _log;
+		private readonly SiraLog _log;
 		private readonly AccSaberStore _accSaberStore;
-		private PluginConfig _pluginConfig = null!;
 
-		public CountryLeaderboardSource(WebUtils webUtils, AccSaberStore accSaberStore, PluginConfig pluginConfig, SiraLog log)
+		public CountryLeaderboardSource(AccSaberStore accSaberStore, SiraLog log)
 		{
-			_webUtils = webUtils;
 			_accSaberStore = accSaberStore;
-			_pluginConfig = pluginConfig;
 			_log = log;
 		}
 
@@ -37,16 +26,10 @@ namespace AccSaber.LeaderboardSources
 
 		public Task<Sprite> Icon => VersionUtils.LoadSpriteFromAssemblyAsync(ResourcePaths.COUNTRY);
 
-		public bool Scrollable => true;
+		public int TotalPages { get; private set; }
 
-		public int TotalPages { get; set; }
-
-		public async Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberRankedMap rankedMap, CancellationToken cancellationToken = default, int page = 0)
+		protected override async Task<IEnumerable<AccSaberLeaderboardEntry>?> LoadScoresAsync(AccSaberBasicDifficulty diff, CancellationToken cancellationToken = default, int page = 0)
 		{
-			if (_cachedEntries.Count >= page + 1)
-			{
-				return _cachedEntries[page];
-			}
 
 			var userInfo = await _accSaberStore.GetPlatformUserInfo();
 			if (userInfo is null)
@@ -54,65 +37,17 @@ namespace AccSaber.LeaderboardSources
 				return null;
 			}
 
-			var response = await Plugin.WebClient.GetAsync($"/v1/maps/difficulties/leaderboard/{rankedMap.BlLeaderboardId}/scores?page={page}&country={_accSaberStore.GetCurrentCategoryUserAsync().Result.Country}&size=10");
+			string? diffId = await AccsaberAPI.GetLeaderboardDifficultyId(diff);
 
-			if (response is null)
-			{
+			if (diffId is null)
 				return null;
-			}
 
-			var leaderboard = new List<AccSaberLeaderboardEntry>();
+			AccSaberLeaderboardEntry[]? outp = await AccsaberAPI.GetScoreData(page, diffId, (await _accSaberStore.GetCurrentUserAsync()).Country);
 
-			var parsedStr = await response.Content.ReadAsStringAsync();
+            if (TotalPages < 0 && outp is not null)
+                TotalPages = Mathf.CeilToInt(await AccsaberAPI.GetLength(diff) / (float)AccsaberAPI.PAGE_LENGTH);
 
-			if (parsedStr != null)
-			{
-				var parsed = JObject.Parse(parsedStr);
-
-				TotalPages = parsed["totalPages"]!.ToObject<int>();
-
-				if (parsed["content"] is JArray content)
-				{
-					var scores = JsonConvert.DeserializeObject<List<AccSaberLeaderboardEntry>>(content.ToString());
-
-					foreach (var score in scores)
-					{
-						AccSaberLeaderboardEntry newScore = new()
-						{
-							Rank = leaderboard.Any() ? leaderboard.Count + 1 + page * 10 : 1 + page * 10,
-							PlayerId = score.PlayerId,
-							AvatarURL = score.AvatarURL,
-							PlayerName = score.PlayerName,
-							Accuracy = score.Accuracy,
-							Score = score.Score,
-							AP = score.AP,
-							Modifiers = score.Modifiers,
-							AccChamp = score.AccChamp,
-							TimeSet = score.TimeSet
-						};
-
-						leaderboard.Add(newScore);
-					}
-				}
-			}
-
-			_cachedEntries.Add(leaderboard);
-			return leaderboard;
-		}
-
-		public List<AccSaberLeaderboardEntry>? GetCachedScore(int page)
-		{
-			return _cachedEntries[page];
-		}
-
-		public List<AccSaberLeaderboardEntry>? GetLatestCachedScore()
-		{
-			return _cachedEntries.LastOrDefault();
-		}
-
-		public void ClearCache()
-		{
-			_cachedEntries.Clear();
-		}
+			return outp;
+        }
 	}
 }

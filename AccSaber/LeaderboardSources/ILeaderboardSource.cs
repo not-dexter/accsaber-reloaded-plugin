@@ -1,20 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using AccSaber.Models;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using AccSaber.Models;
 using UnityEngine;
 
 namespace AccSaber.LeaderboardSources
 {
-	internal interface ILeaderboardSource
-	{
-		public string HoverHint { get; }
-		public Task<Sprite> Icon { get; }
-		public bool Scrollable { get; }
-		public int TotalPages { get; }
-		public Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberRankedMap rankedMap, CancellationToken cancellationToken = default, int page = 0);
-		public List<AccSaberLeaderboardEntry>? GetCachedScore(int page);
-		public List<AccSaberLeaderboardEntry>? GetLatestCachedScore();
-		public void ClearCache();
-	}
+    internal interface ILeaderboardSource
+    {
+        public string HoverHint { get; }
+        public Task<Sprite> Icon { get; }
+        public int TotalPages { get; }
+
+        public Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberBasicDifficulty diff, CancellationToken cancellationToken = default, int page = 0);
+        public AccSaberLeaderboardEntry? GetLastCachedScore(int entryNumber);
+    }
 }

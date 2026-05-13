@@ -37,7 +37,7 @@ namespace AccSaber.UI
 			_customLeaderboardManager.Unregister(this);
 		}
 
-		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberRankedMap? accSaberMapInfo)
+		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberBasicDifficulty? accSaberMapInfo)
 		{
 			if (accSaberMapInfo is not null)
 			{

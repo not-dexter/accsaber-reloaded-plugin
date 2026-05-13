@@ -20,6 +20,7 @@ using Tweening;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using AccSaber.Consts;
+using AccSaber.API;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -28,17 +29,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     internal class AccSaberMenuViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable, IDisposable
 	{
 		private string? _userId;
-		private AccSaberUser? _userOverall;
-        private AccSaberUser? _userTrue;
-        private AccSaberUser? _userStandard;
-        private AccSaberUser? _userTech;
+		private AccSaberUser? _user;
         private bool _parsed;
         private bool _firstLoad;
         private bool _isLoading;
 		private bool _isScoresLoading;
 		private int _pageNumber = 0;
 		private int _maxPage = 1;
-		private string _categoryValue = "Overall";
+		private APCategory _categoryValue = APCategory.Overall;
         private string _username = "";
 		private string _pagnation = "";
 		private string _rank = null!;
@@ -51,10 +49,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private string _headset = null!;
 
 		[UIValue("score-cells")]
-		private readonly List<ScoreCell> _scoreCells = new List<ScoreCell>();
+        private readonly List<ScoreCell> _scoreCells = [];
 
 
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public new event PropertyChangedEventHandler? PropertyChanged;
 
         [UIComponent("profile-image")]
         private readonly ImageView _profileImage = null!;
@@ -128,7 +126,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private bool IsScoresNotLoading => !_isScoresLoading;
 
 		[UIValue("category-value")]
-		private string CategoryValue
+		private APCategory CategoryValue
 		{
 			get => _categoryValue;
 			set
@@ -140,7 +138,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		}
 
 		[UIValue("category-choices")]
-		private List<object> _categoryChoices = new() { "Overall", "True", "Standard", "Tech" };
+        private List<object> _categoryChoices = [APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech];
 
 		[UIValue("username")]
 		private string Username
@@ -282,7 +280,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 			IsLoading = true;
 			_firstLoad = true;
-			CategoryValue = "Overall";
+			CategoryValue = APCategory.Overall;
         }
 
 		[UIAction("prev-clicked")]
@@ -311,61 +309,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 			_userId = user.platformUserId;
 
-			switch (CategoryValue)
-			{
-				case "Overall":
-					{
-						if (_userOverall is null)
-						{
-							IsLoading = true;
-							var userInfo = await _accSaberStore.GetUserFromId(_userId, null, true);
-							_userOverall = userInfo;
-						}
+            if (_user is null)
+            {
+                IsLoading = true;
+                _user = await AccsaberAPI.GetPlayerInfo(_userId, true);
+            }
 
-						await SetUserInfo(_userOverall);
+            await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == CategoryValue));
+        }
 
-						break;
-					}
-				case "True":
-					{
-						if (_userTrue is null)
-						{
-							IsLoading = true;
-							var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.True, true);
-							_userTrue = userInfo;
-						}
-
-						await SetUserInfo(_userTrue);
-						break;
-					}
-				case "Standard":
-					{
-						if (_userStandard is null)
-						{
-							IsLoading = true;
-							var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Standard, true);
-							_userStandard = userInfo;
-						}
-
-						await SetUserInfo(_userStandard);
-						break;
-					}
-				case "Tech":
-					{
-						if (_userTech is null)
-						{
-							IsLoading = true;
-							var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Tech, true);
-							_userTech = userInfo;
-						}
-
-						await SetUserInfo(_userTech);
-						break;
-					}
-			}
-		}
-
-		private async Task SetUserInfo(AccSaberUser userInfo)
+		private async Task SetUserInfo(AccSaberUser userInfo, PlayerStats stats)
 		{
 			var _color = userInfo.LevelData.PlayerTitle.ToLower() switch
 			{
@@ -400,17 +353,20 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					return "";
 			}
 
+			if (stats.StatsDiff is null)
+				return;
+
 			// this stat diff positioning fix is so lazy LMAO
 
 			Username = $"{userInfo.PlayerName}";
-			Rank = userInfo.StatsDiff.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.RankingDiff * -1)}</size></color>  #{userInfo.Rank}  {StatDiffInt(userInfo.StatsDiff.RankingDiff * -1)}" : $"#{userInfo.Rank}";
-			Country = userInfo.StatsDiff.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.CountryDiff * -1)}</size></color>  #{userInfo.CountryRank}  {StatDiffInt(userInfo.StatsDiff.CountryDiff * -1)}" : $"#{userInfo.CountryRank}";
+			Rank = stats.StatsDiff.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatsDiff.RankingDiff * -1)}" : $"#{stats.Rank}";
+			Country = stats.StatsDiff.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatsDiff.CountryDiff * -1)}" : $"#{stats.CountryRank}";
 			Title = $"{"<color=" + _color + ">" + userInfo.LevelData.PlayerTitle}</color>";
-			Ap = userInfo.StatsDiff.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.ApDiff * -1):F2}</size></color>  {userInfo.AP:N2} AP  {StatDiff(userInfo.StatsDiff.ApDiff)}" : $"{userInfo.AP:N2} AP";
+			Ap = stats.StatsDiff.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.ApDiff * -1):F2}</size></color>  {stats.AP:N2} AP  {StatDiff(stats.StatsDiff.ApDiff)}" : $"{stats.AP:N2} AP";
 			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
-			Plays = $"{userInfo.RankedPlays} ranked plays";
-			Headset = userInfo.Hmd ?? "";
+			Plays = $"{stats.Plays} ranked plays";
+			Headset = userInfo.Headset ?? "";
 
 			userInfo.LevelData.ProgressPercent /= 100f;
 
@@ -422,7 +378,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
 				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
 				await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
-				await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
+				if (userInfo.AvatarUrl is not null)
+					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
 				if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
 					_progressBarImage.color = newCol;
 
@@ -450,20 +407,20 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			_topScoresList.Data().Clear();
 			var CategoryId = _categoryValue switch
 			{
-				"Overall" => "",
-				"Tech" => "&categoryId=b0000000-0000-0000-0000-000000000003",
-				"True" => "&categoryId=b0000000-0000-0000-0000-000000000001",
-				"Standard" => "&categoryId=b0000000-0000-0000-0000-000000000002",
+				APCategory.Overall => "",
+				APCategory.Tech => "&categoryId=b0000000-0000-0000-0000-000000000003",
+				APCategory.True => "&categoryId=b0000000-0000-0000-0000-000000000001",
+				APCategory.Standard => "&categoryId=b0000000-0000-0000-0000-000000000002",
 				_ => ""
 			};
 
-			var response = await Plugin.WebClient.GetAsync($"/v1/users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc");
+			var response = await APIHandler.CallAPI($"/v1/users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc");
 
-			if (response is null)
+			if (!response.Success)
 			{
 				return;
 			}
-			var parsedStr = await response.Content.ReadAsStringAsync();
+			var parsedStr = await response.Content!.ReadAsStringAsync();
 
 			if (parsedStr != null)
 			{
@@ -477,7 +434,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				{
 					var scores = JsonConvert.DeserializeObject<List<AccSaberLeaderboardEntry>>(content.ToString());
 
-					foreach (var score in scores)
+					foreach (var score in scores!)
 					{
 						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty, score.Accuracy.ToString(), score.AP.ToString(), score.CategoryId, score.CoverUrl));
 					}
@@ -570,10 +527,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
 			if(isNew)
             {
-				_userOverall = null;
-				_userTrue = null;
-				_userStandard = null;
-				_userTech = null;
+				_user = null;
 			}
         }
 

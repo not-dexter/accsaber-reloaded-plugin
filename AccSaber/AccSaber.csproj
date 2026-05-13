@@ -12,7 +12,7 @@
     <AssemblyTitle>AccSaber</AssemblyTitle>
     <Product>AccSaber</Product>
     <Copyright>Copyright © $ModAuthor$</Copyright>
-    <LangVersion>9</LangVersion>
+    <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition="$(DefineConstants.Contains('CIBuild')) OR '$(NCrunch)' == '1'">
@@ -27,14 +27,19 @@
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatmapCore.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="BGNetCore">
+    <Reference Include="BGNetCore" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGNetCore.dll</HintPath>
     </Reference>
-    <Reference Include="DataModels">
+    <Reference Include="BS_Utils">
+      <HintPath>$(BeatSaberDir)\Plugins\BS_Utils.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="DataModels" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\DataModels.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="BeatSaber.ViewSystem">
+    <Reference Include="BeatSaber.ViewSystem" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.ViewSystem.dll</HintPath>
       <Private>False</Private>
       <publicize>True</publicize>
@@ -43,10 +48,8 @@
       <HintPath>$(BeatSaberDir)\Libs\Hive.Versioning.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Oculus.Platform">
+    <Reference Include="Oculus.Platform" Condition="$(DefineConstants.Contains('NEW_VERSION')) == false">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Oculus.Platform.dll</HintPath>
-      <Private>False</Private>
-      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="SongCore">
       <HintPath>$(BeatSaberDir)\Plugins\SongCore.dll</HintPath>
@@ -55,6 +58,9 @@
     <Reference Include="LeaderboardCore">
       <HintPath>$(BeatSaberDir)\Plugins\LeaderboardCore.dll</HintPath>
       <Private>False</Private>
+    </Reference>
+    <Reference Include="mscorlib">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\mscorlib.dll</HintPath>
     </Reference>
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="0Harmony, Version=2.0.2.0, Culture=neutral, processorArchitecture=MSIL">
@@ -74,15 +80,15 @@
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Tweening">
+    <Reference Include="Tweening" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Tweening.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="PlatformUserModel">
+    <Reference Include="PlatformUserModel" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\PlatformUserModel.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="SegmentedControl">
+    <Reference Include="SegmentedControl" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\SegmentedControl.dll</HintPath>
     </Reference>
     <Reference Include="IPA.Loader">
@@ -117,7 +123,7 @@
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.VRModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Interactable">
+    <Reference Include="Interactable" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Interactable.dll</HintPath>
     </Reference>
     <Reference Include="Zenject">
@@ -135,9 +141,6 @@
     <Reference Include="BSML">
       <HintPath>$(BeatSaberDir)\Plugins\BSML.dll</HintPath>
       <Private>False</Private>
-    </Reference>
-    <Reference Include="Interactable">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Interactable.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -159,7 +162,8 @@
     <None Include="AccSaber.csproj.user" Condition="Exists('AccSaber.csproj.user')" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\*.png" />
+    <EmbeddedResource Include="Resources\*
+                      " />
     <EmbeddedResource Include="UI\Views\*.bsml" />
   </ItemGroup>
   <ItemGroup>

@@ -1,46 +1,28 @@
-﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
-    <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='100' pref-height='70'>
-        <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='10' pref-height='25'>
-            <vertical-icon-segments id='vertical-icon-segments' select-cell='cell-selected' />
-        </vertical>
-        <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='80' pref-height='70'>
-            <leaderboard id='leaderboard' cell-size='5.99' />
-        </vertical>
-    </horizontal>
+﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+  <my-custom-list id='leaderboard' contents='leaderboard-infos' clickable-cells='true' select-cell='OnCellSelected' pref-width='~containerWidth' pref-height='~containerHeight' anchor-pos-y='5'/>
 
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button1'  hover-hint='Info' on-click="b-1-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='32'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button2'  hover-hint='Info' on-click="b-2-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='26'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button3'  hover-hint='Info' on-click="b-3-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='20'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button4'  hover-hint='Info' on-click="b-4-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='14'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button5'  hover-hint='Info' on-click="b-5-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='8'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button6'  hover-hint='Info' on-click="b-6-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='2'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button7'  hover-hint='Info' on-click="b-7-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='-4'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button8'  hover-hint='Info' on-click="b-8-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='-10'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button9'  hover-hint='Info' on-click="b-9-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='-16'/>
-    <button-with-icon icon='AccSaber.Resources.InfoIcon.png' id='button10' hover-hint='Info' on-click="b-10-click" pref-width='15' pref-height='13' anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='47' anchor-pos-y='-22'/>
+  <vertical id='leaderboard_loading' anchor-pos-y='-30' anchor-pos-x='0' pref-width='20' pref-height='20' child-expand-width='false' child-expand-height='false' active='false'>
+    <loading preserve-aspect='true'/>
+  </vertical>
 
-    <image id="pfp1" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='32'/>
-    <image id="pfp2" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='26'/>
-    <image id="pfp3" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='20'/>
-    <image id="pfp4" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='14'/>
-    <image id="pfp5" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='8'/>
-    <image id="pfp6" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='2'/>
-    <image id="pfp7" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='-4'/>
-    <image id="pfp8" pref-width='15' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='-10'/>
-    <image id="pfp9" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='-16'/>
-    <image id="pfp10" pref-width='13' pref-height='13' preserve-aspect="true" anchor-max-x='.5' anchor-max-y='.5' anchor-min-x='.5' anchor-min-y='.5' anchor-pos-x='-25' anchor-pos-y='-22'/>
-  
-    <page-button direction='Up' anchor-pos-x='-42.75' anchor-pos-y='-2.5' active='~up-enabled' pref-width='6.5' on-click='up-clicked' />
-    <page-button id="down-button" direction='Down' anchor-pos-x='-42.75' anchor-pos-y='-37.5' active='~down-enabled' pref-width='6.5' on-click='down-clicked' /> 
-  
-    <horizontal id='milestone-container' bg="panel-top" pad="2" horizontal-fit="PreferredSize" pref-width='80' min-height='15' max-height='25' anchor-pos-x='0' anchor-pos-y='75' active='false'>
-      <vertical horizontal-fit="PreferredSize" pref-width='75'>
-        <text id="milestone" text="" horizontal-fit="PreferredSize" align="Center" font-size="5"></text>
-        <text id="milestone-desc" text="" word-wrapping="true" align="Center" font-size="3"></text>
-          <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
-            <image id='progress-bar' src='AccSaber.Resources.Pixel.png' image-color='#ffffff' pref-width='75' pref-height='1'/>
-            <image id='progress-bar-inverse' src='AccSaber.Resources.Pixel.png' image-color='#ffffff00' pref-width='85' pref-height='1'/>
-          </horizontal>
-      </vertical>
-    </horizontal>
+  <vertical id='leaderboard_badMap' anchor-pos-y='-23' active='false'>
+    <text text='Map is Unranked.' font-size='19'/>
+  </vertical>
+
+  <vertical anchor-pos-x='50' anchor-pos-y='-17' vertical-fit='PreferredSize' pref-height='35' pref-width='8' bg='round-rect-panel'>
+    <clickable-image id='PageTopSelector' src='~topArrowPic' pref-width='5' pref-height='5' on-click='OnPageTop' default-color='~colorGrey'/>
+    <page-button id='PageUpSelector' direction='Up' pref-width='5' on-click='OnPageUp'/>
+    <clickable-image id='PageYouSelector' src='~youPic' preserve-aspect='true' pref-width='5' pref-height='5' on-click='OnYouClicked' default-color='~colorGrey'/>
+    <page-button id='PageDownSelector' direction='Down' pref-width='5' on-click='OnPageDown'/>
+  </vertical>
+
+  <vertical id='selectorContainer' anchor-pos-x='50' anchor-pos-y='23' vertical-fit='PreferredSize' pref-height='35' pref-width='8' bg='round-rect-panel'>
+    <clickable-image id='GlobalSelector' src='~globalPic' pref-width='5' pref-height='5' on-click='ShowGlobal' hover-hint='Global'/>
+    <clickable-image id='FriendsSelector' src='~friendsPic' pref-width='5' pref-height='5' on-click='ShowFriends' hover-hint='Friends'/>
+    <clickable-image id='FollowedSelector' src='~followedPic' pref-width='5' pref-height='5' on-click='ShowFollowed' hover-hint='Followed'/>
+    <clickable-image id='RivalsSelector' src='~rivalsPic' pref-width='5' pref-height='5' on-click='ShowRivals' hover-hint='Rivals' default-color='~colorGrey'/>
+    <clickable-image id='RelationsSelector' src='~relationsPic' pref-width='5' pref-height='5' on-click='ShowRelations' hover-hint='Friends, Followed, &amp; Rivals' default-color='~colorGrey' active='false'/>
+    <clickable-image id='CountrySelector' src='~countryPic' pref-width='5' pref-height='5' on-click='ShowCountry' hover-hint='Country'/>
+  </vertical>
+
 </bg>

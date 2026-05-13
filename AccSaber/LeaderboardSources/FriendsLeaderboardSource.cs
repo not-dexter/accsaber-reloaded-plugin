@@ -13,99 +13,36 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using SiraUtil.Logging;
 using AccSaber.Consts;
+using AccSaber.API;
 
 namespace AccSaber.LeaderboardSources
 {
-	internal sealed class FriendsLeaderboardSource : ILeaderboardSource
+	internal sealed class FriendsLeaderboardSource : LeaderboardSource, ILeaderboardSource
 	{
-		private readonly List<List<AccSaberLeaderboardEntry>> _cachedEntries = new();
-		
-		private readonly WebUtils _webUtils;
-		private readonly AccSaberStore _accSaberStore;
-		private PluginConfig _pluginConfig = null!;
 		private readonly SiraLog _log;
 
-		public FriendsLeaderboardSource(WebUtils webUtils, AccSaberStore accSaberStore, PluginConfig pluginConfig, SiraLog log)
+		public FriendsLeaderboardSource(SiraLog log)
 		{
-			_webUtils = webUtils;
-			_accSaberStore = accSaberStore;
-			_pluginConfig = pluginConfig;
 			_log = log;
 		}
 		
 		public string HoverHint => "Friends";
-
 		public Task<Sprite> Icon => VersionUtils.LoadSpriteFromAssemblyAsync(ResourcePaths.FRIEND);
+		public int TotalPages { get; private set; }
 
-		public int TotalPages { get; set; }
-		public bool Scrollable => true;
-
-		public async Task<List<AccSaberLeaderboardEntry>?> GetScoresAsync(AccSaberRankedMap rankedMap, CancellationToken cancellationToken = default, int page = 0)
+		protected override async Task<IEnumerable<AccSaberLeaderboardEntry>?> LoadScoresAsync(AccSaberBasicDifficulty diff, CancellationToken cancellationToken = default, int page = 0)
 		{
-			if (_cachedEntries.Count >= page + 1)
-			{
-				return _cachedEntries[page];
-			}
+			string? diffId = await AccsaberAPI.GetLeaderboardDifficultyId(diff);
 
-			var response = await Plugin.WebClient.GetAsync($"/v1/maps/difficulties/leaderboard/{rankedMap.BlLeaderboardId}/scores?page={page}&size=10&relation=follower");
-
-
-			if (response is null)
-			{
+			if (diffId is null)
 				return null;
-			}
 
-			var leaderboard = new List<AccSaberLeaderboardEntry>();
+			AccSaberLeaderboardEntry[]? outp = await AccsaberAPI.GetScoreData(page, diffId, RelationType.follower);
 
-			var parsedStr = await response.Content.ReadAsStringAsync();
+			if (TotalPages < 0 && outp is not null)
+                TotalPages = Mathf.CeilToInt(await AccsaberAPI.GetLength(diff) / (float)AccsaberAPI.PAGE_LENGTH);
 
-			if (parsedStr != null)
-			{
-				var parsed = JObject.Parse(parsedStr);
-
-				TotalPages = parsed["totalPages"]!.ToObject<int>();
-
-				if (parsed["content"] is JArray content)
-				{
-					var scores = JsonConvert.DeserializeObject<List<AccSaberLeaderboardEntry>>(content.ToString());
-
-					foreach (var score in scores)
-					{
-						AccSaberLeaderboardEntry newScore = new()
-						{
-							Rank = leaderboard.Any() ? leaderboard.Count + 1 + page * 10 : 1 + page * 10,
-							PlayerId = score.PlayerId,
-							AvatarURL = score.AvatarURL,
-							PlayerName = score.PlayerName,
-							Accuracy = score.Accuracy,
-							Score = score.Score,
-							AP = score.AP,
-							Modifiers = score.Modifiers,
-							AccChamp = score.AccChamp,
-							TimeSet = score.TimeSet
-						};
-
-						leaderboard.Add(newScore);
-					}
-				}
-			}
-
-			_cachedEntries.Add(leaderboard);
-			return leaderboard;
-		}
-		public List<AccSaberLeaderboardEntry>? GetCachedScore(int page)
-		{
-			return _cachedEntries[page];
-		}
-
-		public List<AccSaberLeaderboardEntry>? GetLatestCachedScore()
-		{
-			return _cachedEntries.LastOrDefault();
-		}
-
-		public void ClearCache()
-		{
-			_cachedEntries.Clear();
-		}
+			return outp;
+        }
 	}
 }

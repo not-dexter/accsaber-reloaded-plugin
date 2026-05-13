@@ -1,60 +1,60 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Net.Http;
+﻿using Accsaber.Utils;
+using AccSaber.API;
 using AccSaber.Models;
 using AccSaber.Utils;
-using SiraUtil.Logging;
-using Zenject;
-using System.Net.Http.Headers;
-using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SiraUtil.Logging;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.WebSockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Zenject;
 
 namespace AccSaber.Managers
 {
 	internal sealed class AccSaberStore : IInitializable
 	{
 		private readonly SiraLog _log;
-		private readonly WebUtils _webUtils;
 		private readonly IPlatformUserModel _platformUserModel;
 
-		public event Action<AccSaberRankedMap?>? OnAccSaberRankedMapUpdated;
+		public event Action<AccSaberDifficulty?>? OnAccSaberRankedMapUpdated;
 		public event Action? OnAccSaberScoreUpdated;
 		public event Action? OnUpdatingFromAccSaberAPI;
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
-		public Dictionary<string, AccSaberRankedMap> RankedMaps = new();
-		private AccSaberUser _currentUserOverall = new();
-		private AccSaberUser _currentUserTrue = new();
-		private AccSaberUser _currentUserStandard = new();
-		private AccSaberUser _currentUserTech = new();
-		public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
-		public List<AccSaberMilestone>_currentUserMilestones = new();
+		private Dictionary<string, AccSaberBasicDifficulty[]>? _rankedMaps = [];
+		private AccSaberUser? _currentUser;
 
-		private AccSaberAuth _accSaberAuth = null!;
+		public IReadOnlyDictionary<string, AccSaberBasicDifficulty[]>? RankedMaps => _rankedMaps;
+        public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
+		public List<AccSaberMilestone>_currentUserMilestones = [];
 
-		private AccSaberRankedMap? _currentRankedMap;
+        public static event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
+        public static event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
+		internal static CancellationTokenSource WebsocketCanceller { get; private set; } = new();
+        internal const int RecieveBufferSize = 1024;
+        internal const int SendBufferSize = 16;
 
-		public AccSaberStore(SiraLog log, WebUtils webUtils, IPlatformUserModel platformUserModel, AccSaberAuth accSaberAuth)
+        private static readonly ClientWebSocket webSocket = new();
+        private static readonly AsyncLock listenerLock = new();
+
+        private AccSaberDifficulty? _currentRankedMap;
+
+#pragma warning disable IDE0290
+		public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel)
 		{
 			_log = log;
-			_webUtils = webUtils;
-			_accSaberAuth = accSaberAuth;
 			_platformUserModel = platformUserModel;
 		}
-		public enum AccSaberMapCategories
-		{
-			True,
-			Standard,
-			Tech
-		}
 
-
-		public AccSaberRankedMap? CurrentRankedMap
+		public AccSaberDifficulty? CurrentRankedMap
 		{
 			get => _currentRankedMap;
 			set
@@ -63,88 +63,22 @@ namespace AccSaber.Managers
 				OnAccSaberRankedMapUpdated?.Invoke(_currentRankedMap);
 			}
 		}
+		public AccSaberUser? CurrentUser => _currentUser;
 
-		private async Task<Dictionary<string, AccSaberRankedMap>> GetRankedMaps()
+
+        private async Task SetRankedMaps(bool fullMaps)
 		{
-			var response = await Plugin.WebClient.GetAsync("/v1/maps?size=99999");
-
-			if (response == null)
+			
+			if (fullMaps)
 			{
-				_log.Error("Failed to get ranked maps from AccSaber API");
-				return new Dictionary<string, AccSaberRankedMap>();
-			}
-
-			var rankedMaps = new Dictionary<string, AccSaberRankedMap>();
-
-			var parsedStr = await response.Content.ReadAsStringAsync();
-
-			if (parsedStr != null)
+				await AccsaberAPI.LoadAllMaps();
+				_rankedMaps = null;
+            }
+			else
 			{
-				var parsed = JObject.Parse(parsedStr);
-
-				if (parsed["content"] is JArray content)
-				{
-					var maps = JsonConvert.DeserializeObject<List<AccSaberRankedMap>>(content.ToString());
-
-					foreach (var map in maps)
-					{
-						foreach (var diff in map.Difficulties)
-						{
-							if (diff.Difficulty == "EXPERT_PLUS")
-							{
-								map.Difficulty = "EXPERTPLUS";
-								diff.Difficulty = "EXPERTPLUS";
-							}
-							else
-								map.Difficulty = diff.Difficulty;
-
-
-							string hash = $"{map.SongHash}/{diff.Difficulty}".ToLower();
-
-							if (rankedMaps.ContainsKey(hash))
-								continue;
-
-							AccSaberRankedMap newMap = new()
-							{
-								RankedStatus = diff.RankedStatus,
-								CriteriaStatus = diff.CriteriaStatus,
-								AutoCriteriaStatus = diff.AutoCriteriaStatus,
-								SongName = map.SongName,
-								SongSubName = map.SongSubName,
-								SongAuthorName = map.SongAuthorName,
-								LevelAuthorName = map.LevelAuthorName,
-								BeatSaverKey = map.BeatSaverKey,
-								SongHash = map.SongHash,
-								Difficulties = map.Difficulties,
-								Complexity = diff.Complexity,
-								BlLeaderboardId = diff.BlLeaderboardId,
-								LeaderboardId = map.LeaderboardId,
-								Difficulty = diff.Difficulty,
-								CategoryId = diff.CategoryId,
-								DateRanked = map.DateRanked,
-								Category = diff.CategoryId switch
-								{
-									"b0000000-0000-0000-0000-000000000001" => AccSaberStore.AccSaberMapCategories.True,
-									"b0000000-0000-0000-0000-000000000002" => AccSaberStore.AccSaberMapCategories.Standard,
-									"b0000000-0000-0000-0000-000000000003" => AccSaberStore.AccSaberMapCategories.Tech,
-									_ => throw new ArgumentOutOfRangeException()
-								}
-
-							};
-
-
-							if (!rankedMaps.ContainsKey(hash))
-							{
-								rankedMaps.Add(hash, newMap);
-							}
-						}
-					}
-				}
-
+				_rankedMaps = await AccsaberAPI.GetAllBasicDiffs();
 			}
-
-			return rankedMaps;
-		}
+        }
 
 		public async Task<List<AccSaberMilestone>> GetUserMilestones(bool completed)
 		{
@@ -152,268 +86,138 @@ namespace AccSaber.Managers
 
 			if (platformUser is not null)
 			{
-				var response = await Plugin.WebClient.GetAsync(completed ? $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt" : $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=progress");
+				//var response = await Plugin.WebClient.GetAsync(completed ? $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt" : $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=progress");
+				string call = string.Format(completed ? HelpfulPaths.APAPI_MILESTONE_COMPLETE : HelpfulPaths.APAPI_MILESTONE_INCOMPLETE, platformUser.platformUserId);
+                string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
 
 				if (response is not null)
 				{
-					var parsedStr = await response.Content.ReadAsStringAsync();
+					List<AccSaberMilestone>? outp = JsonConvert.DeserializeObject<List<AccSaberMilestone>>(response);
 
-					if (parsedStr != null)
-					{
-						var parsed = JArray.Parse(parsedStr);
-						if (completed)
-							return JsonConvert.DeserializeObject<List<AccSaberMilestone>>(parsed.ToString());
-						else
-                        {
-							List<AccSaberMilestone> newMilestones = new();
-							var milestones = JsonConvert.DeserializeObject<List<AccSaberMilestone>>(parsed.ToString());
+					if (outp is null)
+						return [];
 
-							foreach (var milestone in milestones)
-                            {
-								if (milestone.Completed == true)
-									continue;
+                    if (completed)
+						return outp;
 
-								newMilestones.Add(milestone);
-                            }
-							return newMilestones;
-						}
-					}
+					List<AccSaberMilestone> newMilestones = [];
+
+					foreach (AccSaberMilestone milestone in outp)
+                    {
+						if (milestone.Completed)
+							continue;
+
+						newMilestones.Add(milestone);
+                    }
+					return newMilestones;
 				}
 			}
-			return new List<AccSaberMilestone>();
+			return [];
 		}
-		private async Task UpdateAccSaberInfo(DateTime? lastAPIUpdateTime = null)
+		private async Task UpdateAccSaberInfo()
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();
 
-			var platformUser = await GetPlatformUserInfo();
+			UserInfo? platformUser = await GetPlatformUserInfo();
+
 			if (platformUser is null)
 			{
 				_log.Error("platformUser is null");
 				return;
 			}
 
-			var newOverall = await GetUserFromId(platformUser.platformUserId);
+			AccSaberUser? newOverall = await AccsaberAPI.GetPlayerInfo(platformUser.platformUserId, true);
 
 			// Check if the data fetched is the same as what we already have cached
 			// Saves us from calling the API three more times for the True, Standard and Tech user categories.
-			if (Math.Abs(newOverall.AP - _currentUserOverall.AP) < 0.01f)
+			if (UnityEngine.Mathf.Approximately(newOverall?.GetStat(APCategory.Overall)?.AP ?? -1f, _currentUser?.GetStat(APCategory.Overall)?.AP ?? -1f))
 			{
 				OnUpdatedFromAccSaberAPI?.Invoke(false);
 				return;
 			}
 
-			_currentUserOverall = newOverall;
-			await Task.Delay(1000);
-			_currentUserTrue = await GetUserFromId(platformUser.platformUserId, AccSaberMapCategories.True);
-			await Task.Delay(1000);
-			_currentUserStandard = await GetUserFromId(platformUser.platformUserId, AccSaberMapCategories.Standard);
-			await Task.Delay(1000);
-			_currentUserTech = await GetUserFromId(platformUser.platformUserId, AccSaberMapCategories.Tech);
+			_currentUser = newOverall;
 
 			OnUpdatedFromAccSaberAPI?.Invoke(true);
 		}
-	
-		public Task<AccSaberUser> GetCurrentUser(AccSaberMapCategories? category = null)
+		public async Task<AccSaberUser> GetCurrentUserAsync()
 		{
-			return Task.FromResult(category switch
-			{
-				AccSaberMapCategories.True => _currentUserTrue,
-				AccSaberMapCategories.Standard => _currentUserStandard,
-				AccSaberMapCategories.Tech => _currentUserTech,
-				null => _currentUserOverall,
-				_ => throw new ArgumentOutOfRangeException(nameof(category), category, null)
-			});
+			if (_currentUser is not null)
+				return _currentUser;
+
+			await UpdateAccSaberInfo();
+
+			return _currentUser!;
 		}
-
-		public async Task ListenForScores()
+		public async void SetMapFromBasicInfo(string hash, BeatmapDifficulty difficulty)
 		{
-			ClientWebSocket? webSocket = new();	
-			await webSocket.ConnectAsync(new Uri("wss://accsaberreloaded.com/ws/scores"), CancellationToken.None);
-			var platformUser = await GetPlatformUserInfo();
-			if (platformUser is null)
-			{
-				_log.Error("platformUser is null");
-				return;
-			}
-			try
-			{
-				using var ms = new MemoryStream();
-				while (webSocket.State == WebSocketState.Open)
-				{
-					WebSocketReceiveResult result;
-					do
-					{
-						var messageBuffer = WebSocket.CreateClientBuffer(1024, 16);
-						result = await webSocket.ReceiveAsync(messageBuffer, CancellationToken.None);
-						if (result.MessageType == WebSocketMessageType.Close)
-						{
-							await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-							await ListenForScores();
-						}
-						ms.Write(messageBuffer.Array, messageBuffer.Offset, result.Count);
-					}
-					while (!result.EndOfMessage);
+            CurrentRankedMap = (await AccsaberAPI.GetLeaderboard(hash))?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
+        }
+		public async void SetMapFromBasicDifficulty(AccSaberBasicDifficulty? difficulty)
+		{
+			CurrentRankedMap = difficulty is null ? null : (await AccsaberAPI.GetLeaderboard(difficulty.Hash))?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty.Difficulty);
+        }
 
-					if (result.MessageType == WebSocketMessageType.Text)
-					{
-						var msgString = Encoding.UTF8.GetString(ms.ToArray());
-						var message = JsonConvert.DeserializeObject<AccSaberScore>(msgString);
 
-						if (message.UserId == platformUser.platformUserId)
-					 	{
-							OnAccSaberScoreUpdated?.Invoke();
-						}
-						await UpdateAccSaberInfo();
-					} 
-					ms.SetLength(0);
-					ms.Seek(0, SeekOrigin.Begin);
-					ms.Position = 0;
-				}
-			}
-			catch (OperationCanceledException)
-			{
-				_log.Info("[WS] The remote party closed the WebSocket connection without completing the close handshake.");
-				await ListenForScores();
-			}
-			catch (Exception e)
+        public async Task StartWebsocket(CancellationToken ct = default)
+        {
+            while (!ct.IsCancellationRequested)
+                await ListenForScores(ct);
+        }
+        private async Task ListenForScores(CancellationToken ct)
+        {
+            AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
+            if (theLock is null)
+                return;
+            using (theLock.Value)
             {
-				_log.Info(e);
-				await ListenForScores();
-			}
-		}
+                await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), ct);
+                try
+                {
+                    using MemoryStream ms = new();
+                    WebSocketReceiveResult result;
+                    while (webSocket.State == WebSocketState.Open)
+                    {
+                        do
+                        {
+                            ArraySegment<byte> clientBuffer = WebSocket.CreateClientBuffer(RecieveBufferSize, SendBufferSize);
+                            result = await webSocket.ReceiveAsync(clientBuffer, ct);
+                            if (result.MessageType == WebSocketMessageType.Close)
+                            {
+                                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", ct);
+                                return;
+                            }
+                            ms.Write(clientBuffer.Array, clientBuffer.Offset, result.Count);
+                        }
+                        while (!result.EndOfMessage);
 
-		public async Task<AccSaberUser> GetUserFromId(string id, AccSaberMapCategories? category = null, bool statsDiff = false) // TODO: rewrite this mess
-		{ 
-			string wantedCategory = "";
-			string urlCategory = "";
-
-			switch (category)
-			{
-				case AccSaberMapCategories.Standard:
-					wantedCategory = "b0000000-0000-0000-0000-000000000002";
-					urlCategory = "standard_acc";
-					break;
-				case AccSaberMapCategories.True:
-					wantedCategory = "b0000000-0000-0000-0000-000000000001";
-					urlCategory = "true_acc";
-					break;
-				case AccSaberMapCategories.Tech:
-					wantedCategory = "b0000000-0000-0000-0000-000000000003";
-					urlCategory = "tech_acc";
-					break;
-				case null:
-					wantedCategory = "b0000000-0000-0000-0000-000000000005";
-					urlCategory = "overall";
-					break;
-			}
-
-			var userCall = await Plugin.WebClient.GetAsync($"/v1/users/{id}");
-
-			var statisticsCall = await Plugin.WebClient.GetAsync($"/v1/users/{id}/statistics/all");
-
-			if (userCall == null || statisticsCall == null)
-			{
-				_log.Error($"Failed to get user {id} from AccSaber API");
-				return new AccSaberUser();
-			}
-
-			var userdStr = await userCall.Content.ReadAsStringAsync();
-			var statisticsStr = await statisticsCall.Content.ReadAsStringAsync();
-
-			if (userdStr != null && statisticsStr != null)
-			{
-				var user = JObject.Parse(userdStr);
-				var statistics = JObject.Parse(statisticsStr);
-
-				if (statistics["categories"] is JArray categories && user != null && statistics != null)
-				{
-					for (int i = 0; i < categories.Count; i++)
-					{
-                        if (categories[i]["categoryId"]!.ToString() != wantedCategory)
-                            continue;
-						
-
-						var newUser = new AccSaberUser
+                        if (result.MessageType == WebSocketMessageType.Text)
 						{
-							PlayerName = user["name"]!.ToString(),
+							AccSaberLeaderboardEntry? entry = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(Encoding.UTF8.GetString(ms.ToArray()));
+							if (entry is not null)
+                                OnScoreUpdated?.Invoke(entry);
+                        }
 
-							Rank = categories[i]["ranking"]!.ToObject<int>(),
-
-							CountryRank = categories[i]["countryRanking"]!.ToObject<int>(),
-
-							PlayerId = user["id"]!.ToString(),
-
-							LevelData = JsonConvert.DeserializeObject<LevelData>(user["levelData"]!.ToString()),
-
-							AvatarUrl = user["avatarUrl"]!.ToString(),
-
-							AverageAcc = categories[i]["averageAcc"]!.ToObject<float>(),
-
-							AP = categories[i]["ap"]!.ToObject<float>(),
-
-							Hmd = user["hmd"]?.ToString(),
-
-							Country = user["country"]!.ToString(),
-
-							AverageApPerMap = categories[i]["averageAp"]!.ToObject<float>(),
-
-							RankedPlays = categories[i]["rankedPlays"]!.ToObject<int>(),
-
-							AccChamp = true,
-						};
-
-						if (statsDiff)
-						{ 
-							var categoryDiff = await Plugin.WebClient.GetAsync($"/v1/users/{id}/stats-diff?category={urlCategory}");
-
-							if (categoryDiff is not null)
-							{
-								var parsedStr = await categoryDiff.Content.ReadAsStringAsync();
-
-								if (parsedStr != null)
-								{
-									var parsed = JObject.Parse(parsedStr);
-									newUser.StatsDiff = JsonConvert.DeserializeObject<StatsDiff>(parsed.ToString());
-								}
-							}
-						}
-
-						return newUser;
-					}
-				}
-			}
-
-			_log.Error($"Failed to get user {id} from AccSaber API");
-			return new AccSaberUser();
-		}
-
+                        ms.SetLength(0);
+                        ms.Seek(0, SeekOrigin.Begin);
+                        ms.Position = 0;
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Plugin.Log.Info("The remote party has very rudely left us hanging (closed connect without handshake).");
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error("There was an error with the websocket!\n" + e);
+                }
+            }
+        }
 
 		public async Task<UserInfo?> GetPlatformUserInfo()
 		{
 			// GetUserInfo caches the result, no need to do it ourselves
 			return await _platformUserModel.GetUserInfo();
-		}
-
-		public async Task<AccSaberUser> GetCurrentCategoryUserAsync()
-		{
-			return await GetCurrentUser(_currentRankedMap?.Category);
-		}
-
-		public AccSaberUser GetCurrentOverallUser()
-		{
-			return _currentUserOverall;
-		}
-
-		public AccSaberUser GetCurrentCategoryUser()
-		{
-			return _currentRankedMap?.Category switch
-			{
-				AccSaberMapCategories.True => _currentUserTrue,
-				AccSaberMapCategories.Standard => _currentUserStandard,
-				AccSaberMapCategories.Tech => _currentUserTech,
-				_ => _currentUserOverall
-			};
 		}
 
 		public async Task<bool> HasAccSaberUpdated()
@@ -427,14 +231,13 @@ namespace AccSaber.Managers
 			return true;
 		}
 		
-		public async void Initialize()
+		public void Initialize()
 		{
-			RankedMaps = await GetRankedMaps();
-			await _accSaberAuth.Login();
-			_currentUserMilestones = await GetUserMilestones(true);
-			await Task.Delay(1000);
-			await UpdateAccSaberInfo();
-			await ListenForScores();
+            //These are all independent tasks, so start each of them on their own thread
+            Task.Run(async () => await SetRankedMaps(true));
+			Task.Run(async () => _currentUserMilestones = await GetUserMilestones(true));
+			Task.Run(UpdateAccSaberInfo);
+			Task.Run(() => StartWebsocket(WebsocketCanceller.Token));
 		}
 	}
 }

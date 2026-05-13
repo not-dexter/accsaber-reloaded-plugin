@@ -1,12 +1,15 @@
 ﻿// TODO: Add ACC Campaign badges when the API properly exposes the information
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using AccSaber.API;
 using AccSaber.Configuration;
+using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;﻿
@@ -24,16 +27,13 @@ namespace AccSaber.UI.ViewControllers
 	internal sealed class LeaderboardUserModalController : INotifyPropertyChanged, IDisposable
 	{
 		private string? _userId;
-		private AccSaberUser? _userOverall;
-		private AccSaberUser? _userTrue;
-		private AccSaberUser? _userStandard;
-		private AccSaberUser? _userTech;
+		private AccSaberUser? _user;
 		private readonly PluginConfig _pluginConfig = null!;
 		private bool _parsed;
 		private bool _firstLoad;
 		private bool _isLoading;
 		private bool _relationLoading;
-		private string _categoryValue = "Overall";
+		private APCategory _categoryValue = APCategory.Overall;
 		private string _username = "";
 		private string _rank = null!;
 		private string _country = null!;
@@ -43,6 +43,8 @@ namespace AccSaber.UI.ViewControllers
 		private string _xp = null!;
 		private string _plays = null!;
 		private string _headset = null!;
+
+		private MonoBehaviour? _host;
 		
 		public event PropertyChangedEventHandler? PropertyChanged;
 		
@@ -73,13 +75,11 @@ namespace AccSaber.UI.ViewControllers
 		private CanvasGroup? _userInfoCanvasGroup;
 		
 		private readonly AccSaberStore _accSaberStore;
-		private readonly AccSaberAuth _accSaberAuth;
 		private readonly TimeTweeningManager _timeTweeningManager;
 
-		public LeaderboardUserModalController(AccSaberStore accSaberStore, AccSaberAuth accSaberAuth, TimeTweeningManager timeTweeningManager, PluginConfig pluginConfig)
+		public LeaderboardUserModalController(AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, PluginConfig pluginConfig)
 		{
 			_accSaberStore = accSaberStore;
-			_accSaberAuth = accSaberAuth;
 			_timeTweeningManager = timeTweeningManager;
 			_pluginConfig = pluginConfig;
 		}
@@ -102,7 +102,7 @@ namespace AccSaber.UI.ViewControllers
 		private bool IsNotLoading => !_isLoading;
 
 		[UIValue("category-value")]
-		private string CategoryValue
+		private APCategory CategoryValue
 		{
 			get => _categoryValue;
 			set
@@ -114,7 +114,7 @@ namespace AccSaber.UI.ViewControllers
 		}
 
 		[UIValue("category-choices")]
-		private List<object> _categoryChoices = new() { "Overall", "True", "Standard", "Tech" };
+		private List<object> _categoryChoices = [.. Enum.GetNames(typeof(APCategory))];	
 
 		[UIValue("username")]
 		private string Username
@@ -247,12 +247,14 @@ namespace AccSaber.UI.ViewControllers
 			if (_userId is null)
 				return;
 
-			if (_accSaberAuth.IsFriend(_userId))
+			await PlayerSocialLife.LoadTask;
+
+			if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(_userId))
 			{
 				_addFriendButton.gameObject.GetComponent<Button>().enabled = false;
 				_addFriendButton.gameObject.SetActive(false);
 				RelationLoading = true;
-				await _accSaberAuth.RemoveRelation(AccSaberAuth.Relation.Follower, _userId);
+                await PlayerSocialLife.RemoveId(_userId, LeaderboardDisplayType.Followed);
 				RelationLoading = false;
 				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
 				_addFriendButton.gameObject.SetActive(true);
@@ -263,14 +265,14 @@ namespace AccSaber.UI.ViewControllers
 				_addFriendButton.gameObject.GetComponent<Button>().enabled = false;
 				_addFriendButton.gameObject.SetActive(false);
 				RelationLoading = true;
-				await _accSaberAuth.CreateRelation(AccSaberAuth.Relation.Follower, _userId);
-				RelationLoading = false;
+				await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Followed);
+                RelationLoading = false;
 				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
 				_addFriendButton.gameObject.SetActive(true);
 				_addFriendButton.gameObject.GetComponent<Button>().enabled = true;
 			}
 		}
-		private void Parse(Transform parentTransform)
+		internal void Parse(Transform parentTransform)
 		{
 			if (!_parsed)
 			{
@@ -294,33 +296,43 @@ namespace AccSaber.UI.ViewControllers
 			Accessors.ViewValidAccessor(ref _modalView) = false;
 		}
 
-		public void ShowModal(Transform parentTransform, string userId)
+		public void ShowModal(Transform parentTransform, MonoBehaviour host, string userId)
 		{
-			Parse(parentTransform);
+            Parse(parentTransform);
 
-			_userId = userId;
+            _host = host;
+            _userId = userId;
 			_firstLoad = true;
 
+			IEnumerator Show()
+			{
+				yield return new WaitForEndOfFrame();
 
-			if (!_accSaberAuth.IsFriend(userId) && _accSaberStore.GetCurrentUser().Result.PlayerId != userId)
-			{
-				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
-				_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);
-			}
-			else if (_accSaberStore.GetCurrentUser().Result.PlayerId == userId)
-			{
-				_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(false);
-			}
-			else
-			{
-				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
-				_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);
-			}
+				if (!PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId) && PlayerSocialLife.PlayerID != userId)
+				{
+					_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
+					_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);
+				}
+				else if (PlayerSocialLife.PlayerID == userId)
+				{
+					_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(false);
+				}
+				else
+				{
+					_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
+					_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);
+				}
 
-			CategoryValue = "Overall";
-			_parserParams.EmitEvent("close-modal");
-			_parserParams.EmitEvent("open-modal");
-		}
+				CategoryValue = APCategory.Overall;
+
+				yield return new WaitForFixedUpdate();
+
+                _parserParams.EmitEvent("close-modal");
+                _parserParams.EmitEvent("open-modal");
+            }
+
+			host.StartCoroutine(Show());
+        }
 
 		public void HideModal()
 		{
@@ -340,61 +352,15 @@ namespace AccSaber.UI.ViewControllers
 				return;
 			}
 
-			switch (CategoryValue)
-			{
-				case "Overall":
-				{
-					if (_userOverall is null)
-					{
-						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId, null, true);
-						_userOverall = userInfo;
-					}
+            if (_user is null)
+            {
+                IsLoading = true;
+                _user = await _accSaberStore.GetCurrentUserAsync();
+            }
+            await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == CategoryValue));
+        }
 
-					await SetUserInfo(_userOverall);
-					
-					break;
-				}
-				case "True":
-				{
-					if (_userTrue is null)
-					{
-						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.True, true);
-						_userTrue = userInfo;
-					}
-
-					await SetUserInfo(_userTrue);
-					break;
-				}
-				case "Standard":
-				{
-					if (_userStandard is null)
-					{
-						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Standard, true);
-						_userStandard = userInfo;
-					}
-
-					await SetUserInfo(_userStandard);
-					break;
-				}
-				case "Tech":
-				{
-					if (_userTech is null)
-					{
-						IsLoading = true;
-						var userInfo = await _accSaberStore.GetUserFromId(_userId, AccSaberStore.AccSaberMapCategories.Tech, true);
-						_userTech = userInfo;
-					}
-
-					await SetUserInfo(_userTech);
-					break;
-				}
-			}
-		}
-
-		private async Task SetUserInfo(AccSaberUser userInfo) // ty person for the progress bar
+		private async Task SetUserInfo(AccSaberUser userInfo, PlayerStats stats) // ty person for the progress bar -- you're welcome :)
 		{
 			var _color = userInfo.LevelData.PlayerTitle.ToLower() switch
             {
@@ -428,32 +394,41 @@ namespace AccSaber.UI.ViewControllers
 					return "";
 			}
 
+			if (stats.StatsDiff is null)
+				return;
+
 			// this stat diff positioning fix is so lazy LMAO
 
 			Username = $"{userInfo.PlayerName}";
-			Rank = userInfo.StatsDiff.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.RankingDiff * -1)}</size></color>  #{userInfo.Rank}  {StatDiffInt(userInfo.StatsDiff.RankingDiff * -1)}" : $"#{userInfo.Rank}";
-			Country = userInfo.StatsDiff.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.CountryDiff * -1)}</size></color>  #{userInfo.CountryRank}  {StatDiffInt(userInfo.StatsDiff.CountryDiff * -1)}" : $"#{userInfo.CountryRank}";
+			Rank = stats.StatsDiff.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatsDiff.RankingDiff * -1)}" : $"#{stats.Rank}";
+			Country = stats.StatsDiff.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatsDiff.CountryDiff * -1)}" : $"#{stats.CountryRank}";
 			Title = $"{"<color=" + _color + ">" +userInfo.LevelData.PlayerTitle}</color>";
-			Ap = userInfo.StatsDiff.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(userInfo.StatsDiff.ApDiff * -1):F2}</size></color>  {userInfo.AP:N2} AP  {StatDiff(userInfo.StatsDiff.ApDiff)}": $"{userInfo.AP:N2} AP";
+			Ap = stats.StatsDiff.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.ApDiff * -1):F2}</size></color>  {stats.AP:N2} AP  {StatDiff(stats.StatsDiff.ApDiff)}": $"{stats.AP:N2} AP";
 			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
-			Plays = $"{userInfo.RankedPlays} ranked plays";
-			Headset = userInfo.Hmd ?? "";
-
-			userInfo.LevelData.ProgressPercent /= 100f;
+			Plays = $"{stats.Plays} ranked plays";
+			Headset = userInfo.Headset ?? "";
 
 			const float barLen = 20f;
 
             if (_firstLoad)
 			{
-				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
-				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
-				await _progressBarImage.SetImageAsync("AccSaber.Resources.Pixel.png", false);
-				await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
+				await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
+				if (userInfo.AvatarUrl is not null)
+					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
 				if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
-					_progressBarImage.color = newCol;
+					_progressBarImage.color = _color.Color();
 
-				IsLoading = false;
+				IEnumerator SetBarLen()
+				{
+					yield return new WaitForEndOfFrame();
+
+                    _progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent / 100f);
+                    _progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent / 100f));
+                }
+				_host!.StartCoroutine(SetBarLen());
+
+                IsLoading = false;
 				_firstLoad = false;
 			}
 			else
@@ -473,10 +448,6 @@ namespace AccSaber.UI.ViewControllers
 		private void OnModalClosed()
 		{
 			_userId = null;
-			_userOverall = null;
-			_userTrue = null;
-			_userStandard = null;
-			_userTech = null;
 		}
 
 		public void Dispose()

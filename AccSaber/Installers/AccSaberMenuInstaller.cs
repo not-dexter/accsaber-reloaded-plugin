@@ -5,7 +5,6 @@ using AccSaber.UI;
 using AccSaber.UI.ViewControllers;
 using AccSaber.UI.MenuButton;
 using AccSaber.UI.MenuButton.ViewControllers;
-using AccSaber.Utils;
 using Zenject;
 
 namespace AccSaber.Installers
@@ -30,8 +29,6 @@ namespace AccSaber.Installers
 			Container.Bind<AccSaberMilestoneViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberMainFlowCoordinator>().FromNewComponentOnNewGameObject().AsSingle();
 
-			Container.Bind<WebUtils>().AsSingle();
-			Container.Bind<AccSaberAuth>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberStore>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberManager>().AsSingle();
 			Container.BindInterfacesTo<AccSaberCustomLeaderboard>().AsSingle();
@@ -39,9 +36,9 @@ namespace AccSaber.Installers
 			Container.BindInterfacesAndSelfTo<AccSaberPanelViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberLeaderboardViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesTo<GlobalLeaderboardSource>().AsSingle();
-			Container.BindInterfacesTo<AroundMeLeaderboardSource>().AsSingle();
 			Container.BindInterfacesTo<FriendsLeaderboardSource>().AsSingle();
 			Container.BindInterfacesTo<CountryLeaderboardSource>().AsSingle();
+			Container.Bind<LeaderboardScoreModalController>().AsSingle();
 			Container.Bind<LeaderboardUserModalController>().AsSingle();
 			Container.Bind<WhereScoreModalController>().AsSingle();
 		}
