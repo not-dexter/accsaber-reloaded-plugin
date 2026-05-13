@@ -101,7 +101,7 @@ namespace AccSaber.UI.ViewControllers
                 return DisplayType switch
                 {
                     LeaderboardDisplayType.Country or LeaderboardDisplayType.Followed or LeaderboardDisplayType.Rivals =>
-                        scoreDatas.First().ScoreData.Rank <= currentPlayerScore?.Rank && scoreDatas.Last().ScoreData.Rank >= currentPlayerScore?.Rank,
+                        scoreDatas.FirstOrDefault()?.ScoreData.Rank <= currentPlayerScore?.Rank && scoreDatas.LastOrDefault()?.ScoreData.Rank >= currentPlayerScore?.Rank,
                     _ => currentPage <= currentPlayerPage && (nextPage > currentPlayerPage || currentPage == nextPage)
                 };
             }
@@ -114,7 +114,7 @@ namespace AccSaber.UI.ViewControllers
                 if (currentPlayerPage == -1) return false;
                 return DisplayType switch
                 {
-                    LeaderboardDisplayType.Country or LeaderboardDisplayType.Followed or LeaderboardDisplayType.Rivals => scoreDatas.First().ScoreData.Rank > currentPlayerScore?.Rank,
+                    LeaderboardDisplayType.Country or LeaderboardDisplayType.Followed or LeaderboardDisplayType.Rivals => scoreDatas.FirstOrDefault()?.ScoreData.Rank > currentPlayerScore?.Rank,
                     _ => currentPage > currentPlayerPage
                 };
             }

@@ -161,7 +161,7 @@ namespace AccSaber.API
             rank = -1;
 
             // check for there being a cache for this map, as well as the targeted user id is in this cache.
-            if (!scoreInfoCacher.TryGetCachedItem(diffId, out var info) || !info.UserIds.Contains(userId))
+            if (!scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache info) || !info.UserIds.Contains(userId))
                 return false;
             //Plugin.Log.Info("Passed check 1.");
 
