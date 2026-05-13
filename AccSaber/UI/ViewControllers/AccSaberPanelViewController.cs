@@ -279,7 +279,7 @@ namespace AccSaber.UI.ViewControllers
 			if (!_logoClickable)
 				return;
 
-			OnPanelLogoClicked!.Invoke();
+			OnPanelLogoClicked?.Invoke();
 			//System.Diagnostics.Process.Start("https://accsaberreloaded.com/");
 		}
 

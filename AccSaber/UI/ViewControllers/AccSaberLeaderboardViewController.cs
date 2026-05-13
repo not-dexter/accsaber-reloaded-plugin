@@ -129,8 +129,9 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly StandardLevelDetailViewController sldvc = null!;
         [Inject] private readonly AccSaberStore store = null!;
-        [Inject] private readonly LeaderboardScoreModalController? lsmc; //psmvc
-        [Inject] private readonly LeaderboardUserModalController? lumc; //pmmvc
+        [Inject] private readonly AccSaberPanelViewController aspvc = null!;
+        [Inject] private readonly LeaderboardScoreModalController lsmc = null!; //psmvc
+        [Inject] private readonly LeaderboardUserModalController lumc = null!; //pmmvc
 
         #endregion Injects
 
@@ -376,6 +377,8 @@ namespace AccSaber.UI.ViewControllers
         {
             Plugin.Log.Debug("LeaderboardViewController Init");
             Instance = this;
+
+            aspvc.OnPanelLogoClicked += () => lumc.ShowModal(leaderboard.transform, this, store.GetCurrentUserAsync().Result.PlayerId);
         }
         public void Dispose()
         {
