@@ -19,7 +19,6 @@ namespace AccSaber.Utils
         private static Task? loadTask = null;
         public static Task LoadTask => LoadInfo();
 
-        private static HashSet<string>? PlayerFriends = null;
         private static HashSet<string>? PlayerFollowed = null;
         private static HashSet<string>? PlayerRivals = null;
         private static HashSet<string>? PlayerRelations = null;
@@ -36,14 +35,12 @@ namespace AccSaber.Utils
         internal static IReadOnlyCollection<string>? PlayerRivalIDs_Internal => PlayerRivals;
         public static IReadOnlyCollection<string>? PlayerFollowedIDs => exposeFollowed ? PlayerFollowed : null;
         internal static IReadOnlyCollection<string>? PlayerFollowedIDs_Internal => PlayerFollowed;
-        public static IReadOnlyCollection<string>? PlayerFriendIDs => PlayerFriends;
         public static IReadOnlyCollection<string>? PlayerRelationIDs => PlayerRelations;
 
         public static IReadOnlyCollection<string>? GetIds(LeaderboardDisplayType displayType) => displayType switch
         {
             LeaderboardDisplayType.Rivals => PlayerRivalIDs,
             LeaderboardDisplayType.Followed => PlayerFollowedIDs,
-            LeaderboardDisplayType.Friends => PlayerFriendIDs,
             LeaderboardDisplayType.Relations => PlayerRelationIDs,
             _ => null
         };
@@ -52,7 +49,6 @@ namespace AccSaber.Utils
         {
             LeaderboardDisplayType.Rivals => PlayerRivals,
             LeaderboardDisplayType.Followed => PlayerFollowed,
-            LeaderboardDisplayType.Friends => PlayerFriends,
             LeaderboardDisplayType.Relations => PlayerRelations,
             LeaderboardDisplayType.Blocked => PlayerBlocked,
             _ => null
@@ -152,18 +148,15 @@ namespace AccSaber.Utils
             UserIdToRelationId = new(relations.Select(toConvert =>
                 new KeyValuePair<RelationType, Dictionary<string, string>>(toConvert.Key, toConvert.Value.relations)));
 
-            HashSet<string> friends = [.. await BS_Utils.Gameplay.GetUserInfo.GetPlatformUserModel().GetUserFriendsUserIds(false).ConfigureAwait(false)];
             HashSet<string> followed = relations[RelationType.follower].userIds;
             HashSet<string> rivals = relations[RelationType.rival].userIds;
             HashSet<string> blocked = relations[RelationType.blocked].userIds;
-            HashSet<string> playerRelations = [.. friends, .. followed, .. rivals];
+            HashSet<string> playerRelations = [.. followed, .. rivals];
 
-            friends.Add(mainUserId);
             followed.Add(mainUserId);
             rivals.Add(mainUserId);
             playerRelations.Add(mainUserId);
 
-            PlayerFriends = friends;
             PlayerFollowed = followed;
             PlayerRivals = rivals;
             PlayerBlocked = blocked;

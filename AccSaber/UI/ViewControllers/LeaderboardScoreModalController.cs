@@ -105,8 +105,6 @@ namespace AccSaber.UI.ViewControllers
         {
             VersionUtils.Parse(ResourcePaths.LEADERBOARD_SCORE_MODAL, parent.transform, this);
             modal.transform.SetParent(parent.transform);
-
-            //lumc.Parse(parent.transform);
         }
 
         public Task ShowModal(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberUser? playerInfo = null)

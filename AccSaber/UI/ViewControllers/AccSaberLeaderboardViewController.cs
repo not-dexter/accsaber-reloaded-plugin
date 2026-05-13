@@ -120,7 +120,7 @@ namespace AccSaber.UI.ViewControllers
             }
         }
 
-        public bool UsesPreviousPages => DisplayType is LeaderboardDisplayType.Relations or LeaderboardDisplayType.Friends;
+        public bool UsesPreviousPages => DisplayType is LeaderboardDisplayType.Relations;
 
         #endregion Instance Variables & Fields
 
@@ -354,9 +354,6 @@ namespace AccSaber.UI.ViewControllers
         [UIAction("ShowGlobal")]
         private void ShowGlobal() => ChangeFilter(LeaderboardDisplayType.Global);
 
-        [UIAction("ShowFriends")]
-        private void ShowFriends() => ChangeFilter(LeaderboardDisplayType.Friends);
-
         [UIAction("ShowFollowed")]
         private void ShowFollowed() => ChangeFilter(LeaderboardDisplayType.Followed);
 
@@ -436,7 +433,6 @@ namespace AccSaber.UI.ViewControllers
         {
             LeaderboardDisplayType.Global => globalSelector,
             LeaderboardDisplayType.Country => countrySelector,
-            LeaderboardDisplayType.Friends => friendsSelector,
             LeaderboardDisplayType.Followed => followedSelector,
             LeaderboardDisplayType.Rivals => rivalsSelector,
             LeaderboardDisplayType.Relations => relationsSelector,
@@ -654,7 +650,6 @@ namespace AccSaber.UI.ViewControllers
                             nextPage = page + 1;
                             break;
 
-                        case LeaderboardDisplayType.Friends:
                         case LeaderboardDisplayType.Relations:
                             int neededScores = Math.Min(PlayerSocialLife.GetIds_Internal(DisplayType)!.Count - previousPages.Count * PAGE_LENGTH, PAGE_LENGTH);
 

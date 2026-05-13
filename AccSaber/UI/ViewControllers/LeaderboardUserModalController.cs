@@ -272,7 +272,7 @@ namespace AccSaber.UI.ViewControllers
 				_addFriendButton.gameObject.GetComponent<Button>().enabled = true;
 			}
 		}
-		internal void Parse(Transform parentTransform)
+		private void Parse(Transform parentTransform)
 		{
 			if (!_parsed)
 			{

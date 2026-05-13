@@ -18,7 +18,6 @@
 
   <vertical id='selectorContainer' anchor-pos-x='50' anchor-pos-y='23' vertical-fit='PreferredSize' pref-height='35' pref-width='8' bg='round-rect-panel'>
     <clickable-image id='GlobalSelector' src='~globalPic' pref-width='5' pref-height='5' on-click='ShowGlobal' hover-hint='Global'/>
-    <clickable-image id='FriendsSelector' src='~friendsPic' pref-width='5' pref-height='5' on-click='ShowFriends' hover-hint='Friends'/>
     <clickable-image id='FollowedSelector' src='~followedPic' pref-width='5' pref-height='5' on-click='ShowFollowed' hover-hint='Followed'/>
     <clickable-image id='RivalsSelector' src='~rivalsPic' pref-width='5' pref-height='5' on-click='ShowRivals' hover-hint='Rivals' default-color='~colorGrey'/>
     <clickable-image id='RelationsSelector' src='~relationsPic' pref-width='5' pref-height='5' on-click='ShowRelations' hover-hint='Friends, Followed, &amp; Rivals' default-color='~colorGrey' active='false'/>

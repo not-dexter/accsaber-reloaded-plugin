@@ -166,8 +166,6 @@ namespace AccSaber.Models
                 if (Instance.DisplayType != LeaderboardDisplayType.Relations)
                     return DIMMER;
 
-                if (PlayerSocialLife.PlayerFriendIDs.Contains(ScoreData.PlayerId))
-                    return RELATIONS_STEAM;
                 if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(ScoreData.PlayerId))
                     return RELATIONS_ACC;
                 return RELATIONS_TARGETED;
