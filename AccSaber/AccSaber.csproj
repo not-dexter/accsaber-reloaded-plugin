@@ -14,6 +14,8 @@
     <Copyright>Copyright © $ModAuthor$</Copyright>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
   </PropertyGroup>
   <PropertyGroup Condition="$(DefineConstants.Contains('CIBuild')) OR '$(NCrunch)' == '1'">
     <DisableCopyToPlugins>True</DisableCopyToPlugins>
@@ -21,6 +23,9 @@
   <PropertyGroup Condition="'$(NCrunch)' == '1'">
     <DisableCopyToPlugins>True</DisableCopyToPlugins>
     <DisableZipRelease>True</DisableZipRelease>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>$(DefineConstants);NEW_VERSION</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BeatmapCore">
@@ -42,7 +47,6 @@
     <Reference Include="BeatSaber.ViewSystem" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.ViewSystem.dll</HintPath>
       <Private>False</Private>
-      <publicize>True</publicize>
     </Reference>
     <Reference Include="Hive.Versioning">
       <HintPath>$(BeatSaberDir)\Libs\Hive.Versioning.dll</HintPath>
@@ -62,7 +66,6 @@
     <Reference Include="mscorlib">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\mscorlib.dll</HintPath>
     </Reference>
-    <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="0Harmony, Version=2.0.2.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>$(BeatSaberDir)\Libs\0Harmony.dll</HintPath>
@@ -79,6 +82,16 @@
     <Reference Include="HMUI">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMUI.dll</HintPath>
       <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Drawing">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\System.Drawing.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\System.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Tweening" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Tweening.dll</HintPath>
@@ -154,7 +167,6 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="System.Memory" Version="4.6.3" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Directory.Build.props" Condition="Exists('Directory.Build.props')" />
@@ -162,9 +174,11 @@
     <None Include="AccSaber.csproj.user" Condition="Exists('AccSaber.csproj.user')" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\*
-                      " />
+    <EmbeddedResource Include="Resources\*&#xD;&#xA;                      " />
     <EmbeddedResource Include="UI\Views\*.bsml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="C:\Users\sman6\.nuget\packages\bepinex.assemblypublicizer.msbuild\0.4.2\contentFiles\cs\any\IgnoresAccessChecksToAttribute.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="manifest.json" />

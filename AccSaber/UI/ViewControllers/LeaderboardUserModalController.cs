@@ -45,9 +45,9 @@ namespace AccSaber.UI.ViewControllers
 		private string _headset = null!;
 
 		private MonoBehaviour? _host;
-		
+
 		public event PropertyChangedEventHandler? PropertyChanged;
-		
+
 		[UIComponent("modal")]
 		private ModalView _modalView = null!;
 
@@ -60,20 +60,20 @@ namespace AccSaber.UI.ViewControllers
 		[UIComponent("user-info")]
 		private readonly Transform _userInfo = null!;
 
-		[UIComponent("progress-bar")] 
+		[UIComponent("progress-bar")]
 		private readonly LayoutElement _progressBar = null!;
 
-		[UIComponent("progress-bar")] 
+		[UIComponent("progress-bar")]
 		private readonly ImageView _progressBarImage = null!;
 
-		[UIComponent("progress-bar-inverse")] 
+		[UIComponent("progress-bar-inverse")]
 		private readonly LayoutElement _progressBarInverse = null!;
 
 		[UIParams]
 		private readonly BSMLParserParams _parserParams = null!;
 
 		private CanvasGroup? _userInfoCanvasGroup;
-		
+
 		private readonly AccSaberStore _accSaberStore;
 		private readonly TimeTweeningManager _timeTweeningManager;
 
@@ -83,9 +83,9 @@ namespace AccSaber.UI.ViewControllers
 			_timeTweeningManager = timeTweeningManager;
 			_pluginConfig = pluginConfig;
 		}
-		
+
 		#region UI Values
-		
+
 		[UIValue("is-loading")]
 		private bool IsLoading
 		{
@@ -102,19 +102,19 @@ namespace AccSaber.UI.ViewControllers
 		private bool IsNotLoading => !_isLoading;
 
 		[UIValue("category-value")]
-		private APCategory CategoryValue
+		private string CategoryValue
 		{
-			get => _categoryValue;
+			get => _categoryValue.ToString();
 			set
 			{
-				_categoryValue = value;
+				_categoryValue = (APCategory)Enum.Parse(typeof(APCategory), value);
 				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CategoryValue)));
 				_ = UpdateUserInfo();
 			}
 		}
 
 		[UIValue("category-choices")]
-		private List<object> _categoryChoices = [.. Enum.GetNames(typeof(APCategory))];	
+		private List<object> _categoryChoices = [.. new APCategory[] { APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech }.Select(a => a.ToString())];	
 
 		[UIValue("username")]
 		private string Username
@@ -282,8 +282,9 @@ namespace AccSaber.UI.ViewControllers
 
 				var canvasGroup = _modalView.gameObject.AddComponent<CanvasGroup>();
 				var dropdownModalView = _categoryDropdown.Find("DropdownTableView").GetComponent<ModalView>();
-				dropdownModalView.SetupView(_modalView.transform);
-				dropdownModalView.SetField("_parentCanvasGroup", canvasGroup);
+				//dropdownModalView.SetupView(_modalView.transform);
+				//dropdownModalView.transform.SetParent(_modalView.transform);
+                dropdownModalView.SetField("_parentCanvasGroup", canvasGroup);
 				
 				_userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
 				
@@ -323,7 +324,7 @@ namespace AccSaber.UI.ViewControllers
 					_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);
 				}
 
-				CategoryValue = APCategory.Overall;
+				CategoryValue = APCategory.Overall.ToString();
 
 				yield return new WaitForFixedUpdate();
 
@@ -357,7 +358,7 @@ namespace AccSaber.UI.ViewControllers
                 IsLoading = true;
                 _user = await _accSaberStore.GetCurrentUserAsync();
             }
-            await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == CategoryValue));
+            await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == _categoryValue));
         }
 
 		private async Task SetUserInfo(AccSaberUser userInfo, PlayerStats stats) // ty person for the progress bar -- you're welcome :)

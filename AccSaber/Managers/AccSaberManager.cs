@@ -9,23 +9,14 @@ using Zenject;
 
 namespace AccSaber.Managers
 {
-	internal class AccSaberManager : INotifyLeaderboardSet
+	internal class AccSaberManager(AccSaberStore accSaberStore, BeatmapLevelsModel beatmapLevelsModel) : INotifyLeaderboardSet
 	{
-        private readonly AccSaberStore _accSaberStore;
-        private readonly BeatmapLevelsModel _beatmapLevelsModel;
+        private readonly AccSaberStore _accSaberStore = accSaberStore;
+        private readonly BeatmapLevelsModel _beatmapLevelsModel = beatmapLevelsModel;
 #if NEW_VERSION
-		private readonly SiraLog _log;
-		private readonly WebUtils _webUtils;
-        
-		public AccSaberManager(SiraLog log, WebUtils webUtils, AccSaberStore accSaberStore, BeatmapLevelsModel beatmapLevelsModel)
-		{
-			_log = log;
-			_webUtils = webUtils;
-			_accSaberStore = accSaberStore;
-			_beatmapLevelsModel = beatmapLevelsModel;
-		}
 
-		public void OnLeaderboardSet(BeatmapKey beatmapKey)
+
+        public void OnLeaderboardSet(BeatmapKey beatmapKey)
 		{
 			BeatmapLevel? level = _beatmapLevelsModel.GetBeatmapLevel(beatmapKey.levelId);
 
@@ -34,17 +25,20 @@ namespace AccSaber.Managers
 				return;
 			}
 
-			var hash = $"{SongCore.Utilities.Hashing.GetCustomLevelHash(level)}/{beatmapKey.difficulty}".ToLower();
-			var mapInfo = _accSaberStore.RankedMaps.TryGetValue(hash, out var ret) ? ret : null;
+            string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
 
-			_accSaberStore.CurrentRankedMap = mapInfo;
-		}
-#else
-        public AccSaberManager(AccSaberStore accSaberStore, BeatmapLevelsModel beatmapLevelsModel)
-        {
-            _accSaberStore = accSaberStore;
-            _beatmapLevelsModel = beatmapLevelsModel;
+            if (_accSaberStore.RankedMaps is not null)
+            {
+                AccSaberBasicDifficulty? mapInfo = _accSaberStore.RankedMaps.TryGetValue(hash, out AccSaberBasicDifficulty[]? ret) ?
+                ret.FirstOrDefault(diff => beatmapKey.difficulty == diff.Difficulty) : null;
+
+                _accSaberStore.SetMapFromBasicDifficulty(mapInfo);
+            }
+            else
+                _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
         }
+#else
+        
         public void OnLeaderboardSet(IDifficultyBeatmap beatmapKey)
         {
 			CustomPreviewBeatmapLevel? level = _beatmapLevelsModel.GetLevelPreviewForLevelId(beatmapKey.level.levelID) as CustomPreviewBeatmapLevel;
@@ -54,7 +48,7 @@ namespace AccSaber.Managers
                 return;
             }
 
-            string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level);
+            string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
             
 
 			if (_accSaberStore.RankedMaps is not null)

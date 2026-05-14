@@ -1,6 +1,5 @@
 ﻿using AccSaber.Consts;
 using AccSaber.Models.Base;
-using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
@@ -8,7 +7,6 @@ using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Drawing.Imaging;
 using System.Linq;
 
 using static AccSaber.Utils.ColorUtils;

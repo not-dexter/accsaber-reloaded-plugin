@@ -3,28 +3,38 @@ using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.MenuButtons;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
+
+#if NEW_VERSION
+using System.Collections;
+#else
+using System.Collections.Generic;
+#endif
 
 namespace AccSaber.Utils
 {
     internal static class VersionUtils
     {
 #if NEW_VERSION
+        #region Higher Version Only
+        public static async Task<UserInfo> GetUserInfo(this IPlatformUserModel model) => await model.GetUserInfo(default);
+        public static Color ColorWithAlpha(this Color c, float alpha) => new(c.r, c.g, c.b, alpha);
+        #endregion
         public static Task<Sprite> LoadSpriteFromAssemblyAsync(string path) => Utilities.LoadSpriteFromAssemblyAsync(path);
-        public static Task SetImageAsync(this Image image, string location, bool animated) => Task.Run(() => image.SetImage(location));
-        public static ref List<object> Data(this CustomCellListTableData ccltd) => ref ccltd.Data;
-        public static ref TableView TableView(this CustomCellListTableData ccltd) => ref ccltd.TableView;
-        public static ref Image Background(this Backgroundable bg) => ref bg.Background;
+        public static IList Data(this CustomCellListTableData ccltd) => ccltd.Data;
+        public static TableView TableView(this CustomCellListTableData ccltd) => ccltd.TableView;
+        public static Image Background(this Backgroundable bg) => bg.Background;
         public static BSMLParser BSMLParser_Instance => BSMLParser.Instance;
         public static MenuButtons MenuButtons_Instance => MenuButtons.Instance;
 #else
+        #region Lower Version Only
+        public static async Task SetImageAsync(this Image image, string location, bool animated = true) => image.SetImage(location);
+        #endregion
         public static Task<Sprite> LoadSpriteFromAssemblyAsync(string path) =>
             Task.Run(() => Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), path)));
-        public static async Task SetImageAsync(this Image image, string location, bool animated = true) => image.SetImage(location);
         public static ref List<object> Data(this CustomCellListTableData ccltd) => ref ccltd.data;
         public static ref TableView TableView(this CustomCellListTableData ccltd) => ref ccltd.tableView;
         public static ref Image Background(this Backgroundable bg) => ref bg.background;

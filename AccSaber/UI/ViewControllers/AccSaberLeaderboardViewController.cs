@@ -543,9 +543,9 @@ namespace AccSaber.UI.ViewControllers
                 hash = levelId; // fallback for official levels
 
 #if NEW_VERSION
-            if (hash.Equals(currentHash) && key.difficulty.Equals(currentDifficulty))
+            if (hash.Equals(CurrentHash) && key.difficulty.Equals(CurrentDiff))
                 return false; // same map, no need to update
-            currentDifficulty = key.difficulty;
+            CurrentDiff = key.difficulty;
 #else
             if (hash.Equals(CurrentHash) && beatmap.difficulty.Equals(CurrentDiff))
                 return false; // same map, no need to update
@@ -649,14 +649,14 @@ namespace AccSaber.UI.ViewControllers
                     switch (DisplayType)
                     {
                         case LeaderboardDisplayType.Global:
-                            scores = await GetScoreData(page - 1, DifficultyId);
+                            scores = await GetScoreData(page, DifficultyId);
                             nextPage = page + 1;
                             break;
 
                         case LeaderboardDisplayType.Relations:
                             int neededScores = Math.Min(PlayerSocialLife.GetIds_Internal(DisplayType)!.Count - previousPages.Count * PAGE_LENGTH, PAGE_LENGTH);
 
-                            scoreData = await GetScoreData(page - 1, DifficultyId, CurrentFilter!, DisplayType, neededScores);
+                            scoreData = await GetScoreData(page, DifficultyId, CurrentFilter!, DisplayType, neededScores);
                             scores = scoreData.scores;
                             nextPage = scoreData.truePage;
 
@@ -664,14 +664,14 @@ namespace AccSaber.UI.ViewControllers
 
                         case LeaderboardDisplayType.Followed:
                         case LeaderboardDisplayType.Rivals:
-                            scores = await GetScoreData(page - 1, DifficultyId, DisplayType.Convert());
+                            scores = await GetScoreData(page, DifficultyId, DisplayType.Convert());
                             nextPage = page + 1;
                             break;
 
                         case LeaderboardDisplayType.Country:
                             string country = store.GetCurrentUserAsync().GetAwaiter().GetResult().Country;
 
-                            scores = await GetScoreData(page - 1, DifficultyId, country);
+                            scores = await GetScoreData(page, DifficultyId, country);
                             nextPage = page + 1;
 
                             break;
@@ -697,7 +697,7 @@ namespace AccSaber.UI.ViewControllers
                         leaderboard.MainCellSize = CellSize;
                         leaderboard.Data = LeaderboardInfos;
 
-                        titlePaneTitleText?.SetText("Accsaber");
+                        titlePaneTitleText?.SetText(RANKED_HEADER);
 
                         leaderboardContainer.SetActive(true);
                         leaderboardLoader.SetActive(false);

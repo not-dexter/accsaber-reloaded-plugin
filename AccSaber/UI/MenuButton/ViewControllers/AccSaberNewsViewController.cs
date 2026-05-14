@@ -16,10 +16,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     internal class AccSaberNewsViewController : BSMLAutomaticViewController, INotifyPropertyChanged
     {
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public new event PropertyChangedEventHandler? PropertyChanged;
 
         [UIComponent("tab-selector")]
-        protected readonly TabSelector _tabSelector = null;
+        protected readonly TabSelector _tabSelector = null!;
 
     }
 }

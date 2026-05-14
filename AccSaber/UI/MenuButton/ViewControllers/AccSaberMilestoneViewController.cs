@@ -20,7 +20,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMilestoneView.bsml")]
     internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
+        public new event PropertyChangedEventHandler? PropertyChanged;
 
 		private string? _userId;
 		private bool _parsed;
