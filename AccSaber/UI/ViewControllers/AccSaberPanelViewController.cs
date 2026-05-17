@@ -119,8 +119,6 @@ namespace AccSaber.UI.ViewControllers
 			{
 				await ToggleRainbowBannerTween(true);
 			}
-				
-			SetTimeSinceLastLeaderboardUpdateText();
 		}
 
 		protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
@@ -221,25 +219,6 @@ namespace AccSaber.UI.ViewControllers
 			};
 		}
 
-		private void SetTimeSinceLastLeaderboardUpdateText()
-		{
-			string displayText;
-			var timeSinceUpdate = DateTime.UtcNow - _accSaberStore.LastLocalUpdateTime;
-			
-			if (timeSinceUpdate.TotalSeconds >= 60)
-			{
-				var totalMinutes = (int) timeSinceUpdate.TotalMinutes;
-				displayText = totalMinutes == 1 ? "1 minute" : $"{totalMinutes} minutes";
-			}
-			else
-			{
-				var totalSeconds = (int) timeSinceUpdate.TotalSeconds;
-				displayText = totalSeconds == 1 ? "1 second" : $"{totalSeconds} seconds";
-			}
-			
-			PromptText = $"<color=#7D7D7D>Leaderboard last updated {displayText} ago</color>";
-		}
-
 		[UIAction("#post-parse")]
 		public void PostParse()
 		{
@@ -268,7 +247,7 @@ namespace AccSaber.UI.ViewControllers
 					return;
 				}
 				
-				SetBannerColor(_accSaberStore.CurrentRankedMap.RankedStatus == "RANKED" ? _accSaberStore.CurrentRankedMap.CategoryId : _accSaberStore.CurrentRankedMap.RankedStatus);
+				SetBannerColor(_accSaberStore.CurrentRankedMap.Status == MapStatus.Ranked ? _accSaberStore.CurrentRankedMap.CategoryId : _accSaberStore.CurrentRankedMap.RankedStatus);
 			}
 		}
 
