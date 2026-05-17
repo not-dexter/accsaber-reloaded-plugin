@@ -362,9 +362,6 @@ namespace AccSaber.UI.ViewControllers
         {
             titleContainer?.SetActive(true);
 
-            /*if (!TryUpdateCurrentMap() && refreshRequested)
-                Task.Run(ForceRefresh);*/
-
             if (titlePaneTitleText is not null)
             {
                 titlePanelTitle = titlePaneTitleText.text;
@@ -384,7 +381,6 @@ namespace AccSaber.UI.ViewControllers
         internal void OnGameRefresh()
         {
             InvalidateCache();
-            HandleHeaderPane();
         }
 
         private GameObject? GetHeaderPane()
@@ -407,6 +403,7 @@ namespace AccSaber.UI.ViewControllers
             if (headerPane is null) return;
 
             titlePaneTitleText = headerPane.GetComponentInChildren<TextMeshProUGUI>();
+            OnEnable();
 
             VersionUtils.Parse(ResourcePaths.LEADERBOARD_TITLE_PANEL, headerPane.transform, this);
         }
