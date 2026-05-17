@@ -42,7 +42,11 @@ namespace AccSaber.Installers
 			Container.Bind<LeaderboardScoreModalController>().AsSingle();
 			Container.Bind<LeaderboardUserModalController>().AsSingle();
 			Container.Bind<WhereScoreModalController>().AsSingle();
-            Container.Bind(typeof(IInitializable)).To<AddonAdder>().AsSingle();
-        }
+#if NEW_VERSION
+			Container.Bind(typeof(IInitializable)).To<AddonAdder>().AsSingle();
+#else
+			new AddonAdder().Initialize(); // scuffed, but gets the job done.
+#endif
+		}
 	}
 }
