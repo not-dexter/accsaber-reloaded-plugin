@@ -305,6 +305,9 @@ namespace AccSaber.UI.ViewControllers
             _userId = userId;
 			_firstLoad = true;
 
+			if (!userId.Equals(_user?.PlayerId))
+				_user = null;
+
 			IEnumerator Show()
 			{
 				yield return new WaitForEndOfFrame();
@@ -356,9 +359,11 @@ namespace AccSaber.UI.ViewControllers
             if (_user is null)
             {
                 IsLoading = true;
-                _user = await _accSaberStore.GetCurrentUserAsync();
+				_user = await AccsaberAPI.GetPlayerInfo(_userId, true, true);
             }
-            await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == _categoryValue));
+
+			if (_user is not null)
+				await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == _categoryValue));
         }
 
 		private async Task SetUserInfo(AccSaberUser userInfo, PlayerStats stats) // ty person for the progress bar -- you're welcome :)

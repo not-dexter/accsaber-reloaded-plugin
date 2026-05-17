@@ -115,7 +115,7 @@ namespace AccSaber.UI.ViewControllers
         }
         private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo)
         {
-            AccSaberUser? playerInfo = await GetPlayerInfo(scoreInfo.PlayerId, true);
+            AccSaberUser? playerInfo = await GetPlayerInfo(scoreInfo.PlayerId, true, false);
             if (playerInfo is not null)
                 await ShowTextsAsync(host, scoreInfo, playerInfo);
         }

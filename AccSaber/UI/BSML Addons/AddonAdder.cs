@@ -11,7 +11,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons
     {
         public void Initialize()
         {
-            AccSaberLeaderboardViewController.Instance.OnGameRefresh();
+            AccSaberLeaderboardViewController.Instance?.OnGameRefresh();
 
             BSMLParser instance = VersionUtils.BSMLParser_Instance;
 

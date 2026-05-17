@@ -985,13 +985,44 @@ namespace AccSaber.API
         }
 
         /// <summary>
-        /// Retrieves player information for a given user id. When <paramref name="stats"/> is true,
-        /// additional statistics are loaded. Uses the player cache when possible.
+        /// Retrieves player information from the AccSaber API for the given <paramref name="userId"/>.
         /// </summary>
-        public static async Task<AccSaberUser?> GetPlayerInfo(string userId, bool stats, CancellationToken ct = default)
+        /// <param name="userId">AccSaber user id or player identifier to retrieve.</param>
+        /// <param name="stats">
+        /// When <c>true</c>, requests the player's statistics from the API. If a cached value exists it will be returned
+        /// only if statistics are already present on the cached object.
+        /// </param>
+        /// <param name="statDiff">
+        /// When <c>true</c>, after the player data is loaded this method will trigger loading of stat differences
+        /// (awaits <c>outp.LoadStatDiffs</c>) so the returned object contains diff information as well.
+        /// </param>
+        /// <param name="ct">Optional cancellation token forwarded to the underlying API call.</param>
+        /// <returns>
+        /// A <see cref="Task{TResult}"/> that resolves to an <see cref="AccSaberUser"/> instance if the API call
+        /// and JSON deserialization succeed; otherwise <c>null</c> when the API returns no data or deserialization fails.
+        /// </returns>
+        /// <remarks>
+        /// - This method first checks an in-memory cache (`playerInfoCacher`). If a cached item exists and either
+        ///   <paramref name="stats"/> is <c>false</c> or the cached item already contains statistics, the cached item is returned.
+        /// - If not cached, the method calls the AccSaber API (via <c>CallAPI_String</c>), deserializes the JSON into
+        ///   <see cref="AccSaberUser"/>, optionally awaits stat-diff loading, caches the result, and returns it.
+        /// - Side effects: may perform network I/O, may await additional operations to populate stat diffs, and will cache the final object.
+        /// - Cancellation: the provided <paramref name="ct"/> may cancel the API request (throws <see cref="OperationCanceledException"/>).
+        /// </remarks>
+        public static async Task<AccSaberUser?> GetPlayerInfo(string userId, bool stats, bool statDiff, CancellationToken ct = default)
         {
-            if (playerInfoCacher.TryGetCachedItem(userId, out AccSaberUser? outp) && (!stats || outp!.Statistics is not null))
+            bool playerCached = playerInfoCacher.TryGetCachedItem(userId, out AccSaberUser? outp);
+            bool statsCached = playerCached && outp!.Statistics is not null;
+            bool statDiffCached = statsCached && outp!.LoadStatDiffs.IsCompleted;
+
+            if (playerCached && statsCached == stats && statDiffCached == statDiff)
                 return outp;
+
+            if (statsCached && statDiff)
+            {
+                await outp!.LoadStatDiffs;
+                return outp;
+            }
 
             string? dataStr = await CallAPI_String(string.Format(APAPI_PLAYERID, userId, stats.ToString().ToLower()), throttler, false, ct: ct).ConfigureAwait(false);
 
@@ -1003,7 +1034,7 @@ namespace AccSaber.API
             if (outp is null)
                 return null;
 
-            if (stats)
+            if (statDiff)
                 await outp.LoadStatDiffs;
 
             playerInfoCacher.CacheItem(outp, userId);

@@ -315,7 +315,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (_user is null)
             {
                 IsLoading = true;
-                _user = await AccsaberAPI.GetPlayerInfo(_userId, true);
+                _user = await AccsaberAPI.GetPlayerInfo(_userId, true, true);
             }
 
             await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == _categoryValue));

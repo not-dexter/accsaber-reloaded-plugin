@@ -115,7 +115,19 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal sealed class AccSaberUser : Model
 	{
-		public Task LoadStatDiffs { get; private set; } = Task.CompletedTask;
+		public Task LoadStatDiffs
+		{
+			get
+			{
+				if (loadStatDiffs is null)
+				{
+					loadStatDiffs = LoadStatDiffsFunc();
+                    return loadStatDiffs;
+				}
+				return loadStatDiffs;
+            }
+		}
+		private Task? loadStatDiffs = null;
 
         [JsonProperty("avatarUrl")]
         public string? AvatarUrl { get; set; }
@@ -156,28 +168,21 @@ namespace AccSaber.Models
 
 		public PlayerStats? GetStat(APCategory category) => Statistics?.FirstOrDefault(stat => stat.Category == category);
 
-        [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
-        {
-			if (Statistics is not null)
-			{
-				LoadStatDiffs = Task.Run(async () =>
-				{
-                    foreach (PlayerStats stat in Statistics)
-                    {
-						string category_id = stat.Category.ToString();
-						category_id = char.ToLower(category_id[0]) + category_id.Substring(1);
+		private async Task LoadStatDiffsFunc()
+		{
+            foreach (PlayerStats stat in Statistics!)
+            {
+                string category_id = stat.Category.ToString();
+                category_id = char.ToLower(category_id[0]) + category_id.Substring(1);
 
-						if (stat.Category != APCategory.Overall)
-							category_id += "_acc";
+                if (stat.Category != APCategory.Overall)
+                    category_id += "_acc";
 
-						string? dataStr = await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id));
+                string? dataStr = await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id));
 
-						if (dataStr is not null)
-							stat.StatsDiff = JsonConvert.DeserializeObject<StatsDiff>(dataStr);
-					}
-                });
-			}
-		}
+                if (dataStr is not null)
+                    stat.StatsDiff = JsonConvert.DeserializeObject<StatsDiff>(dataStr);
+            }
+        }
     }
 }

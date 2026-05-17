@@ -126,7 +126,7 @@ namespace AccSaber.Managers
 				return;
 			}
 
-			AccSaberUser? newOverall = await AccsaberAPI.GetPlayerInfo(platformUser.platformUserId, true);
+			AccSaberUser? newOverall = await AccsaberAPI.GetPlayerInfo(platformUser.platformUserId, true, true);
 
 			// Check if the data fetched is the same as what we already have cached
 			// Saves us from calling the API three more times for the True, Standard and Tech user categories.
