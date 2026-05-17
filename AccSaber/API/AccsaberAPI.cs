@@ -424,16 +424,13 @@ namespace AccSaber.API
             try
             {
                 --page;
-                if (scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache cache))
+                if (scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache cache) && cache.TryGetLength(relation.Convert(), out int scoreCount))
                 {
                     HashSet<string> relations = PlayerSocialLife.GetIds_Internal(relation.Convert())!;
                     IEnumerable<AccSaberLeaderboardEntry> tokens = cache.Data.Where(token => relations.Contains(token.PlayerId));
 
                     int tokenCount = tokens.Count();
                     int pageCount = page * PAGE_LENGTH;
-
-                    if (!cache.TryGetLength(relation.Convert(), out int scoreCount))
-                        scoreCount = -1;
 
                     //Plugin.Log.Info($"token count = {tokenCount} || score count = {scoreCount} || page count = {pageCount}");
 
