@@ -22,11 +22,46 @@ namespace AccSaber.API
             Timeout = ClientTimeout
         };
 
+        /// <summary>
+        /// Configures the shared HTTP client with authentication headers using the provided access and refresh tokens.
+        /// </summary>
+        /// <remarks>Sets the Authorization header to a Bearer token and adds a Cookie header containing
+        /// accessToken and refreshToken. Mutates the shared static HttpClient's DefaultRequestHeaders; calling
+        /// repeatedly may append duplicate Cookie headers.</remarks>
+        /// <param name="authInfo">Authentication information containing AccessToken and RefreshToken used to set the Authorization and Cookie
+        /// headers.</param>
         internal static void SetAuthForClient(AccsaberAPI.AuthInfo authInfo)
         {
             client.DefaultRequestHeaders.Add("Cookie", $"accessToken={authInfo.AccessToken}; refreshToken={authInfo.RefreshToken}");
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authInfo.AccessToken);
         }
+        /// <summary>
+        /// Sends the given <see cref="HttpRequestMessage"/> using the shared HTTP client with built-in
+        /// throttling, retry and timeout handling.
+        /// </summary>
+        /// <remarks>
+        /// Behaviour details:
+        /// - If a <see cref="Throttler"/> is provided it will be awaited before each request attempt.
+        /// - Respects the provided <paramref name="ct"/> (<see cref="CancellationToken"/>); if cancelled the
+        ///   call returns immediately with failure.
+        /// - HTTP 4xx responses are considered client errors and will not be retried (the method will return failure).
+        /// - On <see cref="TaskCanceledException"/> (typically a request timeout) the method will attempt to
+        ///   recover by forcing the connection to close on the next attempt (by setting the request header
+        ///   <c>Connection: close</c>) and adjusting the retry counter to allow an additional attempt.
+        /// - For other transient exceptions the method will perform exponential backoff retries. The initial
+        ///   retry delay is 500 ms and doubles for each subsequent retry.
+        /// - Logging is performed through <c>Plugin.Log</c>. Set <paramref name="quiet"/> to true to suppress
+        ///   non-critical logs (info/error/debug messages will be minimized).
+        /// </remarks>
+        /// <param name="request">The prepared <see cref="HttpRequestMessage"/> to send. Must be    non-null.</param>
+        /// <param name="throttler">Optional throttler used to rate-limit API calls. If provided, <c>Call()</c> is awaited before sending.</param>
+        /// <param name="quiet">When true, reduce logging output (useful for bulk or background requests).</param>
+        /// <param name="maxRetries">Maximum number of attempts (including the initial attempt). Defaults to 3.</param>
+        /// <param name="ct">Cancellation token used to cancel the operation.</param>
+        /// <returns>
+        /// A tuple where <c>Success</c> is true when a successful HTTP response was received and <c>Content</c>
+        /// contains the response content. On failure <c>Success</c> is false and <c>Content</c> is null.
+        /// </returns>
         public static async Task<(bool Success, HttpContent? Content)> CallAPI(HttpRequestMessage request, Throttler? throttler = null, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
         {
             const int initialRetryDelayMs = 500;

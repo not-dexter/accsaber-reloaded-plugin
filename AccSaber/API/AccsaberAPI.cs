@@ -22,22 +22,55 @@ using static AccSaber.API.HelpfulPaths;
 
 namespace AccSaber.API
 {
-#nullable enable
+    /// <summary>
+    /// Central API helper for interacting with the AccSaber backend.
+    /// Provides synchronous cache helpers and asynchronous methods to
+    /// fetch leaderboards, player info, relations and milestones. This
+    /// class is internal to the plugin and is intended to centralize
+    /// HTTP calls, caching behavior and basic data transformations.
+    /// </summary>
     internal static class AccsaberAPI
     {
+        /// <summary>
+        /// Global throttler used for all API requests from this class.
+        /// Configured with the plugin's desired rate limits.
+        /// </summary>
         public static readonly Throttler throttler = new(400, 60);
+
+        /// <summary>
+        /// Factory producing a predicate that filters leaderboard entries by country code.
+        /// Usage: <c>CountryFilterMaker("US")</c> returns a predicate that checks entry.Country == "US".
+        /// </summary>
         public static readonly Func<string, Func<AccSaberLeaderboardEntry, bool>> CountryFilterMaker = country => token => token.Country.Equals(country);
 
+        /// <summary>
+        /// Cache of player information keyed by player id.
+        /// </summary>
         private static readonly ObjectCacher<AccSaberUser> playerInfoCacher = new();
+
+        /// <summary>
+        /// Cache of leaderboard scores keyed by difficulty id.
+        /// </summary>
         private static readonly ObjectCacher<ScoreCache> scoreInfoCacher = new();
 
+        /// <summary>
+        /// Cache of ranked maps keyed by song hash.
+        /// </summary>
         private static readonly Dictionary<string, AccSaberRankedMap> mapCache = [];
 
+        /// <summary>
+        /// Number of entries per leaderboard page used by the plugin.
+        /// </summary>
         public const int PAGE_LENGTH = 10;
+
+        /// <summary>
+        /// Multiplier used for filter paging logic to request larger batches from the API.
+        /// </summary>
         public const int FILTER_PAGE_MULT = 10;
 
         static AccsaberAPI()
         {
+            // Listen for local score updates and invalidate caches when appropriate.
             AccSaberStore.OnScoreUpdated += token =>
             {
                 string playerId = token.PlayerId, diffId = token.DifficultyId;
@@ -51,66 +84,16 @@ namespace AccSaber.API
                 }
             };
         }
-        
-        /*#region Diff Info Getters
-        public static float GetComplexity(DifficultyInfoToken diffData) => (float)(diffData["complexity"] ?? 0f);
-        public static string GetSongName(DifficultyInfoToken diffData) => diffData["songName"]!.ToString();
-        public static string GetDiffName(DifficultyInfoToken diffData) => diffData["difficulty"]!.ToString();
-        public static string GetLeaderboardId(DifficultyInfoToken diffData) => diffData["leaderboardId"]!.ToString();
-        public static string GetDifficultyId(DifficultyInfoToken diffData) => diffData["id"]!.ToString();
-        public static string GetHash(DifficultyInfoToken diffData) => diffData["songHash"]!.ToString();
-        public static bool MapIsUsable(DifficultyInfoToken diffData) => diffData is not null && diffData.Complexity > 0;
-        public static bool AreRatingsNull(DifficultyInfoToken diffData) => diffData["complexity"] is null;
-        public static int GetMaxScore(DifficultyInfoToken diffData) => (int)(diffData["maxScore"] ?? 0);
-        public static string GetCategoryId(DifficultyInfoToken diffData) => diffData["categoryId"]!.ToString();
 
-#endregion
-        #region Player Info Getters
-
-        public static string GetPlayerAvatar(PlayerInfoToken playerData) => playerData["avatarUrl"]!.ToString();
-        public static LevelInfoToken GetPlayerLevelData(PlayerInfoToken playerData) => new((JObject)playerData["levelData"]!);
-        public static string GetPlayerName(PlayerInfoToken playerData) => playerData["name"]!.ToString();
-        public static string GetPlayerId(PlayerInfoToken playerData) => playerData["id"]!.ToString();
-        public static bool CheckPlayerForStats(PlayerInfoToken playerData) => playerData["statistics"] is not null;
-        public static StatsInfoToken? GetPlayerStats(PlayerInfoToken playerData, AccSaberStore.APCategory category)
-        {
-            string? id = CategoryIdToReloadedCategory(category.ToString());
-            return playerData["statistics"]?.Children().FirstOrDefault(token => id.Equals(token["categoryId"]?.ToString())) is not JObject obj ? null : new(obj);
-        }
-
-        #endregion
-        #region Level Info Getters
-
-        public static int GetLevel(LevelInfoToken levelData) => (int)levelData["level"]!;
-        public static string GetTitle(LevelInfoToken levelData) => levelData["title"]!.ToString();
-        public static float GetCurrentLevelXp(LevelInfoToken levelData) => (float)levelData["xpForCurrentLevel"]!;
-        public static float GetNextLevelXp(LevelInfoToken levelData) => (float)levelData["xpForNextLevel"]!;
-        public static float GetProgress(LevelInfoToken levelData) => (float)levelData["progressPercent"]!;
-
-        #endregion
-        #region Stat Info Getters
-
-        public static float GetAP(StatsInfoToken statsData) => (float)statsData["ap"]!;
-        public static int GetGlobalRank(StatsInfoToken statsData) => (int)statsData["ranking"]!;
-        public static int GetCountryRank(StatsInfoToken statsData) => (int)statsData["countryRanking"]!;
-
-        #endregion
-        #region Milestone Info Getters
-
-        public static float GetProgress(MilestoneInfoToken milestoneData) => (float)milestoneData["normalizedProgress"]!;
-        public static float GetCalculatedProgress(MilestoneInfoToken milestoneData) => 
-            AccsaberMilestoneData.AccsaberMilestoneDataInfo.CalcProgress(milestoneData.Target, milestoneData.ProgressValue);
-        public static float GetTarget(MilestoneInfoToken milestoneData) => (float)milestoneData["targetValue"]!;
-        public static float GetProgressValue(MilestoneInfoToken milestoneData) => (float)(milestoneData["progress"] ?? 0f);
-        public static string GetTier(MilestoneInfoToken milestoneData) => milestoneData["tier"]!.ToString();
-        public static string GetTitle(MilestoneInfoToken milestoneData) => milestoneData["title"]!.ToString();
-        public static string GetDescription(MilestoneInfoToken milestoneData) => milestoneData["description"]!.ToString();
-        public static string GetId(MilestoneInfoToken milestoneData) => milestoneData["milestoneId"]!.ToString();
-        public static AccsaberMilestoneData WrapData(MilestoneInfoToken milestoneData) => new(milestoneData.Target, milestoneData.ProgressValue,
-            milestoneData.Tier, milestoneData.Title, milestoneData.Description, milestoneData.Id);
-
-        #endregion*/
         #region Sync Functions
+
+        /// <summary>
+        /// Returns the cached leaderboard length for a difficulty id and display type,
+        /// or -1 if unknown.
+        /// </summary>
+        /// <param name="diffId">Leaderboard difficulty id.</param>
+        /// <param name="displayType">Type of leaderboard (Global, Country, etc.).</param>
+        /// <returns>Cached length or -1 when not available.</returns>
         public static int GetLength(string diffId, LeaderboardDisplayType displayType)
         {
             if (scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache info) && info.TryGetLength(displayType, out int len))
@@ -118,6 +101,12 @@ namespace AccSaber.API
 
             return -1;
         }
+
+        /// <summary>
+        /// Checks whether sufficient score data for the specified page is cached.
+        /// When <paramref name="filter"/> is provided this will verify filtered counts against the cache.
+        /// Page here is one-indexed.
+        /// </summary>
         public static bool ScoreDataCached(string diffId, int page, Func<AccSaberLeaderboardEntry, bool>? filter = null, int setCount = -1)
         { // page is one indexed.
             if (!scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache info))
@@ -145,6 +134,11 @@ namespace AccSaber.API
 
             return count == setCount || count - ((page - 1) * PAGE_LENGTH) >= PAGE_LENGTH;
         }
+
+        /// <summary>
+        /// Checks whether sufficient country-filtered score data for the specified page is cached.
+        /// Page here is one-indexed.
+        /// </summary>
         public static bool ScoreDataCached(string diffId, int page, string country)
         { // page is one indexed
             if (!scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache info))
@@ -154,6 +148,11 @@ namespace AccSaber.API
 
             return count >= page * PAGE_LENGTH || (info.TryGetLength(LeaderboardDisplayType.Country, out int len) && count == len - info.BlockedUserIndexes.Count);
         }
+
+        /// <summary>
+        /// Attempts to compute a player's rank within a filtered view using cached data.
+        /// Returns true and sets <paramref name="rank"/> when successful; otherwise returns false.
+        /// </summary>
         public static bool TryGetRankWithFilter(string diffId, string userId, Func<AccSaberLeaderboardEntry, bool>? filter, out int rank)
         {
             // init rank to -1 in case a check fails
@@ -178,6 +177,11 @@ namespace AccSaber.API
 
             return true;
         }
+
+        /// <summary>
+        /// Merges and caches a batch of score entries for a difficulty id.
+        /// Updates known leaderboard lengths and blocked user indexes.
+        /// </summary>
         private static void CacheScoreData(string diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> BlockedUserIndexes, 
             int leaderboardSize, LeaderboardDisplayType displayType)
         {
@@ -207,10 +211,19 @@ namespace AccSaber.API
             //Plugin.Log.Info($"There are the following sizes: { c.LeaderboardLengths.Values.Print()}");
 
         }
+
+        /// <summary>
+        /// Merge helper that preserves ordering by a comparable key and removes duplicates.
+        /// </summary>
         private static List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right) where T : IComparable
         {
             return MergeListWithEnumerable(left, right, a => a);
         }
+
+        /// <summary>
+        /// Merge helper that preserves ordering by a converted comparable key and removes duplicates.
+        /// The <paramref name="converter"/> extracts the comparable key from items.
+        /// </summary>
         private static List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right, Func<T, IComparable> converter)
         {
             List<T> outp = new(left.Count + right.Count());
@@ -251,8 +264,20 @@ namespace AccSaber.API
             return outp;
         }
 
+        /// <summary>
+        /// Clears all cached leaderboard score data.
+        /// </summary>
         public static void InvalidateCache() => scoreInfoCacher.ClearCache();
+
+        /// <summary>
+        /// Removes cached data for a specific difficulty id.
+        /// </summary>
         public static void InvalidateCache(string diffId) => scoreInfoCacher.RemoveItem(diffId);
+
+        /// <summary>
+        /// Removes all cached references to a player from all difficulty caches.
+        /// Adjusts blocked user index lists accordingly so page retrieval remains consistent.
+        /// </summary>
         public static void RemovePlayerFromCache(string playerId)
         {
             foreach (KeyValuePair<string, ScoreCache> diff in scoreInfoCacher)
@@ -275,6 +300,11 @@ namespace AccSaber.API
                         }
             }
         }
+
+        /// <summary>
+        /// Attempts to satisfy a filtered score request from the in-memory cache.
+        /// If successful returns the array of scores and true; otherwise returns partial results and false.
+        /// </summary>
         private static (AccSaberLeaderboardEntry[] scores, bool success) SearchInCache(ScoreCache cache, ref int page, Func<AccSaberLeaderboardEntry, bool> filter, 
             int pageLength, int scoresNeeded, int pageMult)
         {
@@ -302,6 +332,10 @@ namespace AccSaber.API
         #endregion
         #region Async Functions
 
+        /// <summary>
+        /// Asynchronously retrieves the cached length of the leaderboard for a hash + difficulty.
+        /// Returns -1 when unknown or when the leaderboard cannot be resolved.
+        /// </summary>
         public static async Task<int> GetLength(string hash, BeatmapDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global)
         {
             string? diffId = await GetLeaderboardDifficultyId(hash, diff);
@@ -311,14 +345,28 @@ namespace AccSaber.API
 
             return GetLength(diffId, displayType);
         }
+
+        /// <summary>
+        /// Overload for GetLength that accepts an <see cref="AccSaberBasicDifficulty"/>.
+        /// </summary>
         public static async Task<int> GetLength(AccSaberBasicDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global) =>
             await GetLength(diff.Hash, diff.Difficulty, displayType);
+
+        /// <summary>
+        /// Gets a page of scores for a specific hash & difficulty (zero-indexed page).
+        /// Returns null on failure.
+        /// </summary>
         public static async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string hash, BeatmapDifficulty diff, string? country = null)
         { // page is zero indexed.
             string? diffId = await GetLeaderboardDifficultyId(hash, diff);
             if (diffId is null) return null;
             return await GetScoreData(page, diffId, country);
         }
+
+        /// <summary>
+        /// Gets a page of scores for a specific difficulty id (one-indexed page).
+        /// Returns null on failure.
+        /// </summary>
         public static async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string diffId, string? country = null)
         { // page is one indexed.
             try
@@ -339,6 +387,11 @@ namespace AccSaber.API
                 return null;
             }
         }
+
+        /// <summary>
+        /// Retrieves scores filtered by <paramref name="filter"/> while attempting to use cached batches.
+        /// Returns a tuple of the found scores and the resolved true page index.
+        /// </summary>
         public static async Task<(AccSaberLeaderboardEntry[] scores, int truePage)> GetScoreData(int page, string diffId, 
             Func<AccSaberLeaderboardEntry, bool> filter, LeaderboardDisplayType displayType, int scoresNeeded = PAGE_LENGTH,
             int pageMult = FILTER_PAGE_MULT, int maxCalls = 10, bool cacheBatch = true)
@@ -419,6 +472,12 @@ namespace AccSaber.API
                 return default;
             }
         }
+
+        /// <summary>
+        /// Gets a page of scores for a specific relation (friends/rivals/etc.).
+        /// Returns null on failure.
+        /// Page is one-indexed.
+        /// </summary>
         public static async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string diffId, RelationType relation)
         { // page is one indexed
             try
@@ -466,6 +525,10 @@ namespace AccSaber.API
             }
             return null;
         }
+
+        /// <summary>
+        /// Retrieves paged milestone data for a user. Optionally filters and sorts results.
+        /// </summary>
         public static async Task<List<AccSaberMilestone>?> GetMilestoneData(string userId, Func<AccSaberMilestone, bool>? filter = null, Comparison<AccSaberMilestone>? sorter = null, int pageMult = FILTER_PAGE_MULT)
         {
             int page = 0;
@@ -500,6 +563,10 @@ namespace AccSaber.API
 
             return outp;
         }
+
+        /// <summary>
+        /// Gets either completed or incomplete milestones for a user.
+        /// </summary>
         public static async Task<List<AccSaberMilestone>?> GetMilestoneData(string userId, bool completed, Func<AccSaberMilestone, bool>? filter = null, Comparison<AccSaberMilestone>? sorter = null)
         {
             string apapiFormat = completed ? APAPI_MILESTONE_COMPLETE : APAPI_MILESTONE_INCOMPLETE;
@@ -524,6 +591,11 @@ namespace AccSaber.API
 
             return data;
         }
+
+        /// <summary>
+        /// Retrieves all relations for the authenticated user and returns a dictionary
+        /// keyed by RelationType containing user ids and relation ids.
+        /// </summary>
         public static async Task<Dictionary<RelationType, (HashSet<string> userIds, Dictionary<string, string> relations)>> GetPlayerRelations()
         {
             const int pageLength = PAGE_LENGTH * 10;
@@ -560,6 +632,11 @@ namespace AccSaber.API
             } while (callsLeft-- > 0);
             return outp;
         }
+
+        /// <summary>
+        /// Retrieves relations for a specified player and relation type.
+        /// Returns the set of target ids and a list of (userId, relationId) pairs.
+        /// </summary>
         public static async Task<(HashSet<string> ids, IEnumerable<(string userId, string relationId)> relations)> GetPlayerRelations(RelationType relation, string playerId)
         {
             const int pageLength = PAGE_LENGTH * 10;
@@ -584,6 +661,11 @@ namespace AccSaber.API
             } while (callsLeft > 0);
             return (userIds, relations);
         }
+
+        /// <summary>
+        /// Creates a relation (friend/rival/etc.) to the target player.
+        /// Returns a tuple (success, relationId) where relationId is null on failure.
+        /// </summary>
         public static async Task<(bool success, string? relationId)> AddPlayerRelation(RelationType relation, string targetId)
         {
             if (!long.TryParse(targetId, out long id))
@@ -604,12 +686,21 @@ namespace AccSaber.API
 
             return (true, JToken.Parse(await Content!.ReadAsStringAsync())["id"]!.ToString());
         }
+
+        /// <summary>
+        /// Removes a relation by relation id. Returns true on success.
+        /// </summary>
         public static async Task<bool> RemovePlayerRelation(string relationId)
         {
             HttpRequestMessage request = new(HttpMethod.Delete, string.Format(APAPI_AUTH_DELETE_RELATION, relationId));
 
             return (await CallAPI(request, throttler, maxRetries: 1).ConfigureAwait(false)).Success;
         }
+
+        /// <summary>
+        /// Gets an individual player's score entry for a specific hash and difficulty.
+        /// Attempts to return from cache when possible. Cancellation supported via token.
+        /// </summary>
         public static async Task<AccSaberLeaderboardEntry?> GetScoreData(string userId, string hash, BeatmapDifficulty diff, CancellationToken ct = default)
         {
             if (mapCache.TryGetValue(hash, out AccSaberRankedMap map))
@@ -626,6 +717,11 @@ namespace AccSaber.API
 
             return JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(dataStr!);
         }
+
+        /// <summary>
+        /// Fetches the ranked map object for a hash. Uses an in-memory cache to avoid repeated requests.
+        /// Returns null on failure or cancellation.
+        /// </summary>
         public static async Task<AccSaberRankedMap?> GetLeaderboard(string hash, CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) 
@@ -655,6 +751,10 @@ namespace AccSaber.API
                 return null;
             }
         }
+
+        /// <summary>
+        /// Returns the difficulty object for a hash + difficulty or null if not found.
+        /// </summary>
         public static async Task<AccSaberDifficulty?> GetLeaderboard(string hash, BeatmapDifficulty diff, CancellationToken ct = default)
         {
             AccSaberRankedMap? map = await GetLeaderboard(hash, ct);
@@ -664,10 +764,23 @@ namespace AccSaber.API
 
             return map.Difficulties.FirstOrDefault(difficulty => difficulty.Difficulty == diff);
         }
+
+        /// <summary>
+        /// Returns the AccSaber difficulty id for a hash + difficulty, or null.
+        /// </summary>
         public static async Task<string?> GetLeaderboardDifficultyId(string hash, BeatmapDifficulty diff, CancellationToken ct = default) =>
             (await GetLeaderboard(hash, diff, ct))?.DifficultyId;
+
+        /// <summary>
+        /// Overload accepting an <see cref="AccSaberBasicDifficulty"/>.
+        /// </summary>
         public static async Task<string?> GetLeaderboardDifficultyId(AccSaberBasicDifficulty diff, CancellationToken ct = default) =>
             await GetLeaderboardDifficultyId(diff.Hash, diff.Difficulty, ct);
+
+        /// <summary>
+        /// Retrieves all basic diffs from the API and groups them by hash.
+        /// Returns an empty dictionary on failure.
+        /// </summary>
         public static async Task<Dictionary<string, AccSaberBasicDifficulty[]>> GetAllBasicDiffs(CancellationToken ct = default)
         {
             string? dataStr = await CallAPI_String(APAPI_DIFFS, throttler, ct: ct);
@@ -698,6 +811,11 @@ namespace AccSaber.API
 
             return new(rankedMaps.Select(pair => new KeyValuePair<string, AccSaberBasicDifficulty[]>(pair.Key, [.. pair.Value])));
         }
+
+        /// <summary>
+        /// Loads metadata for all maps into the in-memory map cache.
+        /// Uses paging to fetch the full set of maps. This can be expensive and should be called sparingly.
+        /// </summary>
         public static async Task LoadAllMaps(CancellationToken ct = default)
         {
             string? dataStr = await CallAPI_String(string.Format(APAPI_MAPS, 0, 1), throttler, ct: ct);
@@ -725,6 +843,11 @@ namespace AccSaber.API
             foreach (AccSaberRankedMap map in maps.Content)
                 mapCache.TryAdd(map.Hash, map);
         }
+
+        /// <summary>
+        /// Fetches leaderboard scores for a difficulty id (global view). Uses cache when possible.
+        /// Returns null on failure.
+        /// </summary>
         public static async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(string difficulty_id, int page = 0, int count = 10, CancellationToken ct = default)
         {
             if (scoreInfoCacher.TryGetCachedItem(difficulty_id, out var data))
@@ -773,6 +896,11 @@ namespace AccSaber.API
             CacheScoreData(difficulty_id, outp, blockedUserIds, dataToken.TotalElements, LeaderboardDisplayType.Global);
             return outp.Take(count);
         }
+
+        /// <summary>
+        /// Fetches leaderboard scores for a difficulty id filtered by country. Uses cache when possible.
+        /// Returns null on failure.
+        /// </summary>
         public static async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(string difficulty_id, string country, int page = 0, int count = 10, CancellationToken ct = default)
         {
             if (scoreInfoCacher.TryGetCachedItem(difficulty_id, out ScoreCache data)) 
@@ -804,6 +932,11 @@ namespace AccSaber.API
             CacheScoreData(difficulty_id, outp, blockedUserIds, dataToken.TotalElements, LeaderboardDisplayType.Country);
             return outp.Take(count);
         }
+
+        /// <summary>
+        /// Internal handler that removes blocked players from the provided score tokens and fetches additional entries if necessary.
+        /// Returns the adjusted list and the list of blocked indexes to store.
+        /// </summary>
         private static async Task<(List<AccSaberLeaderboardEntry>? newOutp, List<int>? blockedIds)> HandleBlockedPlayers(List<AccSaberLeaderboardEntry> scoreTokens, 
             ScoreCache data, int page, int count,
             Func<int, int, Task<IEnumerable<AccSaberLeaderboardEntry>?>> getExtraScores)
@@ -850,6 +983,11 @@ namespace AccSaber.API
 
             return (scoreTokens, blockedUserIds);
         }
+
+        /// <summary>
+        /// Retrieves player information for a given user id. When <paramref name="stats"/> is true,
+        /// additional statistics are loaded. Uses the player cache when possible.
+        /// </summary>
         public static async Task<AccSaberUser?> GetPlayerInfo(string userId, bool stats, CancellationToken ct = default)
         {
             if (playerInfoCacher.TryGetCachedItem(userId, out AccSaberUser? outp) && (!stats || outp!.Statistics is not null))
@@ -873,6 +1011,9 @@ namespace AccSaber.API
             return outp;
         }
 
+        /// <summary>
+        /// Returns the public visibility settings for friends/rivals from the API.
+        /// </summary>
         internal static async Task<(bool friends, bool rivals)> ExposeRelations()
         {
             string? dataStr = await CallAPI_String(string.Format(APAPI_AUTH_GET_SETTINGS, "privacy"), throttler).ConfigureAwait(false);
@@ -883,6 +1024,11 @@ namespace AccSaber.API
             JToken privacySettings = JToken.Parse(dataStr!);
             return (privacySettings["privacy.followingVisibility"]?.ToString().Equals("public") ?? false, privacySettings["privacy.rivalsVisibility"]?.ToString().Equals("public") ?? false);
         }
+
+        /// <summary>
+        /// Authenticates the current platform user against the AccSaber API and returns an <see cref="AuthInfo"/>.
+        /// Caches the returned auth info in <see cref="PlayerSocialLife.AuthInfo"/>.
+        /// </summary>
         public static async Task<AuthInfo?> Authenticate()
         {
             if (PlayerSocialLife.AuthInfo is not null && PlayerSocialLife.AuthInfo.ExpirationDate > DateTime.Now)
@@ -966,6 +1112,13 @@ namespace AccSaber.API
         #endregion
         #region Misc structs
 
+        /// <summary>
+        /// Internal structure used to cache leaderboard data for a specific difficulty id.
+        /// - Data: ordered list of leaderboard entries
+        /// - UserIds: set of player ids present in the cached Data list
+        /// - BlockedUserIndexes: indexes of entries that were removed due to local blocking
+        /// - LeaderboardLengths: cached lengths for each <see cref="LeaderboardDisplayType"/>
+        /// </summary>
         private struct ScoreCache
         {
             public List<AccSaberLeaderboardEntry> Data;
@@ -973,6 +1126,9 @@ namespace AccSaber.API
             public List<int> BlockedUserIndexes;
             public readonly int[] LeaderboardLengths;
 
+            /// <summary>
+            /// Returns a ref to the cached length for a given display type.
+            /// </summary>
             public ref int GetLength(LeaderboardDisplayType displayType) => ref LeaderboardLengths[BitOperations.Log2((uint)displayType)];
             public bool ContainsLength(LeaderboardDisplayType displayType) => GetLength(displayType) > -1;
             public bool TryGetLength(LeaderboardDisplayType displayType, out int length)
@@ -995,6 +1151,11 @@ namespace AccSaber.API
                     GetLength(displayType) = length;
             }
         }
+
+        /// <summary>
+        /// Authentication token information returned by the AccSaber API.
+        /// Includes access/refresh tokens and convenience properties for expiration.
+        /// </summary>
         internal sealed class AuthInfo
         {
             [JsonProperty("accessToken")]
@@ -1006,15 +1167,24 @@ namespace AccSaber.API
             [JsonProperty("expiresIn")]
             public long ExpiresIn { get; set; }
 
+            /// <summary>
+            /// Expiration length as a TimeSpan computed from <see cref="ExpiresIn"/>.
+            /// </summary>
             [JsonIgnore]
             public TimeSpan ValidLength => TimeSpan.FromSeconds(ExpiresIn);
 
+            /// <summary>
+            /// Absolute expiration date/time computed during deserialization.
+            /// </summary>
             [JsonIgnore]
             public DateTime ExpirationDate { get; set; }
 
             [JsonProperty("userId")]
             public string UserId { get; set; } = null!;
 
+            /// <summary>
+            /// Optional platform user model associated with this auth info (not serialized).
+            /// </summary>
             [JsonIgnore]
             public IPlatformUserModel? UserModel { get; set; }
 
