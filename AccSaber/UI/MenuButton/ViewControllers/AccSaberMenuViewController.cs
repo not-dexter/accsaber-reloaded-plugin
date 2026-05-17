@@ -1,26 +1,29 @@
-﻿using BeatSaberMarkupLanguage;
+﻿using AccSaber.API;
+using AccSaber.Consts;
+using AccSaber.Managers;
+using AccSaber.Models;
+using AccSaber.Utils;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
+using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
-using System.ComponentModel;
-using SiraUtil.Logging;
-using Zenject;
-using BeatSaberMarkupLanguage.Components;
 using HMUI;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using SiraUtil.Logging;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
-using AccSaber.Utils;
-using System.Threading.Tasks;
-using AccSaber.Models;
-using System;
-using AccSaber.Managers;
-using System.Linq;
-using System.Collections.Generic;
-using Tweening;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using AccSaber.Consts;
-using AccSaber.API;
+using Zenject;
+
+using static AccSaber.API.HelpfulPaths;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -126,21 +129,21 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private bool IsScoresNotLoading => !_isScoresLoading;
 
 		[UIValue("category-value")]
-		private APCategory CategoryValue
-		{
-			get => _categoryValue;
-			set
-			{
-				_categoryValue = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CategoryValue)));
-				_ = UpdateUserInfo();
-			}
-		}
+        private string CategoryValue
+        {
+            get => _categoryValue.ToString();
+            set
+            {
+                _categoryValue = (APCategory)Enum.Parse(typeof(APCategory), value);
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CategoryValue)));
+                _ = UpdateUserInfo();
+            }
+        }
 
-		[UIValue("category-choices")]
-        private List<object> _categoryChoices = [APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech];
+        [UIValue("category-choices")]
+        private List<object> _categoryChoices = [.. new APCategory[] { APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech }.Select(a => a.ToString())];
 
-		[UIValue("username")]
+        [UIValue("username")]
 		private string Username
 		{
 			get => _username.Length > 18 ? $"{_username.Substring(0, 15)}..." : _username + "</color>";
@@ -280,7 +283,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 			IsLoading = true;
 			_firstLoad = true;
-			CategoryValue = APCategory.Overall;
+			CategoryValue = "Overall";
         }
 
 		[UIAction("prev-clicked")]
@@ -307,7 +310,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			if (user is null)
 				return;
 
-			_userId = user.platformUserId;
+            _userId = user.platformUserId;
 
             if (_user is null)
             {
@@ -315,7 +318,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 _user = await AccsaberAPI.GetPlayerInfo(_userId, true);
             }
 
-            await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == CategoryValue));
+            await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == _categoryValue));
         }
 
 		private async Task SetUserInfo(AccSaberUser userInfo, PlayerStats stats)
@@ -338,7 +341,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 			PageNumber = 0;
 
-			string StatDiff(float stat)
+            string StatDiff(float stat)
 			{
 				if (stat != 0)
 					return (stat < 0) ? $"<color=#ef4444><size=75%>▼{Math.Abs(stat):F2}</size></color>" : $"<color=#22c55e><size=75%>▲{Math.Abs(stat):F2}</size></color>";
@@ -405,7 +408,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			IsScoresLoading = true;
 			_scoreCells.Clear();
 			_topScoresList.Data().Clear();
-			var CategoryId = _categoryValue switch
+
+            var CategoryId = _categoryValue switch
 			{
 				APCategory.Overall => "",
 				APCategory.Tech => "&categoryId=b0000000-0000-0000-0000-000000000003",
@@ -414,7 +418,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_ => ""
 			};
 
-			var response = await APIHandler.CallAPI($"/v1/users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc");
+            HttpRequestMessage request = new(HttpMethod.Get, $"{APAPI}/users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc");
+            var response = await APIHandler.CallAPI(request);
 
 			if (!response.Success)
 			{
@@ -425,6 +430,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			if (parsedStr != null)
 			{
 				var parsed = JObject.Parse(parsedStr);
+
+				Plugin.Log.Info(parsedStr);
 
 				_maxPage = parsed["totalPages"]!.ToObject<int>();
 
