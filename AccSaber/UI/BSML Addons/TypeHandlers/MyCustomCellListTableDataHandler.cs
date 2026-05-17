@@ -34,7 +34,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
             Dictionary<string, BSMLAction> actions = parserParams.actions;
 #endif
 
-            MyCustomCellListTableData componentData = component as MyCustomCellListTableData;
+            MyCustomCellListTableData componentData = (component as MyCustomCellListTableData)!;
 
             if (data.TryGetValue("selectCell", out string selectCell))
             {

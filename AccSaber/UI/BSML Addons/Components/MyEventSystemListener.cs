@@ -11,7 +11,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
     internal class MyEventSystemListener : EventSystemListener, IPointerClickHandler
     {
 #pragma warning disable IDE1006
-        public event Action<PointerEventData> pointerDidClickEvent;
+        public event Action<PointerEventData>? pointerDidClickEvent;
         public void OnPointerClick(PointerEventData eventData)
         {
 #if !NEW_VERSION

@@ -21,7 +21,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Tags
             csf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             gameObject.AddComponent<CustomBackground>();
 
-            RectTransform rectTransform = gameObject.transform as RectTransform;
+            RectTransform rectTransform = (gameObject.transform as RectTransform)!;
             rectTransform.anchorMin = Vector2.zero;
             rectTransform.anchorMax = Vector2.one;
             rectTransform.sizeDelta = Vector2.zero;
