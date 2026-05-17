@@ -247,27 +247,15 @@ namespace AccSaber.UI.ViewControllers
             highlightPageTopColor = pageTopSelector.HighlightColor;
             highlightPageYouColor = pageYouSelector.HighlightColor;
 
-#if NEW_VERSION
             defaultPageTopColor = pageTopSelector.DefaultColor;
-            defaultPageUpColor = pageUpImage.Image.color;
+            defaultPageUpColor = pageUpImage.Image().color;
             defaultPageYouColor = pageYouSelector.DefaultColor;
-            defaultPageDownColor = pageDownImage.Image.color;
+            defaultPageDownColor = pageDownImage.Image().color;
 
             pageUpSelector.selectionStateDidChangeEvent += state =>
-                pageUpImage.Image.color = state == NoTransitionsButton.SelectionState.Disabled ? GREYED_OUT.Color() : defaultPageUpColor;
+                pageUpImage.Image().color = state == NoTransitionsButton.SelectionState.Disabled ? GREYED_OUT.Color() : defaultPageUpColor;
             pageDownSelector.selectionStateDidChangeEvent += state =>
-                pageDownImage.Image.color = state == NoTransitionsButton.SelectionState.Disabled ? GREYED_OUT.Color() : defaultPageDownColor;
-#else
-            defaultPageTopColor = pageTopSelector.DefaultColor;
-            defaultPageUpColor = pageUpImage.image.color;
-            defaultPageYouColor = pageYouSelector.DefaultColor;
-            defaultPageDownColor = pageDownImage.image.color;
-
-            pageUpSelector.selectionStateDidChangeEvent += state =>
-                pageUpImage.image.color = state == NoTransitionsButton.SelectionState.Disabled ? GREYED_OUT.Color() : defaultPageUpColor;
-            pageDownSelector.selectionStateDidChangeEvent += state =>
-                pageDownImage.image.color = state == NoTransitionsButton.SelectionState.Disabled ? GREYED_OUT.Color() : defaultPageDownColor;
-#endif
+                pageDownImage.Image().color = state == NoTransitionsButton.SelectionState.Disabled ? GREYED_OUT.Color() : defaultPageDownColor;
 
             lsmc?.BindModal(leaderboardContainer);
 
