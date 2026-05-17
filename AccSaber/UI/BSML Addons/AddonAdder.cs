@@ -1,14 +1,18 @@
-﻿using AccSaber.Utils;
+﻿using AccSaber.UI.ViewControllers;
+using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Tags;
 using AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers;
 using BeatSaberMarkupLanguage;
+using Zenject;
 
 namespace AccsaberLeaderboard.UI.BSML_Addons
 {
-    internal static class AddonAdder
+    internal class AddonAdder : IInitializable
     {
-        public static void Load()
+        public void Initialize()
         {
+            AccSaberLeaderboardViewController.Instance.OnGameRefresh();
+
             BSMLParser instance = VersionUtils.BSMLParser_Instance;
 
             instance.RegisterTag(new BetterVertical());

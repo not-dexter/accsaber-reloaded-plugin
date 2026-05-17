@@ -3,7 +3,6 @@ using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
-using AccSaber.Patches;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using AccsaberLeaderboard.UI.Components;
@@ -269,18 +268,6 @@ namespace AccSaber.UI.ViewControllers
             //PanelViewController.OnPlayerPictureClicked += () => psmvc.ppmvc.ShowPlayer(PlayerSocialLife.PlayerID, this);
             //PanelViewController.OnLogoClicked += () => pmmvc.ShowMilestoneModal(PlayerSocialLife.PlayerID, this);
 
-            LeaderboardShownPatch.LeaderboardShown += () =>
-            {
-                titleContainer.SetActive(true);
-
-                if (!TryUpdateCurrentMap() && refreshRequested)
-                    Task.Run(ForceRefresh);
-            };
-            LeaderboardHiddenPatch.LeaderboardHidden += () =>
-            {
-                titleContainer.SetActive(false);
-            };
-
             // Subscribe to the websocket
             AccSaberStore.OnPlayerScoreUpdated += token =>
             {
@@ -292,8 +279,6 @@ namespace AccSaber.UI.ViewControllers
                         refreshRequested = true;
                 });
             };
-
-            //MiscUtils.Parse(ResourcePaths.BSML_LEADERBOARD_CELL, leaderboard.transform, );
 
             // Subscribe to map selection event
             TrySubscribeToMapSelection();
@@ -366,11 +351,40 @@ namespace AccSaber.UI.ViewControllers
             Plugin.Log.Debug("LeaderboardViewController Init");
             Instance = this;
 
-            aspvc.OnPanelLogoClicked += () => lumc.ShowModal(leaderboard.transform, this, store.GetCurrentUserAsync().Result.PlayerId);
+            aspvc.OnPanelLogoClicked += () => lumc.ShowModal(leaderboard.transform, this, store.GetCurrentUserAsync().GetAwaiter().GetResult().PlayerId);
         }
         public void Dispose()
         {
             
+        }
+
+        private void OnEnable()
+        {
+            titleContainer?.SetActive(true);
+
+            /*if (!TryUpdateCurrentMap() && refreshRequested)
+                Task.Run(ForceRefresh);*/
+
+            if (titlePaneTitleText is not null)
+            {
+                titlePanelTitle = titlePaneTitleText.text;
+                titlePaneTitleText.SetText(RANKED_HEADER);
+            }
+        }
+        private void OnDisable()
+        {
+            titleContainer?.SetActive(false);
+
+            if (titlePaneTitleText is not null)
+            {
+                titlePaneTitleText.SetText(titlePanelTitle);
+                titlePanelTitle = null;
+            }
+        }
+        internal void OnGameRefresh()
+        {
+            InvalidateCache();
+            HandleHeaderPane();
         }
 
         private GameObject? GetHeaderPane()
@@ -393,19 +407,6 @@ namespace AccSaber.UI.ViewControllers
             if (headerPane is null) return;
 
             titlePaneTitleText = headerPane.GetComponentInChildren<TextMeshProUGUI>();
-            ImageView headerBG = headerPane.GetComponentInChildren<ImageView>();
-
-            LeaderboardShownPatch.LeaderboardShown += () =>
-            {
-                titlePanelTitle = titlePaneTitleText.text;
-                titlePaneTitleText.SetText(RANKED_HEADER);
-
-            };
-            LeaderboardHiddenPatch.LeaderboardHidden += () =>
-            {
-                titlePaneTitleText.SetText(titlePanelTitle);
-                titlePanelTitle = null;
-            };
 
             VersionUtils.Parse(ResourcePaths.LEADERBOARD_TITLE_PANEL, headerPane.transform, this);
         }
