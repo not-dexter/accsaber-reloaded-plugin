@@ -15,6 +15,7 @@ using AccSaber.Models;
 using AccSaber.Utils;﻿
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
+using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
 using IPA.Utilities;
@@ -26,6 +27,7 @@ namespace AccSaber.UI.ViewControllers
 {
 	internal sealed class LeaderboardUserModalController : INotifyPropertyChanged, IDisposable
 	{
+#pragma warning disable IDE0051
 		private string? _userId;
 		private AccSaberUser? _user;
 		private readonly PluginConfig _pluginConfig = null!;
@@ -44,9 +46,17 @@ namespace AccSaber.UI.ViewControllers
 		private string _plays = null!;
 		private string _headset = null!;
 
+		private bool friendColorSwapped = false, rivalColorSwapped = false;
+
 		private MonoBehaviour? _host;
 
 		public event PropertyChangedEventHandler? PropertyChanged;
+
+		[UIValue("followImg")]
+		public const string FollowImg = ResourcePaths.FOLLOWED;
+
+		[UIValue("rivalImg")]
+		public const string RivalImg = ResourcePaths.RIVALS;
 
 		[UIComponent("modal")]
 		private ModalView _modalView = null!;
@@ -216,8 +226,10 @@ namespace AccSaber.UI.ViewControllers
 
 		#endregion
 
-		[UIObject("add-friend")]
-		private readonly GameObject _addFriendButton = null!;
+		[UIComponent("add-friend")]
+		private readonly ClickableImage _friendButton = null!;
+		[UIComponent("add-rival")]
+		private readonly ClickableImage _rivalButton = null!;
 
 		[UIValue("relation-loading")]
 		private bool RelationLoading
@@ -241,8 +253,8 @@ namespace AccSaber.UI.ViewControllers
 			return value + " Acc";
 		}
 
-		[UIAction("add-friend-clicked")]
-		private async void AddFriendClicked()
+		[UIAction("friend-clicked")]
+		private async void FriendClicked()
 		{
 			if (_userId is null)
 				return;
@@ -251,32 +263,50 @@ namespace AccSaber.UI.ViewControllers
 
 			if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(_userId))
 			{
-				_addFriendButton.gameObject.GetComponent<Button>().enabled = false;
-				_addFriendButton.gameObject.SetActive(false);
 				RelationLoading = true;
                 await PlayerSocialLife.RemoveId(_userId, LeaderboardDisplayType.Followed);
 				RelationLoading = false;
-				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
-				_addFriendButton.gameObject.SetActive(true);
-				_addFriendButton.gameObject.GetComponent<Button>().enabled = true;
 			}
 			else
 			{
-				_addFriendButton.gameObject.GetComponent<Button>().enabled = false;
-				_addFriendButton.gameObject.SetActive(false);
 				RelationLoading = true;
 				await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Followed);
                 RelationLoading = false;
-				_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
-				_addFriendButton.gameObject.SetActive(true);
-				_addFriendButton.gameObject.GetComponent<Button>().enabled = true;
 			}
-		}
+
+			friendColorSwapped = !friendColorSwapped;
+            (_friendButton.DefaultColor, _friendButton.HighlightColor) = (_friendButton.HighlightColor, _friendButton.DefaultColor);
+        }
+
+		[UIAction("rival-clicked")]
+		private async void RivalClicked()
+		{
+			if (_userId is null)
+				return;
+
+			await PlayerSocialLife.LoadTask;
+
+			if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(_userId))
+			{
+				RelationLoading = true;
+                await PlayerSocialLife.RemoveId(_userId, LeaderboardDisplayType.Rivals);
+				RelationLoading = false;
+			}
+			else
+			{
+				RelationLoading = true;
+				await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Rivals);
+                RelationLoading = false;
+			}
+
+			rivalColorSwapped = !rivalColorSwapped;
+            (_rivalButton.DefaultColor, _rivalButton.HighlightColor) = (_rivalButton.HighlightColor, _rivalButton.DefaultColor);
+        }
 		private void Parse(Transform parentTransform)
 		{
 			if (!_parsed)
 			{
-				VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), "AccSaber.UI.Views.LeaderboardUserModal.bsml"), parentTransform.gameObject, this);
+				VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.LEADERBOARD_USER_MODAL), parentTransform.gameObject, this);
 				_modalView.name = "AccSaberLeaderboardUserModal";
 				_modalView.blockerClickedEvent += OnModalClosed;
 
@@ -287,8 +317,11 @@ namespace AccSaber.UI.ViewControllers
                 dropdownModalView.SetField("_parentCanvasGroup", canvasGroup);
 				
 				_userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
-				
-				_profileImage.material = Resources.FindObjectsOfTypeAll<Material>().Last(x => x.name == "UINoGlowRoundEdge");
+
+				_profileImage.material = ResourcePaths.BORDER_MATERIAL;
+
+				_friendButton.HighlightColor = ColorUtils.RELOADED.Color();
+				_rivalButton.HighlightColor = ColorUtils.TARGETED.Color();
 
 				_parsed = true;
 			}
@@ -312,19 +345,27 @@ namespace AccSaber.UI.ViewControllers
 			{
 				yield return new WaitForEndOfFrame();
 
-				if (!PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId) && PlayerSocialLife.PlayerID != userId)
+				if (PlayerSocialLife.PlayerID != userId)
 				{
-					_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
-					_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);
-				}
-				else if (PlayerSocialLife.PlayerID == userId)
+                    _friendButton.gameObject.SetActive(true);
+                    _rivalButton.gameObject.SetActive(true);
+
+                    if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId) ^ friendColorSwapped)
+					{
+						(_friendButton.DefaultColor, _friendButton.HighlightColor) = (_friendButton.HighlightColor, _friendButton.DefaultColor);
+						friendColorSwapped = !friendColorSwapped;
+
+                    }
+					if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(userId) ^ rivalColorSwapped)
+					{
+                        (_rivalButton.DefaultColor, _rivalButton.HighlightColor) = (_rivalButton.HighlightColor, _rivalButton.DefaultColor);
+                        rivalColorSwapped = !rivalColorSwapped;
+                    }
+
+                } else
 				{
-					_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(false);
-				}
-				else
-				{
-					_addFriendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
-					_addFriendButton.gameObject.GetComponent<Button>().gameObject.SetActive(true);
+					_friendButton.gameObject.SetActive(false);
+					_rivalButton.gameObject.SetActive(false);
 				}
 
 				CategoryValue = APCategory.Overall.ToString();
