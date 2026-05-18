@@ -1,5 +1,5 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-  <my-custom-list id='leaderboard' contents='leaderboard-infos' clickable-cells='true' select-cell='OnCellSelected' pref-width='~containerWidth' pref-height='~containerHeight' anchor-pos-y='5'/>
+  <my-custom-list id='leaderboard' contents='leaderboard-infos' clickable-cells='true' select-cell='OnCellSelected' pref-width='~containerWidth' pref-height='~containerHeight' anchor-pos-x='5' anchor-pos-y='5'/>
 
   <vertical id='leaderboard_loading' anchor-pos-y='-30' anchor-pos-x='0' pref-width='20' pref-height='20' child-expand-width='false' child-expand-height='false' active='false'>
     <loading preserve-aspect='true'/>
@@ -9,14 +9,14 @@
     <text text='Map is Unranked.' font-size='19'/>
   </vertical>
 
-  <vertical anchor-pos-x='50' anchor-pos-y='-17' vertical-fit='PreferredSize' pref-height='35' pref-width='8' bg='round-rect-panel'>
+  <vertical anchor-pos-x='-41.75' anchor-pos-y='-13' vertical-fit='PreferredSize' pref-height='25' pref-width='8' bg='panel-top' bg-color='#0009' skew='0'>
     <clickable-image id='PageTopSelector' src='~topArrowPic' pref-width='5' pref-height='5' on-click='OnPageTop' default-color='~colorGrey'/>
     <page-button id='PageUpSelector' direction='Up' pref-width='5' on-click='OnPageUp'/>
     <clickable-image id='PageYouSelector' src='~youPic' preserve-aspect='true' pref-width='5' pref-height='5' on-click='OnYouClicked' default-color='~colorGrey'/>
     <page-button id='PageDownSelector' direction='Down' pref-width='5' on-click='OnPageDown'/>
   </vertical>
 
-  <vertical id='selectorContainer' anchor-pos-x='50' anchor-pos-y='23' vertical-fit='PreferredSize' pref-height='35' pref-width='8' bg='round-rect-panel'>
+  <vertical id='selectorContainer' anchor-pos-x='-41.75' anchor-pos-y='20' vertical-fit='PreferredSize' pref-height='30' pref-width='8' bg='panel-top' bg-color='#0009' skew='0'>
     <clickable-image id='GlobalSelector' src='~globalPic' pref-width='5' pref-height='5' on-click='ShowGlobal' hover-hint='Global'/>
     <clickable-image id='FollowedSelector' src='~followedPic' pref-width='5' pref-height='5' on-click='ShowFollowed' hover-hint='Followed'/>
     <clickable-image id='RivalsSelector' src='~rivalsPic' pref-width='5' pref-height='5' on-click='ShowRivals' hover-hint='Rivals' default-color='~colorGrey'/>
