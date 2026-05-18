@@ -1,17 +1,17 @@
-﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical pref-width='120'>
-    <horizontal bg="panel-top" horizontal-fit="PreferredSize" pref-width="120">
-      <text text="Milestones" align="Center" font-size="10" />
+    <horizontal bg='panel-top' horizontal-fit='PreferredSize' pref-width='120'>
+      <text text='Milestones' align='Center' font-size='10' />
     </horizontal>
-    <vertical vertical-fit='PreferredSize' skew='0' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad="1" pad-top="0" >
+    <vertical vertical-fit='PreferredSize' skew='0' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' >
       <tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected'/>
     </vertical>
-    <tab tags='tabs' tab-name='Completed' on-click="completed-clicked" />
-    <tab tags='tabs' tab-name='In Progress' on-click="progress-clicked"/>
-    <horizontal pref-width="120" spacing="1" horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
-      <vertical bg="panel-top" bg-color="black" skew="0" pref-width="105" pref-height="60" pad="2">
-        <loading-indicator active="~is-loading" preserve-aspect="true" pref-width="10" pref-height="10"/>
-        <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' stick-scrolling='true' active="~is-not-loading">
+    <tab tags='tabs' tab-name='Completed' on-click='completed-clicked' />
+    <tab tags='tabs' tab-name='In Progress' on-click='progress-clicked'/>
+    <horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
+      <vertical bg='panel-top' bg-color='black' skew='0' pref-width='105' pref-height='60' pad='2'>
+        <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
+        <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' stick-scrolling='true' active='~is-not-loading'>
           <vertical id='background-container' bg='panel-top' skew='0' horizontal-fit='Unconstrained' pad='1' pad-bottom='2'>
             <horizontal>
               <vertical pad='3' pref-width='100' horizontal-fit='PreferredSize' >
