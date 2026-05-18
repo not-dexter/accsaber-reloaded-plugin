@@ -62,7 +62,6 @@ namespace AccSaber.UI.ViewControllers
         private AsyncLock loadLeaderboardLock = new(), forceRefreshLock = new();
         private Color selectorDefaultColor, defaultPageTopColor, defaultPageUpColor, defaultPageYouColor, defaultPageDownColor;
         private Color highlightPageTopColor, highlightPageYouColor;
-        private Stack<int> previousPages = [];
         private AccSaberDifficulty? difficultyInfo;
         private bool refreshRequested = false, loaded = false;
 
@@ -99,9 +98,8 @@ namespace AccSaber.UI.ViewControllers
                 //Plugin.Log.Info($"current player page = {currentPlayerPage}, current page = {currentPage}, next page = {nextPage}");
                 return DisplayType switch
                 {
-                    LeaderboardDisplayType.Country or LeaderboardDisplayType.Followed or LeaderboardDisplayType.Rivals =>
-                        scoreDatas.FirstOrDefault()?.ScoreData.Rank <= currentPlayerScore?.Rank && scoreDatas.LastOrDefault()?.ScoreData.Rank >= currentPlayerScore?.Rank,
-                    _ => currentPage <= currentPlayerPage && (nextPage > currentPlayerPage || currentPage == nextPage)
+                    LeaderboardDisplayType.Global => currentPage <= currentPlayerPage && (nextPage > currentPlayerPage || currentPage == nextPage),
+                    _ => scoreDatas.FirstOrDefault()?.ScoreData.Rank <= currentPlayerScore?.Rank && scoreDatas.LastOrDefault()?.ScoreData.Rank >= currentPlayerScore?.Rank
                 };
             }
         }
@@ -113,13 +111,11 @@ namespace AccSaber.UI.ViewControllers
                 if (currentPlayerPage == -1) return false;
                 return DisplayType switch
                 {
-                    LeaderboardDisplayType.Country or LeaderboardDisplayType.Followed or LeaderboardDisplayType.Rivals => scoreDatas.FirstOrDefault()?.ScoreData.Rank > currentPlayerScore?.Rank,
-                    _ => currentPage > currentPlayerPage
+                    LeaderboardDisplayType.Global => currentPage > currentPlayerPage,
+                    _ => scoreDatas.FirstOrDefault()?.ScoreData.Rank > currentPlayerScore?.Rank
                 };
             }
         }
-
-        public bool UsesPreviousPages => DisplayType is LeaderboardDisplayType.Relations;
 
         #endregion Instance Variables & Fields
 
@@ -185,7 +181,6 @@ namespace AccSaber.UI.ViewControllers
         [UIObject("titleContainer")] private GameObject titleContainer = null!;
 
         [UIComponent("GlobalSelector")] private ClickableImage globalSelector = null!;
-        [UIComponent("FriendsSelector")] private ClickableImage friendsSelector = null!;
         [UIComponent("FollowedSelector")] private ClickableImage followedSelector = null!;
         [UIComponent("RivalsSelector")] private ClickableImage rivalsSelector = null!;
         [UIComponent("RelationsSelector")] private ClickableImage relationsSelector = null!;
@@ -219,7 +214,6 @@ namespace AccSaber.UI.ViewControllers
             {
                 yield return new WaitForEndOfFrame();
 
-                friendsSelector.gameObject.SetActive(!toggle);
                 followedSelector.gameObject.SetActive(!toggle);
                 rivalsSelector.gameObject.SetActive(!toggle);
                 relationsSelector.gameObject.SetActive(toggle);
@@ -291,8 +285,6 @@ namespace AccSaber.UI.ViewControllers
         {
             if (page == 1 || CurrentHash is null) return; // Already on the first page
             page = 1;
-            if (UsesPreviousPages)
-                previousPages.Clear();
             ReloadLeaderboard();
         }
 
@@ -300,7 +292,7 @@ namespace AccSaber.UI.ViewControllers
         private void OnPageUp()
         {
             if (page == 1 || CurrentHash is null) return; // Can't go back from the first page
-            page = UsesPreviousPages ? previousPages.Pop() : page - 1;
+            --page;
             ReloadLeaderboard();
         }
 
@@ -308,8 +300,6 @@ namespace AccSaber.UI.ViewControllers
         private void OnYouClicked()
         {
             if (currentPlayerPage < 1 || page == currentPlayerPage || CurrentHash is null) return;
-            if (UsesPreviousPages)
-                previousPages.Push(page);
             page = currentPlayerPage;
             ReloadLeaderboard();
         }
@@ -319,8 +309,6 @@ namespace AccSaber.UI.ViewControllers
         {
             if (scoreDatas.Count < PAGE_LENGTH || CurrentHash is null)
                 return;
-            if (UsesPreviousPages)
-                previousPages.Push(page);
             page = nextPage;
             ReloadLeaderboard();
         }
@@ -436,9 +424,6 @@ namespace AccSaber.UI.ViewControllers
                 return;
 
             ci.DefaultColor = selectorDefaultColor;
-
-            if (UsesPreviousPages)
-                previousPages.Clear();
 
             ci = GetSelector(newDisplayType);
 
@@ -627,10 +612,9 @@ namespace AccSaber.UI.ViewControllers
 
                     await PlayerSocialLife.LoadTask;
 
-                    scoreDatas.Clear();
+                    scoreDatas.RemoveRange(0, Math.Min(PAGE_LENGTH, scoreDatas.Count));
 
                     AccSaberLeaderboardEntry[]? scores;
-                    (AccSaberLeaderboardEntry[] scores, int truePage) scoreData;
 
                     switch (DisplayType)
                     {
@@ -640,11 +624,14 @@ namespace AccSaber.UI.ViewControllers
                             break;
 
                         case LeaderboardDisplayType.Relations:
-                            int neededScores = Math.Min(PlayerSocialLife.GetIds_Internal(DisplayType)!.Count - previousPages.Count * PAGE_LENGTH, PAGE_LENGTH);
+                            IEnumerable<AccSaberLeaderboardEntry>? totalData;
+                            totalData = await GetScoreData(page, DifficultyId, RelationType.follower);
+                            totalData = (await GetScoreData(page, DifficultyId, RelationType.rival)).Union(totalData, new EntryComparer());
 
-                            scoreData = await GetScoreData(page, DifficultyId, CurrentFilter!, DisplayType, neededScores);
-                            scores = scoreData.scores;
-                            nextPage = scoreData.truePage;
+                            scores = totalData is null ? null : [.. totalData];
+                            Array.Sort(scores, (a, b) => a.Rank - b.Rank);
+
+                            nextPage = page + 1;
 
                             break;
 
@@ -765,6 +752,15 @@ namespace AccSaber.UI.ViewControllers
             public float CellSize => 1.5f;
 
             public int TemplateId { get; set; }
+        }
+        private class EntryComparer : IEqualityComparer<AccSaberLeaderboardEntry>
+        {
+            public bool Equals(AccSaberLeaderboardEntry x, AccSaberLeaderboardEntry y) => x.PlayerId.Equals(y.PlayerId);
+
+            public int GetHashCode(AccSaberLeaderboardEntry obj)
+            {
+                return obj.PlayerId.GetHashCode();
+            }
         }
     }
 }
