@@ -14,6 +14,7 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
+using System.Linq;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -35,7 +36,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private readonly CustomCellListTableData _newsList = null!;
 
         [UIValue("news-cells")]
-        private readonly List<NewsCell> _newsCells = new List<NewsCell>();
+        private readonly List<object> _newsCells = [];
 
         [UIValue("is-loading")]
         private bool IsLoading

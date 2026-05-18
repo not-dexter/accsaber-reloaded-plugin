@@ -20,7 +20,6 @@ using Oculus.Platform;
 
 using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
-using static StandardScoreSyncState;
 
 namespace AccSaber.API
 {
@@ -1004,7 +1003,9 @@ namespace AccSaber.API
             bool statsCached = playerCached && outp!.Statistics is not null;
             bool statDiffCached = statsCached && outp!.LoadStatDiffs.IsCompleted;
 
-            if (playerCached && statsCached == stats && statDiffCached == statDiff)
+            //Plugin.Log.Info($"cached = {playerCached}, stats cached = {statsCached}, diff cached = {statDiffCached} || want stats ? {stats}, want diff {statDiff}");
+
+            if (playerCached && (statsCached || !stats) && (statDiffCached || !statDiff))
                 return outp;
 
             if (statsCached && statDiff)
