@@ -5,6 +5,7 @@ using AccSaber.UI;
 using AccSaber.UI.MenuButton;
 using AccSaber.UI.MenuButton.ViewControllers;
 using AccSaber.UI.ViewControllers;
+using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons;
 using Zenject;
 
@@ -47,6 +48,7 @@ namespace AccSaber.Installers
 #else
 			new AddonAdder().Initialize(); // scuffed, but gets the job done.
 #endif
+			Container.Bind(typeof(IInitializable)).To<PlayerSocialLife>().AsSingle();
 		}
 	}
 }

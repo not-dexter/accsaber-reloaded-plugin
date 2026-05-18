@@ -2,6 +2,7 @@
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.Models.CacheModels;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers;
@@ -415,14 +416,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			IsScoresLoading = true;
 			_scoreCells.Clear();
 
-            var CategoryId = _categoryValue switch
+            /*var CategoryId = _categoryValue switch
 			{
 				APCategory.Overall => "",
 				APCategory.Tech => "&categoryId=b0000000-0000-0000-0000-000000000003",
 				APCategory.True => "&categoryId=b0000000-0000-0000-0000-000000000001",
 				APCategory.Standard => "&categoryId=b0000000-0000-0000-0000-000000000002",
 				_ => ""
-			};
+			};*/
 
 			/*HttpRequestMessage request = new(HttpMethod.Get, $"{APAPI}users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc");
             var response = await APIHandler.CallAPI(request);
@@ -456,11 +457,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				}
 			}*/
 
-			// Use callAPI_String for getting strings like we are here. When directly calling, make sure to provide the throttler so we don't go over the limit.
-			// (throttler keeps track of all api calls and will throttle connection if to many are sent in a period of time)
 			try
 			{
-				string? response = await APIHandler.CallAPI_String($"{APAPI}users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc", AccsaberAPI.throttler).ConfigureAwait(false);
+                /*// Use callAPI_String for getting strings like we are here. When directly calling, make sure to provide the throttler so we don't go over the limit.
+                // (throttler keeps track of all api calls and will throttle connection if to many are sent in a period of time)
+                string? response = await APIHandler.CallAPI_String($"{APAPI}users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc", AccsaberAPI.throttler)
 
 				// If the api response is null, then it failed, so we can return.
 				if (response is null)
@@ -468,22 +469,36 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 				// Instead of worrying about getting the page info, I made this generic model for getting page information while also parsing the main content.
 				// (I'm pretty sure this is how Tiku handles it on his end as well)
-				AccSaberPagedContent<AccSaberLeaderboardEntry>? content = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberLeaderboardEntry>>(response);
+				AccSaberPagedContent<AccSaberLeaderboardEntry>? content = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberLeaderboardEntry>>(response);*/
 
-				// This is probably never null, but check just in case.
-				if (content is null)
+                // Or instead of the above stuff, just use an AccsaberAPI call (or make one if it doesn't exist)
+                IEnumerable<AccSaberPlayerScore>? content = await AccsaberAPI.GetPlayerScores(PageNumber, 5, _categoryValue);
+
+                // This is probably never null, but check just in case.
+                if (content is null)
 					return;
 
-				// With the model, I can just get the page info directly.
-				_maxPage = content.TotalPages;
+				// If you call with directly, you can get the page info directly.
+				//_maxPage = content.TotalPages;
+
+				// Otherwise, AccsaberAPI will save it to cache (well, it'll save the number of elements, gotta divide by page length).
+				_maxPage = (int)Math.Ceiling(SerializerHandler.CachedPlayerScoreLength / 5f);
+
 				Pagnation = $"{_pageNumber + 1}/{_maxPage}";
 
-				// From here on, the loading is the same
-				foreach (AccSaberLeaderboardEntry score in content.Content!)
+                // From here on, the loading is the same
+                //foreach (AccSaberLeaderboardEntry score in content.Content!)
+                //{
+                //	_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty, score.Accuracy.ToString(), score.AP.ToString(), score.CategoryId, score.CoverUrl));
+                //}
+
+                // Just gotta use a different type with AccsaberAPI (I did this so that I wouldn't have to cache a full LeaderboardEntry, just the important parts.
+                foreach (AccSaberPlayerScore score in content)
 				{
-					_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty, score.Accuracy.ToString(), score.AP.ToString(), score.CategoryId, score.CoverUrl));
+					_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty.ToString(), score.Accuracy.ToString(), score.AP.ToString(), EnumUtils.EnumToReloadedCategory(score.Category)!, score.CoverUrl));
 				}
-			
+
+
 				// Make sure to do UI updates at the end of frame. Otherwise you are spinning a wheel on whether Unity will crash the game or not.
 				IEnumerator WaitThenUpdate()
 				{

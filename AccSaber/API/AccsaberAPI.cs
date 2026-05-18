@@ -1,6 +1,7 @@
 ﻿using Accsaber.Utils;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.Models.CacheModels;
 using AccSaber.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -19,6 +20,7 @@ using Oculus.Platform;
 
 using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
+using static StandardScoreSyncState;
 
 namespace AccSaber.API
 {
@@ -54,11 +56,6 @@ namespace AccSaber.API
         private static readonly ObjectCacher<ScoreCache> scoreInfoCacher = new();
 
         /// <summary>
-        /// Cache of ranked maps keyed by song hash.
-        /// </summary>
-        private static readonly Dictionary<string, AccSaberRankedMap> mapCache = [];
-
-        /// <summary>
         /// Number of entries per leaderboard page used by the plugin.
         /// </summary>
         public const int PAGE_LENGTH = 10;
@@ -84,7 +81,6 @@ namespace AccSaber.API
                 }
             };
         }
-
         #region Sync Functions
 
         /// <summary>
@@ -703,7 +699,7 @@ namespace AccSaber.API
         /// </summary>
         public static async Task<AccSaberLeaderboardEntry?> GetScoreData(string userId, string hash, BeatmapDifficulty diff, CancellationToken ct = default)
         {
-            if (mapCache.TryGetValue(hash, out AccSaberRankedMap map))
+            if (SerializerHandler.CachedMaps.TryGetValue(hash, out AccSaberRankedMap map))
             {
                 AccSaberDifficulty? selectedDiff = map.Difficulties?.FirstOrDefault(currentDiff => currentDiff.Difficulty == diff);
                 if (selectedDiff is not null && scoreInfoCacher.TryGetCachedItem(selectedDiff.DifficultyId, out ScoreCache val) && val.UserIds.Contains(userId))
@@ -727,20 +723,15 @@ namespace AccSaber.API
             if (ct.IsCancellationRequested) 
                 return null;
 
-            if (mapCache.TryGetValue(hash, out AccSaberRankedMap? map))
+            if (SerializerHandler.CachedMaps.TryGetValue(hash, out AccSaberRankedMap? map))
                 return map;
 
             try
             {
-                string? dataStr = await CallAPI_String(string.Format(APAPI_HASH, hash), throttler, true, ct: ct).ConfigureAwait(false);
-
-                if (string.IsNullOrEmpty(dataStr)) 
-                    return null;
-
-                map = JsonConvert.DeserializeObject<AccSaberRankedMap>(dataStr!);
+                map = await CallAPI_Json<AccSaberRankedMap>(string.Format(APAPI_HASH, hash), throttler, true, ct: ct);
 
                 if (map is not null)
-                    mapCache[hash] = map;
+                    SerializerHandler.CachedMaps[hash] = map;
 
                 return map;
             }
@@ -818,30 +809,28 @@ namespace AccSaber.API
         /// </summary>
         public static async Task LoadAllMaps(CancellationToken ct = default)
         {
-            string? dataStr = await CallAPI_String(string.Format(APAPI_MAPS, 0, 1), throttler, ct: ct);
+            int totalMaps = SerializerHandler.TotalMaps;
 
-            if (string.IsNullOrEmpty(dataStr)) 
+            if (totalMaps == SerializerHandler.CachedMaps.Count)
                 return;
 
-            AccSaberPagedContent? pageInfo = JsonConvert.DeserializeObject<AccSaberPagedContent>(dataStr!);
+            if (totalMaps < 0)
+            {
+                AccSaberPagedContent? pageInfo = await CallAPI_Json<AccSaberPagedContent>(string.Format(APAPI_MAPS, 0, 1), throttler, ct: ct);
 
-            if (pageInfo is null)
-                return;
+                if (pageInfo is null)
+                    return;
 
-            int totalMaps = pageInfo.TotalElements;
+                totalMaps = pageInfo.TotalElements;
+            }
 
-            dataStr = await CallAPI_String(string.Format(APAPI_MAPS, 0, totalMaps), throttler, ct: ct);
-
-            if (string.IsNullOrEmpty(dataStr)) 
-                return;
-
-            AccSaberPagedContent<AccSaberRankedMap>? maps = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberRankedMap>>(dataStr!);
+            AccSaberPagedContent<AccSaberRankedMap>? maps = await CallAPI_Json<AccSaberPagedContent<AccSaberRankedMap>>(string.Format(APAPI_MAPS, 0, totalMaps), throttler, ct: ct);
 
             if (maps is null || maps.Content is null)
                 return;
 
             foreach (AccSaberRankedMap map in maps.Content)
-                mapCache.TryAdd(map.Hash, map);
+                SerializerHandler.CachedMaps.TryAdd(map.Hash, map);
         }
 
         /// <summary>
@@ -1038,6 +1027,38 @@ namespace AccSaber.API
                 await outp.LoadStatDiffs;
 
             playerInfoCacher.CacheItem(outp, userId);
+
+            return outp;
+        }
+
+        public static async Task<IEnumerable<AccSaberPlayerScore>?> GetPlayerScores(int page, int pageLength, APCategory category = APCategory.Overall, CancellationToken ct = default)
+        { // page is zero indexed.
+            // The cache should be sorted, so this should not be an issue.
+            IEnumerable<AccSaberPlayerScore> filteredCache = SerializerHandler.CachedPlayerScores;
+            if (category != APCategory.Overall)
+                filteredCache = filteredCache.Where(score => score.Category == category);
+
+            if (filteredCache.Count() >= (page + 1) * pageLength)
+                return filteredCache.Skip(page * pageLength).Take(pageLength);
+
+            await PlayerSocialLife.LoadTask;
+
+            string url = string.Format(APAPI_SCORES, PlayerSocialLife.PlayerID, page, pageLength);
+            if (category != APCategory.Overall)
+                url += "&categoryId=" + EnumUtils.EnumToReloadedCategory(category);
+
+            AccSaberPagedContent<AccSaberLeaderboardEntry>? response = await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(url, throttler);
+            if (response is null)
+                return null;
+
+            IEnumerable<AccSaberPlayerScore> outp = response.Content!.Select(entry => new AccSaberPlayerScore(entry));
+
+            List<AccSaberPlayerScore> newCache = MergeListWithEnumerable(SerializerHandler.CachedPlayerScores, outp, score => score.AP);
+            SerializerHandler.CachedPlayerScores.Clear();
+            SerializerHandler.CachedPlayerScores.AddRange(newCache);
+
+            if (SerializerHandler.CachedPlayerScoreLength < 0)
+                SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
 
             return outp;
         }

@@ -1,4 +1,5 @@
 ﻿using AccSaber;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -162,6 +163,16 @@ namespace AccSaber.API
             var (Success, Content) = await CallAPI(path, t, quiet, maxRetries, ct).ConfigureAwait(false);
             if (!Success) return null;
             return await Content!.ReadAsByteArrayAsync().ConfigureAwait(false);
+        }
+
+        public static async Task<T?> CallAPI_Json<T>(string path, Throttler? t = null, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
+        {
+            string? dataStr = await CallAPI_String(path, t, quiet, maxRetries, ct).ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(dataStr))
+                return default;
+
+            return JsonConvert.DeserializeObject<T>(dataStr!);
         }
     }
 }
