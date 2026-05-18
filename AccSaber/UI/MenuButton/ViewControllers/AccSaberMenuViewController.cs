@@ -555,7 +555,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_mapName = mapName;
 				_mapAuthor = mapAuthor;
 				_mapDiff = DiffName(mapDiff);
-				_scoreAcc = $"{(float.Parse(scoreAcc) * 100):F2}%";
+				_scoreAcc = $"{float.Parse(scoreAcc) * 100:F2}%";
 				_scoreAp = $"{float.Parse(scoreAp):F2} AP";
 				_mapCategory = CategoryName(mapCategory);
 				_mapCover = mapCover;

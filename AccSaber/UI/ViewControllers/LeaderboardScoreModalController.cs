@@ -5,11 +5,7 @@ using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -118,6 +114,11 @@ namespace AccSaber.UI.ViewControllers
             AccSaberUser? playerInfo = await GetPlayerInfo(scoreInfo.PlayerId, true, false);
             if (playerInfo is not null)
                 await ShowTextsAsync(host, scoreInfo, playerInfo);
+            else
+            {
+                Plugin.Log.Error("Player info is null somehow, check api for weirdness.");
+                loader.SetActive(false);
+            }
         }
         private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberUser playerInfo) =>
             await Task.Run(() => host.StartCoroutine(ShowTexts(scoreInfo, playerInfo)));
@@ -137,29 +138,29 @@ namespace AccSaber.UI.ViewControllers
         }
         private IEnumerator ShowTexts(AccSaberLeaderboardEntry scoreInfo, AccSaberUser playerInfo)
         {
-            lastUser = playerInfo;
-            LevelData levelInfo = playerInfo.LevelData;
+                lastUser = playerInfo;
+                LevelData levelInfo = playerInfo.LevelData;
 
             yield return new WaitForEndOfFrame();
 
-            string titleColor = GetTitleColor(levelInfo.PlayerTitle);
-            playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
-            playerNameText.SetText(scoreInfo.PlayerName);
+                string titleColor = GetTitleColor(levelInfo.PlayerTitle);
+                playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
+                playerNameText.SetText(scoreInfo.PlayerName);
 
-            if (ColorUtility.TryParseHtmlString(titleColor, out Color c))
-                playerImageBorder.color = c;
+                if (ColorUtility.TryParseHtmlString(titleColor, out Color c))
+                    playerImageBorder.color = c;
 
-            timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(2));
+                timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(2));
 
-            apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
-            accText.SetText($"<color={ACC}>{scoreInfo.Accuracy * 100f:N4}%</color>");
-            rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
+                apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
+                accText.SetText($"<color={ACC}>{scoreInfo.Accuracy * 100f:N4}%</color>");
+                rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
 
-            weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
-            xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
-            scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
+                weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
+                xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
+                scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
 
-            playerImage.SetImageAsync(scoreInfo.AvatarURL);
+                playerImage.SetImageAsync(scoreInfo.AvatarURL);
 
             yield return new WaitForFixedUpdate();
 

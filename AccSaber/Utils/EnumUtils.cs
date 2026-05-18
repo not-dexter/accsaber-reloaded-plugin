@@ -42,13 +42,13 @@ namespace AccSaber.Utils
             _ => throw new ArgumentException("Invalid difficulty string. Must be one of the following: EASY, NORMAL, HARD, EXPERT, EXPERT_PLUS.")
         };
         public static BeatmapDifficulty ReloadedDiffToDiff(string diff) => ToDiff(ReloadedDiffToDiffNum(diff));
-        public static APCategory ReloadedCategoryToEnum(string category) => category switch
+        public static APCategory? ReloadedCategoryToEnum(string category) => category switch
         {
             "b0000000-0000-0000-0000-000000000001" => APCategory.True,
             "b0000000-0000-0000-0000-000000000002" => APCategory.Standard,
             "b0000000-0000-0000-0000-000000000003" => APCategory.Tech,
             "b0000000-0000-0000-0000-000000000005" => APCategory.Overall,
-            _ => throw new ArgumentException($"The category id provided, \"{category}\", must be able to convert.")
+            _ => null
         };
         public static string? CategoryIdToReloadedCategory(string category) => category switch
         {

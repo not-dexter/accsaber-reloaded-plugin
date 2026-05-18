@@ -47,7 +47,7 @@ namespace AccSaber.Models.CacheModels
             AP = score.AP;
             TimeSet = score.TimeSet;
             Difficulty = EnumUtils.ReloadedDiffToDiff(score.Difficulty);
-            Category = EnumUtils.ReloadedCategoryToEnum(score.CategoryId);
+            Category = EnumUtils.ReloadedCategoryToEnum(score.CategoryId)!.Value;
         }
     }
 }

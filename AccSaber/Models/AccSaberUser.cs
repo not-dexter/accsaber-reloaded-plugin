@@ -69,7 +69,7 @@ namespace AccSaber.Models
 		public float AP { get; set; }
 
 		[JsonProperty("averageAcc")]
-		public float AverageAcc { get; set; }
+		public float AverageAcc { get; set; } = 0f;
 
 		[JsonProperty("averageAp")]
 		public float AverageAp { get; set; }
@@ -172,6 +172,9 @@ namespace AccSaber.Models
 		{
             foreach (PlayerStats stat in Statistics!)
             {
+				if (stat.Category is null)
+					continue;
+
                 string category_id = stat.Category.ToString();
                 category_id = char.ToLower(category_id[0]) + category_id.Substring(1);
 

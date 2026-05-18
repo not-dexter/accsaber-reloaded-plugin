@@ -1013,7 +1013,7 @@ namespace AccSaber.API
                 return outp;
             }
 
-            string? dataStr = await CallAPI_String(string.Format(APAPI_PLAYERID, userId, stats.ToString().ToLower()), throttler, false, ct: ct).ConfigureAwait(false);
+            string? dataStr = await CallAPI_String(string.Format(APAPI_PLAYERID, userId, stats.ToString().ToLower()), throttler, false, ct: ct);
 
             if (string.IsNullOrEmpty(dataStr)) 
                 return null;
