@@ -145,7 +145,7 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("topArrowPic")] private const string topArrowPic = ResourcePaths.TOP_ARROW;
         [UIValue("youPic")] private const string youPic = ResourcePaths.YOU;
         [UIValue("swapPic")] private const string swapPic = ResourcePaths.SWAP;
-        [UIValue("globalPic")] private const string globalPic = ResourcePaths.GLOBAL_ICON;
+        [UIValue("globalPic")] private const string globalPic = ResourcePaths.GLOBAL;
         [UIValue("friendsPic")] private const string friendsPic = ResourcePaths.FRIEND;
         [UIValue("followedPic")] private const string followedPic = ResourcePaths.FOLLOWED;
         [UIValue("rivalsPic")] private const string rivalsPic = ResourcePaths.RIVALS;
@@ -157,6 +157,9 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("containerHeight")] public const float containerHeight = 80f;
 
         [UIValue("complexityFontSize")] public const float complexityFontSize = 5f;
+
+        [UIValue("iconSize")] public const float iconSize = 7f;
+        [UIValue("globeIconSize")] public const float globeIconSize = iconSize - 1f;
 
         [UIParams] private BSMLParserParams parserParams = null!;
         [UIComponent("leaderboard")] private MyCustomCellListTableData leaderboard = null!;
@@ -218,7 +221,7 @@ namespace AccSaber.UI.ViewControllers
                 rivalsSelector.gameObject.SetActive(!toggle);
                 relationsSelector.gameObject.SetActive(toggle);
 
-                selectorContainer.preferredHeight = toggle ? 25f : 35f;
+                selectorContainer.preferredHeight = toggle ? globeIconSize + iconSize * 2 + 2 : globeIconSize + iconSize * 3 + 2;
             }
             StartCoroutine(UpdateUI());
             PC.CombineRelations = toggle;

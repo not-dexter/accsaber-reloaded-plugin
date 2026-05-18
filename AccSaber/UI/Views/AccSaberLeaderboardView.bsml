@@ -6,22 +6,23 @@
   </vertical>
 
   <vertical id='leaderboard_badMap' anchor-pos-y='-23' active='false'>
-    <text text='Map is Unranked.' font-size='19'/>
+    <text text='Map is Unranked.' font-size='13'/>
   </vertical>
 
   <vertical anchor-pos-x='-41.75' anchor-pos-y='-13' vertical-fit='PreferredSize' pref-height='25' pref-width='8' bg='panel-top' bg-color='#0009' skew='0'>
-    <clickable-image id='PageTopSelector' src='~topArrowPic' pref-width='5' pref-height='5' on-click='OnPageTop' default-color='~colorGrey'/>
+    <clickable-image id='PageTopSelector' src='~topArrowPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='OnPageTop' default-color='~colorGrey'/>
     <page-button id='PageUpSelector' direction='Up' pref-width='5' on-click='OnPageUp'/>
-    <clickable-image id='PageYouSelector' src='~youPic' preserve-aspect='true' pref-width='5' pref-height='5' on-click='OnYouClicked' default-color='~colorGrey'/>
+    <clickable-image id='PageYouSelector' src='~youPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='OnYouClicked' default-color='~colorGrey'/>
     <page-button id='PageDownSelector' direction='Down' pref-width='5' on-click='OnPageDown'/>
   </vertical>
 
-  <vertical id='selectorContainer' anchor-pos-x='-41.75' anchor-pos-y='20' vertical-fit='PreferredSize' pref-height='30' pref-width='8' bg='panel-top' bg-color='#0009' skew='0'>
-    <clickable-image id='GlobalSelector' src='~globalPic' pref-width='5' pref-height='5' on-click='ShowGlobal' hover-hint='Global'/>
-    <clickable-image id='FollowedSelector' src='~followedPic' pref-width='5' pref-height='5' on-click='ShowFollowed' hover-hint='Followed'/>
-    <clickable-image id='RivalsSelector' src='~rivalsPic' pref-width='5' pref-height='5' on-click='ShowRivals' hover-hint='Rivals' default-color='~colorGrey'/>
-    <clickable-image id='RelationsSelector' src='~relationsPic' pref-width='5' pref-height='5' on-click='ShowRelations' hover-hint='Friends, Followed, &amp; Rivals' default-color='~colorGrey' active='false'/>
-    <clickable-image id='CountrySelector' src='~countryPic' pref-width='5' pref-height='5' on-click='ShowCountry' hover-hint='Country'/>
+  <vertical id='selectorContainer' anchor-pos-x='-41.75' anchor-pos-y='18' vertical-fit='PreferredSize' pref-height='30' pref-width='8' child-expand-width='true' child-expand-height='false' bg='panel-top' bg-color='#0009' skew='0'>
+    <vertical pref-height='2'/>
+    <clickable-image id='GlobalSelector' src='~globalPic' preserve-aspect='true' pref-width='~globeIconSize' pref-height='~globeIconSize' on-click='ShowGlobal' hover-hint='Global'/>
+    <clickable-image id='FollowedSelector' src='~followedPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowFollowed' hover-hint='Followed'/>
+    <clickable-image id='RivalsSelector' src='~rivalsPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowRivals' hover-hint='Rivals' default-color='~colorGrey'/>
+    <clickable-image id='RelationsSelector' src='~relationsPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowRelations' hover-hint='Friends, Followed, &amp; Rivals' default-color='~colorGrey' active='false'/>
+    <clickable-image id='CountrySelector' src='~countryPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowCountry' hover-hint='Country'/>
   </vertical>
 
 </bg>

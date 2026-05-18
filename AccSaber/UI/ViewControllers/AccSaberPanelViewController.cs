@@ -291,9 +291,9 @@ namespace AccSaber.UI.ViewControllers
 			{
 				PlayerStats? currentOverallUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == APCategory.Overall);
 
-                if (_accSaberStore.CurrentRankedMap!.Status == MapStatus.Ranked)
+                if (_accSaberStore.CurrentRankedMap?.Status == MapStatus.Ranked)
 					return $"<color=#EDFF55>Ranking:</color> #{currentOverallUser?.Rank} <size=75%>(<color=#00FFAE>{currentOverallUser?.AP:N2} AP</color>)";
-				return $"<color=#EDFF55>Status:</color> {_accSaberStore.CurrentRankedMap.RankedStatus}";
+				return $"<color=#EDFF55>Status:</color> {_accSaberStore.CurrentRankedMap?.RankedStatus}";
             }
 		}
 
@@ -304,15 +304,15 @@ namespace AccSaber.UI.ViewControllers
             {
                 PlayerStats? currentCategoryUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == _accSaberStore.CurrentRankedMap?.Category);
 
-                if (_accSaberStore.CurrentRankedMap!.Status == MapStatus.Ranked)
+                if (_accSaberStore.CurrentRankedMap?.Status == MapStatus.Ranked)
                     return $"<color=#EDFF55>Category Ranking:</color> #{currentCategoryUser?.Rank} <size=75%>(<color=#00FFAE>{currentCategoryUser?.AP:N2} AP</color>)";
-                return $"<color=#EDFF55>Criteria:</color> {_accSaberStore.CurrentRankedMap.CriteriaStatus}";
+                return $"<color=#EDFF55>Criteria:</color> {_accSaberStore.CurrentRankedMap?.CriteriaStatus}";
             }
         }
 
         [UIValue("map-complexity-text")]
-		private string MapComplexityText => _accSaberStore.CurrentRankedMap!.Status == MapStatus.Ranked ?
-			$"<color=#EDFF55>Map Complexity:</color> {Math.Round(_accSaberStore.CurrentRankedMap!.Complexity, 2)}" :
-			$"<color=#EDFF55>Category:</color> {GetCategoryName(_accSaberStore.CurrentRankedMap.CategoryId)}";
+		private string MapComplexityText => _accSaberStore.CurrentRankedMap?.Status == MapStatus.Ranked ?
+			$"<color=#EDFF55>Map Complexity:</color> {Math.Round(_accSaberStore.CurrentRankedMap?.Complexity ?? -1f, 2)}" :
+			$"<color=#EDFF55>Category:</color> {GetCategoryName(_accSaberStore.CurrentRankedMap?.CategoryId ?? "")}";
 	}
 }
