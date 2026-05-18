@@ -1,0 +1,141 @@
+﻿using AccSaber.API;
+using AccSaber.Consts;
+using AccSaber.Models;
+using AccSaber.Models.CacheModels;
+using IPA.Config.Data;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Zenject;
+
+namespace AccSaber.Utils
+{
+    internal class SerializerHandler : IInitializable, IDisposable
+    {
+        private static AccSaberSerializedCache<AccSaberPlayerScore> cachedPlayerScores = new();
+
+        public static Dictionary<string, AccSaberRankedMap> CachedMaps { get; private set; } = [];
+        public static int TotalMaps { get; private set; } = -1;
+        public static List<AccSaberPlayerScore> CachedPlayerScores => cachedPlayerScores.Content;
+        public static  int CachedPlayerScoreLength
+        {
+            get => cachedPlayerScores.MaxLength;
+            set => cachedPlayerScores.MaxLength = value;
+        }
+
+        public void Initialize()
+        {
+            Task.Run(Load);
+        }
+        public void Dispose()
+        {
+            try
+            {
+                Save();
+            } catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an error when saving the caches!\n{e}");
+            }
+        }
+
+        private async Task Load()
+        {
+            try
+            {
+                if (!Directory.Exists(ResourcePaths.ACC_SABER_DATA_FOLDER))
+                {
+                    Directory.CreateDirectory(ResourcePaths.ACC_SABER_DATA_FOLDER);
+                    return;
+                }
+
+                JsonSerializer serializer = new();
+
+                AccSaberSerializedCache<AccSaberRankedMap>? maps = null;
+                AccSaberSerializedCache<AccSaberPlayerScore>? playerScores = null;
+
+                if (File.Exists(ResourcePaths.ACC_SABER_MAP_CACHE))
+                {
+                    using StreamReader sr = new(ResourcePaths.ACC_SABER_MAP_CACHE);
+                    using JsonReader reader = new JsonTextReader(sr);
+
+                    maps = serializer.Deserialize<AccSaberSerializedCache<AccSaberRankedMap>>(reader);
+                }
+
+                if (File.Exists(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE))
+                {
+                    using StreamReader sr = new(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE);
+                    using JsonReader reader = new JsonTextReader(sr);
+
+                    playerScores = serializer.Deserialize<AccSaberSerializedCache<AccSaberPlayerScore>>(reader);
+                }
+
+                if (maps is not null && (await ValidateMapCache(maps.Content.Count)))
+                    CachedMaps.AddRange(maps.Content.Select(map => new KeyValuePair<string, AccSaberRankedMap>(map.Hash, map)));
+
+                if (playerScores is not null && (await ValidatePlayerScoreCache(playerScores.LastUpdated)))
+                    cachedPlayerScores = playerScores;
+            } catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an error loading the cache files.\n{e}");
+            }
+        }
+        private void Save()
+        {
+            if (!Directory.Exists(ResourcePaths.ACC_SABER_DATA_FOLDER))
+                Directory.CreateDirectory(ResourcePaths.ACC_SABER_DATA_FOLDER);
+
+            JsonSerializer serializer = new();
+
+            AccSaberSerializedCache<AccSaberRankedMap> maps = new()
+            {
+                MaxLength = TotalMaps,
+                Content = [.. CachedMaps.Values]
+            };
+
+            Save(ResourcePaths.ACC_SABER_MAP_CACHE, maps, serializer);
+            Save(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE, cachedPlayerScores, serializer);
+        }
+        private void Save(string path, object data, JsonSerializer? serializer = null)
+        {
+            serializer ??= new();
+
+            using StreamWriter sw = new(path);
+            using JsonWriter writer = new JsonTextWriter(sw);
+
+            serializer.Serialize(writer, data);
+        }
+
+
+        private async Task<bool> ValidateMapCache(int mapCount)
+        {
+            AccSaberPagedContent? response = await APIHandler.CallAPI_Json<AccSaberPagedContent>(string.Format(HelpfulPaths.APAPI_MAPS, 0, 1), AccsaberAPI.throttler);
+
+            if (response is null)
+                return true; // If we don't get a good response from the API, then we can't invalidate it, so might as well use what we have.
+
+            TotalMaps = response.TotalElements;
+
+            return TotalMaps == mapCount;
+        }
+        private async Task<bool> ValidatePlayerScoreCache(DateTime lastUpdated)
+        {
+            await PlayerSocialLife.LoadTask;
+
+            AccSaberPagedContent<AccSaberLeaderboardEntry>? response = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(
+                string.Format(HelpfulPaths.APAPI_SCORES, PlayerSocialLife.PlayerID!, 0, 1) + "&sort=timeSet,desc", AccsaberAPI.throttler);
+
+            if (response is null)
+                return true; // If we don't get a good response from the API, then we can't invalidate it, so might as well use what we have.
+
+            bool valid = lastUpdated >= response.Content![0].TimeSet;
+
+            if (!valid)
+                cachedPlayerScores.LastUpdated = response.Content![0].TimeSet;
+
+            return valid;
+        }
+    }
+}

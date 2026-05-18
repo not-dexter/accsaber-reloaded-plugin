@@ -1,11 +1,15 @@
-﻿using System.Linq;
+﻿using System;
+using System.IO;
+using System.Linq;
 using UnityEngine;
 
 namespace AccSaber.Consts
 {
     internal static class ResourcePaths
     {
-        public static readonly Material BORDER_MATERIAL = Resources.FindObjectsOfTypeAll<Material>().Last(x => x.name == "UINoGlowRoundEdge");
+        public static Material BORDER_MATERIAL => Resources.FindObjectsOfTypeAll<Material>().Last(x => x.name == "UINoGlowRoundEdge");
+
+        #region Image File paths
 
         public const string RESOURCE_PATH = "AccSaber.Resources";
         public const string LOGO_BORDER = RESOURCE_PATH + ".ACC_Logo_BlackBorder.png";
@@ -29,6 +33,9 @@ namespace AccSaber.Consts
         public const string GRADIENT_CORNER = RESOURCE_PATH + ".cornerGradient.png";
         //public const string RESOURCE_GRADIENT_HEADER = RESOURCE_PATH + ".headerBG.png";
 
+        #endregion
+        #region BSML File Paths
+
         public const string MAIN_BSML_PATH = "AccSaber.UI.Views";
         public const string ACC_SABER_LEADERBOARD_VIEW = MAIN_BSML_PATH + ".AccSaberLeaderboardView.bsml";
         public const string ACC_SABER_PANEL_VIEW = MAIN_BSML_PATH + ".AccSaberPanelView.bsml";
@@ -43,5 +50,21 @@ namespace AccSaber.Consts
         public const string ACC_SABER_MENU_CELL = MENU_BSML_PATH + ".AccSaberMenuCell.bsml";
         public const string ACC_SABER_MILESTONE_VIEW = MENU_BSML_PATH + ".AccSaberMilestoneView.bsml";
         public const string ACC_SABER_NEWS_VIEW = MENU_BSML_PATH + ".AccSaberNewsView.bsml";
+
+        #endregion
+        #region Data File Paths
+
+        public const string HOST_NAME = "AccSaber";
+
+        // Note: Once a release is made, if the below consts are changed, extra steps for migration will be needed.
+        public const string FOLDER_NAME = "Accsaber";
+        public const string PLAYER_SCORE_CACHE_NAME = "PlayerScoreCache";
+        public const string MAP_CACHE_NAME = "MapCache";
+
+        public static readonly string ACC_SABER_DATA_FOLDER = Path.Combine(Environment.CurrentDirectory, "UserData", FOLDER_NAME);
+        public static readonly string ACC_SABER_PLAYER_SCORE_CACHE = Path.Combine(ACC_SABER_DATA_FOLDER, PLAYER_SCORE_CACHE_NAME + ".json");
+        public static readonly string ACC_SABER_MAP_CACHE = Path.Combine(ACC_SABER_DATA_FOLDER, MAP_CACHE_NAME + ".json");
+
+        #endregion
     }
 }

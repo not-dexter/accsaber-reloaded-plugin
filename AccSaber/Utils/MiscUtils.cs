@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace AccSaber.Utils
 {
@@ -93,13 +94,34 @@ namespace AccSaber.Utils
             return (timeSpent, outp);
         }
 
+        public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)
+        {
+            foreach (KeyValuePair<K, V> kvp in vals)
+                dict.TryAdd(kvp.Key, kvp.Value);
+        }
+
+        #region Debug functions
+        /// <summary>
+        /// Produces a compact, human-readable string representation of an <see cref="IEnumerable{T}"/>.
+        /// The output is formatted as: <c>[item1, item2, item3]</c>. For an empty sequence the method
+        /// returns <c>[]</c>.
+        /// </summary>
+        /// <typeparam name="T">The element type of the sequence.</typeparam>
+        /// <param name="arr">The sequence to convert to a string. The sequence must not be <c>null</c>.</param>
+        /// <returns>
+        /// A string containing the sequence elements separated by <c>", "</c> and wrapped in square brackets.
+        /// </returns>
+        /// <remarks>
+        /// - Each element's <see cref="object.ToString"/> is used for representation.
+        /// </remarks>
         public static string Print<T>(this IEnumerable<T> arr)
         {
-            if (arr.Count() == 0) return "[]";
-            string outp = "";
+            if (arr is null || !arr.Any()) return "[]";
+            StringBuilder outp = new();
             foreach (T item in arr)
-                outp += ", " + item;
-            return $"[{outp.Substring(2)}]";
+                outp.Append(", " + item);
+            return $"[{outp.ToString().Substring(2)}]";
         }
+        #endregion
     }
 }

@@ -8,10 +8,11 @@ using System.Linq;
 
 using static AccSaber.API.AccsaberAPI;
 using static AccSaber.API.HelpfulPaths;
+using Zenject;
 
 namespace AccSaber.Utils
 {
-    public static class PlayerSocialLife
+    public sealed class PlayerSocialLife : IInitializable
     {
         public static event Action? OnRelationChanged;
 
@@ -102,24 +103,9 @@ namespace AccSaber.Utils
                 await loadTask;
                 return;
             }
-            AsyncLock.Releaser? theLock = await loadLock.TryLockAsync();
-            if (theLock is null)
-            {
-                if (loadTask is null)
-                    lock (loadLock)
-                        Monitor.Wait(loadLock);
-                else
-                    await loadTask;
-                return;
-            }
-            using (theLock.Value)
-            {
-                loadTask = LoadInfoTask();
-                await loadTask;
-                lock (loadLock)
-                    Monitor.PulseAll(loadLock);
-            }
-                
+            lock (loadLock)
+                Monitor.Wait(loadLock);
+            await loadTask!;
         }
         private static async Task LoadInfoTask(int retries = 3)
         {
@@ -131,6 +117,8 @@ namespace AccSaber.Utils
 
                 if (AuthInfo is not null)
                     await SetRelations(AuthInfo.UserId);
+
+                Plugin.Log.Info("Logged into accsaber!");
             } catch (Exception e)
             {
                 Plugin.Log.Error("There was an error loading player info!" + (retries > 0 ? " Retrying in 1 second." : ""));
@@ -164,6 +152,15 @@ namespace AccSaber.Utils
             PlayerID = mainUserId;
 
             OnRelationChanged?.Invoke();
+        }
+
+        public void Initialize()
+        {
+            if (loadTask is not null)
+                return;
+            loadTask = LoadInfoTask();
+            lock (loadLock)
+                Monitor.PulseAll(loadLock);
         }
     }
 }
