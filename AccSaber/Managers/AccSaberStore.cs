@@ -204,58 +204,61 @@ namespace AccSaber.Managers
 
         public async Task StartWebsocket(CancellationToken ct = default)
         {
-            while (!ct.IsCancellationRequested)
-                await ListenForScores(ct);
-        }
-        private async Task ListenForScores(CancellationToken ct)
-        {
             AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
             if (theLock is null)
                 return;
             using (theLock.Value)
+                while (!ct.IsCancellationRequested)
+					await ListenForScores(ct);
+        }
+        private async Task ListenForScores(CancellationToken ct)
+        {
+            await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), ct);
+            try
             {
-                await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), ct);
-                try
+                using MemoryStream ms = new();
+                WebSocketReceiveResult result;
+                while (webSocket.State == WebSocketState.Open)
                 {
-                    using MemoryStream ms = new();
-                    WebSocketReceiveResult result;
-                    while (webSocket.State == WebSocketState.Open)
+                    do
                     {
-                        do
+                        ArraySegment<byte> clientBuffer = WebSocket.CreateClientBuffer(RecieveBufferSize, SendBufferSize);
+                        result = await webSocket.ReceiveAsync(clientBuffer, ct);
+                        if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            ArraySegment<byte> clientBuffer = WebSocket.CreateClientBuffer(RecieveBufferSize, SendBufferSize);
-                            result = await webSocket.ReceiveAsync(clientBuffer, ct);
-                            if (result.MessageType == WebSocketMessageType.Close)
-                            {
-                                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", ct);
-                                return;
-                            }
-                            ms.Write(clientBuffer.Array, clientBuffer.Offset, result.Count);
+                            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", ct);
+                            return;
                         }
-                        while (!result.EndOfMessage);
-
-                        if (result.MessageType == WebSocketMessageType.Text)
-						{
-							AccSaberLeaderboardEntry? entry = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(Encoding.UTF8.GetString(ms.ToArray()));
-							if (entry is not null)
-                                OnScoreUpdated?.Invoke(entry);
-                        }
-
-                        ms.SetLength(0);
-                        ms.Seek(0, SeekOrigin.Begin);
-                        ms.Position = 0;
+                        ms.Write(clientBuffer.Array, clientBuffer.Offset, result.Count);
                     }
-                }
-                catch (OperationCanceledException)
-                {
-                    Plugin.Log.Info("The remote party has very rudely left us hanging (closed connect without handshake).");
-                }
-                catch (Exception e)
-                {
-                    Plugin.Log.Error("There was an error with the websocket!\n" + e);
+                    while (!result.EndOfMessage);
+
+                    if (result.MessageType == WebSocketMessageType.Text)
+					{
+						AccSaberLeaderboardEntry? entry = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(Encoding.UTF8.GetString(ms.ToArray()));
+						if (entry is not null)
+                            OnScoreUpdated?.Invoke(entry);
+                    }
+
+                    ms.SetLength(0);
+                    ms.Seek(0, SeekOrigin.Begin);
+                    ms.Position = 0;
                 }
             }
+            catch (OperationCanceledException)
+            {
+                Plugin.Log.Info("The remote party has very rudely left us hanging (closed connect without handshake).");
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error with the websocket!\n" + e);
+            }
         }
+		private void UpdatePlayerScore(AccSaberLeaderboardEntry score)
+		{
+			if (score.PlayerId.Equals(PlayerSocialLife.PlayerID))
+				OnPlayerScoreUpdated?.Invoke(score);
+		}
 
 		public async Task<UserInfo?> GetPlatformUserInfo()
 		{
@@ -276,6 +279,8 @@ namespace AccSaber.Managers
 		
 		public void Initialize()
 		{
+			OnScoreUpdated += UpdatePlayerScore;
+
             //These are all independent tasks, so start each of them on their own thread
             Task.Run(async () => await SetRankedMaps(true));
 			Task.Run(async () => _currentUserMilestones = await GetUserMilestones(true));

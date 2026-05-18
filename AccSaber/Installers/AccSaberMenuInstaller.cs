@@ -1,5 +1,4 @@
 ﻿using AccSaber.Configuration;
-using AccSaber.LeaderboardSources;
 using AccSaber.Managers;
 using AccSaber.UI;
 using AccSaber.UI.MenuButton;
@@ -37,17 +36,10 @@ namespace AccSaber.Installers
 			
 			Container.BindInterfacesAndSelfTo<AccSaberPanelViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberLeaderboardViewController>().FromNewComponentAsViewController().AsSingle();
-			Container.BindInterfacesTo<GlobalLeaderboardSource>().AsSingle();
-			Container.BindInterfacesTo<FriendsLeaderboardSource>().AsSingle();
-			Container.BindInterfacesTo<CountryLeaderboardSource>().AsSingle();
 			Container.Bind<LeaderboardScoreModalController>().AsSingle();
 			Container.Bind<LeaderboardUserModalController>().AsSingle();
 			Container.Bind<WhereScoreModalController>().AsSingle();
-#if NEW_VERSION
 			Container.Bind(typeof(IInitializable)).To<AddonAdder>().AsSingle();
-#else
-			new AddonAdder().Initialize(); // scuffed, but gets the job done.
-#endif
 			Container.Bind(typeof(IInitializable)).To<PlayerSocialLife>().AsSingle();
 		}
 	}

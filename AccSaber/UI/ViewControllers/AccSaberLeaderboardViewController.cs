@@ -355,6 +355,9 @@ namespace AccSaber.UI.ViewControllers
                 titlePanelTitle = titlePaneTitleText.text;
                 titlePaneTitleText.SetText(RANKED_HEADER);
             }
+
+            if (!TryUpdateCurrentMap() && refreshRequested)
+                Task.Run(ForceRefresh);
         }
         private void OnDisable()
         {
@@ -537,7 +540,7 @@ namespace AccSaber.UI.ViewControllers
 
         private async Task<bool> ForceRefresh(bool overridePlayerScore)
         {
-            AsyncLock.Releaser? theLock = await forceRefreshLock.LockAsync();
+            AsyncLock.Releaser? theLock = await forceRefreshLock.TryLockAsync();
             if (theLock is null || !gameObject.activeSelf) return false;
             using (theLock.Value)
             {

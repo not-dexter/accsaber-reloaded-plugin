@@ -9,8 +9,15 @@ namespace AccsaberLeaderboard.UI.BSML_Addons
 {
     internal class AddonAdder : IInitializable
     {
+#if !NEW_VERSION
+        private static bool inited = false;
+#endif
         public void Initialize()
         {
+#if !NEW_VERSION
+            if (inited) return;
+            inited = true;
+#endif
             AccSaberLeaderboardViewController.Instance?.OnGameRefresh();
 
             BSMLParser instance = VersionUtils.BSMLParser_Instance;

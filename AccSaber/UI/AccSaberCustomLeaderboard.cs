@@ -11,14 +11,12 @@ namespace AccSaber.UI
 {
 	internal sealed class AccSaberCustomLeaderboard : CustomLeaderboard, IInitializable, IDisposable
 	{
-		private readonly AccSaberStore _accSaberStore;
 		private readonly CustomLeaderboardManager _customLeaderboardManager;
 		private readonly AccSaberPanelViewController _accSaberPanelViewController;
 		private readonly AccSaberLeaderboardViewController _accSaberLeaderboardViewController;
 
-		public AccSaberCustomLeaderboard(AccSaberStore accSaberStore, CustomLeaderboardManager customLeaderboardManager, AccSaberPanelViewController accSaberPanelViewController, AccSaberLeaderboardViewController accSaberLeaderboardViewController)
+		public AccSaberCustomLeaderboard(CustomLeaderboardManager customLeaderboardManager, AccSaberPanelViewController accSaberPanelViewController, AccSaberLeaderboardViewController accSaberLeaderboardViewController)
 		{
-			_accSaberStore = accSaberStore;
 			_customLeaderboardManager = customLeaderboardManager;
 			_accSaberPanelViewController = accSaberPanelViewController;
 			_accSaberLeaderboardViewController = accSaberLeaderboardViewController;
@@ -29,24 +27,12 @@ namespace AccSaber.UI
 
 		public void Initialize()
 		{
-			_accSaberStore.OnAccSaberRankedMapUpdated += AccSaberStoreOnOnAccSaberRankedMapUpdated; 
+			_customLeaderboardManager.Register(this);
 		}
 
 		public void Dispose()
 		{
 			_customLeaderboardManager.Unregister(this);
-		}
-
-		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberBasicDifficulty? accSaberMapInfo)
-		{
-			if (accSaberMapInfo is not null)
-			{
-				_customLeaderboardManager.Register(this);
-			}
-			else
-			{
-				_customLeaderboardManager.Unregister(this);
-			}
 		}
 	}
 }
