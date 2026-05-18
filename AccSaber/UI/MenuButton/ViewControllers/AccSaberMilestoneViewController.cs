@@ -1,18 +1,20 @@
-﻿using BeatSaberMarkupLanguage;
+﻿using AccSaber.Consts;
+using AccSaber.Managers;
+using AccSaber.Models;
+using AccSaber.Utils;
+using AccsaberLeaderboard.UI.BSML_Addons.Components;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
+using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
-using AccSaber.Managers;
-using System.ComponentModel;
-using SiraUtil.Logging;
-using Zenject;
-using System.Collections.Generic;
 using HMUI;
+using SiraUtil.Logging;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Threading.Tasks;
-using BeatSaberMarkupLanguage.Components;
-using AccSaber.Models;
 using UnityEngine;
-using AccSaber.Utils;
+using Zenject;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -20,7 +22,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMilestoneView.bsml")]
     internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged
     {
-        public new event PropertyChangedEventHandler? PropertyChanged;
+		public new event PropertyChangedEventHandler? PropertyChanged;
 
 		private string? _userId;
 		private bool _parsed;
@@ -35,7 +37,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private readonly CustomCellListTableData _milestonesList = null!;
 
 		[UIValue("milestone-cells")]
-        private readonly List<MilestoneCell> _milestoneCells = new List<MilestoneCell>();
+        private readonly List<object> _milestoneCells = [];
 
 		[UIComponent("tab-selector")]
 		private readonly TabSelector _tabSelector = null!;
@@ -92,7 +94,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			_milestoneCells.Clear();
 			_milestonesList.Data().Clear();
 
-			var user = await _accSaberStore.GetPlatformUserInfo();
+			UserInfo? user = await _accSaberStore.GetPlatformUserInfo();
 
             if (user is null)
             {
@@ -112,9 +114,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			IsLoading = false;
         }
         internal class MilestoneCell
-		{
-			#region BSML Values
-			[UIValue("milestone-name")]
+        {
+            #region BSML Values
+            [UIValue("milestone-name")]
 			private readonly string _milestoneName;
 
 			[UIValue("milestone-desc")]
@@ -144,6 +146,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_milestoneDesc = milestoneDesc;
 				_milestoneProgress = completed ? "<color=#22c55e>Completed</color>" : $"{progress * 100:F1}%";
 			}
-		}
+
+            
+        }
 	}
 }

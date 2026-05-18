@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace AccSaber.Utils
 {
@@ -88,6 +91,15 @@ namespace AccSaber.Utils
             };
 
             return (timeSpent, outp);
+        }
+
+        public static string Print<T>(this IEnumerable<T> arr)
+        {
+            if (arr.Count() == 0) return "[]";
+            string outp = "";
+            foreach (T item in arr)
+                outp += ", " + item;
+            return $"[{outp.Substring(2)}]";
         }
     }
 }

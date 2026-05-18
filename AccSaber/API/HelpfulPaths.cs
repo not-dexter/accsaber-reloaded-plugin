@@ -88,9 +88,8 @@
         /// </summary>
         /// <remarks>
         /// Format parameters: user_id, category_id, page (zero-indexed), count.
-        /// Note: This path is a relative template (missing base APAPI prefix) to be combined when used.
         /// </remarks>
-        public const string APAPI_CATEGORY_SCORES = "users/{0}/scores?categoryId={1}&page={2}&size={3}"; // user_id, category_id, page (zero indexed), count
+        public const string APAPI_CATEGORY_SCORES = APAPI + "users/{0}/scores?categoryId={1}&page={2}&size={3}"; // user_id, category_id, page (zero indexed), count
 
         /// <summary>
         /// Retrieves map data by full hash.

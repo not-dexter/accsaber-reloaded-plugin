@@ -181,10 +181,12 @@
   <ItemGroup>
     <None Remove="manifest.json" />
     <None Remove="Resources\friend.png" />
+    <None Remove="UI\MenuButton\Views\AccSaberMenuCell.bsml" />
     <None Remove="UI\MenuButton\Views\AccSaberMenuView.bsml" />
     <None Remove="UI\MenuButton\Views\AccSaberMilestoneView.bsml" />
     <None Remove="UI\MenuButton\Views\AccSaberNewsView.bsml" />
     <EmbeddedResource Include="manifest.json" />
+    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMenuCell.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Views\AccSaberNewsView.bsml">
       <SubType>Code</SubType>
     </EmbeddedResource>

@@ -1,9 +1,13 @@
-﻿using AccsaberLeaderboard.UI.BSML_Addons.Components;
+﻿using AccSaber.Utils;
+using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.TypeHandlers;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using UnityEngine;
 
 namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
@@ -16,7 +20,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
             { "selectCell", [ "select-cell" ] },
             { "data", [ "contents", "data" ] },
             { "cellClickable", [ "clickable-cells" ] },
-            { "cellNumber", [ "pref-number-cells", "cells", "number-of-cells" ] },
+            { "cellNumber", [ "pref-number-cells", "cells", "number-of-cells", "visible-cells" ] },
             { "cellSize", [ "main-cell-size", "cell-size" ] }
         };
 
@@ -30,7 +34,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
 #else
             ref Component component = ref componentType.component;
             ref Dictionary<string, string> data = ref componentType.data;
-            ref Dictionary<string, BSMLValue> values = ref parserParams.values;
+            Dictionary<string, BSMLValue> values = parserParams.values;
             Dictionary<string, BSMLAction> actions = parserParams.actions;
 #endif
 
@@ -54,10 +58,12 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
                 if (!values.TryGetValue(dataStr, out BSMLValue contents))
                     throw new Exception("Value '" + dataStr + "' not found");
 
-                if (contents.GetValue() is not List<ICellDataSource> cells)
-                    throw new Exception($"Value '{dataStr}' is not a List<ICellDataSource>, which is required for my-custom-list");
+                object maybeCells = contents.GetValue();
 
-                componentData.Data = cells;
+                if (maybeCells is not IEnumerable ienum)
+                    throw new Exception($"Value '{dataStr}' is not an IEnumerable and cannot be used as data for my-custom-list.");
+
+                componentData.Data = [.. ConvariantConverter<ICellDataSource>(ienum)];
             }
 
             if (data.TryGetValue("cellClickable", out string cellClickable))
@@ -77,6 +83,38 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
                     throw new Exception($"the cell size \"{cellSize}\" cannot be parsed into a float.");
 
                 componentData.MainCellSize = value;
+            }
+        }
+
+        public static IEnumerable<T2> ConvariantConverter<T2>(IEnumerable arr)
+        {
+            if (arr is IEnumerable<T2> typedEnumerable)
+                return typedEnumerable;
+
+            // Try to find an implemented IEnumerable<T> and check T
+            Type? enumerableInterface = arr.GetType().GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+            if (enumerableInterface is not null)
+            {
+                if (typeof(T2).IsAssignableFrom(enumerableInterface.GetGenericArguments()[0]))
+                    // Safe to cast each item to T2 at runtime
+                    return arr.Cast<T2>();
+                else
+                    throw new Exception($"Value '{arr}' implements IEnumerable<{enumerableInterface.GetGenericArguments()[0].Name}> which is not assignable to IEnumerable<{typeof(T2)}>.");
+            }
+            else
+            {
+                // Fallback: enumerate once and verify each element implements T2
+                List<T2> list = [];
+                foreach (object? item in arr)
+                {
+                    if (item is T2 type2)
+                        list.Add(type2);
+                    else
+                        throw new Exception($"Value '{arr}' contains an element of type {item?.GetType().Name ?? "null"} which does not implement {typeof(T2)}.");
+                }
+                return list;
             }
         }
     }

@@ -41,31 +41,7 @@
             <vertical active='~scores-is-loading' vertical-fit='PreferredSize' pref-width='10' pref-height='45'>
               <loading-indicator  preserve-aspect='true' vertical-fit='PreferredSize' pref-width='10' pref-height='10'/>
             </vertical>
-            <custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' active='~scores-is-not-loading'>
-              <vertical id='background-container' bg='round-rect-panel' horizontal-fit='Unconstrained' pad='1'>
-                <horizontal>
-                  <vertical pad-top='1' pad-bottom='1' pref-width='7'>
-                    <image id='cover' pref-height='6' pref-width='6' preserve-aspect='true' src='~map-cover'/>
-                  </vertical>
-                  <vertical pad-top='1' pad-bottom='1' pref-width='15'>
-                    <text text='~map-name' align='Left' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>
-                    <text text='~map-author' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>       
-                  </vertical>
-                  <vertical pad-top='1' pad-bottom='1' pref-width='8'>
-                    <text text='~map-diff' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
-                  </vertical>
-                  <vertical pad-top='1' pad-bottom='1' pref-width='8'>
-                    <text text='~score-acc' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
-                  </vertical>
-                  <vertical pad-top='1' pad-bottom='1' pref-width='10'>
-                   <text text='~score-ap' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
-                  </vertical>
-                  <vertical pad-top='1' pad-bottom='1' pref-width='8'>
-                    <text text='~map-category' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
-                  </vertical>
-                </horizontal>
-              </vertical>
-            </custom-list>
+            <my-custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' pref-width='80' active='~scores-is-not-loading'/>
             <horizontal>
               <button text='Previous' on-click='prev-clicked' pref-width='18'/>
               <text text='~pagnation' align='Center' />

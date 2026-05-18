@@ -29,13 +29,19 @@ namespace AccSaber.Consts
         public const string GRADIENT_CORNER = RESOURCE_PATH + ".cornerGradient.png";
         //public const string RESOURCE_GRADIENT_HEADER = RESOURCE_PATH + ".headerBG.png";
 
-        public const string BSML_PATH = "AccSaber.UI.Views";
-        public const string ACC_SABER_LEADERBOARD_VIEW = BSML_PATH + ".AccSaberLeaderboardView.bsml";
-        public const string ACC_SABER_PANEL_VIEW = BSML_PATH + ".AccSaberPanelView.bsml";
-        public const string LEADERBOARD_CELL = BSML_PATH + ".LeaderboardCell.bsml";
-        public const string LEADERBOARD_SCORE_MODAL = BSML_PATH + ".LeaderboardScoreModal.bsml";
-        public const string LEADERBOARD_USER_MODAL = BSML_PATH + ".LeaderboardUserModal.bsml";
-        public const string LEADERBOARD_TITLE_PANEL = BSML_PATH + ".LeaderboardTitlePanel.bsml";
-        public const string WHERE_SCORE_MODAL_VIEW = BSML_PATH + ".WhereScoreModalView.bsml";
+        public const string MAIN_BSML_PATH = "AccSaber.UI.Views";
+        public const string ACC_SABER_LEADERBOARD_VIEW = MAIN_BSML_PATH + ".AccSaberLeaderboardView.bsml";
+        public const string ACC_SABER_PANEL_VIEW = MAIN_BSML_PATH + ".AccSaberPanelView.bsml";
+        public const string LEADERBOARD_CELL = MAIN_BSML_PATH + ".LeaderboardCell.bsml";
+        public const string LEADERBOARD_SCORE_MODAL = MAIN_BSML_PATH + ".LeaderboardScoreModal.bsml";
+        public const string LEADERBOARD_USER_MODAL = MAIN_BSML_PATH + ".LeaderboardUserModal.bsml";
+        public const string LEADERBOARD_TITLE_PANEL = MAIN_BSML_PATH + ".LeaderboardTitlePanel.bsml";
+        public const string WHERE_SCORE_MODAL_VIEW = MAIN_BSML_PATH + ".WhereScoreModalView.bsml";
+
+        public const string MENU_BSML_PATH = "AccSaber.UI.MenuButton.Views";
+        public const string ACC_SABER_MENU_VIEW = MENU_BSML_PATH + ".AccSaberMenuView.bsml";
+        public const string ACC_SABER_MENU_CELL = MENU_BSML_PATH + ".AccSaberMenuCell.bsml";
+        public const string ACC_SABER_MILESTONE_VIEW = MENU_BSML_PATH + ".AccSaberMilestoneView.bsml";
+        public const string ACC_SABER_NEWS_VIEW = MENU_BSML_PATH + ".AccSaberNewsView.bsml";
     }
 }

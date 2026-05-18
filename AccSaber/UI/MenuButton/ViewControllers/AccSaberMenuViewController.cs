@@ -3,6 +3,8 @@ using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
+using AccsaberLeaderboard.UI.BSML_Addons.Components;
+using AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -13,6 +15,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SiraUtil.Logging;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -22,6 +25,10 @@ using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+
+#if !NEW_VERSION
+using Oculus.Platform;
+#endif
 
 using static AccSaber.API.HelpfulPaths;
 
@@ -52,7 +59,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private string _headset = null!;
 
 		[UIValue("score-cells")]
-        private readonly List<ScoreCell> _scoreCells = [];
+        private readonly List<ICellDataSource> _scoreCells = [];
 
 
         public new event PropertyChangedEventHandler? PropertyChanged;
@@ -73,7 +80,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private readonly LayoutElement _progressBarInverse = null!;
 
 		[UIComponent("top-scores-list")]
-		private readonly CustomCellListTableData _topScoresList = null!;
+		private readonly MyCustomCellListTableData _topScoresList = null!;
 
 		private CanvasGroup? _userInfoCanvasGroup;
 
@@ -277,7 +284,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			{
 				_userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
 
-				_profileImage.material = Resources.FindObjectsOfTypeAll<Material>().Last(x => x.name == "UINoGlowRoundEdge");
+				_profileImage.material = ResourcePaths.BORDER_MATERIAL;
 
 				_parsed = true;
 			}
@@ -407,7 +414,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
 			IsScoresLoading = true;
 			_scoreCells.Clear();
-			_topScoresList.Data().Clear();
 
             var CategoryId = _categoryValue switch
 			{
@@ -418,7 +424,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_ => ""
 			};
 
-            HttpRequestMessage request = new(HttpMethod.Get, $"{APAPI}/users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc");
+			/*HttpRequestMessage request = new(HttpMethod.Get, $"{APAPI}users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc");
             var response = await APIHandler.CallAPI(request);
 
 			if (!response.Success)
@@ -445,15 +451,62 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					{
 						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty, score.Accuracy.ToString(), score.AP.ToString(), score.CategoryId, score.CoverUrl));
 					}
-					_topScoresList.TableView().ReloadData();
+					_topScoresList.UpdateData();
 					IsScoresLoading = false;
 				}
-			}
+			}*/
 
+			// Use callAPI_String for getting strings like we are here. When directly calling, make sure to provide the throttler so we don't go over the limit.
+			// (throttler keeps track of all api calls and will throttle connection if to many are sent in a period of time)
+			try
+			{
+				string? response = await APIHandler.CallAPI_String($"{APAPI}users/{_userId}/scores?page={PageNumber}&size=5{CategoryId}&sort=weightedAp,desc&sort=ap,desc", AccsaberAPI.throttler).ConfigureAwait(false);
+
+				// If the api response is null, then it failed, so we can return.
+				if (response is null)
+					return;
+
+				// Instead of worrying about getting the page info, I made this generic model for getting page information while also parsing the main content.
+				// (I'm pretty sure this is how Tiku handles it on his end as well)
+				AccSaberPagedContent<AccSaberLeaderboardEntry>? content = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberLeaderboardEntry>>(response);
+
+				// This is probably never null, but check just in case.
+				if (content is null)
+					return;
+
+				// With the model, I can just get the page info directly.
+				_maxPage = content.TotalPages;
+				Pagnation = $"{_pageNumber + 1}/{_maxPage}";
+
+				// From here on, the loading is the same
+				foreach (AccSaberLeaderboardEntry score in content.Content!)
+				{
+					_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty, score.Accuracy.ToString(), score.AP.ToString(), score.CategoryId, score.CoverUrl));
+				}
+			
+				// Make sure to do UI updates at the end of frame. Otherwise you are spinning a wheel on whether Unity will crash the game or not.
+				IEnumerator WaitThenUpdate()
+				{
+					yield return new WaitForEndOfFrame();
+
+					_topScoresList.Data = _scoreCells;
+					IsScoresLoading = false;
+				}
+				StartCoroutine(WaitThenUpdate());
+
+			} catch (Exception e)
+			{
+				// Since errors are not thrown in this function, throw them ourselves
+				Plugin.Log.Error(e);
+			}
         }
 
-		internal class ScoreCell
+		internal class ScoreCell : ICellDataSource
 		{
+			public string TemplatePath => ResourcePaths.ACC_SABER_MENU_CELL;
+			public float CellSize => 9f;
+			public int TemplateId { get; set; }
+
 			#region BSML Values
 			[UIValue("score-rank")]
 			private readonly string _scoreRank;
@@ -525,7 +578,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			[UIAction("#post-parse")]
 			void Parse()
             {
-				cover.material = Resources.FindObjectsOfTypeAll<Material>().Last(x => x.name == "UINoGlowRoundEdge");
+				cover.material = ResourcePaths.BORDER_MATERIAL;
 			}
 
 		}

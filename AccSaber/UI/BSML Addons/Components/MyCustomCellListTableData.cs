@@ -19,7 +19,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
 
         private MyCustomCell? previouslySelected = null;
         private List<ICellDataSource> data = [];
-        private bool clickableCells = true;
+        private bool clickableCells = false;
         private int prefNumberOfCells = 10;
         private float mainCellSize = 8.5f;
         private float initialAnchorY = -1f;
