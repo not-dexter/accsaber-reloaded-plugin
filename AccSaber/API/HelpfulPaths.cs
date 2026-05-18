@@ -162,6 +162,20 @@
         public const string APAPI_MILESTONE_INCOMPLETE = APAPI + "users/{0}/milestones/uncompleted"; //user_id
 
         /// <summary>
+        /// Retrieves all news entries.
+        /// </summary>
+        public const string APAPI_NEWS = APAPI + "news"; //no params
+
+        /// <summary>
+        /// Retrieves specified news entries.
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: type.
+        /// </remarks>
+        public const string APAPI_NEWS_TYPE = APAPI + "news?type={0}"; //type
+
+
+        /// <summary>
         /// Retrieves relations for a user with type and direction filters (paged).
         /// </summary>
         /// <remarks>

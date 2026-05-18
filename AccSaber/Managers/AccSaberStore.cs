@@ -114,7 +114,50 @@ namespace AccSaber.Managers
 			}
 			return [];
 		}
-		private async Task UpdateAccSaberInfo()
+
+        public enum NewsType
+        {
+            All,
+            General,
+            Batch,
+            Campaign,
+            Curve,
+            Milestones
+        }
+
+        public async Task<List<AccSaberNewsEntry>> GetNewsPosts(NewsType type)
+        {
+            var typeString = type switch
+            {
+                NewsType.General => "GENERAL",
+                NewsType.Batch => "BATCH",
+                NewsType.Campaign => "CAMPAIGN",
+                NewsType.Curve => "CURVE",
+                NewsType.Milestones => "MILESTONE_SET",
+                _ => ""
+            };
+
+            string call = string.Format(type == NewsType.All ? HelpfulPaths.APAPI_NEWS : HelpfulPaths.APAPI_NEWS_TYPE, typeString);
+			string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
+			if (response is not null)
+			{
+                AccSaberPagedContent<AccSaberNewsEntry>? content = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberNewsEntry>>(response);
+
+                if (content is null)
+                    return [];
+
+                List<AccSaberNewsEntry> newNewsEntries = [];
+
+				foreach (AccSaberNewsEntry newsEntry in content.Content!)
+				{
+					newNewsEntries.Add(newsEntry);
+				}
+				return newNewsEntries;
+			}
+			return [];
+        }
+
+        private async Task UpdateAccSaberInfo()
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();
 
