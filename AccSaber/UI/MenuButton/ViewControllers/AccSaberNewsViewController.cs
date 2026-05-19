@@ -127,7 +127,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             private readonly string _newsDesc = post.Description;
 
             [UIValue("news-published")]
-            private readonly string _newsPublished = post.PublishedAt.ToString();
+            private readonly string _newsPublished = post.PublishedAt.Date.ToString("dd/MM/yyyy");
 
 
             public AccSaberNewsEntry _post { get; private set; } = post;

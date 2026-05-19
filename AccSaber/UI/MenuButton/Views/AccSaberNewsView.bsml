@@ -16,11 +16,12 @@
 			<vertical bg="panel-top" bg-color="black" skew="0" pref-width="105" pref-height="60" pad="2">
 				<loading-indicator active="~is-loading" preserve-aspect="true" pref-width="10" pref-height="10"/>
 				<custom-list id='news-list' contents='news-cells'  clickable-cells='true' select-cell='post-selected' visible-cells='4' stick-scrolling='true' active="~is-not-loading">
-					<vertical id='background-container' bg='panel-top' skew='0' horizontal-fit='Unconstrained' pad='1' pad-bottom='2'>
+					<vertical id='background-container' bg='panel-top' skew='0' horizontal-fit='Unconstrained' pad='1' pad-bottom='2' hover-hint='~news-desc'>
 						<horizontal>
-							<vertical pad='3' pref-width='100' horizontal-fit='PreferredSize' >
-								<text text='~news-title' align='Center' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>
-							</vertical>
+							<horizontal pad='3' pref-width='100' horizontal-fit='PreferredSize' >
+								<text text='~news-title' align='Left' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>
+								<text text='~news-published' align='Right' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>
+							</horizontal>
 						</horizontal>
 					</vertical>
 				</custom-list>
