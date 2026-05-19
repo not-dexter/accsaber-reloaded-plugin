@@ -17,6 +17,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -60,9 +61,10 @@ namespace AccSaber.UI.ViewControllers
         private int page, nextPage, currentPage = -1, currentPlayerPage;
         private AccSaberLeaderboardEntry? currentPlayerScore;
         private AsyncLock loadLeaderboardLock = new(), forceRefreshLock = new();
+        private object updateDiffLock = new();
         private Color selectorDefaultColor, defaultPageTopColor, defaultPageUpColor, defaultPageYouColor, defaultPageDownColor;
         private Color highlightPageTopColor, highlightPageYouColor;
-        private AccSaberDifficulty? difficultyInfo;
+        private AccSaberBasicDifficulty? difficultyInfo;
         private bool refreshRequested = false, loaded = false;
 
         private string? titlePanelTitle;
@@ -261,6 +263,9 @@ namespace AccSaber.UI.ViewControllers
                 ToggleCombinedIcons();
             }
 
+            lock (updateDiffLock)
+                Monitor.PulseAll(updateDiffLock);
+
             // Subscribe to player picture click event & logo clicked event from PanelViewController
             //PanelViewController.OnPlayerPictureClicked += () => psmvc.ppmvc.ShowPlayer(PlayerSocialLife.PlayerID, this);
             //PanelViewController.OnLogoClicked += () => pmmvc.ShowMilestoneModal(PlayerSocialLife.PlayerID, this);
@@ -359,8 +364,7 @@ namespace AccSaber.UI.ViewControllers
                 titlePaneTitleText.SetText(RANKED_HEADER);
             }
 
-            if (!TryUpdateCurrentMap() && refreshRequested)
-                Task.Run(ForceRefresh);
+            Task.Run(DoEnableUpdate);
         }
         private void OnDisable()
         {
@@ -377,6 +381,11 @@ namespace AccSaber.UI.ViewControllers
             InvalidateCache();
         }
 
+        private async void DoEnableUpdate()
+        {
+            if (!TryUpdateCurrentMap() && refreshRequested)
+                await Task.Run(ForceRefresh);
+        }
         private GameObject? GetHeaderPane()
         {
             // Code for finding this header taken from: https://github.com/BeatLeader/beatleader-mod/blob/1.29.4/Source/2_Core/Managers/Leaderboard/LeaderboardHeaderManager.cs
@@ -503,40 +512,47 @@ namespace AccSaber.UI.ViewControllers
         private bool UpdateDiff(IDifficultyBeatmap beatmap)
         {
 #endif
-            //Plugin.Log.Info("Update called.");
-            if (!gameObject.activeSelf)
-                return false;
+            lock (updateDiffLock)
+            {
+                Plugin.Log.Info("1");
+                if (!loaded)
+                    Monitor.Wait(updateDiffLock);
+                Plugin.Log.Info("2");
 
-            // Get hash from the level (custom levels use levelID format: "custom_level_HASH")
+                if (!gameObject.activeSelf)
+                    return false;
+
+                // Get hash from the level (custom levels use levelID format: "custom_level_HASH")
 #if NEW_VERSION
-            string levelId = beatmap.levelID;
+                string levelId = beatmap.levelID;
 #else
-            string levelId = beatmap.level.levelID;
+                string levelId = beatmap.level.levelID;
 #endif
-            string hash;
-            if (levelId.Contains('_'))
-                hash = levelId.Split('_')[2];
-            else
-                hash = levelId; // fallback for official levels
+                string hash;
+                if (levelId.Contains('_'))
+                    hash = levelId.Split('_')[2];
+                else
+                    hash = levelId; // fallback for official levels
 
 #if NEW_VERSION
-            if (hash.Equals(CurrentHash) && key.difficulty.Equals(CurrentDiff))
-                return false; // same map, no need to update
-            CurrentDiff = key.difficulty;
+                if (hash.Equals(CurrentHash) && key.difficulty.Equals(CurrentDiff))
+                    return false; // same map, no need to update
+                CurrentDiff = key.difficulty;
 #else
-            if (hash.Equals(CurrentHash) && beatmap.difficulty.Equals(CurrentDiff))
-                return false; // same map, no need to update
-            CurrentDiff = beatmap.difficulty;
+                if (hash.Equals(CurrentHash) && beatmap.difficulty.Equals(CurrentDiff))
+                    return false; // same map, no need to update
+                CurrentDiff = beatmap.difficulty;
 #endif
-            CurrentHash = hash;
+                CurrentHash = hash;
 
-            page = 1; // reset to first page on map change
-            currentPage = 0;
-            currentPlayerPage = 0;
+                page = 1; // reset to first page on map change
+                currentPage = 0;
+                currentPlayerPage = 0;
 
-            // reload leaderboard for the new map
-            Task.Run(ForceRefresh);
-            return true;
+                // reload leaderboard for the new map
+                Task.Run(ForceRefresh);
+                return true;
+            }
         }
 
         private async Task<bool> ForceRefresh() => await ForceRefresh(true);
@@ -547,33 +563,42 @@ namespace AccSaber.UI.ViewControllers
             if (theLock is null || !gameObject.activeSelf) return false;
             using (theLock.Value)
             {
-                difficultyInfo = await GetLeaderboard(CurrentHash!, CurrentDiff);
-                bool ranked = difficultyInfo is not null;
-
-                OnMapChanged?.Invoke(ranked);
-
-                if (!ranked)
+                try
                 {
-                    CurrentHash = null;
-                    CurrentDiff = default;
-                    IEnumerator ShowBad()
+                    difficultyInfo = GetLeaderboard(CurrentHash!, CurrentDiff);
+                    bool ranked = difficultyInfo is not null;
+
+                    //Plugin.Log.Info($"ranked = {ranked}, diffId = {difficultyInfo?.DifficultyId}");
+
+                    OnMapChanged?.Invoke(ranked);
+
+                    if (!ranked)
                     {
-                        yield return new WaitForEndOfFrame();
+                        CurrentHash = null;
+                        CurrentDiff = default;
+                        IEnumerator ShowBad()
+                        {
+                            yield return new WaitForEndOfFrame();
 
-                        titlePaneTitleText?.SetText(UNRANKED_HEADER);
+                            titlePaneTitleText?.SetText(UNRANKED_HEADER);
 
-                        leaderboardContainer.SetActive(false);
-                        badMapMessage.SetActive(true);
+                            leaderboardContainer.SetActive(false);
+                            badMapMessage.SetActive(true);
+                        }
+                        StartCoroutine(ShowBad());
+                        return true;
                     }
-                    StartCoroutine(ShowBad());
-                    return true;
+
+                    ShowLoading();
+
+                    currentPlayerPage = await GetPlayerPage(overridePlayerScore);
+
+                    await LoadLeaderboardAsync();
+                } catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                    return false;
                 }
-
-                ShowLoading();
-
-                currentPlayerPage = await GetPlayerPage(overridePlayerScore);
-
-                await LoadLeaderboardAsync();
             }
             return true;
         }

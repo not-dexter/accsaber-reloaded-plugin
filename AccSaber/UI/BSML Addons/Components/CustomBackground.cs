@@ -2,7 +2,9 @@
 using BeatSaberMarkupLanguage;
 using HMUI;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -36,7 +38,9 @@ namespace AccsaberLeaderboard.UI.Components
         {
             if (cachedSprites.TryGetValue(src, out Sprite outp))
                 return outp;
-            outp = VersionUtils.LoadSpriteFromAssemblyAsync(src).GetAwaiter().GetResult();
+            outp = Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), src));
+            //outp = await VersionUtils.LoadSpriteAsync(src);
+            //await Utilities.LoadImageAsync(Utilities.GetResource(Assembly.GetExecutingAssembly(), src));
             cachedSprites.Add(src, outp);
             return outp;
         }

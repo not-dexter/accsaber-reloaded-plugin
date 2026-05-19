@@ -30,9 +30,13 @@
                   <text text='~ap' align='Center' font-size='3.5'/>
                   <text text='~plays' align='Center' font-size='3.5'/>
                   <text text='~headset' align='Center' font-size='3.5'/>
-                  <horizontal>
-                    <clickable-image id='add-friend' on-click='friend-clicked' src='~followImg' preserve-aspect='true' pref-width='10' pref-height='10' hover-hint='Follow'/>
-                    <clickable-image id='add-rival'  on-click='rival-clicked' src='~rivalImg'   preserve-aspect='true' pref-width='10' pref-height='10' hover-hint='Rival' />
+                  <horizontal child-expand-width='false' child-expand-height='false'>
+                    <my-vertical id='add-friend-bg' pref-width='7' pref-height='7' bg='~pixelImg' color='~followColor'>
+                      <clickable-image id='add-friend' on-click='friend-clicked' src='~followImg' preserve-aspect='true' hover-hint='Follow'/>
+                    </my-vertical>
+                    <my-vertical id='add-rival-bg'  pref-width='7' pref-height='7' bg='~pixelImg' color='~rivalColor'>
+                      <clickable-image id='add-rival'  on-click='rival-clicked' src='~rivalImg'   preserve-aspect='true' hover-hint='Rival' />
+                    </my-vertical>
                   </horizontal>
                   <loading-indicator active='~relation-loading' preserve-aspect='true' pref-width='7' pref-height='7'/>
                 </vertical>

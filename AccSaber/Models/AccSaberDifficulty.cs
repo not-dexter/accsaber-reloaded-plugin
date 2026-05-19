@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using AccSaber.Models.Base;
+using AccSaber.Models.CacheModels;
 using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
@@ -11,10 +12,10 @@ namespace AccSaber.Models
     internal sealed class AccSaberDifficulty : AccSaberBasicDifficulty
     {
 		[JsonProperty("beatsaverCode")]
-		public string BeatsaverCode { get; set; } = null!;
+		public string? BeatsaverCode { get; set; }
 
         [JsonProperty("blLeaderboardId")]
-        public string BlLeaderboardId { get; set; } = null!;
+        public string? BlLeaderboardId { get; set; }
 
         [JsonProperty("categoryId")]
         public string CategoryId { get; set; } = null!;
@@ -22,12 +23,7 @@ namespace AccSaber.Models
         [JsonProperty("characteristic")]
         public string Characteristic { get; set; } = null!;
 
-        //coverUrl, createdAt
-
-        [JsonProperty("id")]
-        public string DifficultyId { get; set; } = null!;
-
-        //mapAuthor, mapId, maxScore, rankedAt, songAuthor, songName, ssLeaderboardId, statistics
+        //coverUrl, createdAt, mapAuthor, mapId, maxScore, rankedAt, songAuthor, songName, ssLeaderboardId, statistics
 
         [JsonProperty("status")]
 		public string RankedStatus { get; set; } = null!;
@@ -39,10 +35,7 @@ namespace AccSaber.Models
         public MapStatus? Status => EnumUtils.RankedStatusToEnum(RankedStatus);
 
         [JsonIgnore]
-        public new string? Hash { get; set; }
-
-        [JsonIgnore]
-        public AccSaberRankedMap? ParentInfo { get; set; }
+        public new AccSaberRankedMap? ParentInfo { get; set; }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -56,6 +49,9 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal class AccSaberBasicDifficulty : Model
     {
+        [JsonProperty("id")]
+        public string DifficultyId { get; set; } = null!;
+
         [JsonProperty("songHash")]
         public string Hash { get; set; } = null!;
 
@@ -73,6 +69,9 @@ namespace AccSaber.Models
 
         [JsonIgnore]
         public APCategory? Category { get; set; }
+
+        [JsonIgnore]
+        public AccSaberBasicMap? ParentInfo { get; set; }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)

@@ -34,6 +34,8 @@ namespace AccSaber.Installers
             Container.BindInterfacesAndSelfTo<AccSaberStore>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberManager>().AsSingle();
 			Container.BindInterfacesTo<AccSaberCustomLeaderboard>().AsSingle();
+
+			Container.BindExecutionOrder<AccSaberCustomLeaderboard>(1000); // Make accSaber leaderboard bind at the end of the line.
 			
 			Container.BindInterfacesAndSelfTo<AccSaberPanelViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberLeaderboardViewController>().FromNewComponentAsViewController().AsSingle();

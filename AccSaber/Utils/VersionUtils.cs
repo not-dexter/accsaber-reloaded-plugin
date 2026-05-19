@@ -23,7 +23,7 @@ namespace AccSaber.Utils
         public static async Task<UserInfo> GetUserInfo(this IPlatformUserModel model) => await model.GetUserInfo(default);
         public static Color ColorWithAlpha(this Color c, float alpha) => new(c.r, c.g, c.b, alpha);
         #endregion
-        public static Task<Sprite> LoadSpriteFromAssemblyAsync(string path) => Utilities.LoadSpriteFromAssemblyAsync(path);
+        public static Task<Sprite> LoadSpriteAsync(string path) => Utilities.LoadSpriteAsync(Utilities.GetResource(Assembly.GetExecutingAssembly(), path));
         public static IList Data(this CustomCellListTableData ccltd) => ccltd.Data;
         public static TableView TableView(this CustomCellListTableData ccltd) => ccltd.TableView;
         public static Image Background(this Backgroundable bg) => bg.Background;
@@ -34,7 +34,7 @@ namespace AccSaber.Utils
         #region Lower Version Only
         public static async Task SetImageAsync(this Image image, string location, bool animated = true) => image.SetImage(location);
         #endregion
-        public static Task<Sprite> LoadSpriteFromAssemblyAsync(string path) =>
+        public static Task<Sprite> LoadSpriteAsync(string path) =>
             Task.Run(() => Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), path)));
         public static ref List<object> Data(this CustomCellListTableData ccltd) => ref ccltd.data;
         public static ref TableView TableView(this CustomCellListTableData ccltd) => ref ccltd.tableView;

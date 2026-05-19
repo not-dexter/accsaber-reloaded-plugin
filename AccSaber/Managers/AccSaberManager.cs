@@ -27,15 +27,7 @@ namespace AccSaber.Managers
 
             string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
 
-            if (_accSaberStore.RankedMaps is not null)
-            {
-                AccSaberBasicDifficulty? mapInfo = _accSaberStore.RankedMaps.TryGetValue(hash, out AccSaberBasicDifficulty[]? ret) ?
-                ret.FirstOrDefault(diff => beatmapKey.difficulty == diff.Difficulty) : null;
-
-                _accSaberStore.SetMapFromBasicDifficulty(mapInfo);
-            }
-            else
-                _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+            _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
         }
 #else
         
@@ -50,16 +42,7 @@ namespace AccSaber.Managers
 
             string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
             
-
-			if (_accSaberStore.RankedMaps is not null)
-			{
-                AccSaberBasicDifficulty? mapInfo = _accSaberStore.RankedMaps.TryGetValue(hash, out AccSaberBasicDifficulty[]? ret) ?
-                ret.FirstOrDefault(diff => beatmapKey.difficulty == diff.Difficulty) : null;
-
-                _accSaberStore.SetMapFromBasicDifficulty(mapInfo);
-            }
-			else
-				_accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+			_accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
         }
 #endif
     }

@@ -331,9 +331,9 @@ namespace AccSaber.API
         /// Asynchronously retrieves the cached length of the leaderboard for a hash + difficulty.
         /// Returns -1 when unknown or when the leaderboard cannot be resolved.
         /// </summary>
-        public static async Task<int> GetLength(string hash, BeatmapDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global)
+        public static int GetLength(string hash, BeatmapDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global)
         {
-            string? diffId = await GetLeaderboardDifficultyId(hash, diff);
+            string? diffId = GetLeaderboardDifficultyId(hash, diff);
 
             if (diffId is null)
                 return -1;
@@ -344,8 +344,8 @@ namespace AccSaber.API
         /// <summary>
         /// Overload for GetLength that accepts an <see cref="AccSaberBasicDifficulty"/>.
         /// </summary>
-        public static async Task<int> GetLength(AccSaberBasicDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global) =>
-            await GetLength(diff.Hash, diff.Difficulty, displayType);
+        public static int GetLength(AccSaberBasicDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global) =>
+            GetLength(diff.Hash, diff.Difficulty, displayType);
 
         /// <summary>
         /// Gets a page of scores for a specific hash & difficulty (zero-indexed page).
@@ -353,7 +353,7 @@ namespace AccSaber.API
         /// </summary>
         public static async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string hash, BeatmapDifficulty diff, string? country = null)
         { // page is zero indexed.
-            string? diffId = await GetLeaderboardDifficultyId(hash, diff);
+            string? diffId = GetLeaderboardDifficultyId(hash, diff);
             if (diffId is null) return null;
             return await GetScoreData(page, diffId, country);
         }
@@ -698,9 +698,9 @@ namespace AccSaber.API
         /// </summary>
         public static async Task<AccSaberLeaderboardEntry?> GetScoreData(string userId, string hash, BeatmapDifficulty diff, CancellationToken ct = default)
         {
-            if (SerializerHandler.CachedMaps.TryGetValue(hash, out AccSaberRankedMap map))
+            if (SerializerHandler.CachedMaps.TryGetValue(hash, out AccSaberBasicMap map))
             {
-                AccSaberDifficulty? selectedDiff = map.Difficulties?.FirstOrDefault(currentDiff => currentDiff.Difficulty == diff);
+                AccSaberBasicDifficulty? selectedDiff = map.Difficulties?.FirstOrDefault(currentDiff => currentDiff.Difficulty == diff);
                 if (selectedDiff is not null && scoreInfoCacher.TryGetCachedItem(selectedDiff.DifficultyId, out ScoreCache val) && val.UserIds.Contains(userId))
                     return val.Data.First(token => token.PlayerId.Equals(userId));
             }
@@ -717,15 +717,16 @@ namespace AccSaber.API
         /// Fetches the ranked map object for a hash. Uses an in-memory cache to avoid repeated requests.
         /// Returns null on failure or cancellation.
         /// </summary>
-        public static async Task<AccSaberRankedMap?> GetLeaderboard(string hash, CancellationToken ct = default)
+        public static AccSaberBasicMap? GetLeaderboard(string hash, CancellationToken ct = default)
         {
             if (ct.IsCancellationRequested) 
                 return null;
 
-            if (SerializerHandler.CachedMaps.TryGetValue(hash, out AccSaberRankedMap? map))
+            if (SerializerHandler.CachedMaps.TryGetValue(hash.ToLower(), out AccSaberBasicMap? map))
                 return map;
 
-            try
+            // Note: This function will no longer fetch the map of a given hash. It was assume any map not loaded in the cache is unranked.
+            /*try
             {
                 map = await CallAPI_Json<AccSaberRankedMap>(string.Format(APAPI_HASH, hash), throttler, true, ct: ct);
 
@@ -738,16 +739,19 @@ namespace AccSaber.API
             {
                 Plugin.Log.Error($"Issue URL: {string.Format(APAPI_HASH, hash)}");
                 Plugin.Log.Error("There was an error getting map information: " + ex);
-                return null;
-            }
+            }*/
+
+            return null;
         }
 
         /// <summary>
         /// Returns the difficulty object for a hash + difficulty or null if not found.
         /// </summary>
-        public static async Task<AccSaberDifficulty?> GetLeaderboard(string hash, BeatmapDifficulty diff, CancellationToken ct = default)
+        public static AccSaberBasicDifficulty? GetLeaderboard(string hash, BeatmapDifficulty diff, CancellationToken ct = default)
         {
-            AccSaberRankedMap? map = await GetLeaderboard(hash, ct);
+            AccSaberBasicMap? map = GetLeaderboard(hash, ct);
+
+            //Plugin.Log.Info($"Map null? {map is null}, mapDiff null? {map?.Difficulties is null}, mapDiff diff = {map?.Difficulties?.Select(diff => diff.Difficulty).Print()}");
 
             if (map is null) 
                 return null;
@@ -758,48 +762,52 @@ namespace AccSaber.API
         /// <summary>
         /// Returns the AccSaber difficulty id for a hash + difficulty, or null.
         /// </summary>
-        public static async Task<string?> GetLeaderboardDifficultyId(string hash, BeatmapDifficulty diff, CancellationToken ct = default) =>
-            (await GetLeaderboard(hash, diff, ct))?.DifficultyId;
+        public static string? GetLeaderboardDifficultyId(string hash, BeatmapDifficulty diff, CancellationToken ct = default) =>
+            GetLeaderboard(hash, diff, ct)?.DifficultyId;
 
         /// <summary>
         /// Overload accepting an <see cref="AccSaberBasicDifficulty"/>.
         /// </summary>
-        public static async Task<string?> GetLeaderboardDifficultyId(AccSaberBasicDifficulty diff, CancellationToken ct = default) =>
-            await GetLeaderboardDifficultyId(diff.Hash, diff.Difficulty, ct);
+        public static string? GetLeaderboardDifficultyId(AccSaberBasicDifficulty diff, CancellationToken ct = default) =>
+            GetLeaderboardDifficultyId(diff.Hash, diff.Difficulty, ct);
 
         /// <summary>
         /// Retrieves all basic diffs from the API and groups them by hash.
         /// Returns an empty dictionary on failure.
         /// </summary>
-        public static async Task<Dictionary<string, AccSaberBasicDifficulty[]>> GetAllBasicDiffs(CancellationToken ct = default)
+        public static async Task LoadAllBasicDiffs(CancellationToken ct = default)
         {
             string? dataStr = await CallAPI_String(APAPI_DIFFS, throttler, ct: ct);
 
             if (string.IsNullOrEmpty(dataStr))
             {
                 Plugin.Log.Error("Failed to get basic diffs, the json returned was null!");
-                return [];
+                return;
             }
 
-            AccSaberPagedContent<AccSaberBasicDifficulty>? diffData = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberBasicDifficulty>>(dataStr!);
+            List<AccSaberBasicDifficulty>? diffData = JsonConvert.DeserializeObject<List<AccSaberBasicDifficulty>>(dataStr!);
 
-            if (diffData is null || diffData.Content is null)
+            if (diffData is null)
             {
                 Plugin.Log.Error("Failed to get basic diffs, the json returned was not able to be deserialized!");
-                return [];
+                return;
             }
 
-            Dictionary<string, List<AccSaberBasicDifficulty>> rankedMaps = [];
+            Dictionary<string, AccSaberBasicMap> rankedMaps = [];
 
-            foreach (AccSaberBasicDifficulty diff in diffData.Content)
+            foreach (AccSaberBasicDifficulty diff in diffData)
             {
                 if (rankedMaps.ContainsKey(diff.Hash))
-                    rankedMaps[diff.Hash].Add(diff);
+                    rankedMaps[diff.Hash].Difficulties.Add(diff);
                 else
-                    rankedMaps[diff.Hash] = [diff];
+                    rankedMaps[diff.Hash] = new()
+                    {
+                        Hash = diff.Hash,
+                        Difficulties = [diff]
+                    };
             }
 
-            return new(rankedMaps.Select(pair => new KeyValuePair<string, AccSaberBasicDifficulty[]>(pair.Key, [.. pair.Value])));
+            SerializerHandler.CachedMaps.AddRange(rankedMaps);
         }
 
         /// <summary>

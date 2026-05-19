@@ -1,5 +1,6 @@
 ﻿using AccSaber.API;
 using AccSaber.Consts;
+using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Models.CacheModels;
 using IPA.Config.Data;
@@ -17,10 +18,10 @@ namespace AccSaber.Utils
     {
         private static AccSaberSerializedCache<AccSaberPlayerScore> cachedPlayerScores = new();
 
-        public static Dictionary<string, AccSaberRankedMap> CachedMaps { get; private set; } = [];
+        public static Dictionary<string, AccSaberBasicMap> CachedMaps { get; private set; } = [];
         public static int TotalMaps { get; private set; } = -1;
         public static List<AccSaberPlayerScore> CachedPlayerScores => cachedPlayerScores.Content;
-        public static  int CachedPlayerScoreLength
+        public static int CachedPlayerScoreLength
         {
             get => cachedPlayerScores.MaxLength;
             set => cachedPlayerScores.MaxLength = value;
@@ -51,9 +52,12 @@ namespace AccSaber.Utils
                     return;
                 }
 
-                JsonSerializer serializer = new();
+                JsonSerializer serializer = new()
+                {
+                    NullValueHandling = NullValueHandling.Ignore
+                };
 
-                AccSaberSerializedCache<AccSaberRankedMap>? maps = null;
+                AccSaberSerializedCache<AccSaberBasicMap>? maps = null;
                 AccSaberSerializedCache<AccSaberPlayerScore>? playerScores = null;
 
                 if (File.Exists(ResourcePaths.ACC_SABER_MAP_CACHE))
@@ -61,7 +65,7 @@ namespace AccSaber.Utils
                     using StreamReader sr = new(ResourcePaths.ACC_SABER_MAP_CACHE);
                     using JsonReader reader = new JsonTextReader(sr);
 
-                    maps = serializer.Deserialize<AccSaberSerializedCache<AccSaberRankedMap>>(reader);
+                    maps = serializer.Deserialize<AccSaberSerializedCache<AccSaberBasicMap>>(reader);
                 }
 
                 if (File.Exists(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE))
@@ -73,7 +77,12 @@ namespace AccSaber.Utils
                 }
 
                 if (maps is not null && (await ValidateMapCache(maps.Content.Count)))
-                    CachedMaps.AddRange(maps.Content.Select(map => new KeyValuePair<string, AccSaberRankedMap>(map.Hash, map)));
+                    CachedMaps.AddRange(maps.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)));
+
+                //Plugin.Log.Info($"loaded maps = {maps?.Content.Count}, total maps = {TotalMaps}, cached maps = {CachedMaps.Count}");
+
+                if (CachedMaps.Count != TotalMaps)
+                    await AccsaberAPI.LoadAllBasicDiffs();
 
                 if (playerScores is not null && (await ValidatePlayerScoreCache(playerScores.LastUpdated)))
                     cachedPlayerScores = playerScores;
@@ -89,11 +98,15 @@ namespace AccSaber.Utils
 
             JsonSerializer serializer = new();
 
-            AccSaberSerializedCache<AccSaberRankedMap> maps = new()
+            AccSaberSerializedCache<AccSaberBasicMap> maps = new()
             {
                 MaxLength = TotalMaps,
                 Content = [.. CachedMaps.Values]
             };
+
+            foreach (AccSaberBasicMap map in maps.Content)
+                foreach (AccSaberBasicDifficulty mapDiff in map.Difficulties)
+                    mapDiff.Hash = null!; // this saves around 20 KBs off the cache file, worth it lol.
 
             Save(ResourcePaths.ACC_SABER_MAP_CACHE, maps, serializer);
             Save(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE, cachedPlayerScores, serializer);
@@ -111,7 +124,7 @@ namespace AccSaber.Utils
 
         private async Task<bool> ValidateMapCache(int mapCount)
         {
-            AccSaberPagedContent? response = await APIHandler.CallAPI_Json<AccSaberPagedContent>(string.Format(HelpfulPaths.APAPI_MAPS, 0, 1), AccsaberAPI.throttler);
+            AccSaberPagedContent? response = await APIHandler.CallAPI_Json<AccSaberPagedContent>(string.Format(HelpfulPaths.APAPI_MAPS, 0, 1) + "&status=RANKED", AccsaberAPI.throttler);
 
             if (response is null)
                 return true; // If we don't get a good response from the API, then we can't invalidate it, so might as well use what we have.

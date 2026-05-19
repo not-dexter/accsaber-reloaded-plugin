@@ -46,7 +46,7 @@ namespace AccSaber.UI.ViewControllers
 			_timeTweeningManager = timeTweeningManager;
 		}
         
-		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberDifficulty? mapInfo)
+		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberBasicDifficulty? mapInfo)
 		{
 			if (mapInfo is null || !_parsed)
 			{
@@ -62,13 +62,15 @@ namespace AccSaber.UI.ViewControllers
 				return;
 			}
 
+			string category = mapInfo is AccSaberDifficulty diff && diff.Status != MapStatus.Ranked ? diff.RankedStatus : mapInfo.Category?.ToString() ?? "";
+
 			if (!_container.gameObject.activeInHierarchy)
 			{
-				SetBannerColor(mapInfo.RankedStatus == "RANKED" ? mapInfo.CategoryId : mapInfo.RankedStatus);
+				SetBannerColor(category);
 			}
 			else
 			{
-				TweenBannerColor(mapInfo.RankedStatus == "RANKED" ? mapInfo.CategoryId : mapInfo.RankedStatus);	
+				TweenBannerColor(category);	
 			}
 		}
 
@@ -188,9 +190,10 @@ namespace AccSaber.UI.ViewControllers
 			else
 			{
 				_timeTweeningManager.KillAllTweens(this);
-				if (_accSaberStore.CurrentRankedMap?.CategoryId != null)
+				if (_accSaberStore.CurrentRankedMap?.Category is not null)
 				{
-					SetBannerColor(_accSaberStore.CurrentRankedMap.RankedStatus == "RANKED" ? _accSaberStore.CurrentRankedMap.CategoryId : _accSaberStore.CurrentRankedMap.RankedStatus);
+					AccSaberBasicDifficulty mapInfo = _accSaberStore.CurrentRankedMap;
+                    SetBannerColor(mapInfo is AccSaberDifficulty diff && diff.Status != MapStatus.Ranked ? diff.RankedStatus : mapInfo.Category?.ToString() ?? "");
 				}
 			}
 		}
@@ -210,9 +213,9 @@ namespace AccSaber.UI.ViewControllers
 		{
 			return category switch
 			{
-				"b0000000-0000-0000-0000-000000000001" => new Color(0.015f, 0.906f, 0.176f, 1),
-				"b0000000-0000-0000-0000-000000000002" => new Color(0.039f, 0.573f, 0.918f, 1),
-				"b0000000-0000-0000-0000-000000000003" => new Color(0.902f, 0.027f, 0.027f, 1),
+				"True" => new Color(0.015f, 0.906f, 0.176f, 1),
+				"Standard" => new Color(0.039f, 0.573f, 0.918f, 1),
+				"Tech" => new Color(0.902f, 0.027f, 0.027f, 1),
 				"QUALIFIED" => new Color(1f, 1f, 0f, 1),
 				"QUEUE" => new Color(1f, 1f, 0f, 1),
 				_ => Color.gray
@@ -247,8 +250,9 @@ namespace AccSaber.UI.ViewControllers
 					return;
 				}
 				
-				SetBannerColor(_accSaberStore.CurrentRankedMap.Status == MapStatus.Ranked ? _accSaberStore.CurrentRankedMap.CategoryId : _accSaberStore.CurrentRankedMap.RankedStatus);
-			}
+                AccSaberBasicDifficulty mapInfo = _accSaberStore.CurrentRankedMap;
+                SetBannerColor(mapInfo is AccSaberDifficulty diff && diff.Status != MapStatus.Ranked ? diff.RankedStatus : mapInfo.Category?.ToString() ?? "");
+            }
 		}
 
 
@@ -291,9 +295,9 @@ namespace AccSaber.UI.ViewControllers
 			{
 				PlayerStats? currentOverallUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == APCategory.Overall);
 
-                if (_accSaberStore.CurrentRankedMap?.Status == MapStatus.Ranked)
+                if (_accSaberStore.CurrentRankedMap is not AccSaberDifficulty diff || diff.Status == MapStatus.Ranked)
 					return $"<color=#EDFF55>Ranking:</color> #{currentOverallUser?.Rank} <size=75%>(<color=#00FFAE>{currentOverallUser?.AP:N2} AP</color>)";
-				return $"<color=#EDFF55>Status:</color> {_accSaberStore.CurrentRankedMap?.RankedStatus}";
+				return $"<color=#EDFF55>Status:</color> {diff.RankedStatus}";
             }
 		}
 
@@ -304,15 +308,15 @@ namespace AccSaber.UI.ViewControllers
             {
                 PlayerStats? currentCategoryUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == _accSaberStore.CurrentRankedMap?.Category);
 
-                if (_accSaberStore.CurrentRankedMap?.Status == MapStatus.Ranked)
+                if (_accSaberStore.CurrentRankedMap is not AccSaberDifficulty diff || diff.Status == MapStatus.Ranked)
                     return $"<color=#EDFF55>Category Ranking:</color> #{currentCategoryUser?.Rank} <size=75%>(<color=#00FFAE>{currentCategoryUser?.AP:N2} AP</color>)";
-                return $"<color=#EDFF55>Criteria:</color> {_accSaberStore.CurrentRankedMap?.CriteriaStatus}";
+                return $"<color=#EDFF55>Criteria:</color> {diff.CriteriaStatus}";
             }
         }
 
         [UIValue("map-complexity-text")]
-		private string MapComplexityText => _accSaberStore.CurrentRankedMap?.Status == MapStatus.Ranked ?
+		private string MapComplexityText => _accSaberStore.CurrentRankedMap is not AccSaberDifficulty diff || diff.Status == MapStatus.Ranked ?
 			$"<color=#EDFF55>Map Complexity:</color> {Math.Round(_accSaberStore.CurrentRankedMap?.Complexity ?? -1f, 2)}" :
-			$"<color=#EDFF55>Category:</color> {GetCategoryName(_accSaberStore.CurrentRankedMap?.CategoryId ?? "")}";
+			$"<color=#EDFF55>Category:</color> {GetCategoryName(diff.CategoryId ?? "")}";
 	}
 }

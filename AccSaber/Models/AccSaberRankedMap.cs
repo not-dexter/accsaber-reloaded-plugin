@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.Serialization;
 using AccSaber.Managers;
 using AccSaber.Models.Base;
+using AccSaber.Models.CacheModels;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal sealed class AccSaberRankedMap : Model
+    internal sealed class AccSaberRankedMap : AccSaberBasicMap
     {
         [JsonProperty("beatsaverCode")]
         public string BeatSaverKey { get; set; } = null!;
@@ -20,7 +22,7 @@ namespace AccSaber.Models
         //createdAt
 
         [JsonProperty("difficulties")]
-        public List<AccSaberDifficulty>? Difficulties { get; set; }
+        public new List<AccSaberDifficulty>? Difficulties { get; set; }
 
         [JsonProperty("id")]
         public string MapId { get; set; } = null!;
@@ -31,20 +33,25 @@ namespace AccSaber.Models
         [JsonProperty("songAuthor")]
         public string SongAuthorName { get; set; } = null!;
 
-        [JsonProperty("songHash")]
-        public string Hash { get; set; } = null!;
-
-        [JsonProperty("songName")]
-        public string SongName { get; set; } = null!;
-
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
+            if (Difficulties is null && base.Difficulties.Count > 0)
+            {
+                Difficulties = [];
+                Difficulties.AddRange(base.Difficulties.Where(diff => diff is AccSaberDifficulty).Cast<AccSaberDifficulty>());
+            }
+
             if (Difficulties is not null)
             {
+                if (base.Difficulties.Count < Difficulties.Count)
+                {
+                    base.Difficulties.Clear();
+                    base.Difficulties.AddRange(Difficulties);
+                }
+
                 foreach (AccSaberDifficulty difficulty in Difficulties)
                 {
-                    difficulty.Hash = Hash;
                     difficulty.ParentInfo = this;
                 }
             }

@@ -24,15 +24,13 @@ namespace AccSaber.Managers
 		private readonly SiraLog _log;
 		private readonly IPlatformUserModel _platformUserModel;
 
-		public event Action<AccSaberDifficulty?>? OnAccSaberRankedMapUpdated;
+		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
 		public event Action? OnAccSaberScoreUpdated;
 		public event Action? OnUpdatingFromAccSaberAPI;
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
-		private Dictionary<string, AccSaberBasicDifficulty[]>? _rankedMaps = [];
 		private AccSaberUser? _currentUser;
 
-		public IReadOnlyDictionary<string, AccSaberBasicDifficulty[]>? RankedMaps => _rankedMaps;
         public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
 		public List<AccSaberMilestone>_currentUserMilestones = [];
 
@@ -45,7 +43,7 @@ namespace AccSaber.Managers
         private static readonly ClientWebSocket webSocket = new();
         private static readonly AsyncLock listenerLock = new();
 
-        private AccSaberDifficulty? _currentRankedMap;
+        private AccSaberBasicDifficulty? _currentRankedMap;
 
 #pragma warning disable IDE0290
 		public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel)
@@ -54,7 +52,7 @@ namespace AccSaber.Managers
 			_platformUserModel = platformUserModel;
 		}
 
-		public AccSaberDifficulty? CurrentRankedMap
+		public AccSaberBasicDifficulty? CurrentRankedMap
 		{
 			get => _currentRankedMap;
 			set
@@ -64,21 +62,6 @@ namespace AccSaber.Managers
 			}
 		}
 		public AccSaberUser? CurrentUser => _currentUser;
-
-
-        private async Task SetRankedMaps(bool fullMaps)
-		{
-			
-			if (fullMaps)
-			{
-				await AccsaberAPI.LoadAllMaps();
-				_rankedMaps = null;
-            }
-			else
-			{
-				_rankedMaps = await AccsaberAPI.GetAllBasicDiffs();
-			}
-        }
 
 		public async Task<List<AccSaberMilestone>> GetUserMilestones(bool completed)
 		{
@@ -193,13 +176,13 @@ namespace AccSaber.Managers
 
 			return _currentUser!;
 		}
-		public async void SetMapFromBasicInfo(string hash, BeatmapDifficulty difficulty)
+		public void SetMapFromBasicInfo(string hash, BeatmapDifficulty difficulty)
 		{
-            CurrentRankedMap = (await AccsaberAPI.GetLeaderboard(hash))?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
+            CurrentRankedMap =  AccsaberAPI.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
         }
-		public async void SetMapFromBasicDifficulty(AccSaberBasicDifficulty? difficulty)
+		public void SetMapFromBasicDifficulty(AccSaberBasicDifficulty? difficulty)
 		{
-			CurrentRankedMap = difficulty is null ? null : (await AccsaberAPI.GetLeaderboard(difficulty.Hash))?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty.Difficulty);
+			CurrentRankedMap = difficulty is null ? null : AccsaberAPI.GetLeaderboard(difficulty.Hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty.Difficulty);
         }
 
 
@@ -283,7 +266,6 @@ namespace AccSaber.Managers
 			OnScoreUpdated += UpdatePlayerScore;
 
             //These are all independent tasks, so start each of them on their own thread
-            Task.Run(async () => await SetRankedMaps(true));
 			Task.Run(async () => _currentUserMilestones = await GetUserMilestones(true));
 			Task.Run(UpdateAccSaberInfo);
 			Task.Run(() => StartWebsocket(WebsocketCanceller.Token));

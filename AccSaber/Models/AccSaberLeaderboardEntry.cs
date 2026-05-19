@@ -120,7 +120,7 @@ namespace AccSaber.Models
         public string PlayerName { get; set; } = null!;
 
         [JsonProperty("wallHits")]
-        public int WallHits { get; set; }
+        public int? WallHits { get; set; }
 
         [JsonProperty("weightedAp")]
         public float WeightedAp { get; set; }
@@ -129,7 +129,7 @@ namespace AccSaber.Models
         public float XpGained { get; set; }
 
         [JsonIgnore]
-        public bool FC => Misses + BombHits + BadCuts + WallHits == 0;
+        public bool FC => Misses + BombHits + BadCuts + (WallHits ?? 0) == 0;
 
         
     }

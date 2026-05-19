@@ -12,7 +12,8 @@ using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
-using AccSaber.Utils;﻿
+using AccSaber.Utils;
+using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -53,10 +54,19 @@ namespace AccSaber.UI.ViewControllers
 		public event PropertyChangedEventHandler? PropertyChanged;
 
 		[UIValue("followImg")]
-		public const string FollowImg = ResourcePaths.FOLLOWED;
+		private const string FollowImg = ResourcePaths.FOLLOWED;
 
 		[UIValue("rivalImg")]
-		public const string RivalImg = ResourcePaths.RIVALS;
+		private const string RivalImg = ResourcePaths.RIVALS;
+
+		[UIValue("pixelImg")]
+		private const string PixelImg = ResourcePaths.PIXEL;
+
+		[UIValue("followColor")]
+		private const string FollowColor = ColorUtils.RELATIONS_ACC;
+
+		[UIValue("rivalColor")]
+		private const string RivalColor = ColorUtils.RELATIONS_TARGETED;
 
 		[UIComponent("modal")]
 		private ModalView _modalView = null!;
@@ -230,6 +240,10 @@ namespace AccSaber.UI.ViewControllers
 		private readonly ClickableImage _friendButton = null!;
 		[UIComponent("add-rival")]
 		private readonly ClickableImage _rivalButton = null!;
+		[UIComponent("add-friend-bg")]
+		private readonly CustomBackground _friendButtonBG = null!;
+		[UIComponent("add-rival-bg")]
+		private readonly CustomBackground _rivalButtonBG = null!;
 
 		[UIValue("relation-loading")]
 		private bool RelationLoading
@@ -320,7 +334,10 @@ namespace AccSaber.UI.ViewControllers
 
 				_profileImage.material = ResourcePaths.BORDER_MATERIAL;
 
-				_friendButton.HighlightColor = ColorUtils.RELOADED.Color();
+                _friendButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
+				_rivalButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
+
+                _friendButton.HighlightColor = ColorUtils.RELOADED.Color();
 				_rivalButton.HighlightColor = ColorUtils.TARGETED.Color();
 
 				_parsed = true;
