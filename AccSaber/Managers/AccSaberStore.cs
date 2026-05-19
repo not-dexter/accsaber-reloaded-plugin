@@ -109,7 +109,8 @@ namespace AccSaber.Managers
 
 						newMilestones.Add(milestone);
                     }
-					return newMilestones;
+
+					return completed ? newMilestones : [.. newMilestones.OrderByDescending(x => x.NormalizedProgress)];
 				}
 			}
 			return [];
