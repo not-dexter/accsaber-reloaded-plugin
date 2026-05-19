@@ -1,0 +1,14 @@
+<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+	<modal id='modal' show-event='open-modal' hide-event='close-modal' clickerino-offerino-closerino='true' size-delta-x='85' size-delta-y='65' move-to-center='true'>
+		<modifier-container >
+			<vertical pref-width='80' horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
+				<horizontal vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-width='60' pref-height='15'>
+					<text text='~news-title' align='Center'/>
+				</horizontal>
+				<horizontal bg="panel-top" pref-height="50" skew="0" pad="2">
+					<text-page id="content-page" size-delta-y="50" size-delta-x="80" text="~news-content" rich-text="true" />
+				</horizontal>
+			</vertical>
+		</modifier-container>
+	</modal>
+</bg>

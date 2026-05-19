@@ -29,8 +29,9 @@ namespace AccSaber.Installers
 			Container.Bind<AccSaberMenuViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberMilestoneViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberMainFlowCoordinator>().FromNewComponentOnNewGameObject().AsSingle();
+            Container.Bind<AccSaberNewsModal>().AsSingle();
 
-			Container.BindInterfacesAndSelfTo<AccSaberStore>().AsSingle();
+            Container.BindInterfacesAndSelfTo<AccSaberStore>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberManager>().AsSingle();
 			Container.BindInterfacesTo<AccSaberCustomLeaderboard>().AsSingle();
 			

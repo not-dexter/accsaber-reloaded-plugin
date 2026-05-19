@@ -1,20 +1,22 @@
 ﻿using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.UI.ViewControllers;
+using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using AccSaber.Utils;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
+using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
-using System.Linq;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -31,6 +33,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private AccSaberStore _accSaberStore = null!;
 
         private List<AccSaberNewsEntry> _news = null!;
+
+        [Inject] private readonly AccSaberNewsModal nmc = null!;
 
         [UIComponent("news-list")]
         private readonly CustomCellListTableData _newsList = null!;
@@ -79,6 +83,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _ = SetNews(_currentTab);
         }
 
+        [UIAction("post-selected")]
+        void PostSelected(TableView tableView, NewsCell post)
+        {
+            nmc.ShowModal(_newsList.transform, this, post._post);
+            tableView.ClearSelection();
+        }
+
         private async Task SetNews(AccSaberStore.NewsType tab)
         {
             _newsCells.Clear();
@@ -87,15 +98,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             try {
                 _news = await _accSaberStore.GetNewsPosts(tab);
                 
-                if (_news.Count > 0)
+                foreach (var post in _news)
                 {
-                    foreach (var post in _news)
-                    {
-                        _newsCells.Add(new NewsCell(post.Title, post.Description, post.PublishedAt.ToString()));
-                    }
+                    _newsCells.Add(new NewsCell(post));
                 }
-                else
-                    _newsCells.Add(new NewsCell("No posts found", "", ""));
 
                 IEnumerator WaitThenUpdate()
                 {
@@ -111,30 +117,22 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 Plugin.Log.Error(e);
             }
         }
-        internal class NewsCell
+        internal class NewsCell(AccSaberNewsEntry post)
         {
             #region BSML Values
             [UIValue("news-title")]
-            private readonly string _newsTitle;
+            private readonly string _newsTitle = post.Title;
 
             [UIValue("news-desc")]
-            private readonly string _newsDesc;
-
-            /*[UIValue("news-content")]
-			private readonly string _newsContent;
-
-			[UIValue("news-author")]
-			private readonly string _newsAuthor;*/
+            private readonly string _newsDesc = post.Description;
 
             [UIValue("news-published")]
-            private readonly string _newsPublished;
+            private readonly string _newsPublished = post.PublishedAt.ToString();
+
+
+            public AccSaberNewsEntry _post { get; private set; } = post;
+
             #endregion
-            public NewsCell(string newsTitle, string newsDesc, /*string newsContent, string newsAuthor*/ string newsPublished)
-            {
-                _newsTitle = newsTitle;
-                _newsDesc = newsDesc;
-                _newsPublished = newsPublished;
-            }
         }
     }
 }

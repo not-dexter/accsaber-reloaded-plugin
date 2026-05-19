@@ -50,6 +50,7 @@ namespace AccSaber.Consts
         public const string ACC_SABER_MENU_CELL = MENU_BSML_PATH + ".AccSaberMenuCell.bsml";
         public const string ACC_SABER_MILESTONE_VIEW = MENU_BSML_PATH + ".AccSaberMilestoneView.bsml";
         public const string ACC_SABER_NEWS_VIEW = MENU_BSML_PATH + ".AccSaberNewsView.bsml";
+        public const string ACC_SABER_NEWS_MODAL = MENU_BSML_PATH + ".AccSaberNewsModal.bsml";
 
         #endregion
         #region Data File Paths
