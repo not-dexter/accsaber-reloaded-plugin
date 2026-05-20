@@ -1,17 +1,13 @@
-﻿using Accsaber.Utils;
-using AccSaber.API;
+﻿using AccSaber.API;
 using AccSaber.Models;
-using AccSaber.UI.MenuButton.ViewControllers;
+using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using SiraUtil.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -26,11 +22,10 @@ namespace AccSaber.Managers
 		private readonly IPlatformUserModel _platformUserModel;
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
-		public event Action? OnAccSaberScoreUpdated;
 		public event Action? OnUpdatingFromAccSaberAPI;
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
-		private AccSaberUser? _currentUser;
+		private AccSaberPlayer? _currentUser;
 
         public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
 		public List<AccSaberMilestone>_currentUserMilestones = [];
@@ -62,7 +57,7 @@ namespace AccSaber.Managers
 				OnAccSaberRankedMapUpdated?.Invoke(_currentRankedMap);
 			}
 		}
-		public AccSaberUser? CurrentUser => _currentUser;
+		public AccSaberPlayer? CurrentUser => _currentUser;
 
 		public async Task<List<AccSaberMilestone>> GetUserMilestones(bool completed)
 		{
@@ -153,7 +148,7 @@ namespace AccSaber.Managers
 				return;
 			}
 
-			AccSaberUser? newOverall = await AccsaberAPI.GetPlayerInfo(platformUser.platformUserId, true, true);
+			AccSaberPlayer? newOverall = await AccsaberAPI.GetPlayerInfo(platformUser.platformUserId, true, true);
 
 			// Check if the data fetched is the same as what we already have cached
 			// Saves us from calling the API three more times for the True, Standard and Tech user categories.
@@ -167,7 +162,7 @@ namespace AccSaber.Managers
 
 			OnUpdatedFromAccSaberAPI?.Invoke(true);
 		}
-		public async Task<AccSaberUser> GetCurrentUserAsync()
+		public async Task<AccSaberPlayer> GetCurrentUserAsync()
 		{
 			if (_currentUser is not null)
 				return _currentUser;

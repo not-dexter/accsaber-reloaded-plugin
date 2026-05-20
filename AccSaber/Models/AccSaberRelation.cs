@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using AccSaber.API;
-using AccSaber.Managers;
 using AccSaber.Models.Base;
 using AccSaber.Utils;
 using JetBrains.Annotations;

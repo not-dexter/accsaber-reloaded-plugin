@@ -1,10 +1,7 @@
-﻿using AccSaber.Utils;
-using BeatSaberMarkupLanguage;
+﻿using BeatSaberMarkupLanguage;
 using HMUI;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -36,11 +33,16 @@ namespace AccsaberLeaderboard.UI.Components
 
         private Sprite GetSprite(string src)
         {
-            if (cachedSprites.TryGetValue(src, out Sprite outp))
+            if (cachedSprites.TryGetValue(src, out Sprite? outp))
                 return outp;
-            outp = Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), src));
-            //outp = await VersionUtils.LoadSpriteAsync(src);
-            //await Utilities.LoadImageAsync(Utilities.GetResource(Assembly.GetExecutingAssembly(), src));
+            //outp = Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), src));
+            byte[] file = Utilities.GetResource(Assembly.GetExecutingAssembly(), src);
+            if (file.Length != 0)
+            {
+                Texture2D texture2D = new(0, 0, TextureFormat.RGBA32, false, false);
+                if (texture2D.LoadImage(file))
+                    outp = Utilities.LoadSpriteFromTexture(texture2D);
+            }
             cachedSprites.Add(src, outp);
             return outp;
         }

@@ -7,12 +7,8 @@ using BeatSaberMarkupLanguage.Parser;
 using HMUI;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers

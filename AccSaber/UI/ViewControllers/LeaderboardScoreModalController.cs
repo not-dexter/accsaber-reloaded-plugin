@@ -1,7 +1,7 @@
 ﻿using AccSaber.Consts;
 using AccSaber.Models;
+using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
@@ -12,6 +12,10 @@ using UnityEngine;
 using Zenject;
 using static AccSaber.API.AccsaberAPI;
 using static AccSaber.Utils.ColorUtils;
+
+#if NEW_VERSION
+using BeatSaberMarkupLanguage;
+#endif
 
 namespace AccSaber.UI.ViewControllers
 {
@@ -60,13 +64,11 @@ namespace AccSaber.UI.ViewControllers
         [UIComponent("playerImageBackground")] private ImageView playerImageBackground = null!;
         [UIComponent("playerImageBorder")] private ImageView playerImageBorder = null!;
 
-        [UIComponent("complexityText")] private TextMeshProUGUI complexityText = null!;
         [UIComponent("timeSetText")] private TextMeshProUGUI timeSetText = null!;
-        [UIComponent("accTypeText")] private TextMeshProUGUI accTypeText = null!;
 
-        [UIComponent("rankText")] private TextMeshProUGUI rankText = null!;
         [UIComponent("apText")] private TextMeshProUGUI apText = null!;
         [UIComponent("accText")] private TextMeshProUGUI accText = null!;
+        [UIComponent("rankText")] private TextMeshProUGUI rankText = null!;
 
         [UIComponent("weightedText")] private TextMeshProUGUI weightedText = null!;
         [UIComponent("xpText")] private TextMeshProUGUI xpText = null!;
@@ -76,7 +78,7 @@ namespace AccSaber.UI.ViewControllers
         #region Normal Variables
 
         [Inject] private readonly LeaderboardUserModalController lumc = null!;
-        private AccSaberUser lastUser = null!;
+        private AccSaberPlayer lastUser = null!;
         private MonoBehaviour currentHost = null!;
 
         #endregion
@@ -103,7 +105,7 @@ namespace AccSaber.UI.ViewControllers
             modal.transform.SetParent(parent.transform);
         }
 
-        public Task ShowModal(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberUser? playerInfo = null)
+        public Task ShowModal(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer? playerInfo = null)
         {
             ShowModalStart(host);
 
@@ -111,7 +113,7 @@ namespace AccSaber.UI.ViewControllers
         }
         private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo)
         {
-            AccSaberUser? playerInfo = await GetPlayerInfo(scoreInfo.PlayerId, true, false);
+            AccSaberPlayer? playerInfo = await GetPlayerInfo(scoreInfo.PlayerId, true, false);
             if (playerInfo is not null)
                 await ShowTextsAsync(host, scoreInfo, playerInfo);
             else
@@ -120,7 +122,7 @@ namespace AccSaber.UI.ViewControllers
                 loader.SetActive(false);
             }
         }
-        private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberUser playerInfo) =>
+        private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer playerInfo) =>
             await Task.Run(() => host.StartCoroutine(ShowTexts(scoreInfo, playerInfo)));
         private void ShowModalStart(MonoBehaviour host)
         {
@@ -136,31 +138,30 @@ namespace AccSaber.UI.ViewControllers
             loader.SetActive(true);
             container.SetActive(false);
         }
-        private IEnumerator ShowTexts(AccSaberLeaderboardEntry scoreInfo, AccSaberUser playerInfo)
+        private IEnumerator ShowTexts(AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer playerInfo)
         {
                 lastUser = playerInfo;
-                LevelData levelInfo = playerInfo.LevelData;
+                AccSaberPlayerLevelData levelInfo = playerInfo.LevelData;
 
             yield return new WaitForEndOfFrame();
 
-                string titleColor = GetTitleColor(levelInfo.PlayerTitle);
-                playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
-                playerNameText.SetText(scoreInfo.PlayerName);
+            string titleColor = GetTitleColor(levelInfo.PlayerTitle);
+            playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
+            playerNameText.SetText(scoreInfo.PlayerName);
 
-                if (ColorUtility.TryParseHtmlString(titleColor, out Color c))
-                    playerImageBorder.color = c;
+            playerImageBorder.color = titleColor.Color();
 
-                timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(2));
+            timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(2));
 
-                apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
-                accText.SetText($"<color={ACC}>{scoreInfo.Accuracy * 100f:N4}%</color>");
-                rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
+            apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
+            accText.SetText($"<color={ACC}>{scoreInfo.Accuracy * 100f:N4}%</color>");
+            rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
 
-                weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
-                xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
-                scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
+            weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
+            xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
+            scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
 
-                playerImage.SetImageAsync(scoreInfo.AvatarURL);
+            _ = playerImage.SetImageAsync(scoreInfo.AvatarURL);
 
             yield return new WaitForFixedUpdate();
 

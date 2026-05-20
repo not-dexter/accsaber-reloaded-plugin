@@ -1,6 +1,4 @@
 ﻿using System;
-using AccSaber.Managers;
-using AccSaber.Models;
 using AccSaber.UI.ViewControllers;
 using HMUI;
 using LeaderboardCore.Managers;

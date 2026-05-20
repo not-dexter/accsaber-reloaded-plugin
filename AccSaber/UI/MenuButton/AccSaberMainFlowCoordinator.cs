@@ -1,10 +1,6 @@
 ﻿using AccSaber.UI.MenuButton.ViewControllers;
 using BeatSaberMarkupLanguage;
 using HMUI;
-using SiraUtil.Logging;
-using System;
-using System.Linq;
-using UnityEngine;
 using Zenject;
 
 namespace AccSaber.UI.MenuButton

@@ -11,7 +11,7 @@ using AccSaber.API;
 using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
-using AccSaber.Models;
+using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
@@ -30,7 +30,7 @@ namespace AccSaber.UI.ViewControllers
 	{
 #pragma warning disable IDE0051
 		private string? _userId;
-		private AccSaberUser? _user;
+		private AccSaberPlayer? _user;
 		private readonly PluginConfig _pluginConfig = null!;
 		private bool _parsed;
 		private bool _firstLoad;
@@ -424,7 +424,7 @@ namespace AccSaber.UI.ViewControllers
 				await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == _categoryValue));
         }
 
-		private async Task SetUserInfo(AccSaberUser userInfo, PlayerStats stats) // ty person for the progress bar -- you're welcome :)
+		private async Task SetUserInfo(AccSaberPlayer userInfo, AccSaberPlayerStats stats) // ty person for the progress bar -- you're welcome :)
 		{
 			var _color = userInfo.LevelData.PlayerTitle.ToLower() switch
             {

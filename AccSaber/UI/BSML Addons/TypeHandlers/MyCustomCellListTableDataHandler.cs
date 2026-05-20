@@ -1,5 +1,4 @@
-﻿using AccSaber.Utils;
-using AccsaberLeaderboard.UI.BSML_Addons.Components;
+﻿using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.TypeHandlers;
@@ -7,7 +6,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices.ComTypes;
 using UnityEngine;
 
 namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers

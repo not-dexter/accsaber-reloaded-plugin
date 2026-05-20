@@ -2,22 +2,17 @@
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
-using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using AccsaberLeaderboard.UI.Components;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
-using SiraUtil.Logging;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
-using static IPA.Logging.Logger;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -43,8 +38,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIValue("milestone-cells")]
         private readonly List<object> _milestoneCells = [];
 
-		[UIComponent("tab-selector")]
-		private readonly TabSelector _tabSelector = null!;
+		//[UIComponent("tab-selector")]
+		//private readonly TabSelector _tabSelector = null!; // Just commented this out since it isn't used currently. If needed just uncomment it.
 
 		[UIValue("is-loading")]
 		private bool IsLoading
@@ -84,7 +79,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			_ = SetMilestones(_currentTab);
 		}
 
-		[UIAction("tab-selected")]
+#pragma warning disable IDE0060 // index is needed for this function to be called correctly.
+        [UIAction("tab-selected")]
 		void TabSelected(SegmentedControl segmentedControl, int index)
 		{
 			IsLoading = true;
@@ -92,8 +88,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			_ = SetMilestones(_currentTab);	 
 
 		}
+#pragma warning restore IDE0060
 
-		private async Task SetMilestones(Tabs tab)
+        private async Task SetMilestones(Tabs tab)
         {
 			_milestoneCells.Clear();
 			_milestonesList.Data().Clear();

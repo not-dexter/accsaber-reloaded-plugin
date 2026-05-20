@@ -1,22 +1,17 @@
-﻿using AccSaber.API;
-using AccSaber.Configuration;
+﻿using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
-using AccsaberLeaderboard.UI.Components;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
@@ -163,7 +158,7 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("iconSize")] public const float iconSize = 7f;
         [UIValue("globeIconSize")] public const float globeIconSize = iconSize - 1f;
 
-        [UIParams] private BSMLParserParams parserParams = null!;
+        //[UIParams] private BSMLParserParams parserParams = null!; // Currently unused.
         [UIComponent("leaderboard")] private MyCustomCellListTableData leaderboard = null!;
 
         [UIValue("leaderboard-infos")]

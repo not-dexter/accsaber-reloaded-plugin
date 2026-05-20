@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using AccSaber.Models.Base;
 using JetBrains.Annotations;
 using Newtonsoft.Json;

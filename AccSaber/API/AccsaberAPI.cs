@@ -20,6 +20,7 @@ using Oculus.Platform;
 
 using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
+using AccSaber.Models.PlayerModels;
 
 namespace AccSaber.API
 {
@@ -47,7 +48,7 @@ namespace AccSaber.API
         /// <summary>
         /// Cache of player information keyed by player id.
         /// </summary>
-        private static readonly ObjectCacher<AccSaberUser> playerInfoCacher = new();
+        private static readonly ObjectCacher<AccSaberPlayer> playerInfoCacher = new();
 
         /// <summary>
         /// Cache of leaderboard scores keyed by difficulty id.
@@ -994,20 +995,20 @@ namespace AccSaber.API
         /// </param>
         /// <param name="ct">Optional cancellation token forwarded to the underlying API call.</param>
         /// <returns>
-        /// A <see cref="Task{TResult}"/> that resolves to an <see cref="AccSaberUser"/> instance if the API call
+        /// A <see cref="Task{TResult}"/> that resolves to an <see cref="AccSaberPlayer"/> instance if the API call
         /// and JSON deserialization succeed; otherwise <c>null</c> when the API returns no data or deserialization fails.
         /// </returns>
         /// <remarks>
         /// - This method first checks an in-memory cache (`playerInfoCacher`). If a cached item exists and either
         ///   <paramref name="stats"/> is <c>false</c> or the cached item already contains statistics, the cached item is returned.
         /// - If not cached, the method calls the AccSaber API (via <c>CallAPI_String</c>), deserializes the JSON into
-        ///   <see cref="AccSaberUser"/>, optionally awaits stat-diff loading, caches the result, and returns it.
+        ///   <see cref="AccSaberPlayer"/>, optionally awaits stat-diff loading, caches the result, and returns it.
         /// - Side effects: may perform network I/O, may await additional operations to populate stat diffs, and will cache the final object.
         /// - Cancellation: the provided <paramref name="ct"/> may cancel the API request (throws <see cref="OperationCanceledException"/>).
         /// </remarks>
-        public static async Task<AccSaberUser?> GetPlayerInfo(string userId, bool stats, bool statDiff, CancellationToken ct = default)
+        public static async Task<AccSaberPlayer?> GetPlayerInfo(string userId, bool stats, bool statDiff, CancellationToken ct = default)
         {
-            bool playerCached = playerInfoCacher.TryGetCachedItem(userId, out AccSaberUser? outp);
+            bool playerCached = playerInfoCacher.TryGetCachedItem(userId, out AccSaberPlayer? outp);
             bool statsCached = playerCached && outp!.Statistics is not null;
             bool statDiffCached = statsCached && outp!.LoadStatDiffs.IsCompleted;
 
@@ -1027,7 +1028,7 @@ namespace AccSaber.API
             if (string.IsNullOrEmpty(dataStr)) 
                 return null;
 
-            outp = JsonConvert.DeserializeObject<AccSaberUser>(dataStr!);
+            outp = JsonConvert.DeserializeObject<AccSaberPlayer>(dataStr!);
 
             if (outp is null)
                 return null;

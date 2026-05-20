@@ -1,4 +1,4 @@
-﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+﻿<bg>
   <vertical pref-width='120'>
     <horizontal bg='panel-top' horizontal-fit='PreferredSize' pref-width='120'>
       <text text='Milestones' align='Center' font-size='10' />

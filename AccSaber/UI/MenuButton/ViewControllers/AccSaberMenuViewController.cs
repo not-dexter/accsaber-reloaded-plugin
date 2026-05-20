@@ -1,37 +1,28 @@
 ﻿using AccSaber.API;
 using AccSaber.Consts;
 using AccSaber.Managers;
-using AccSaber.Models;
 using AccSaber.Models.CacheModels;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
-using AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
-using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using SiraUtil.Logging;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+using AccSaber.Models.PlayerModels;
 
-#if !NEW_VERSION
-using Oculus.Platform;
+#if NEW_VERSION
+using BeatSaberMarkupLanguage;
 #endif
 
-using static AccSaber.API.HelpfulPaths;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -40,7 +31,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     internal class AccSaberMenuViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable, IDisposable
 	{
 		private string? _userId;
-		private AccSaberUser? _user;
+		private AccSaberPlayer? _user;
         private bool _parsed;
         private bool _firstLoad;
         private bool _isLoading;
@@ -329,7 +320,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == _categoryValue));
         }
 
-		private async Task SetUserInfo(AccSaberUser userInfo, PlayerStats stats)
+		private async Task SetUserInfo(AccSaberPlayer userInfo, AccSaberPlayerStats stats)
 		{
 			var _color = userInfo.LevelData.PlayerTitle.ToLower() switch
 			{
@@ -598,7 +589,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		}
 
-		private void OnAccSaberUserUpdated(bool isNew)
+		private void OnAccSaberPlayerUpdated(bool isNew)
         {
 			if(isNew)
             {
@@ -609,12 +600,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		public void Initialize()
 		{
-			_accSaberStore.OnUpdatedFromAccSaberAPI += OnAccSaberUserUpdated;
+			_accSaberStore.OnUpdatedFromAccSaberAPI += OnAccSaberPlayerUpdated;
 		}
 
 		public void Dispose()
 		{
-			_accSaberStore.OnUpdatedFromAccSaberAPI -= OnAccSaberUserUpdated;
+			_accSaberStore.OnUpdatedFromAccSaberAPI -= OnAccSaberPlayerUpdated;
 		}
 
 	}

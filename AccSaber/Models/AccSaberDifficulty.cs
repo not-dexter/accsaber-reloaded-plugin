@@ -41,8 +41,6 @@ namespace AccSaber.Models
         private void OnDeserialized(StreamingContext context)
         {
             Category ??= EnumUtils.ReloadedCategoryToEnum(CategoryId);
-
-            //Difficulty = HelpfulPaths.ToDiff(HelpfulPaths.ReloadedDiffToDiffNum(DifficultyString));
         }
     }
 

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using AccSaber.Configuration;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
@@ -293,7 +294,7 @@ namespace AccSaber.UI.ViewControllers
 		{
 			get
 			{
-				PlayerStats? currentOverallUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == APCategory.Overall);
+				AccSaberPlayerStats? currentOverallUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == APCategory.Overall);
 
                 if (_accSaberStore.CurrentRankedMap is not AccSaberDifficulty diff || diff.Status == MapStatus.Ranked)
 					return $"<color=#EDFF55>Ranking:</color> #{currentOverallUser?.Rank} <size=75%>(<color=#00FFAE>{currentOverallUser?.AP:N2} AP</color>)";
@@ -306,7 +307,7 @@ namespace AccSaber.UI.ViewControllers
         {
             get
             {
-                PlayerStats? currentCategoryUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == _accSaberStore.CurrentRankedMap?.Category);
+                AccSaberPlayerStats? currentCategoryUser = _accSaberStore.CurrentUser?.Statistics?.FirstOrDefault(stat => stat.Category == _accSaberStore.CurrentRankedMap?.Category);
 
                 if (_accSaberStore.CurrentRankedMap is not AccSaberDifficulty diff || diff.Status == MapStatus.Ranked)
                     return $"<color=#EDFF55>Category Ranking:</color> #{currentCategoryUser?.Rank} <size=75%>(<color=#00FFAE>{currentCategoryUser?.AP:N2} AP</color>)";
