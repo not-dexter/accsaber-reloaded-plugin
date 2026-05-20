@@ -197,7 +197,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIValue(nameof(greenColor))] public const string greenColor = ColorUtils.LEVEL_DIM;
 
             [UIValue(nameof(listWidth))] public const float listWidth = 100f;
-            [UIValue(nameof(cellSize))] public const float cellSize = 13f;
+            [UIValue(nameof(cellSize))] public const float cellSize = 13.5f;
             [UIValue(nameof(FontSize))] public const float FontSize = 3f;
             [UIValue(nameof(barSpacer))] public const float barSpacer = 5f;
             [UIValue(nameof(progLen))] public const float progLen = 10f;
