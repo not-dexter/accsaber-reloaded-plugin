@@ -11,18 +11,30 @@
     <horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
       <vertical bg='panel-top' bg-color='black' skew='0' pref-width='105' pref-height='60' pad='2'>
         <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
-        <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' stick-scrolling='true' active='~is-not-loading'>
-          <vertical id='background-container' bg='panel-top' skew='0' horizontal-fit='Unconstrained' pad='1' pad-bottom='2'>
+        <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' cell-size='15' stick-scrolling='true' active='~is-not-loading'>
+          <my-vertical id='cellContainer' pref-height='~cellSize' pref-width='~listWidth' horizontal-fit='PreferredSize' child-expand-width='false' spacing='0' child-alignment='MiddleCenter' bg='~bgPath' pad-left='2' pad-right='2' pad-down='2'>
             <horizontal>
-              <vertical pad='3' pref-width='100' horizontal-fit='PreferredSize' >
-                <text text='~milestone-name' align='Left' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>
-                <horizontal>
-                  <text text='~milestone-desc' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='true'/>
-                  <text text='~milestone-progress' align='Right' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
-                </horizontal>
-              </vertical>
+              <text text='~Title' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
+              <text text='~Tier' align='Right' font-size='~FontSize' word-wrapping='false'/>
             </horizontal>
-          </vertical>
+            <horizontal active='~notCompleted'>
+              <horizontal pref-width='~barLen' child-expand-width='false' child-control-width='false'>
+                <image id='PercentBarTop' src='~oneXonePic' pref-height='1'/>
+                <image id='PercentBarBottom' src='~oneXonePic' pref-height='1'/>
+              </horizontal>
+              <horizontal pref-width='~barSpacer'/>
+              <horizontal pref-width='~progLen' child-alignment='MiddleCenter'>
+                <text text='~Progress' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
+              </horizontal>
+              <horizontal pref-width='~exactProgLen'>
+                <text text='~ExactProgress' align='Right' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
+              </horizontal>
+            </horizontal>
+            <horizontal active='~completed'>
+              <text text='Completed!' align='Right' font-size='~FontSize' face-color='~greenColor'/>
+            </horizontal>
+            <text text='~Description' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
+          </my-vertical>
         </custom-list>
       </vertical>
         <vertical preferred-width='4'>

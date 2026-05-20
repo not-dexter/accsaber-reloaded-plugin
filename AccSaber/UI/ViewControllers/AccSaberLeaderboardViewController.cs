@@ -514,10 +514,8 @@ namespace AccSaber.UI.ViewControllers
 #endif
             lock (updateDiffLock)
             {
-                Plugin.Log.Info("1");
                 if (!loaded)
                     Monitor.Wait(updateDiffLock);
-                Plugin.Log.Info("2");
 
                 if (!gameObject.activeSelf)
                     return false;

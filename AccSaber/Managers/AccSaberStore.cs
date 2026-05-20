@@ -1,6 +1,7 @@
 ﻿using Accsaber.Utils;
 using AccSaber.API;
 using AccSaber.Models;
+using AccSaber.UI.MenuButton.ViewControllers;
 using AccSaber.Utils;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -69,7 +70,6 @@ namespace AccSaber.Managers
 
 			if (platformUser is not null)
 			{
-				//var response = await Plugin.WebClient.GetAsync(completed ? $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=completedAt" : $"v1/milestones/completion-stats?userId={platformUser.platformUserId}&sort=progress");
 				string call = string.Format(completed ? HelpfulPaths.APAPI_MILESTONE_COMPLETE : HelpfulPaths.APAPI_MILESTONE_INCOMPLETE, platformUser.platformUserId);
                 string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
 
@@ -93,7 +93,7 @@ namespace AccSaber.Managers
 						newMilestones.Add(milestone);
                     }
 
-					return completed ? newMilestones : [.. newMilestones.OrderByDescending(x => x.NormalizedProgress)];
+					return completed ? newMilestones : [.. newMilestones.OrderByDescending(x => x.CalculatedProgress)];
 				}
 			}
 			return [];

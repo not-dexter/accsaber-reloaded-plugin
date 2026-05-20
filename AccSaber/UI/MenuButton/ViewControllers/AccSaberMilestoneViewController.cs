@@ -3,6 +3,7 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
+using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -14,7 +15,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.UI;
 using Zenject;
+using static IPA.Logging.Logger;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -22,6 +25,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMilestoneView.bsml")]
     internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged
     {
+#pragma warning disable IDE0051
 		public new event PropertyChangedEventHandler? PropertyChanged;
 
 		private string? _userId;
@@ -108,46 +112,109 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 			foreach (var milestone in _milestones)
             {
-                _milestoneCells.Add(new MilestoneCell(milestone.Title, milestone.Description, milestone.Tier, milestone.Completed, milestone.NormalizedProgress));
+                _milestoneCells.Add(new MilestoneCell(milestone));
             }
 			_milestonesList.TableView().ReloadData();
 			IsLoading = false;
         }
-        internal class MilestoneCell
-        {
-            #region BSML Values
-            [UIValue("milestone-name")]
-			private readonly string _milestoneName;
+		internal class MilestoneCell
+		{
+            private readonly AccSaberMilestone data;
 
-			[UIValue("milestone-desc")]
-			private readonly string _milestoneDesc;
+            private readonly bool flip;
+            private readonly float progressPercent;
 
-			[UIValue("milestone-color")]
-			private readonly string _milestoneColor;
+            private readonly Color bgColor, rankColor;
+            private float DisplayableProgress => progressPercent * 100f;
+            private readonly float Prog, Targ;
 
-			[UIValue("milestone-progress")]
-			private readonly string _milestoneProgress;
-			#endregion
-			public MilestoneCell(string milestoneName, string milestoneDesc, string tier, bool completed, float progress)
-			{
+            public MilestoneCell(AccSaberMilestone milestoneData)
+            {
+                data = milestoneData;
 
-				_milestoneColor = tier switch
-				{
-					"bronze" => "#cd7f32",
-					"silver" => "#c0c0c0",
-					"gold" => "#ffd700",
-					"platinum" => "#36cfb0",
-					"diamond" => "#b9f2ff",
-					"apex" => "#a855f7",
-					_ => "#f472b6",
-				};
+                completed = data.Completed;
+                notCompleted = !completed;
 
-				_milestoneName = $"<color={_milestoneColor}>{milestoneName}</color>"; ;
-				_milestoneDesc = milestoneDesc;
-				_milestoneProgress = completed ? "<color=#22c55e>Completed</color>" : $"{progress * 100:F1}%";
-			}
+                flip = milestoneData.Completed ^ milestoneData.Progress > milestoneData.TargetValue;
+                Prog = flip ? data.TargetValue : data.Progress;
+                Targ = flip ? data.Progress : data.TargetValue;
 
-            
+                progressPercent = milestoneData.Completed ? 1f : AccSaberMilestone.CalcProgress(milestoneData.TargetValue, milestoneData.Progress, flip);
+
+                rankColor = ColorUtils.GetMilestoneRankColor(data.Tier).Color();
+
+                const float brightnessThreshold = 0.6f;
+
+                Color c = rankColor;
+                c.a = 0.5f;
+                float maxColor = c.maxColorComponent;
+                if (maxColor > brightnessThreshold)
+                {
+                    float curve = maxColor - brightnessThreshold;
+                    c.r -= curve;
+                    c.g -= curve;
+                    c.b -= curve;
+                }
+                bgColor = c;
+
+            }
+
+            [UIValue(nameof(completed))] private readonly bool completed;
+            [UIValue(nameof(notCompleted))] private readonly bool notCompleted;
+            [UIValue(nameof(Progress))] public string Progress => $"<color={ColorUtils.LEVEL}>" + (DisplayableProgress >= 99.99f ? "99.99" : DisplayableProgress.ToString("N2")) + "%</color>";
+            [UIValue(nameof(ExactProgress))]
+            public string ExactProgress
+            {
+                get
+                {
+                    string middle;
+                    if (data.TargetValue >= 1000)
+                        middle = $"{Prog:N0} / {Targ:N0}";
+                    else if (data.TargetValue < 1)
+                        middle = $"{Prog * 100f:0.####}% / {Targ * 100f:0.####}%";
+                    else
+                        middle = $"{Prog:0.####} / {Targ:0.####}";
+
+                    return $"<color={ColorUtils.LEVEL_DIM}>(" + middle + ")</color>";
+                }
+            }
+            [UIValue(nameof(Tier))] public string Tier => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier)}>{data.Tier}</color>";
+            [UIValue(nameof(Title))] public string Title => $"{data.Title}";
+            [UIValue(nameof(Description))] public string Description => $"<color={ColorUtils.GREY}>{data.Description}</color>";
+
+
+            [UIComponent(nameof(PercentBarTop))] private readonly LayoutElement PercentBarTop = null!;
+            [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
+            [UIComponent(nameof(PercentBarBottom))] private readonly LayoutElement PercentBarBottom = null!;
+            [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!;
+
+            [UIComponent(nameof(cellContainer))] private readonly CustomBackground cellContainer = null!;
+
+
+            [UIValue(nameof(oneXonePic))] public const string oneXonePic = ResourcePaths.PIXEL;
+            [UIValue(nameof(bgPath))] public const string bgPath = ResourcePaths.GRADIENT;
+
+            [UIValue(nameof(greenColor))] public const string greenColor = ColorUtils.LEVEL_DIM;
+
+            [UIValue(nameof(listWidth))] public const float listWidth = 100f;
+            [UIValue(nameof(cellSize))] public const float cellSize = 15f;
+            [UIValue(nameof(FontSize))] public const float FontSize = 3f;
+            [UIValue(nameof(barSpacer))] public const float barSpacer = 5f;
+            [UIValue(nameof(progLen))] public const float progLen = 10f;
+            [UIValue(nameof(exactProgLen))] public const float exactProgLen = 25f;
+            [UIValue(nameof(barLen))] public const float barLen = listWidth - barSpacer - progLen - exactProgLen;
+
+            [UIAction("#post-parse")]
+            private void PostParse()
+            {
+                PercentBarTop.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * progressPercent);
+                PercentBarBottom.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - progressPercent));
+
+                PercentBarTop_image.color = rankColor;
+                PercentBarBottom_image.color = ColorUtils.TECH.Color();
+
+                cellContainer.background?.color = bgColor;
+            }
         }
 	}
 }
