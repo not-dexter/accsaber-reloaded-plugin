@@ -146,7 +146,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 const float brightnessThreshold = 0.6f;
 
                 Color c = rankColor;
-                c.a = 0.5f;
+                c.a = 0.35f;
                 float maxColor = c.maxColorComponent;
                 if (maxColor > brightnessThreshold)
                 {
@@ -161,7 +161,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue(nameof(completed))] private readonly bool completed;
             [UIValue(nameof(notCompleted))] private readonly bool notCompleted;
-            [UIValue(nameof(Progress))] public string Progress => $"<color={ColorUtils.LEVEL}>" + (DisplayableProgress >= 99.99f ? "99.99" : DisplayableProgress.ToString("N2")) + "%</color>";
+            [UIValue(nameof(Progress))] public string Progress => $"<color=#ffffff>" + (DisplayableProgress >= 99.99f ? "99.99" : DisplayableProgress.ToString("N2")) + "%</color>";
             [UIValue(nameof(ExactProgress))]
             public string ExactProgress
             {
@@ -175,10 +175,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     else
                         middle = $"{Prog:0.####} / {Targ:0.####}";
 
-                    return $"<color={ColorUtils.LEVEL_DIM}>(" + middle + ")</color>";
+                    return $"<color=#ffffff>(" + middle + ")</color>";
                 }
             }
-            [UIValue(nameof(Tier))] public string Tier => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier)}>{data.Tier}</color>";
+            [UIValue(nameof(Tier))] public string Tier => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier)}>{char.ToUpper(data.Tier[0]) + data.Tier.Substring(1)}</color>";
             [UIValue(nameof(Title))] public string Title => $"{data.Title}";
             [UIValue(nameof(Description))] public string Description => $"<color={ColorUtils.GREY}>{data.Description}</color>";
 
@@ -192,12 +192,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 
             [UIValue(nameof(oneXonePic))] public const string oneXonePic = ResourcePaths.PIXEL;
-            [UIValue(nameof(bgPath))] public const string bgPath = ResourcePaths.GRADIENT;
+            [UIValue(nameof(bgPath))] public const string bgPath = ResourcePaths.CELL_PIXEL;
 
             [UIValue(nameof(greenColor))] public const string greenColor = ColorUtils.LEVEL_DIM;
 
             [UIValue(nameof(listWidth))] public const float listWidth = 100f;
-            [UIValue(nameof(cellSize))] public const float cellSize = 15f;
+            [UIValue(nameof(cellSize))] public const float cellSize = 13f;
             [UIValue(nameof(FontSize))] public const float FontSize = 3f;
             [UIValue(nameof(barSpacer))] public const float barSpacer = 5f;
             [UIValue(nameof(progLen))] public const float progLen = 10f;

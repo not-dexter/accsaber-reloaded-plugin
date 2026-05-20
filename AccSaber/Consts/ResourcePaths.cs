@@ -29,6 +29,7 @@ namespace AccSaber.Consts
         public const string YOU = RESOURCE_PATH + ".you.png";
         //public const string RESOURCE_BLOCK = RESOURCE_PATH + ".block.png";
         public const string GRADIENT = RESOURCE_PATH + ".gradient.png";
+        public const string CELL_PIXEL = RESOURCE_PATH + ".rounded.png";
         //public const string RESOURCE_GRADIENT_PANEL = RESOURCE_PATH + ".panelGradient.png";
         public const string GRADIENT_CORNER = RESOURCE_PATH + ".cornerGradient.png";
         //public const string RESOURCE_GRADIENT_HEADER = RESOURCE_PATH + ".headerBG.png";
