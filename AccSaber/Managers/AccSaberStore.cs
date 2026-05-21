@@ -22,16 +22,16 @@ namespace AccSaber.Managers
 		private readonly IPlatformUserModel _platformUserModel;
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
-		public event Action? OnUpdatingFromAccSaberAPI;
+        public static event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
+        public static event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
+        public event Action? OnUpdatingFromAccSaberAPI;
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
 		private AccSaberPlayer? _currentUser;
 
         public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
-		public List<AccSaberMilestone>_currentUserMilestones = [];
-
-        public static event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
-        public static event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
+		public List<AccSaberMilestone> _currentUserMilestones = [];
+        
 		internal static CancellationTokenSource WebsocketCanceller { get; private set; } = new();
         internal const int RecieveBufferSize = 1024;
         internal const int SendBufferSize = 16;
@@ -173,13 +173,8 @@ namespace AccSaber.Managers
 		}
 		public void SetMapFromBasicInfo(string hash, BeatmapDifficulty difficulty)
 		{
-            CurrentRankedMap =  AccsaberAPI.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
+            CurrentRankedMap = AccsaberAPI.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
         }
-		public void SetMapFromBasicDifficulty(AccSaberBasicDifficulty? difficulty)
-		{
-			CurrentRankedMap = difficulty is null ? null : AccsaberAPI.GetLeaderboard(difficulty.Hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty.Difficulty);
-        }
-
 
         public async Task StartWebsocket(CancellationToken ct = default)
         {

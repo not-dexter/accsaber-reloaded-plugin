@@ -21,6 +21,7 @@ using Oculus.Platform;
 using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
 using AccSaber.Models.PlayerModels;
+using System.Net.Http.Headers;
 
 namespace AccSaber.API
 {
@@ -65,6 +66,8 @@ namespace AccSaber.API
         /// </summary>
         public const int FILTER_PAGE_MULT = 10;
 
+        public static List<AccSaberModifiers>? Modifiers { get; private set; } = null;
+
         static AccsaberAPI()
         {
             // Listen for local score updates and invalidate caches when appropriate.
@@ -80,6 +83,8 @@ namespace AccSaber.API
                     scoreInfoCacher.RemoveItem(diffId);
                 }
             };
+
+            Task.Run(async () => Modifiers = await CallAPI_Json<List<AccSaberModifiers>>(APAPI_MODS, throttler));
         }
         #region Sync Functions
 
@@ -1173,6 +1178,20 @@ namespace AccSaber.API
             return token;
         }
 #endif
+        internal static async Task SubmitScore(AccSaberScore score)
+        {
+            if (!Plugin.Submit)
+                return;
+
+            HttpRequestMessage request = new(HttpMethod.Post, APAPI_SCORE_SUBMIT)
+            {
+                Content = new StringContent(JsonConvert.SerializeObject(score), System.Text.Encoding.UTF8, "application/json")
+            };
+
+            request.Headers.Add("X-Plugin-Build", MiscUtils.GenerateNonce(64));
+
+            await CallAPI(request, maxRetries: 1).ConfigureAwait(false);
+        }
 
         #endregion
         #region Misc structs

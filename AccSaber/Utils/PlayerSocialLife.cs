@@ -1,15 +1,17 @@
-﻿using System;
+﻿using AccSaber.API;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
-
-using static AccSaber.API.AccsaberAPI;
 using Zenject;
+using static AccSaber.API.AccsaberAPI;
 
 namespace AccSaber.Utils
 {
-    public sealed class PlayerSocialLife : IInitializable
+    public sealed class PlayerSocialLife : IInitializable, IDisposable
     {
         public static event Action? OnRelationChanged;
 
@@ -158,6 +160,17 @@ namespace AccSaber.Utils
             loadTask = LoadInfoTask();
             lock (loadLock)
                 Monitor.PulseAll(loadLock);
+        }
+        public void Dispose()
+        {
+            if (AuthInfo is null)
+                return;
+
+            StringContent sc = new($"\"refreshToken\": \"{AuthInfo.RefreshToken}\"", System.Text.Encoding.UTF8, "application/json");
+
+            HttpRequestMessage request = new(HttpMethod.Post, HelpfulPaths.APAPI_AUTH_END) { Content = sc };
+
+            APIHandler.CallAPI(request, throttler, maxRetries: 1).GetAwaiter().GetResult();
         }
     }
 }

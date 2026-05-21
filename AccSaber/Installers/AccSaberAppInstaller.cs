@@ -9,6 +9,7 @@ namespace AccSaber.Installers
         public override void InstallBindings()
         {
             Container.Bind(typeof(IInitializable), typeof(IDisposable)).To<SerializerHandler>().AsSingle();
+            //Container.Bind(typeof(IDisposable)).To<PlayerSocialLife>().AsSingle();
         }
     }
 }

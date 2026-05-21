@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace AccSaber.Utils
@@ -91,6 +92,45 @@ namespace AccSaber.Utils
             };
 
             return (timeSpent, outp);
+        }
+
+        public static List<string> ToModCodes(this GameplayModifiers mods)
+        {
+            List<string> outp = [];
+
+            if (mods.noFailOn0Energy) outp.Add("NF");
+            if (mods.enabledObstacleType == GameplayModifiers.EnabledObstacleType.NoObstacles) outp.Add("NO");
+            if (mods.noBombs) outp.Add("NB");
+            switch (mods.songSpeed)
+            {
+                case GameplayModifiers.SongSpeed.Slower:
+                    outp.Add("SS");
+                    break;
+                case GameplayModifiers.SongSpeed.Faster:
+                    outp.Add("FS");
+                    break;
+                case GameplayModifiers.SongSpeed.SuperFast:
+                    outp.Add("SF");
+                    break;
+            }
+            if (mods.ghostNotes) outp.Add("GN");
+            if (mods.disappearingArrows) outp.Add("DA");
+            if (mods.proMode) outp.Add("PM");
+            if (mods.smallCubes) outp.Add("SC");
+            if (mods.instaFail) outp.Add("IF");
+            // TODO: Add Off Platform detection (if it ever is an issue)
+
+            return outp;
+        }
+        public static string GenerateNonce(int byteLength = 32)
+        {
+            byte[] byteArray = new byte[byteLength];
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(byteArray);
+            }
+            // Return as Base64 string for HTTP headers/tags
+            return Convert.ToBase64String(byteArray);
         }
 
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)

@@ -34,6 +34,11 @@
         public const string APAPI_DIFFS = APAPI + "maps/difficulties/all"; //no params
 
         /// <summary>
+        /// Retrieves all valid modifiers.
+        /// </summary>
+        public const string APAPI_MODS = APAPI + "modifiers"; //no params
+
+        /// <summary>
         /// Retrieves paged list of maps.
         /// </summary>
         /// <remarks>
@@ -224,6 +229,10 @@
         /// Authenticated in-game authentication endpoint (POST).
         /// </summary>
         public const string APAPI_AUTH = APAPI + "auth/ingame"; // POST endpoint
+
+        public const string APAPI_AUTH_END = APAPI + "auth/logout"; // POST endpoint
+
+        internal const string APAPI_SCORE_SUBMIT = APAPI + "submit"; // POST endpoint
 
         /// <summary>
         /// WebSocket URL for real-time score updates.

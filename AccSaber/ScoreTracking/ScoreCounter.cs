@@ -1,0 +1,179 @@
+﻿using AccSaber.Managers;
+using AccSaber.Models;
+using AccSaber.Utils;
+using Newtonsoft.Json;
+using System;
+using System.Linq;
+using UnityEngine;
+using Zenject;
+using static AlphabetScrollInfo;
+
+namespace AccSaber.ScoreTracking
+{
+    internal class ScoreCounter : IInitializable, IDisposable
+    {
+        [Inject] private readonly IReadonlyBeatmapData beatmapData = null!;
+
+        [Inject] private readonly GameplayModifiers mods = null!;
+        [Inject] private readonly ScoreController sc = null!;
+        [Inject] private readonly BeatmapObjectManager bomb = null!;
+        [Inject] private readonly PlayerHeadAndObstacleInteraction wall = null!;
+        [Inject] private readonly PauseController pause = null!;
+        private StandardLevelScenesTransitionSetupDataSO transition = null!;
+        private AccSaberStore? store = null;
+
+
+        private AccSaberScore score = null!;
+
+        private int current115Streak, combo, notes, totalNotes;
+        private readonly object submitLock = new();
+        private bool transitionFinished, counterDisposed;
+
+        public void Initialize()
+        {
+            transitionFinished = false;
+            counterDisposed = false;
+
+            transition = Resources.FindObjectsOfTypeAll<StandardLevelScenesTransitionSetupDataSO>().FirstOrDefault();
+            store ??= Plugin.Container.TryResolve<AccSaberStore>();
+
+            if (transition.practiceSettings is not null)
+                Plugin.SetPracticeSubmission();
+
+            //Plugin.Log.Info($"current map null? {store.CurrentRankedMap is null}");
+            if (store.CurrentRankedMap is null)
+                return;
+
+            score = new()
+            {
+                MapDifficultyId = store.CurrentRankedMap!.DifficultyId,
+                Headset = store.GetCurrentUserAsync().GetAwaiter().GetResult().Headset,
+            };
+
+            current115Streak = 0;
+            combo = 0;
+            notes = 0;
+
+            transition.didFinishEvent += OnTransitionSetupOnDidFinishEvent;
+            sc.scoringForNoteFinishedEvent += NoteScoring;
+            bomb.noteWasCutEvent += OnBombHit;
+            wall.headDidEnterObstacleEvent += OnWallHit;
+            pause.didPauseEvent += OnPause;
+
+            score.ModifierCodes = mods.ToModCodes();
+        }
+        public void Dispose()
+        {
+            if (store?.CurrentRankedMap is null)
+                return;
+
+            transition.didFinishEvent -= OnTransitionSetupOnDidFinishEvent;
+            sc.scoringForNoteFinishedEvent -= NoteScoring;
+            bomb.noteWasCutEvent -= OnBombHit;
+            wall.headDidEnterObstacleEvent -= OnWallHit;
+            pause.didPauseEvent -= OnPause;
+
+            totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
+            Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled.");
+
+            score.TimeSet = DateTime.UtcNow;
+
+            score.Score = sc.modifiedScore >= 0 ? (uint)sc.modifiedScore : 0;
+            score.ScoreNoMods = sc.multipliedScore >= 0 ? (uint)sc.multipliedScore : 0;
+
+            score.MaxCombo = Math.Max(score.MaxCombo, combo);
+
+            lock (submitLock)
+            {
+                counterDisposed = true;
+                if (transitionFinished)
+                    SubmitScore();
+            }
+        }
+
+        private void NoteScoring(ScoringElement scoringElement)
+        {
+            NoteData currentNote = scoringElement.noteData;
+
+            if (currentNote.gameplayType == NoteData.GameplayType.Bomb)
+                return;
+
+            NoteData.ScoringType st = currentNote.scoringType;
+
+            if (st == NoteData.ScoringType.Ignore)
+                return;
+
+            notes++;
+
+            bool miss = false;
+
+            if (scoringElement is MissScoringElement)
+            {
+                score.Misses++;
+                miss = true;
+            }
+            else if (scoringElement is BadCutScoringElement)
+            {
+                score.BadCuts++;
+                miss = true;
+            }
+
+            if (st == NoteData.ScoringType.NoScore || miss)
+            {
+                score.MaxCombo = Math.Max(score.MaxCombo, combo);
+                combo = 0;
+                current115Streak = 0;
+                return;
+            }
+            else combo++;
+
+            if (scoringElement.cutScore != 115)
+            {
+                if (current115Streak > 0)
+                {
+                    score.Streak115 = Math.Max(current115Streak, score.Streak115);
+                    current115Streak = 0;
+                }
+            }
+            else current115Streak++;
+        }
+        private void OnBombHit(NoteController nc, in NoteCutInfo nci)
+        {
+            combo = 0;
+            score.BombHits++;
+        }
+        private void OnWallHit(ObstacleController oc)
+        {
+            combo = 0;
+            score.WallHits++;
+        }
+        private void OnPause()
+        {
+            score.Pauses++;
+        }
+        private void OnTransitionSetupOnDidFinishEvent(StandardLevelScenesTransitionSetupDataSO data, LevelCompletionResults results)
+        {
+            score.UncompletedMap = results.levelEndAction == LevelCompletionResults.LevelEndAction.None;
+            lock (submitLock)
+            {
+                transitionFinished = true;
+                if (counterDisposed)
+                    SubmitScore();
+            }
+        }
+        private async void SubmitScore()
+        {
+            float completion = (float)notes / totalNotes;
+            Plugin.Log.Info("submission = " + Plugin.Submit);
+
+            if (completion >= 0.75f && Plugin.Submit)
+            {
+                Plugin.Log.Info(JsonConvert.SerializeObject(score));
+                //await AccsaberAPI.SubmitScore(score);
+            }
+            else Plugin.Log.Info("No score submit");
+
+            Plugin.ResetSubmissions();
+        }
+    }
+}
