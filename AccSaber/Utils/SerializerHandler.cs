@@ -50,10 +50,7 @@ namespace AccSaber.Utils
                     return;
                 }
 
-                JsonSerializer serializer = new()
-                {
-                    NullValueHandling = NullValueHandling.Ignore
-                };
+                JsonSerializer serializer = new();
 
                 AccSaberSerializedCache<AccSaberBasicMap>? maps = null;
                 AccSaberSerializedCache<AccSaberPlayerScore>? playerScores = null;

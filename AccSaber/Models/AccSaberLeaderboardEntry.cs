@@ -39,7 +39,7 @@ namespace AccSaber.Models
         public string? BlScoreId { get; set; }
 
         [JsonProperty("bombHits")]
-        public int BombHits { get; set; }
+        public int? BombHits { get; set; }
 
         [JsonProperty("bonusXp")]
         public float BonusXp { get; set; }
@@ -129,7 +129,7 @@ namespace AccSaber.Models
         public float XpGained { get; set; }
 
         [JsonIgnore]
-        public bool FC => Misses + BombHits + BadCuts + (WallHits ?? 0) == 0;
+        public bool FC => Misses + (BombHits ?? 0) + BadCuts + (WallHits ?? 0) == 0;
 
         
     }

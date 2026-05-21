@@ -158,7 +158,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue(nameof(completed))] private readonly bool completed;
             [UIValue(nameof(notCompleted))] private readonly bool notCompleted;
-            [UIValue(nameof(Progress))] public string Progress => $"<color=#ffffff>" + (DisplayableProgress >= 99.99f ? "99.99" : DisplayableProgress.ToString("N2")) + "%</color>";
+            [UIValue(nameof(Progress))] public string Progress => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier).DimColor(2)}>" + (DisplayableProgress >= 99.99f ? "99.99" : DisplayableProgress.ToString("N2")) + "%</color>";
             [UIValue(nameof(ExactProgress))]
             public string ExactProgress
             {
@@ -172,7 +172,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     else
                         middle = $"{Prog:0.####} / {Targ:0.####}";
 
-                    return $"<color=#ffffff>(" + middle + ")</color>";
+                    return $"<color={ColorUtils.GetMilestoneRankColor(data.Tier).DimColor(6)}>(" + middle + ")</color>";
                 }
             }
             [UIValue(nameof(Tier))] public string Tier => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier)}>{char.ToUpper(data.Tier[0]) + data.Tier.Substring(1)}</color>";

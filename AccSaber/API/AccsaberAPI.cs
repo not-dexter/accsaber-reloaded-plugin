@@ -211,7 +211,7 @@ namespace AccSaber.API
         /// <summary>
         /// Merge helper that preserves ordering by a comparable key and removes duplicates.
         /// </summary>
-        private static List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right) where T : IComparable
+        private static List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right, bool reverseOrder = false) where T : IComparable
         {
             return MergeListWithEnumerable(left, right, a => a);
         }
@@ -220,7 +220,7 @@ namespace AccSaber.API
         /// Merge helper that preserves ordering by a converted comparable key and removes duplicates.
         /// The <paramref name="converter"/> extracts the comparable key from items.
         /// </summary>
-        private static List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right, Func<T, IComparable> converter)
+        private static List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right, Func<T, IComparable> converter, bool reverseOrder = false)
         {
             List<T> outp = new(left.Count + right.Count());
             IEnumerator<T>? rightEnum = right.GetEnumerator();
@@ -229,7 +229,8 @@ namespace AccSaber.API
             int i = 0;
             while (i < left.Count)
             {
-                if (converter(left[i]).CompareTo(converter(rightEnum.Current)) < 0)
+                int comp = converter(left[i]).CompareTo(converter(rightEnum.Current));
+                if (reverseOrder ? comp > 0 : comp < 0)
                 {
                     T toAdd = left[i++];
                     if (outp.Count == 0 || converter(outp.Last()).CompareTo(converter(toAdd)) != 0)
@@ -1057,18 +1058,20 @@ namespace AccSaber.API
             if (category != APCategory.Overall)
                 url += "&categoryId=" + EnumUtils.EnumToReloadedCategory(category);
 
-            AccSaberPagedContent<AccSaberLeaderboardEntry>? response = await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(url, throttler);
-            if (response is null)
+            AccSaberPagedContent<AccSaberLeaderboardEntry>? response = await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(url, throttler, ct: ct);
+
+            if (response is null || response.Content is null)
                 return null;
 
-            IEnumerable<AccSaberPlayerScore> outp = response.Content!.Select(entry => new AccSaberPlayerScore(entry));
+            IEnumerable<AccSaberPlayerScore> outp = response.Content.Select(entry => new AccSaberPlayerScore(entry));
 
-            List<AccSaberPlayerScore> newCache = MergeListWithEnumerable(SerializerHandler.CachedPlayerScores, outp, score => score.AP);
-            SerializerHandler.CachedPlayerScores.Clear();
-            SerializerHandler.CachedPlayerScores.AddRange(newCache);
+            if (category == APCategory.Overall) // TODO: At some point, support caching for any context the score returns. As it is, it would take too much time.
+            {
+                SerializerHandler.CachedPlayerScores.AddRange(outp);
 
-            if (SerializerHandler.CachedPlayerScoreLength < 0)
-                SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
+                if (SerializerHandler.CachedPlayerScoreLength < 0)
+                    SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
+            }
 
             return outp;
         }
