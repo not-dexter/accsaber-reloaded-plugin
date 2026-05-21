@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal class AccSaberModifiers : Model
+    internal class AccSaberModifier : Model
     {
         [JsonProperty("code")]
         public string Code { get; set; } = null!;

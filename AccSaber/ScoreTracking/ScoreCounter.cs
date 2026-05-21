@@ -1,4 +1,5 @@
-﻿using AccSaber.Managers;
+﻿using AccSaber.API;
+using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using Newtonsoft.Json;
@@ -20,6 +21,7 @@ namespace AccSaber.ScoreTracking
         [Inject] private readonly PlayerHeadAndObstacleInteraction wall = null!;
         [Inject] private readonly PauseController pause = null!;
         private StandardLevelScenesTransitionSetupDataSO transition = null!;
+        private GameEnergyCounter? energy = null;
         private AccSaberStore? store = null;
 
 
@@ -27,15 +29,19 @@ namespace AccSaber.ScoreTracking
 
         private int current115Streak, combo, notes, totalNotes;
         private readonly object submitLock = new();
-        private bool transitionFinished, counterDisposed;
+        private bool transitionFinished, counterDisposed, failed;
 
         public void Initialize()
         {
             transitionFinished = false;
             counterDisposed = false;
+            failed = false;
 
             transition = Resources.FindObjectsOfTypeAll<StandardLevelScenesTransitionSetupDataSO>().FirstOrDefault();
             store ??= Plugin.Container.TryResolve<AccSaberStore>();
+
+            if (mods.noFailOn0Energy)
+                energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
 
             if (transition.practiceSettings is not null)
                 Plugin.SetPracticeSubmission();
@@ -59,8 +65,7 @@ namespace AccSaber.ScoreTracking
             bomb.noteWasCutEvent += OnBombHit;
             wall.headDidEnterObstacleEvent += OnWallHit;
             pause.didPauseEvent += OnPause;
-
-            score.ModifierCodes = mods.ToModCodes();
+            energy?.gameEnergyDidReach0Event += OnFail;
         }
         public void Dispose()
         {
@@ -72,13 +77,16 @@ namespace AccSaber.ScoreTracking
             bomb.noteWasCutEvent -= OnBombHit;
             wall.headDidEnterObstacleEvent -= OnWallHit;
             pause.didPauseEvent -= OnPause;
+            energy?.gameEnergyDidReach0Event -= OnFail;
+
+            score.ModifierCodes = mods.ToModCodes(failed);
 
             totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
             Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled.");
 
             score.TimeSet = DateTime.UtcNow;
 
-            score.Score = sc.modifiedScore >= 0 ? (uint)sc.modifiedScore : 0;
+            score.Score = sc.multipliedScore >= 0 ? (uint)(sc.multipliedScore * score.ModifierCodes.ModCodesToMultiplier()) : 0;
             score.ScoreNoMods = sc.multipliedScore >= 0 ? (uint)sc.multipliedScore : 0;
 
             score.MaxCombo = Math.Max(score.MaxCombo, combo);
@@ -139,6 +147,9 @@ namespace AccSaber.ScoreTracking
         }
         private void OnBombHit(NoteController nc, in NoteCutInfo nci)
         {
+            if (nc.noteData.gameplayType != NoteData.GameplayType.Bomb)
+                return;
+
             combo = 0;
             score.BombHits++;
         }
@@ -151,9 +162,14 @@ namespace AccSaber.ScoreTracking
         {
             score.Pauses++;
         }
+        private void OnFail()
+        {
+            failed = true;
+        }
         private void OnTransitionSetupOnDidFinishEvent(StandardLevelScenesTransitionSetupDataSO data, LevelCompletionResults results)
         {
-            score.UncompletedMap = results.levelEndAction == LevelCompletionResults.LevelEndAction.None;
+            score.UncompletedMap = results.levelEndAction != LevelCompletionResults.LevelEndAction.None || results.levelEndStateType != LevelCompletionResults.LevelEndStateType.Cleared;
+
             lock (submitLock)
             {
                 transitionFinished = true;
@@ -164,14 +180,11 @@ namespace AccSaber.ScoreTracking
         private async void SubmitScore()
         {
             float completion = (float)notes / totalNotes;
-            Plugin.Log.Info("submission = " + Plugin.Submit);
 
             if (completion >= 0.75f && Plugin.Submit)
-            {
-                Plugin.Log.Info(JsonConvert.SerializeObject(score));
-                //await AccsaberAPI.SubmitScore(score);
-            }
-            else Plugin.Log.Info("No score submit");
+                await AccsaberAPI.SubmitScore(score);
+            else 
+                Plugin.Log.Info("No score submit");
 
             Plugin.ResetSubmissions();
         }

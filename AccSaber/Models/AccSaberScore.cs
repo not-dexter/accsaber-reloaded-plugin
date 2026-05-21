@@ -9,6 +9,9 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal class AccSaberScore : Model
     {
+        [JsonProperty("nonce", Required = Required.DisallowNull)]
+        internal string Nonce { get; set; } = null!;
+
         [JsonProperty("mapDifficultyId", Required = Required.DisallowNull)]
         public string MapDifficultyId { get; set; } = null!;
 

@@ -273,7 +273,7 @@ namespace AccSaber.UI.ViewControllers
                 Task.Run(async () =>
                 {
                     if (!await ForceRefresh(true))
-                        refreshRequested = true;
+                        refreshRequested = true; //TODO: Currently doesn't refresh if the player is in the results screen and this flag is set to true. Add a check to refresh the leaderboard.
                 });
             };
 
@@ -512,7 +512,7 @@ namespace AccSaber.UI.ViewControllers
                 if (!loaded)
                     Monitor.Wait(updateDiffLock);
 
-                if (!gameObject.activeSelf)
+                if (!gameObject.activeInHierarchy)
                     return false;
 
                 // Get hash from the level (custom levels use levelID format: "custom_level_HASH")
@@ -553,7 +553,7 @@ namespace AccSaber.UI.ViewControllers
         private async Task<bool> ForceRefresh(bool overridePlayerScore)
         {
             AsyncLock.Releaser? theLock = await forceRefreshLock.TryLockAsync();
-            if (theLock is null || !gameObject.activeSelf) return false;
+            if (theLock is null || !gameObject.activeInHierarchy) return false;
             using (theLock.Value)
             {
                 try
@@ -589,7 +589,7 @@ namespace AccSaber.UI.ViewControllers
                     await LoadLeaderboardAsync();
                 } catch (Exception e)
                 {
-                    Plugin.Log.Error(e);
+                    Plugin.Log.Error(e);    
                     return false;
                 }
             }
@@ -598,7 +598,7 @@ namespace AccSaber.UI.ViewControllers
 
         private void ShowLoading()
         {
-            if (leaderboardLoader.activeSelf || DifficultyId is null)
+            if (leaderboardLoader.activeInHierarchy || DifficultyId is null)
                 return;
 
             int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;

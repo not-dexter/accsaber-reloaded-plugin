@@ -32,7 +32,7 @@ namespace AccSaber.Managers
 
         public void Dispose()
         {
-            VersionUtils.MenuButtons_Instance.UnregisterButton(_menuButton);
+            VersionUtils.MenuButtons_Instance?.UnregisterButton(_menuButton);
         }
     }
 }

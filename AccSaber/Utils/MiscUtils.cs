@@ -1,4 +1,6 @@
-﻿using System;
+﻿using AccSaber.API;
+using AccSaber.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
@@ -94,11 +96,11 @@ namespace AccSaber.Utils
             return (timeSpent, outp);
         }
 
-        public static List<string> ToModCodes(this GameplayModifiers mods)
+        public static List<string> ToModCodes(this GameplayModifiers mods, bool failed)
         {
             List<string> outp = [];
 
-            if (mods.noFailOn0Energy) outp.Add("NF");
+            if (mods.noFailOn0Energy && failed) outp.Add("NF");
             if (mods.enabledObstacleType == GameplayModifiers.EnabledObstacleType.NoObstacles) outp.Add("NO");
             if (mods.noBombs) outp.Add("NB");
             switch (mods.songSpeed)
@@ -121,6 +123,23 @@ namespace AccSaber.Utils
             // TODO: Add Off Platform detection (if it ever is an issue)
 
             return outp;
+        }
+        public static float ModCodesToMultiplier(this IEnumerable<string> modCodes)
+        {
+            if (AccsaberAPI.Modifiers is null)
+                throw new Exception("Modifiers need to be loaded before getting the mod mult.");
+
+            float mult = 1f;
+
+            foreach (string code in modCodes)
+            {
+                AccSaberModifier modData = AccsaberAPI.Modifiers.FirstOrDefault(mod => mod.Code.Equals(code, StringComparison.OrdinalIgnoreCase)) 
+                    ?? throw new Exception("There isn't a modifier for code \"" + code + "\"!");
+
+                mult += modData.Multiplier - 1f;
+            }
+
+            return mult;
         }
         public static string GenerateNonce(int byteLength = 32)
         {

@@ -66,7 +66,7 @@ namespace AccSaber.API
         /// </summary>
         public const int FILTER_PAGE_MULT = 10;
 
-        public static List<AccSaberModifiers>? Modifiers { get; private set; } = null;
+        public static List<AccSaberModifier>? Modifiers { get; private set; } = null;
 
         static AccsaberAPI()
         {
@@ -84,7 +84,7 @@ namespace AccSaber.API
                 }
             };
 
-            Task.Run(async () => Modifiers = await CallAPI_Json<List<AccSaberModifiers>>(APAPI_MODS, throttler));
+            Task.Run(async () => Modifiers = await CallAPI_Json<List<AccSaberModifier>>(APAPI_MODS, throttler));
         }
         #region Sync Functions
 
@@ -1183,14 +1183,18 @@ namespace AccSaber.API
             if (!Plugin.Submit)
                 return;
 
+            score.Nonce = MiscUtils.GenerateNonce(64);
+
             HttpRequestMessage request = new(HttpMethod.Post, APAPI_SCORE_SUBMIT)
             {
                 Content = new StringContent(JsonConvert.SerializeObject(score), System.Text.Encoding.UTF8, "application/json")
             };
 
-            request.Headers.Add("X-Plugin-Build", MiscUtils.GenerateNonce(64));
+            var (success, _) = await CallAPI(request, maxRetries: 1).ConfigureAwait(false);
 
-            await CallAPI(request, maxRetries: 1).ConfigureAwait(false);
+            Plugin.Log.Info(success ? "Score submitted!" : "Score failed to submit.");
+
+            //Note: Currently this will submit on party mode and probably multiplayer, which will need to be fixed
         }
 
         #endregion
