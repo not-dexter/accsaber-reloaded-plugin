@@ -1,4 +1,5 @@
-﻿using AccSaber.Consts;
+﻿using AccSaber.Configuration;
+using AccSaber.Consts;
 using AccSaber.Models.Base;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
@@ -7,10 +8,10 @@ using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-
-using static AccSaber.Utils.ColorUtils;
 using static AccSaber.UI.ViewControllers.AccSaberLeaderboardViewController;
+using static AccSaber.Utils.ColorUtils;
 
 namespace AccSaber.Models
 {
@@ -148,11 +149,14 @@ namespace AccSaber.Models
 
         [UIValue(nameof(Rank))] public string Rank => $"<color={RANK}>#{ScoreData.Rank}</color>";
 
+        [UIValue(nameof(Mistakes))] public string Mistakes => $"<color=#ef4444>{ScoreData.Misses + (ScoreData.BombHits ?? 0) + ScoreData.BadCuts + (ScoreData.WallHits ?? 0)}x</color>";
+
         [UIValue(nameof(FullCombo))] public bool FullCombo => ScoreData.FC;
+        [UIValue(nameof(NotFullCombo))] public bool NotFullCombo => !FullCombo;
 
         [UIValue(nameof(AP))] public string AP => $"<color={ColorUtils.AP}>{ScoreData.AP:N2}ap</color>";
 
-        [UIValue(nameof(Acc))] public string Acc => $"<color={ACC}>{ScoreData.Accuracy * 100f:N4}%</color>";
+        [UIValue(nameof(Acc))] public string Acc => $"<color=#22c55e>{ScoreData.Accuracy * 100f:N4}%</color>";
         [UIValue(nameof(BGColor))]
         public string BGColor
         {
@@ -183,7 +187,7 @@ namespace AccSaber.Models
         [UIValue(nameof(apWidth))] public const float apWidth = 14f + apPadding;
         [UIValue(nameof(apPadding))] public const float apPadding = 5f;
         [UIValue(nameof(accWidth))] public const float accWidth = 14f;
-        [UIValue(nameof(scoreWidth))] public const float scoreWidth = 12f;
+        [UIValue(nameof(scoreWidth))] public const float scoreWidth = 14f;
         [UIValue(nameof(nameWidth))] public const float nameWidth = containerWidth - rankWidth - apWidth - accWidth - scoreWidth - elementSpacing * 4f - containerPadding * 2f;
     }
 }

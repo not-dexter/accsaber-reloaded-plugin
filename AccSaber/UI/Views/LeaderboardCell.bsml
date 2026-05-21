@@ -1,17 +1,19 @@
 <horizontal pref-width='~parentContainerWidth' pref-height='~ContainerHeight' spacing='~elementSpacing' child-alignment='MiddleCenter' bg='panel-top' bg-color='~BGColor' child-expand-width='false'>
   <vertical pref-width='~rankWidth' child-alignment='MiddleCenter' pad-left='~containerPadding'>
-    <text text='~Rank' align='Left' font-size='~FontSize'/>
+    <text text='~Rank' align='Left' italics='true' font-size='~FontSize'/>
   </vertical>
   <vertical pref-width='~nameWidth' child-alignment='MiddleCenter'>
-    <text text='~PlayerName' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
+    <text text='~PlayerName' align='Left' italics='true' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
+  </vertical>  
+  <vertical pref-width='~accWidth' child-alignment='MiddleCenter'>
+    <text text='~Acc' align='Center' italics='true' font-size='~FontSize'/>
   </vertical>
   <vertical pref-width='~apWidth' child-alignment='MiddleCenter' pad-right='~apPadding'>
-    <text text='~AP' align='Right' font-size='~FontSize'/>
+    <text text='~AP' align='Right' italics='true' font-size='~FontSize'/>
   </vertical>
-  <vertical pref-width='~accWidth' child-alignment='MiddleCenter'>
-    <text text='~Acc' align='Center' font-size='~FontSize'/>
-  </vertical>
-  <vertical pref-width='~scoreWidth' child-alignment='MiddleCenter' pad-right='~containerPadding'>
-    <text text='~Score' align='Right' font-size='~FontSize'/>
-  </vertical>
+  <horizontal pref-width='~scoreWidth' child-alignment='MiddleCenter' pad-right='~containerPadding'>
+    <text text='~Score' align='Right' italics='true' font-size='~FontSize'/>
+	  <text text='FC' align='Right' italics='true' font-size='~FontSize' color='#22c55e' active='~FullCombo'/>
+	  <text text='~Mistakes' align='Right' italics='true' font-size='~FontSize' active='~NotFullCombo'/>
+  </horizontal>
 </horizontal>

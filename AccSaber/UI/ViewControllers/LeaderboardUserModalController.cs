@@ -365,7 +365,9 @@ namespace AccSaber.UI.ViewControllers
 				if (PlayerSocialLife.PlayerID != userId)
 				{
                     _friendButton.gameObject.SetActive(true);
+                    _friendButtonBG.gameObject.SetActive(true);
                     _rivalButton.gameObject.SetActive(true);
+                    _rivalButtonBG.gameObject.SetActive(true);
 
                     if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId) ^ friendColorSwapped)
 					{
@@ -382,7 +384,9 @@ namespace AccSaber.UI.ViewControllers
                 } else
 				{
 					_friendButton.gameObject.SetActive(false);
-					_rivalButton.gameObject.SetActive(false);
+                    _friendButtonBG.gameObject.SetActive(false);
+                    _rivalButton.gameObject.SetActive(false);
+                    _rivalButtonBG.gameObject.SetActive(false);
 				}
 
 				CategoryValue = APCategory.Overall.ToString();
