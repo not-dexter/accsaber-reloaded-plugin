@@ -1,13 +1,12 @@
 ﻿using AccSaber.API;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.Patches;
 using AccSaber.Utils;
-using Newtonsoft.Json;
 using System;
 using System.Linq;
 using UnityEngine;
 using Zenject;
-using static AlphabetScrollInfo;
 
 namespace AccSaber.ScoreTracking
 {
@@ -44,7 +43,7 @@ namespace AccSaber.ScoreTracking
                 energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
 
             if (transition.practiceSettings is not null)
-                Plugin.SetPracticeSubmission();
+                SubmissionPatch.SetPracticeSubmission();
 
             //Plugin.Log.Info($"current map null? {store.CurrentRankedMap is null}");
             if (store.CurrentRankedMap is null)
@@ -82,7 +81,6 @@ namespace AccSaber.ScoreTracking
             score.ModifierCodes = mods.ToModCodes(failed);
 
             totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
-            Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled.");
 
             score.TimeSet = DateTime.UtcNow;
 
@@ -181,12 +179,15 @@ namespace AccSaber.ScoreTracking
         {
             float completion = (float)notes / totalNotes;
 
-            if (completion >= 0.75f && Plugin.Submit)
+            Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
+
+
+            if (completion >= 0.75f && SubmissionPatch.Submit)
                 await AccsaberAPI.SubmitScore(score);
             else 
                 Plugin.Log.Info("No score submit");
 
-            Plugin.ResetSubmissions();
+            SubmissionPatch.EnableSubmissions();
         }
     }
 }

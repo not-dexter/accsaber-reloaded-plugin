@@ -273,7 +273,7 @@ namespace AccSaber.UI.ViewControllers
                 Task.Run(async () =>
                 {
                     if (!await ForceRefresh(true))
-                        refreshRequested = true; //TODO: Currently doesn't refresh if the player is in the results screen and this flag is set to true. Add a check to refresh the leaderboard.
+                        refreshRequested = true; //Review: Check added, verify the leaderboard refreshes correctly.
                 });
             };
 
@@ -351,6 +351,7 @@ namespace AccSaber.UI.ViewControllers
 
         private void OnEnable()
         {
+            Plugin.Log.Info("Enabled");
             titleContainer?.SetActive(true);
 
             if (titlePaneTitleText is not null)
@@ -378,8 +379,17 @@ namespace AccSaber.UI.ViewControllers
 
         private async void DoEnableUpdate()
         {
+            IEnumerator WaitUntilValidUpdate()
+            {
+                yield return new WaitUntil(() => gameObject.activeInHierarchy);
+                yield return Task.Run(ForceRefresh);
+            }
+
             if (!TryUpdateCurrentMap() && refreshRequested)
-                await Task.Run(ForceRefresh);
+            {
+                StartCoroutine(WaitUntilValidUpdate());
+                refreshRequested = false;
+            }
         }
         private GameObject? GetHeaderPane()
         {
