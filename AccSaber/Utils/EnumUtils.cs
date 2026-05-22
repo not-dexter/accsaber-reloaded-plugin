@@ -19,7 +19,14 @@ namespace AccSaber.Utils
     {
         Queue, Qualified, Ranked
     }
-
+    public enum MissionPool
+    {
+        Daily, Weekly, Event
+    }
+    public enum MissionBand
+    {
+        easy, medium, hard, extreme
+    }
     public static class EnumUtils
     {
         public static string DiffNumToReloadedDiff(int diffNum) => diffNum switch
