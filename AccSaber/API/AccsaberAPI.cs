@@ -22,6 +22,7 @@ using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
 using AccSaber.Models.PlayerModels;
 using System.Net.Http.Headers;
+using AccSaber.Patches;
 
 namespace AccSaber.API
 {
@@ -1180,7 +1181,7 @@ namespace AccSaber.API
 #endif
         internal static async Task SubmitScore(AccSaberScore score)
         {
-            if (!Plugin.Submit)
+            if (!SubmissionPatch.Submit)
                 return;
 
             score.Nonce = MiscUtils.GenerateNonce(64);
