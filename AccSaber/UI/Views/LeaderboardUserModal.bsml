@@ -4,7 +4,7 @@
         <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='63' pref-height='34' active='~is-not-loading'>
             <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='65' spacing='-1'>
                 <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='25' pref-height='32' pad-top='2' spacing='2'>
-                  <text text='~username' align='Center' horizontal-fit='PreferredSize'  bold='true'/>
+                  <text text='~username' align='Center' bold='true'/>
                   <text text='~title' align='Center' font-size='3.5' />
                    <img id='profile-image' spacing='0' pad='0' preserve-aspect='true' pref-width='23' pref-height='23'/>
                   <text text='~level' align='Center' font-size='2.5'/>

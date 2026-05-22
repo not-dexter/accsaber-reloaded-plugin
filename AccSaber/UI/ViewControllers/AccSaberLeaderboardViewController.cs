@@ -351,7 +351,6 @@ namespace AccSaber.UI.ViewControllers
 
         private void OnEnable()
         {
-            Plugin.Log.Info("Enabled");
             titleContainer?.SetActive(true);
 
             if (titlePaneTitleText is not null)

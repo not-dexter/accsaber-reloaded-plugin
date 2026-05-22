@@ -46,10 +46,8 @@ namespace AccSaber.Models
         [JsonProperty("title")]
         public string Title { get; set; } = null!;
 
-
         [JsonProperty("type")]
         public string Type { get; set; } = null!;
-
 
         [JsonProperty("xp")]
         public float XP { get; set; }

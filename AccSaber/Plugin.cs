@@ -24,7 +24,7 @@ namespace AccSaber
 
 			zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
 			zenjector.Install<AccSaberAppInstaller>(Location.App);
-			zenjector.Install<AccSaberGameInstaller>(Location.StandardPlayer | Location.CampaignPlayer);
+			zenjector.Install<AccSaberGameInstaller>(Location.StandardPlayer);
 
 			Harmony harmony = new("AccSaber.Leaderboard");
 

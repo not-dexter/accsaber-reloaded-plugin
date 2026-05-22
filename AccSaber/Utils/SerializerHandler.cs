@@ -1,6 +1,7 @@
 ﻿using AccSaber.API;
 using AccSaber.Consts;
 using AccSaber.Models;
+using AccSaber.Models.Base;
 using AccSaber.Models.CacheModels;
 using Newtonsoft.Json;
 using System;
@@ -55,21 +56,8 @@ namespace AccSaber.Utils
                 AccSaberSerializedCache<AccSaberBasicMap>? maps = null;
                 AccSaberSerializedCache<AccSaberPlayerScore>? playerScores = null;
 
-                if (File.Exists(ResourcePaths.ACC_SABER_MAP_CACHE))
-                {
-                    using StreamReader sr = new(ResourcePaths.ACC_SABER_MAP_CACHE);
-                    using JsonReader reader = new JsonTextReader(sr);
-
-                    maps = serializer.Deserialize<AccSaberSerializedCache<AccSaberBasicMap>>(reader);
-                }
-
-                if (File.Exists(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE))
-                {
-                    using StreamReader sr = new(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE);
-                    using JsonReader reader = new JsonTextReader(sr);
-
-                    playerScores = serializer.Deserialize<AccSaberSerializedCache<AccSaberPlayerScore>>(reader);
-                }
+                Load(ResourcePaths.ACC_SABER_MAP_CACHE, ref maps, serializer);
+                Load(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE, ref playerScores, serializer);
 
                 if (maps is not null && (await ValidateMapCache(maps.Content.Count)))
                     CachedMaps.AddRange(maps.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)));
@@ -84,6 +72,16 @@ namespace AccSaber.Utils
             } catch (Exception e)
             {
                 Plugin.Log.Error($"There was an error loading the cache files.\n{e}");
+            }
+        }
+        private void Load<T>(string file, ref AccSaberSerializedCache<T>? cache, JsonSerializer serializer) where T : Model
+        {
+            if (File.Exists(file))
+            {
+                using StreamReader sr = new(file);
+                using JsonReader reader = new JsonTextReader(sr);
+
+                cache = serializer.Deserialize<AccSaberSerializedCache<T>>(reader);
             }
         }
         private void Save()
