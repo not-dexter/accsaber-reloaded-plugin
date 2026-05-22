@@ -269,11 +269,12 @@ namespace AccSaber.UI.ViewControllers
             AccSaberStore.OnPlayerScoreUpdated += token =>
             {
                 currentPlayerScore = token;
-                currentPage = 1;
+                page = 1;
+                currentPage = -1;
                 Task.Run(async () =>
                 {
-                    if (!await ForceRefresh(true))
-                        refreshRequested = true; //Review: Check added, verify the leaderboard refreshes correctly.
+                    if (!await ForceRefresh(false))
+                        refreshRequested = true;
                 });
             };
 
@@ -374,6 +375,7 @@ namespace AccSaber.UI.ViewControllers
         internal void OnGameRefresh()
         {
             InvalidateCache();
+            refreshRequested = true;
         }
 
         private async void DoEnableUpdate()
@@ -381,7 +383,7 @@ namespace AccSaber.UI.ViewControllers
             IEnumerator WaitUntilValidUpdate()
             {
                 yield return new WaitUntil(() => gameObject.activeInHierarchy);
-                yield return Task.Run(ForceRefresh);
+                Task.Run(() => ForceRefresh(false));
             }
 
             if (!TryUpdateCurrentMap() && refreshRequested)
@@ -552,17 +554,21 @@ namespace AccSaber.UI.ViewControllers
                 currentPlayerPage = 0;
 
                 // reload leaderboard for the new map
-                Task.Run(ForceRefresh);
+                Task.Run(() => ForceRefresh(true));
                 return true;
             }
         }
 
-        private async Task<bool> ForceRefresh() => await ForceRefresh(true);
-
         private async Task<bool> ForceRefresh(bool overridePlayerScore)
         {
             AsyncLock.Releaser? theLock = await forceRefreshLock.TryLockAsync();
-            if (theLock is null || !gameObject.activeInHierarchy) return false;
+            if (theLock is null) 
+                return false;
+            if (!gameObject.activeInHierarchy)
+            {
+                theLock?.Dispose();
+                return false;
+            }
             using (theLock.Value)
             {
                 try
@@ -598,7 +604,7 @@ namespace AccSaber.UI.ViewControllers
                     await LoadLeaderboardAsync();
                 } catch (Exception e)
                 {
-                    Plugin.Log.Error(e);    
+                    Plugin.Log.Error(e);
                     return false;
                 }
             }
@@ -607,7 +613,7 @@ namespace AccSaber.UI.ViewControllers
 
         private void ShowLoading()
         {
-            if (leaderboardLoader.activeInHierarchy || DifficultyId is null)
+            if (!gameObject.activeInHierarchy || leaderboardLoader.activeInHierarchy || DifficultyId is null)
                 return;
 
             int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;

@@ -32,6 +32,8 @@ namespace AccSaber.ScoreTracking
 
         public void Initialize()
         {
+            SubmissionPatch.EnableSubmissions();
+
             transitionFinished = false;
             counterDisposed = false;
             failed = false;
@@ -42,8 +44,10 @@ namespace AccSaber.ScoreTracking
             if (mods.noFailOn0Energy)
                 energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
 
-            if (transition.practiceSettings is not null)
+            if (transition.practiceSettings is not null){
                 SubmissionPatch.SetPracticeSubmission();
+                Plugin.Log.Info($"Practice mode: start time = {transition.practiceSettings.startSongTime}, speed mult = {transition.practiceSettings.songSpeedMul}");
+            }
 
             //Plugin.Log.Info($"current map null? {store.CurrentRankedMap is null}");
             if (store.CurrentRankedMap is null)
@@ -181,13 +185,10 @@ namespace AccSaber.ScoreTracking
 
             Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
 
-
             if (completion >= 0.75f && SubmissionPatch.Submit)
                 await AccsaberAPI.SubmitScore(score);
-            else 
-                Plugin.Log.Info("No score submit");
-
-            SubmissionPatch.EnableSubmissions();
+            else
+                Plugin.Log.Info("No score submit: " + SubmissionPatch.GetSubmitReason());
         }
     }
 }

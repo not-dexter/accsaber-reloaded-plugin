@@ -82,7 +82,7 @@ namespace AccSaber.Models
         public List<object> ModifierIds { get; set; } = null!;
 
         [JsonProperty("pauses")]
-        public int Pauses { get; set; }
+        public int? Pauses { get; set; }
 
         [JsonProperty("rank")]
         public int Rank { get; set; }

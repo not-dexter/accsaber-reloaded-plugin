@@ -78,7 +78,7 @@ namespace AccSaber.API
 
                 playerInfoCacher.RemoveItem(playerId);
 
-                if (scoreInfoCacher.TryGetCachedItem(diffId, out var item) && item.UserIds.Contains(playerId))
+                if (scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache item) && item.UserIds.Contains(playerId))
                 {
                     Plugin.Log.Notice($"Difficulty id {diffId} was removed from cache.");
                     scoreInfoCacher.RemoveItem(diffId);

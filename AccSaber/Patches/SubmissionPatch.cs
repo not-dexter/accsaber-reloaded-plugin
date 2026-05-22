@@ -36,6 +36,22 @@ namespace AccSaber.Patches
         private static bool siraSubmit, bsUtilsSubmit, practiceSubmit;
         public static bool Submit => siraSubmit && bsUtilsSubmit && practiceSubmit;
 
+        internal static string GetSubmitReason()
+        {
+            if (Submit)
+                return "";
+
+            string outp = "";
+
+            if (!siraSubmit)
+                outp += "\nSira said no.";
+            if (!bsUtilsSubmit)
+                outp += "\nBs Utils said no.";
+            if (!practiceSubmit)
+                outp += "\nIn practice mode.";
+
+            return outp.Length > 0 ? outp.Substring(1) : outp;
+        }
         internal static void ApplyKnownPatches(Harmony harmony)
         {
             ApplyPatch(harmony, submissionPatches[0], SymbolExtensions.GetMethodInfo<bool>(val => SetSiraSubmission(val)));
