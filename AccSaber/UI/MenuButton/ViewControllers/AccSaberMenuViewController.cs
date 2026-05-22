@@ -18,6 +18,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 using AccSaber.Models.PlayerModels;
+using AccSaber.UI.MenuButton.Campaigns;
 
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
@@ -302,7 +303,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				PageNumber++;
 			}
 		}
-		private async Task UpdateUserInfo()
+		/* unused for now
+        [UIAction("show-campaign")]
+        private void ShowCampaign()
+        {
+			AccSaberCampaignFlow.ShowCampaignFlowCoordinator();
+        }*/
+
+        private async Task UpdateUserInfo()
 		{
 			var user = await _accSaberStore.GetPlatformUserInfo();
 

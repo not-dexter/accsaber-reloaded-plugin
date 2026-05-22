@@ -1,0 +1,39 @@
+<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+	<vertical pref-width='120'>
+		<vertical vertical-fit='PreferredSize' skew='0' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' >
+			<tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected'/>
+		</vertical>
+		<tab tags='tabs' tab-name='Active' on-click='completed-clicked' />
+		<tab tags='tabs' tab-name='All' on-click='progress-clicked'/>
+		<horizontal pref-width='160' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
+			<vertical bg='panel-top' skew='0' pref-width='50' pref-height='70' pad='2'>
+				<horizontal bg='round-rect-panel' pad ='2'>
+					<text text='Campaign Name'></text>
+					<text text='-Author' align='Right'></text>
+				</horizontal>
+				<horizontal bg='round-rect-panel' pad ='2'>
+					<text text='Campaign Name'></text>
+					<text text='-Author' align='Right'></text>
+				</horizontal>
+				<horizontal bg='round-rect-panel' pad ='2'>
+					<text text='Campaign Name'></text>
+					<text text='-Author' align='Right'></text>
+				</horizontal>
+				<horizontal bg='round-rect-panel' pad ='2'>
+					<text text='Campaign Name'></text>
+					<text text='-Author' align='Right'></text>
+				</horizontal>
+				<horizontal bg='round-rect-panel' pad ='2'>
+					<text text='Campaign Name'></text>
+					<text text='-Author' align='Right'></text>
+				</horizontal>
+				<horizontal bg='round-rect-panel' pad ='2'>
+					<text text='Campaign Name'></text>
+					<text text='-Author' align='Right'></text>
+				</horizontal>
+			</vertical>
+			<vertical bg='panel-top' skew='0' pref-width='100' pref-height='70' pad='2'>
+			</vertical>
+		</horizontal>
+ </vertical>
+</bg>

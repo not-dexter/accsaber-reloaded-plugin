@@ -52,4 +52,5 @@
       </vertical>
     </horizontal>
   </vertical>
+<!--<button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign'/>-->
 </bg>

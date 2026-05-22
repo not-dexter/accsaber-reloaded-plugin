@@ -2,6 +2,8 @@
 using AccSaber.Managers;
 using AccSaber.UI;
 using AccSaber.UI.MenuButton;
+using AccSaber.UI.MenuButton.Campaigns;
+using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.UI.MenuButton.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
@@ -25,7 +27,9 @@ namespace AccSaber.Installers
 
 			Container.BindInstance(_pluginConfig).AsSingle();
 			Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
-			Container.Bind<AccSaberNewsViewController>().FromNewComponentAsViewController().AsSingle();
+            //Container.Bind<AccSaberCampaignViewController>().FromNewComponentAsViewController().AsSingle(); unused for now
+            //Container.Bind<AccSaberCampaignFlow>().FromNewComponentOnNewGameObject().AsSingle(); unused for now
+            Container.Bind<AccSaberNewsViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberMenuViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberMilestoneViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberMainFlowCoordinator>().FromNewComponentOnNewGameObject().AsSingle();

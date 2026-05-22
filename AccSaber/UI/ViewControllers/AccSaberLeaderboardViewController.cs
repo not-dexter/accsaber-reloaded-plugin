@@ -680,7 +680,7 @@ namespace AccSaber.UI.ViewControllers
                     if (scores is not null)
                         scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score)));
 
-                    bool knowCurrentPlayerPage = currentPlayerPage > 0 || currentPlayerPage <= 0 && AttemptToSetPlayerPage();
+                    bool knowCurrentPlayerPage = currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage();
 
                     IEnumerator ReloadData()
                     {
