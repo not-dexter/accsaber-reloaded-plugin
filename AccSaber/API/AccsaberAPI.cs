@@ -1164,7 +1164,7 @@ namespace AccSaber.API
             if (!SubmissionPatch.Submit)
                 return;
 
-            score.Nonce = MiscUtils.GenerateNonce(64);
+            score.Nonce = MiscUtils.GenerateNonce(64); // Regenerate this just to make sure no one can steal the nonce.
 
             HttpRequestMessage request = new(HttpMethod.Post, APAPI_SCORE_SUBMIT)
             {

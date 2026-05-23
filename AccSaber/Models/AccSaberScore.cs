@@ -1,4 +1,5 @@
 ﻿using AccSaber.Models.Base;
+using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -10,7 +11,7 @@ namespace AccSaber.Models
     internal class AccSaberScore : Model
     {
         [JsonProperty("nonce", Required = Required.DisallowNull)]
-        internal string Nonce { get; set; } = null!;
+        internal string Nonce { get; set; } = MiscUtils.GenerateNonce(64);
 
         [JsonProperty("mapDifficultyId", Required = Required.DisallowNull)]
         public string MapDifficultyId { get; set; } = null!;

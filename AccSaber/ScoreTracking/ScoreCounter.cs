@@ -3,6 +3,7 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Patches;
 using AccSaber.Utils;
+using Newtonsoft.Json;
 using System;
 using System.Linq;
 using UnityEngine;
@@ -29,6 +30,8 @@ namespace AccSaber.ScoreTracking
         private int current115Streak, combo, notes, totalNotes;
         private readonly object submitLock = new();
         private bool transitionFinished, counterDisposed, failed;
+
+        private bool AtEndsOfMap => notes == 0 || notes == totalNotes;
 
         public void Initialize()
         {
@@ -59,6 +62,8 @@ namespace AccSaber.ScoreTracking
                 Headset = store.GetCurrentUserAsync().GetAwaiter().GetResult().Headset,
             };
 
+            totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
+
             current115Streak = 0;
             combo = 0;
             notes = 0;
@@ -67,7 +72,7 @@ namespace AccSaber.ScoreTracking
             sc.scoringForNoteFinishedEvent += NoteScoring;
             bomb.noteWasCutEvent += OnBombHit;
             wall.headDidEnterObstacleEvent += OnWallHit;
-            pause.didPauseEvent += OnPause;
+            pause.didResumeEvent += OnUnpause;
             energy?.gameEnergyDidReach0Event += OnFail;
         }
         public void Dispose()
@@ -79,12 +84,10 @@ namespace AccSaber.ScoreTracking
             sc.scoringForNoteFinishedEvent -= NoteScoring;
             bomb.noteWasCutEvent -= OnBombHit;
             wall.headDidEnterObstacleEvent -= OnWallHit;
-            pause.didPauseEvent -= OnPause;
+            pause.didResumeEvent -= OnUnpause;
             energy?.gameEnergyDidReach0Event -= OnFail;
 
             score.ModifierCodes = mods.ToModCodes(failed);
-
-            totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
 
             score.TimeSet = DateTime.UtcNow;
 
@@ -149,7 +152,7 @@ namespace AccSaber.ScoreTracking
         }
         private void OnBombHit(NoteController nc, in NoteCutInfo nci)
         {
-            if (nc.noteData.gameplayType != NoteData.GameplayType.Bomb)
+            if (nc.noteData.gameplayType != NoteData.GameplayType.Bomb || AtEndsOfMap)
                 return;
 
             combo = 0;
@@ -157,11 +160,17 @@ namespace AccSaber.ScoreTracking
         }
         private void OnWallHit(ObstacleController oc)
         {
+            if (AtEndsOfMap)
+                return;
+
             combo = 0;
             score.WallHits++;
         }
-        private void OnPause()
+        private void OnUnpause()
         {
+            if (AtEndsOfMap)
+                return;
+
             score.Pauses++;
         }
         private void OnFail()
@@ -184,6 +193,8 @@ namespace AccSaber.ScoreTracking
             float completion = (float)notes / totalNotes;
 
             Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
+
+            Plugin.Log.Info(JsonConvert.SerializeObject(score));
 
             if (completion >= 0.75f && SubmissionPatch.Submit)
                 await AccsaberAPI.SubmitScore(score);
