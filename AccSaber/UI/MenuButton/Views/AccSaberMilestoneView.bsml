@@ -9,7 +9,7 @@
     <tab tags='tabs' tab-name='Completed' on-click='completed-clicked' />
     <tab tags='tabs' tab-name='In Progress' on-click='progress-clicked'/>
     <horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
-      <vertical bg='panel-top' bg-color='black' skew='0' pref-width='105' pref-height='60' pad='2'>
+      <vertical bg='panel-top' skew='0' pref-width='105' pref-height='60' pad='2'>
         <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
         <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' cell-size='15' stick-scrolling='true' active='~is-not-loading'>
           <my-vertical id='cellContainer' pref-height='~cellSize' pref-width='~listWidth' horizontal-fit='PreferredSize' child-expand-width='false' spacing='0' child-alignment='MiddleCenter' bg='~bgPath' pad-left='2' pad-right='2' pad-down='2'>

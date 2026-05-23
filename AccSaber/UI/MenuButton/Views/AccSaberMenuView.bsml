@@ -4,7 +4,7 @@
       <text text='Profile' align='Center' font-size='7' />
    </horizontal>
     <horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
-      <vertical bg='panel-top' bg-color='black' skew='0' pref-width='120' pref-height='60' pad='2'>
+      <vertical id='container' bg='panel-top' skew='0' pref-width='120' pref-height='60' pad='2'>
       <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
         <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='105' spacing='-1' active='~is-not-loading'>
           <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pad-left='0' pref-width='25' pref-height='55'>
