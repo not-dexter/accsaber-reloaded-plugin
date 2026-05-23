@@ -73,6 +73,15 @@
         public const string APAPI_PLAYER_STATDIFF = APAPI + "users/{0}/stats-diff?category={1}"; //user_id, category (overall, true_acc, standard_acc, tech_acc)
 
         /// <summary>
+        /// Retrieves all statistics differences for a user across all categories.
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: user_id.
+        /// Example: <c>string.Format(APAPI_PLAYER_STATDIFF_ALL, userId)</c>
+        /// </remarks>
+        public const string APAPI_PLAYER_STATDIFF_ALL = APAPI + "users/{0}/stats-diff/all"; //user_id
+
+        /// <summary>
         /// Retrieves a specific score by map hash for a user.
         /// </summary>
         /// <remarks>

@@ -1,12 +1,16 @@
 ﻿using AccSaber.Models.Base;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
+using System;
 
 namespace AccSaber.Models.PlayerModels
 {
     [UsedImplicitly]
     internal class AccSaberPlayerStatsDiff : Model
     {
+        //[JsonProperty("categoryId")]
+        //public string CategoryId { get; set; } = null!;
+
         [JsonProperty("apDiff")]
         public float ApDiff { get; set; }
 
@@ -27,10 +31,17 @@ namespace AccSaber.Models.PlayerModels
 
         [JsonProperty("milestoneXpDiff")]
         public float MilestoneXpDiff { get; set; }
+
         [JsonProperty("rankedPlaysDiff")]
         public int RankedPlaysDiff { get; set; }
 
         [JsonProperty("scoreXpDiff")]
         public float ScoreXpDiff { get; set; }
+
+        [JsonProperty("from")]
+        public DateTime From { get; set; }
+
+        [JsonProperty("to")]
+        public DateTime To { get; set; }
     }
 }

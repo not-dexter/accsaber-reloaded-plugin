@@ -421,7 +421,7 @@ namespace AccSaber.UI.ViewControllers
             if (_user is null)
             {
                 IsLoading = true;
-				_user = await AccsaberAPI.GetPlayerInfo(_userId, true, true);
+				_user = await AccsaberAPI.GetPlayerInfo(_userId, true, false);
             }
 
 			if (_user is not null)
@@ -462,16 +462,16 @@ namespace AccSaber.UI.ViewControllers
 					return "";
 			}
 
-			if (stats.StatsDiff is null)
+			if (stats.StatDiffs is null && !await stats.LoadStatDiff())
 				return;
 
 			// this stat diff positioning fix is so lazy LMAO
 
 			Username = $"{userInfo.PlayerName}";
-			Rank = stats.StatsDiff.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatsDiff.RankingDiff * -1)}" : $"#{stats.Rank}";
-			Country = stats.StatsDiff.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatsDiff.CountryDiff * -1)}" : $"#{stats.CountryRank}";
+			Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
+			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
 			Title = $"{"<color=" + _color + ">" +userInfo.LevelData.PlayerTitle}</color>";
-			Ap = stats.StatsDiff.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatsDiff.ApDiff * -1):F2}</size></color>  {stats.AP:N2} AP  {StatDiff(stats.StatsDiff.ApDiff)}": $"{stats.AP:N2} AP";
+			Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color>  {stats.AP:N2} AP  {StatDiff(stats.StatDiffs.ApDiff)}": $"{stats.AP:N2} AP";
 			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
 			Plays = $"{stats.Plays} ranked plays";

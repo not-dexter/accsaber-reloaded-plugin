@@ -14,7 +14,7 @@
     <Copyright>Copyright © $ModAuthor$</Copyright>
     <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
-    <WarningsAsErrors>Nullable</WarningsAsErrors>
+    <WarningsAsErrors>Nullable;IDE0057</WarningsAsErrors>
     <ImplicitUsings>disable</ImplicitUsings>
     <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
   </PropertyGroup>

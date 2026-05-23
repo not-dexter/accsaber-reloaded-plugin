@@ -1,8 +1,10 @@
-﻿using AccSaber.Models.Base;
+﻿using AccSaber.API;
+using AccSaber.Models.Base;
 using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 
 namespace AccSaber.Models.PlayerModels
 {
@@ -44,10 +46,25 @@ namespace AccSaber.Models.PlayerModels
         //topPlayId, updatedAt
 
         [JsonProperty("userId")]
-        public string UserId { get; set; } = null!;
+        public string PlayerId { get; set; } = null!;
 
         [JsonIgnore]
-        public AccSaberPlayerStatsDiff? StatsDiff { get; set; }
+        public AccSaberPlayerStatsDiff? StatDiffs { get; set; }
+
+        public async Task<bool> LoadStatDiff()
+        {
+            if (Category is null || StatDiffs is not null)
+                return false;
+
+            string category_id = Category.ToString().ToLower();
+
+            if (Category != APCategory.Overall)
+                category_id += "_acc";
+
+            StatDiffs = await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.throttler);
+
+            return StatDiffs is not null;
+        }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)

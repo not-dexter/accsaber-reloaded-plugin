@@ -59,7 +59,7 @@ namespace AccSaber.API
         /// A tuple where <c>Success</c> is true when a successful HTTP response was received and <c>Content</c>
         /// contains the response content. On failure <c>Success</c> is false and <c>Content</c> is null.
         /// </returns>
-        public static async Task<(bool Success, HttpContent? Content)> CallAPI(HttpRequestMessage request, Throttler? throttler = null, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
+        public static async Task<(bool Success, HttpContent? Content)> CallAPI(HttpRequestMessage request, Throttler? throttler, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
         {
             const int initialRetryDelayMs = 500;
             bool closeRequest = false;
@@ -72,7 +72,7 @@ namespace AccSaber.API
             {
                 try
                 {
-                    if (throttler != null)
+                    if (throttler is not null)
                         await throttler.Call();
 
                     Plugin.Log.Debug("API Call: " + request.RequestUri);
@@ -143,25 +143,25 @@ namespace AccSaber.API
             }
             return (false, null);
         }
-        public static async Task<(bool Success, HttpContent? Content)> CallAPI(string path, Throttler? throttler = null, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
+        public static async Task<(bool Success, HttpContent? Content)> CallAPI(string path, Throttler? throttler, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
         {
             HttpRequestMessage request = new(HttpMethod.Get, new Uri(path));
             return await CallAPI(request, throttler, quiet, maxRetries, ct);
         }
-        public static async Task<string?> CallAPI_String(string path, Throttler? t = null, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
+        public static async Task<string?> CallAPI_String(string path, Throttler? t, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
         {
             var (Success, Content) = await CallAPI(path, t, quiet, maxRetries, ct).ConfigureAwait(false);
             if (!Success) return null;
             return await Content!.ReadAsStringAsync().ConfigureAwait(false);
         }
-        public static async Task<byte[]?> CallAPI_Bytes(string path, Throttler? t = null, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
+        public static async Task<byte[]?> CallAPI_Bytes(string path, Throttler? t, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
         {
             var (Success, Content) = await CallAPI(path, t, quiet, maxRetries, ct).ConfigureAwait(false);
             if (!Success) return null;
             return await Content!.ReadAsByteArrayAsync().ConfigureAwait(false);
         }
 
-        public static async Task<T?> CallAPI_Json<T>(string path, Throttler? t = null, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
+        public static async Task<T?> CallAPI_Json<T>(string path, Throttler? t, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
         {
             string? dataStr = await CallAPI_String(path, t, quiet, maxRetries, ct).ConfigureAwait(false);
 

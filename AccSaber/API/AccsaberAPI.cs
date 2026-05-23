@@ -504,16 +504,11 @@ namespace AccSaber.API
 
                 }
 
-                string? dataStr = await CallAPI_String(string.Format(APAPI_LEADERBOARD_DIFF_RELATION, diffId, relation.ToString(), page, PAGE_LENGTH));
-
-                if (string.IsNullOrEmpty(dataStr))
-                    return null;
-
-                AccSaberPagedContent<AccSaberLeaderboardEntry>? data = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberLeaderboardEntry>>(dataStr!);
+                AccSaberPagedContent<AccSaberLeaderboardEntry>? data = await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(
+                    string.Format(APAPI_LEADERBOARD_DIFF_RELATION, diffId, relation.ToString(), page, PAGE_LENGTH), throttler);
 
                 if (data is null || data.Content is null)
                     return null;
-
 
                 CacheScoreData(diffId, data.Content, [], data.TotalElements, relation.Convert());
                 cache = scoreInfoCacher.GetCachedItem(diffId);
@@ -539,12 +534,8 @@ namespace AccSaber.API
             int pageLen = PAGE_LENGTH * pageMult;
             while (true)
             {
-                string? dataStr = await CallAPI_String(string.Format(APAPI_MILESTONE, userId, page, pageLen)).ConfigureAwait(false);
-
-                if (string.IsNullOrEmpty(dataStr)) 
-                    return null;
-
-                AccSaberPagedContent<AccSaberMilestone>? response = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberMilestone>>(dataStr!);
+                AccSaberPagedContent<AccSaberMilestone>? response = 
+                    await CallAPI_Json<AccSaberPagedContent<AccSaberMilestone>>(string.Format(APAPI_MILESTONE, userId, page, pageLen), throttler);
 
                 if (response is null || response.Content is null)
                     return null;
@@ -574,12 +565,7 @@ namespace AccSaber.API
         {
             string apapiFormat = completed ? APAPI_MILESTONE_COMPLETE : APAPI_MILESTONE_INCOMPLETE;
 
-            string? dataStr = await CallAPI_String(string.Format(apapiFormat, userId)).ConfigureAwait(false);
-
-            if (string.IsNullOrEmpty(dataStr))
-                return null;
-
-            AccSaberPagedContent<AccSaberMilestone>? response = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberMilestone>>(dataStr!);
+            AccSaberPagedContent<AccSaberMilestone>? response = await CallAPI_Json<AccSaberPagedContent<AccSaberMilestone>>(string.Format(apapiFormat, userId), throttler);
 
             if (response is null || response.Content is null)
                 return null;
@@ -610,12 +596,7 @@ namespace AccSaber.API
 
             do
             {
-                string? dataStr = await CallAPI_String(string.Format(APAPI_AUTH_GET_RELATIONS_ALL, page, pageLength));
-
-                if (string.IsNullOrEmpty(dataStr))
-                    break;
-
-                AccSaberPagedContent<AccSaberRelation>? response = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberRelation>>(dataStr!);
+                AccSaberPagedContent<AccSaberRelation>? response = await CallAPI_Json<AccSaberPagedContent<AccSaberRelation>>(string.Format(APAPI_AUTH_GET_RELATIONS_ALL, page, pageLength), throttler);
 
                 if (response is null || response.Content is null)
                     break;
@@ -626,7 +607,7 @@ namespace AccSaber.API
                 foreach (AccSaberRelation token in response.Content)
                 {
                     RelationType rt = token.Relation;
-                    string userId = token.TargetPlayerId, relationId = token.ID;
+                    string userId = token.TargetPlayerId, relationId = token.Id;
 
                     outp[rt].userIds.Add(userId);
                     outp[rt].relations.Add(userId, relationId);
@@ -640,30 +621,34 @@ namespace AccSaber.API
         /// Retrieves relations for a specified player and relation type.
         /// Returns the set of target ids and a list of (userId, relationId) pairs.
         /// </summary>
-        public static async Task<(HashSet<string> ids, IEnumerable<(string userId, string relationId)> relations)> GetPlayerRelations(RelationType relation, string playerId)
-        {
-            const int pageLength = PAGE_LENGTH * 10;
-            int page = 0, callsLeft = 0;
-            HashSet<string> userIds = [];
-            List<(string, string)> relations = [];
-            do
-            {
-                string? dataStr = await CallAPI_String(string.Format(APAPI_RELATIONS, playerId, relation.ToString(), "outgoing", page, pageLength));
-                if (string.IsNullOrEmpty(dataStr))
-                    break;
-                JToken response = JToken.Parse(dataStr!);
+        //public static async Task<(HashSet<string> ids, IEnumerable<(string userId, string relationId)> relations)> GetPlayerRelations(RelationType relation, string playerId)
+        //{
+        //    const int pageLength = PAGE_LENGTH * 10;
+        //    int page = 0, callsLeft = 0;
+        //    HashSet<string> userIds = [];
+        //    List<(string, string)> relations = [];
+        //    do
+        //    {
+        //        AccSaberPagedContent<AccSaberRelation>? response = await CallAPI_Json<AccSaberPagedContent<AccSaberRelation>>(
+        //            string.Format(APAPI_RELATIONS, playerId, relation.ToString(), "outgoing", page, pageLength), throttler);
 
-                if (callsLeft == 0)
-                    callsLeft = (int)response["totalElements"]! / pageLength;
+        //        if (response is null || response.Content is null)
+        //            break;
 
-                IEnumerable<(string userId, string relationId)> ids = response["content"]!.Children().Select(token => (token["targetUserId"]!.ToString(), token["id"]!.ToString()));
-                foreach (var (userId, _) in ids)
-                    userIds.Add(userId);
-                relations.AddRange(ids);
+        //        if (callsLeft == 0)
+        //            callsLeft = response.TotalElements / pageLength;
 
-            } while (callsLeft > 0);
-            return (userIds, relations);
-        }
+        //        IEnumerable<(string userId, string relationId)> ids = response.Content.Select(token => (token.TargetPlayerId, token.Id));
+
+        //        foreach (var (userId, _) in ids)
+        //            userIds.Add(userId);
+
+        //        relations.AddRange(ids);
+
+        //    } while (callsLeft > 0);
+
+        //    return (userIds, relations);
+        //} // Note: Commented out as it is not used currently.
 
         /// <summary>
         /// Creates a relation (friend/rival/etc.) to the target player.
@@ -1017,7 +1002,7 @@ namespace AccSaber.API
         {
             bool playerCached = playerInfoCacher.TryGetCachedItem(userId, out AccSaberPlayer? outp);
             bool statsCached = playerCached && outp!.Statistics is not null;
-            bool statDiffCached = statsCached && outp!.LoadStatDiffs.IsCompleted;
+            bool statDiffCached = statsCached && statDiff && outp!.LoadStatDiffs.IsCompleted;
 
             //Plugin.Log.Info($"cached = {playerCached}, stats cached = {statsCached}, diff cached = {statDiffCached} || want stats ? {stats}, want diff {statDiff}");
 
@@ -1030,12 +1015,7 @@ namespace AccSaber.API
                 return outp;
             }
 
-            string? dataStr = await CallAPI_String(string.Format(APAPI_PLAYERID, userId, stats.ToString().ToLower()), throttler, false, ct: ct);
-
-            if (string.IsNullOrEmpty(dataStr)) 
-                return null;
-
-            outp = JsonConvert.DeserializeObject<AccSaberPlayer>(dataStr!);
+            outp = await CallAPI_Json<AccSaberPlayer>(string.Format(APAPI_PLAYERID, userId, stats.ToString().ToLower()), throttler, ct: ct);
 
             if (outp is null)
                 return null;
@@ -1191,7 +1171,7 @@ namespace AccSaber.API
                 Content = new StringContent(JsonConvert.SerializeObject(score), System.Text.Encoding.UTF8, "application/json")
             };
 
-            var (success, _) = await CallAPI(request, maxRetries: 1).ConfigureAwait(false);
+            var (success, _) = await CallAPI(request, null, maxRetries: 1).ConfigureAwait(false); // No throttler because this should throw an error if it is called more than once a minute.
 
             Plugin.Log.Info(success ? "Score submitted!" : "Score failed to submit.");
 

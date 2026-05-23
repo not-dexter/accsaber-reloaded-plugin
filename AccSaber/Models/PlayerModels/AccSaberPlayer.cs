@@ -68,21 +68,24 @@ namespace AccSaber.Models.PlayerModels
 
         private async Task LoadStatDiffsFunc()
         {
-            foreach (AccSaberPlayerStats stat in Statistics!)
+            if (Statistics is null)
+                return;
+
+            foreach (AccSaberPlayerStats stat in Statistics)
             {
                 if (stat.Category is null)
                     continue;
 
-                string category_id = stat.Category.ToString();
-                MiscUtils.CapitializeSelf(ref category_id); 
+                string category_id = stat.Category.ToString().ToLower();
 
                 if (stat.Category != APCategory.Overall)
                     category_id += "_acc";
 
-                string? dataStr = await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id));
+                AccSaberPlayerStatsDiff? diff = 
+                    await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.throttler);
 
-                if (dataStr is not null)
-                    stat.StatsDiff = JsonConvert.DeserializeObject<AccSaberPlayerStatsDiff>(dataStr);
+                if (diff is not null)
+                    stat.StatDiffs = diff;
             }
         }
     }
