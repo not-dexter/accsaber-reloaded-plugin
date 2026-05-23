@@ -268,6 +268,9 @@ namespace AccSaber.UI.ViewControllers
             // Subscribe to the websocket
             AccSaberStore.OnPlayerScoreUpdated += token =>
             {
+                if (currentPlayerScore is not null && currentPlayerScore.Accuracy > token.Accuracy)
+                    return;
+
                 currentPlayerScore = token;
                 page = 1;
                 currentPage = -1;
