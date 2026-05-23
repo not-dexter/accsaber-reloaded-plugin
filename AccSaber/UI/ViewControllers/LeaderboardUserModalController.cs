@@ -326,11 +326,10 @@ namespace AccSaber.UI.ViewControllers
 
 				var canvasGroup = _modalView.gameObject.AddComponent<CanvasGroup>();
 				var dropdownModalView = _categoryDropdown.Find("DropdownTableView").GetComponent<ModalView>();
-				//dropdownModalView.SetupView(_modalView.transform);
-				//dropdownModalView.transform.SetParent(_modalView.transform);
-                dropdownModalView.SetField("_parentCanvasGroup", canvasGroup);
-				
-				_userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
+				// Idk why I can get away with this, but I can and will.
+				typeof(ModalView).GetMethod("SetupView", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(dropdownModalView, [_modalView.transform]);
+
+                _userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
 
 				_profileImage.material = ResourcePaths.BORDER_MATERIAL;
 
