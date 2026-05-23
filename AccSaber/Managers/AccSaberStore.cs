@@ -93,6 +93,34 @@ namespace AccSaber.Managers
 			}
 			return [];
 		}
+        public async Task<List<AccSaberMission>> GetMissions(MissionPool pool = MissionPool.Daily, bool allPools = true)
+        {
+            var platformUser = await GetPlatformUserInfo();
+
+            if (platformUser is not null)
+            {
+                string call = string.Format(allPools ? HelpfulPaths.APAPI_MISSIONS : HelpfulPaths.APAPI_MISSIONS_POOL, platformUser.platformUserId, nameof(pool).ToLower());
+                string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
+
+                if (response is not null)
+                {
+                    List<AccSaberMission>? outp = JsonConvert.DeserializeObject<List<AccSaberMission>>(response);
+
+                    if (outp is null)
+                        return [];
+
+                    List<AccSaberMission> newMissions = [];
+
+                    foreach (AccSaberMission mission in outp)
+                    {
+                        newMissions.Add(mission);
+                    }
+
+                    return newMissions;
+                }
+            }
+            return [];
+        }
 
         public enum NewsType
         {

@@ -167,6 +167,24 @@
         public const string APAPI_MILESTONE_INCOMPLETE = APAPI + "users/{0}/milestones/uncompleted"; //user_id
 
         /// <summary>
+        /// Retrieves a users missions.
+        /// </summary>
+        public const string APAPI_MISSIONS = APAPI + "users/me/missions";
+
+        /// <summary>
+        /// Retrieves a users completed missions.
+        /// </summary>
+        public const string APAPI_MISSIONS_COMPLETED = APAPI + "users/me/missions/completed";
+
+        /// <summary>
+        /// Retrieves a users missions from a specified pool.
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: pool.
+        /// </remarks>
+        public const string APAPI_MISSIONS_POOL = APAPI + "users/me/missions?pool={1}"; //pool
+
+        /// <summary>
         /// Retrieves all news entries.
         /// </summary>
         public const string APAPI_NEWS = APAPI + "news"; //no params

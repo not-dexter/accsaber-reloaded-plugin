@@ -197,6 +197,9 @@
     <EmbeddedResource Include="manifest.json" />
     <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\AccSaberCampaignView.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMenuCell.bsml" />
+    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMissionScreen.bsml">
+      <SubType>Code</SubType>
+    </EmbeddedResource>
     <EmbeddedResource Include="UI\MenuButton\Views\AccSaberNewsModal.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Views\AccSaberNewsView.bsml">
       <SubType>Code</SubType>
