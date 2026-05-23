@@ -141,20 +141,12 @@ namespace AccSaber.Utils
             Color c1 = hex.Color(), c2 = DimColor(hex, dimBase).Color(), c3 = DimColor(hex, dimBase * 2).Color();
             return new(c1, c2, c2, c3);
         }
-        public static string GetColor(string? categoryId) => categoryId?.Last() switch
+        public static string GetColor(APCategory? category) => category switch
         {
-            '1' => TRUE,
-            '2' => STANDARD,
-            '3' => TECH,
-            '5' => OVERALL,
-            _ => "#FFF"
-        };
-        public static string GetColorDim(string? categoryId) => categoryId?.Last() switch
-        {
-            '1' => TRUE_DIM,
-            '2' => STANDARD_DIM,
-            '3' => TECH_DIM,
-            '5' => OVERALL_DIM,
+            APCategory.True => TRUE,
+            APCategory.Standard => STANDARD,
+            APCategory.Tech => TECH,
+            APCategory.Overall => OVERALL,
             _ => "#FFF"
         };
     }
