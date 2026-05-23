@@ -74,7 +74,7 @@ namespace AccSaber.Models.PlayerModels
                     continue;
 
                 string category_id = stat.Category.ToString();
-                category_id = char.ToLower(category_id[0]) + category_id.Substring(1);
+                MiscUtils.CapitializeSelf(ref category_id); 
 
                 if (stat.Category != APCategory.Overall)
                     category_id += "_acc";

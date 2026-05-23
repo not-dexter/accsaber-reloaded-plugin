@@ -7,6 +7,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
+using BeatSaberMarkupLanguage.FloatingScreen;
+
 
 #if NEW_VERSION
 using System.Collections;
@@ -28,6 +30,7 @@ namespace AccSaber.Utils
         public static TableView TableView(this CustomCellListTableData ccltd) => ccltd.TableView;
         public static Image Background(this Backgroundable bg) => bg.Background;
         public static Image Image(this ButtonIconImage bii) => bii.Image;
+        public static GameObject Handle(this FloatingScreen screen) => screen.Handle;
         public static BSMLParser BSMLParser_Instance => BSMLParser.Instance;
         public static MenuButtons MenuButtons_Instance => MenuButtons.Instance;
 #else
@@ -40,6 +43,7 @@ namespace AccSaber.Utils
         public static ref TableView TableView(this CustomCellListTableData ccltd) => ref ccltd.tableView;
         public static ref Image Background(this Backgroundable bg) => ref bg.background;
         public static ref Image Image(this ButtonIconImage bii) => ref bii.image;
+        public static ref GameObject Handle(this FloatingScreen screen) => ref screen.handle;
         public static BSMLParser BSMLParser_Instance => BSMLParser.instance;
         public static MenuButtons MenuButtons_Instance => MenuButtons.instance;
 #endif

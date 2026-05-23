@@ -32,11 +32,11 @@ namespace AccSaber.Utils
             {
                 var (timeDiff, str) = GetMostSignificantTime(timeSpan, dateTime);
                 timeSpan -= timeDiff;
-                dateTime = dateTime.AddSeconds(timeDiff.TotalSeconds);
+                dateTime = dateTime.AddTicks(timeDiff.Ticks);
                 outp += (layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ") + str;
             }
 
-            return outp.Substring(2) + " ago.";
+            return outp[2..] + " ago.";
         }
         public static (TimeSpan timeDiff, string str) GetMostSignificantTime(TimeSpan timeDiff, DateTime startTime)
         {
@@ -157,6 +157,8 @@ namespace AccSaber.Utils
             foreach (KeyValuePair<K, V> kvp in vals)
                 dict.TryAdd(kvp.Key, kvp.Value);
         }
+        public static string Capitialize(this string str) => char.ToUpper(str[0]) + str[1..];
+        public static void CapitializeSelf(ref string str) => str = str.Capitialize();
 
         #region Debug functions
         /// <summary>
@@ -178,7 +180,7 @@ namespace AccSaber.Utils
             StringBuilder outp = new();
             foreach (T item in arr)
                 outp.Append(", " + item);
-            return $"[{outp.ToString().Substring(2)}]";
+            return $"[{outp.ToString()[2..]}]";
         }
         #endregion
     }

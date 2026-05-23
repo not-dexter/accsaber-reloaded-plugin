@@ -101,7 +101,7 @@ namespace AccSaber.Utils
                 return hex;
 
             if (hex[0] == '#')
-                hex = hex.Substring(1);
+                hex = hex[1..];
 
             if (hex.Length == 6)
                 return $"#{hex.ToUpper()}FF";
@@ -120,7 +120,7 @@ namespace AccSaber.Utils
             static int ConvertCharFromHex(char c) => c > '9' ? char.ToUpper(c) - 'A' + 10 : c - '0';
 
             bool hasHashtag = hex[0] == '#';
-            if (hasHashtag) hex = hex.Substring(1);
+            if (hasHashtag) hex = hex[1..];
             int leadingZeros = 0;
             while (hex[leadingZeros] == '0')
                 leadingZeros++;

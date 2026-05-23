@@ -38,7 +38,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             missionScreen.transform.eulerAngles = new Vector3(90, 0, 0);
             missionScreen.transform.localScale = new Vector3(0.03f, 0.03f, 0.03f);
 
-            missionScreen.Handle.SetActive(false);
+            missionScreen.Handle().SetActive(false);
             VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), "AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml"), missionScreen.gameObject, this);
         }
 

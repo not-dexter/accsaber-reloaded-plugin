@@ -79,7 +79,7 @@ namespace AccSaber.Models
             if (CategoryCode is not null)
             {
                 string temp = CategoryCode.Split('_')[0];
-                Category = (APCategory?)Enum.Parse(typeof(APCategory), char.ToUpper(temp[0]) + temp.Substring(1));
+                Category = (APCategory?)Enum.Parse(typeof(APCategory), temp.Capitialize());
             }
         }
     }

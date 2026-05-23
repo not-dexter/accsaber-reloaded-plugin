@@ -175,7 +175,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     return $"<color={ColorUtils.GetMilestoneRankColor(data.Tier).DimColor(6)}>(" + middle + ")</color>";
                 }
             }
-            [UIValue(nameof(Tier))] public string Tier => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier)}>{char.ToUpper(data.Tier[0]) + data.Tier.Substring(1)}</color>";
+            [UIValue(nameof(Tier))] public string Tier => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier)}>{data.Tier.Capitialize()}</color>";
             [UIValue(nameof(Title))] public string Title => $"{data.Title}";
             [UIValue(nameof(Description))] public string Description => $"<color={ColorUtils.GREY}>{data.Description}</color>";
 

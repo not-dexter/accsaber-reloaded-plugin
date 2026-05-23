@@ -50,7 +50,7 @@ namespace AccSaber.Patches
             if (!practiceSubmit)
                 outp += "\nIn practice mode.";
 
-            return outp.Length > 0 ? outp.Substring(1) : outp;
+            return outp.Length > 0 ? outp[1..] : outp;
         }
         internal static void ApplyKnownPatches(Harmony harmony)
         {

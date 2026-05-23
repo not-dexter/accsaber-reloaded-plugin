@@ -139,7 +139,7 @@ namespace AccSaber.UI.ViewControllers
 		[UIValue("username")]
 		private string Username
 		{
-			get => _username.Length > 18 ? $"{_username.Substring(0, 15)}..." : _username + "</color>";
+			get => _username.Length > 18 ? $"{_username[..15]}..." : _username + "</color>";
 			set
 			{
 				_username = value;
