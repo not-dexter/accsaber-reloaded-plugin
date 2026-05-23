@@ -20,7 +20,6 @@ namespace AccSaber.Consts
         public const string INFO_ICON = RESOURCE_PATH + ".InfoIcon.png";
         public const string PIXEL = RESOURCE_PATH + ".Pixel.png";
         public const string PLAYER_ICON = RESOURCE_PATH + ".PlayerIcon.png";
-
         public const string SWAP = RESOURCE_PATH + ".swap.png";
         public const string RIVALS = RESOURCE_PATH + ".rivals.png";
         public const string FOLLOWED = RESOURCE_PATH + ".followed.png";
@@ -33,6 +32,7 @@ namespace AccSaber.Consts
         //public const string RESOURCE_GRADIENT_PANEL = RESOURCE_PATH + ".panelGradient.png";
         public const string GRADIENT_CORNER = RESOURCE_PATH + ".cornerGradient.png";
         //public const string RESOURCE_GRADIENT_HEADER = RESOURCE_PATH + ".headerBG.png";
+        public const string DISCORD = RESOURCE_PATH + ".discord.png";
 
         #endregion
         #region BSML File Paths

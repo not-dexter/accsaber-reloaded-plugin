@@ -31,6 +31,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMenuView.bsml")]
     internal class AccSaberMenuViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable, IDisposable
 	{
+#pragma warning disable IDE0051
 		private string? _userId;
 		private AccSaberPlayer? _user;
         private bool _parsed;
@@ -270,6 +271,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIValue("next-enabled")]
 		private bool NextEnabled => PageNumber + 1 < _maxPage;
 
+		[UIValue("discordImg")]
+		private const string DiscordImg = ResourcePaths.DISCORD;
+
+
 		[UIAction("#post-parse")]
         void Parsed()
         {
@@ -309,6 +314,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
 			AccSaberCampaignFlow.ShowCampaignFlowCoordinator();
         }*/
+
+		[UIAction("on-discord-clicked")]
+		private void OnDiscordClicked()
+		{
+            System.Diagnostics.Process.Start("https://discord.gg/DmzKSgcJWe");
+        }
 
         private async Task UpdateUserInfo()
 		{

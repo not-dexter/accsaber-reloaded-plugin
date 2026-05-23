@@ -8,9 +8,9 @@
       <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
         <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='105' spacing='-1' active='~is-not-loading'>
           <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pad-left='0' pref-width='25' pref-height='55'>
-            <text text='~username' align='Center' horizontal-fit='PreferredSize'  bold='true'/>
+            <text text='~username' align='Center' bold='true'/>
             <text text='~title' align='Center' font-size='3.5' />
-            <img id='profile-image' spacing='0' pad='0' preserve-aspect='true' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='18' pref-height='18'/>
+            <img id='profile-image' spacing='0' pad='0' preserve-aspect='true' pref-width='18' pref-height='18'/>
             <text text='~level' align='Center' font-size='2.5'/>
             <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
               <vertical pref-width='2.5'/>
@@ -39,7 +39,7 @@
           </vertical>
           <vertical id='user-info' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='80' pref-height='55' spacing='1' pad-left='15' >
             <vertical active='~scores-is-loading' vertical-fit='PreferredSize' pref-width='10' pref-height='45'>
-              <loading-indicator  preserve-aspect='true' vertical-fit='PreferredSize' pref-width='10' pref-height='10'/>
+              <loading-indicator  preserve-aspect='true' pref-width='10' pref-height='10'/>
             </vertical>
             <my-custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' pref-width='75' active='~scores-is-not-loading'/>
             <horizontal>
@@ -53,4 +53,9 @@
     </horizontal>
   </vertical>
 <!--<button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign'/>-->
+
+  <vertical bg='round-rect-panel' anchor-pos-x='70' pref-width='15' pref-height='25' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
+    <text text='Socials' align='Center' font-size='5'/>
+    <clickable-image src='~discordImg' on-click='on-discord-clicked' preserve-aspect='true' preferred-height='15'/>
+  </vertical>
 </bg>
