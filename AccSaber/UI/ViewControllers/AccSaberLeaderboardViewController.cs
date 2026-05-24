@@ -60,7 +60,7 @@ namespace AccSaber.UI.ViewControllers
         private Color selectorDefaultColor, defaultPageTopColor, defaultPageUpColor, defaultPageYouColor, defaultPageDownColor;
         private Color highlightPageTopColor, highlightPageYouColor;
         private AccSaberBasicDifficulty? difficultyInfo;
-        private bool refreshRequested = false, loaded = false;
+        private bool refreshRequested = false, loadRequested = false, loaded = false;
 
         private string? titlePanelTitle;
         private TextMeshProUGUI? titlePaneTitleText = null;
@@ -261,10 +261,6 @@ namespace AccSaber.UI.ViewControllers
             lock (updateDiffLock)
                 Monitor.PulseAll(updateDiffLock);
 
-            // Subscribe to player picture click event & logo clicked event from PanelViewController
-            //PanelViewController.OnPlayerPictureClicked += () => psmvc.ppmvc.ShowPlayer(PlayerSocialLife.PlayerID, this);
-            //PanelViewController.OnLogoClicked += () => pmmvc.ShowMilestoneModal(PlayerSocialLife.PlayerID, this);
-
             // Subscribe to the websocket
             AccSaberStore.OnPlayerScoreUpdated += token =>
             {
@@ -274,6 +270,7 @@ namespace AccSaber.UI.ViewControllers
                 currentPlayerScore = token;
                 page = 1;
                 currentPage = -1;
+
                 Task.Run(async () =>
                 {
                     if (!await ForceRefresh(false))
@@ -386,8 +383,16 @@ namespace AccSaber.UI.ViewControllers
             IEnumerator WaitUntilValidUpdate()
             {
                 yield return new WaitUntil(() => gameObject.activeInHierarchy);
+                if (loadRequested)
+                {
+                    ShowLoading(true);
+                    loadRequested = false;
+                }
                 Task.Run(() => ForceRefresh(false));
             }
+
+            if (loadRequested)
+                loadRequested = !ShowLoading(true);
 
             if (!TryUpdateCurrentMap() && refreshRequested)
             {
@@ -614,15 +619,23 @@ namespace AccSaber.UI.ViewControllers
             return true;
         }
 
-        private void ShowLoading()
+        public void LoadUntilNextRefresh()
         {
-            if (!gameObject.activeInHierarchy || leaderboardLoader.activeInHierarchy || DifficultyId is null)
-                return;
+            if (!ShowLoading(true))
+                loadRequested = true;
+        }
+        private bool ShowLoading(bool forceLoad = false)
+        {
+            if (!gameObject.activeInHierarchy)
+                return false;
+
+            if (leaderboardLoader.activeInHierarchy || DifficultyId is null)
+                return true; // Return true because load is already happening, or it isn't valid to want to load on an unranked map.
 
             int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;
 
-            bool gotCachedData = DisplayType != LeaderboardDisplayType.Country ?
-                ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country);
+            bool gotCachedData = !forceLoad && (DisplayType != LeaderboardDisplayType.Country ?
+                ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country));
 
             IEnumerator StartLoading()
             {
@@ -634,9 +647,12 @@ namespace AccSaber.UI.ViewControllers
                 {
                     leaderboardContainer.SetActive(false);
                     leaderboardLoader.SetActive(true);
+                    Plugin.Log.Info("loader shown");
                 }
             }
             StartCoroutine(StartLoading());
+
+            return true;
         }
 
         private async Task LoadLeaderboardAsync()

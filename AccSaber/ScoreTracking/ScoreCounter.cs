@@ -2,6 +2,7 @@
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Patches;
+using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using Newtonsoft.Json;
 using System;
@@ -47,7 +48,8 @@ namespace AccSaber.ScoreTracking
             if (mods.noFailOn0Energy)
                 energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
 
-            if (transition.practiceSettings is not null){
+            if (transition.practiceSettings is not null)
+            {
                 SubmissionPatch.SetPracticeSubmission();
                 Plugin.Log.Info($"Practice mode: start time = {transition.practiceSettings.startSongTime}, speed mult = {transition.practiceSettings.songSpeedMul}");
             }
@@ -197,7 +199,17 @@ namespace AccSaber.ScoreTracking
             Plugin.Log.Info(JsonConvert.SerializeObject(score));
 
             if (completion >= 0.75f && SubmissionPatch.Submit)
+            {
+                if (totalNotes < 115 || notes > totalNotes)
+                {
+                    Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
+                    return;
+                }
+
+                AccSaberLeaderboardViewController.Instance.LoadUntilNextRefresh();
+
                 await AccsaberAPI.SubmitScore(score);
+            }
             else
                 Plugin.Log.Info("No score submit: " + SubmissionPatch.GetSubmitReason());
         }
