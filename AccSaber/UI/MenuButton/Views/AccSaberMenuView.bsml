@@ -33,7 +33,7 @@
               <text text='~plays' align='Center' font-size='3.5'/>
               <text text='~headset' align='Center' font-size='3.5'/>
             </vertical>
-            <dropdown-list-setting id='category-dropdown' skew='0'  anchor-pos-x='5.5' text='' align='Center' value='category-value' choices='category-choices' formatter='format-category' bind-value='true' apply-on-change='true'/>
+            <dropdown-list-setting id='category-dropdown'  anchor-pos-x='5.5' text='' align='Center' value='category-value' choices='category-choices' formatter='format-category' bind-value='true' apply-on-change='true'/>
           </vertical>
           <vertical pref-width='0.5' pref-height='55'>
           </vertical>

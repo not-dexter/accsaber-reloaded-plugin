@@ -1,5 +1,5 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-	<vertical pad='2' skew='0' vertical-fit='Unconstrained' child-align='MiddleLeft' spacing='1.5' active='~is-not-loading'>
+	<vertical pad='2' vertical-fit='Unconstrained' child-align='MiddleLeft' spacing='1.5' active='~is-not-loading'>
 		<vertical preferred-width='100'>
 			<vertical preferred-width='100' bg='panel-top' skew='0'>
 				<text text='Daily' align='Center' font-size='5'/>

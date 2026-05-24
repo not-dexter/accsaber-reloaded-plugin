@@ -3,7 +3,7 @@
     <horizontal bg='panel-top' horizontal-fit='PreferredSize' pref-width='120'>
       <text text='Milestones' align='Center' font-size='10' />
     </horizontal>
-    <vertical vertical-fit='PreferredSize' skew='0' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' >
+    <vertical vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' >
       <tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected'/>
     </vertical>
     <tab tags='tabs' tab-name='Completed' on-click='completed-clicked' />

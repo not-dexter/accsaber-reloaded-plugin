@@ -6,6 +6,7 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.FloatingScreen;
 using BeatSaberMarkupLanguage.Parser;
+using HMUI;
 using IPA.Utilities;
 using Newtonsoft.Json;
 using System;
