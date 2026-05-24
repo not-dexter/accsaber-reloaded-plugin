@@ -52,7 +52,8 @@
       </vertical>
     </horizontal>
   </vertical>
-<!--<button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign'/>-->
+  
+  <button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign' active='false'/>
 
   <vertical bg='round-rect-panel' anchor-pos-x='70' pref-width='15' pref-height='25' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
     <text text='Socials' align='Center' font-size='5'/>

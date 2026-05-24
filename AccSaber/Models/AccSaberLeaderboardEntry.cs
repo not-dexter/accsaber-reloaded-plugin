@@ -109,7 +109,7 @@ namespace AccSaber.Models
         public string SongName { get; set; } = null!;
 
         [JsonProperty("streak115")]
-        public int Streak115 { get; set; }
+        public int? Streak115 { get; set; }
 
         [JsonProperty("timeSet")]
         public DateTime TimeSet { get; set; }

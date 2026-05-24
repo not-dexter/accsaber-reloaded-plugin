@@ -52,6 +52,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private string _plays = null!;
         private string _headset = null!;
 
+		[Inject] private AccSaberCampaignFlow campaignFlow = null!;
+
 		[UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
 
@@ -308,12 +310,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				PageNumber++;
 			}
 		}
-		/* unused for now
+		// unused for now
         [UIAction("show-campaign")]
         private void ShowCampaign()
         {
-			AccSaberCampaignFlow.ShowCampaignFlowCoordinator();
-        }*/
+            campaignFlow.PresentFlowCoordinator();
+        }
 
 		[UIAction("on-discord-clicked")]
 		private void OnDiscordClicked()

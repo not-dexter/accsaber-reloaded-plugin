@@ -1,25 +1,28 @@
 ﻿using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
-using BeatSaberMarkupLanguage;
 using HMUI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
 using Zenject;
+
+#if !NEW_VERSION
+using BeatSaberMarkupLanguage;
+#endif
 
 namespace AccSaber.UI.MenuButton.Campaigns
 {
     // Based off: https://github.com/HypersonicSharkz/SmartSongSuggest/blob/master/TaohSongSuggest/UI/TSSFlowCoordinator.cs unused for now
-    internal class AccSaberCampaignFlow : FlowCoordinator, IInitializable
+    internal class AccSaberCampaignFlow : FlowCoordinator
     {
-        private static FlowCoordinator _parentFlow = null!;
-        private static AccSaberCampaignFlow _flow = null!;
+        private FlowCoordinator _parentFlow = null!;
         private AccSaberCampaignViewController _campaignController = null!;
+
+        [Inject]
+        protected void Construct(AccSaberCampaignViewController campaignController, AccSaberMainFlowCoordinator parentCoordinator)
+        {
+            _campaignController = campaignController;
+            _parentFlow = parentCoordinator;
+        }
         protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
-            if(firstActivation)
+            if (firstActivation)
             {
                 SetTitle("AccSaber Campaigns");
                 showBackButton = true;
@@ -27,40 +30,13 @@ namespace AccSaber.UI.MenuButton.Campaigns
             } 
         }
 
-        [Inject]
-        internal void Construct(AccSaberCampaignViewController campaignController)
+        internal void PresentFlowCoordinator()
         {
-            _campaignController = campaignController;
+            _parentFlow.PresentFlowCoordinator(this);
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
             _parentFlow.DismissFlowCoordinator(this);
-        }
-
-        internal static FlowCoordinator DeepestChildFlowCoordinator(FlowCoordinator root)
-        {
-
-            var flow = root.childFlowCoordinator;
-            if (flow == null) return root;
-            if (flow.childFlowCoordinator == null || flow.childFlowCoordinator == flow)
-            {
-                return flow;
-            }
-            return DeepestChildFlowCoordinator(flow);
-        }
-
-        internal static void ShowCampaignFlowCoordinator()
-        {
-            if (_flow == null)
-                _flow = BeatSaberUI.CreateFlowCoordinator<AccSaberCampaignFlow>();
-
-            _parentFlow = BeatSaberUI.MainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
-
-            BeatSaberUI.PresentFlowCoordinator(_parentFlow, _flow);
-        }
-        public void Initialize()
-        {
-
         }
     }
 }
