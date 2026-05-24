@@ -27,7 +27,7 @@ namespace AccSaber.Managers
 
         private void PresentFlowCoordinator()
         {
-            _mainFlowCoordinator.PresentFlowCoordinator(_accsaberFlowCoordinator);
+            _accsaberFlowCoordinator.PresentFlowCoordinator();
         }
 
         public void Dispose()

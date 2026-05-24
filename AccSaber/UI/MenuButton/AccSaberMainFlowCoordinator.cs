@@ -8,6 +8,7 @@ namespace AccSaber.UI.MenuButton
     class AccSaberMainFlowCoordinator : FlowCoordinator
     {
         private MainFlowCoordinator _mainFlowCoordinator = null!;
+        private FlowCoordinator? _parentFlowCoordinator;
         private AccSaberNewsViewController _accSaberRelationsViewController = null!;
         private AccSaberMenuViewController _accSaberMenuViewController = null!;
         private AccSaberMilestoneViewController _accSaberMilestoneViewController = null!;
@@ -36,13 +37,16 @@ namespace AccSaber.UI.MenuButton
         }
         internal void PresentFlowCoordinator()
         {
-            _mainFlowCoordinator.PresentFlowCoordinator(this);
+            _parentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
+            _parentFlowCoordinator.PresentFlowCoordinator(this);
         }
 
 
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
-            _mainFlowCoordinator.DismissFlowCoordinator(this);
+            SetRightScreenViewController(null, ViewController.AnimationType.None);
+            SetLeftScreenViewController(null, ViewController.AnimationType.None);
+            _parentFlowCoordinator?.DismissFlowCoordinator(this);
         }
     }
 }

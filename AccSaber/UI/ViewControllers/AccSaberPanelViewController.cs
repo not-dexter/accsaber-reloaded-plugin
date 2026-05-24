@@ -5,6 +5,7 @@ using AccSaber.Configuration;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
+using AccSaber.UI.MenuButton;
 using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
@@ -36,15 +37,17 @@ namespace AccSaber.UI.ViewControllers
 		private PluginConfig _pluginConfig = null!;
 		private AccSaberStore _accSaberStore = null!;
 		private TimeTweeningManager _timeTweeningManager = null!;
+		private AccSaberMainFlowCoordinator _mainFlowCoordinator = null!;
 		public event Action? OnPanelLogoClicked;
 
 		[Inject]
-		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager)
+		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, AccSaberMainFlowCoordinator accSaberMainFlowCoordinator)
 		{
 			_log = siraLog;
 			_pluginConfig = pluginConfig;
 			_accSaberStore = accSaberStore;
 			_timeTweeningManager = timeTweeningManager;
+			_mainFlowCoordinator =	accSaberMainFlowCoordinator;
 		}
         
 		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberBasicDifficulty? mapInfo)
@@ -263,7 +266,8 @@ namespace AccSaber.UI.ViewControllers
 			if (!_logoClickable)
 				return;
 
-			OnPanelLogoClicked?.Invoke();
+			_mainFlowCoordinator.PresentFlowCoordinator();
+			//OnPanelLogoClicked?.Invoke();
 			//System.Diagnostics.Process.Start("https://accsaberreloaded.com/");
 		}
 
