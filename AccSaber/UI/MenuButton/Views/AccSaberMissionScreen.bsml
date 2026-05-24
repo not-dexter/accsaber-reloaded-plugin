@@ -1,21 +1,37 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-	<vertical vertical-fit='PreferredSize' preferred-width='100' child-align='MiddleLeft' spacing='1.5'>
-		<vertical vertical-fit='PreferredSize' preferred-width='60' bg='round-rect-panel' bg-color='black' bg-alpha='40' pad='2'>
-			<image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='50' pref-height='0.5' size-delta-x='50' size-delta-y='0.5' />
-			<horizontal preferred-width='100'>
+	<vertical pad='2' skew='0' vertical-fit='Unconstrained' child-align='MiddleLeft' spacing='1.5' active='~is-not-loading'>
+		<vertical preferred-width='100'>
+			<vertical preferred-width='100' bg='panel-top' skew='0'>
 				<text text='Daily' align='Center' font-size='5'/>
-			</horizontal>		
-			<image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='50' pref-height='0.5' size-delta-x='50' size-delta-y='0.5' />
-			<vertical vertical-fit='PreferredSize' preferred-height='15'>
-				<text text='daily 1' align='Left'></text>
-				<text text='daily 1' align='Left'></text>
+				<custom-list id='daily-list' contents='daily-cells'  visible-cells='2' cell-size='12'>
+					<vertical id='background-container' pref-width='65' horizontal-fit='PreferredSize' bg='panel-top' skew='0' pad='1'>
+						<horizontal>
+							<horizontal>
+								<text text='~mission' font-size='3' align='Left' word-wrapping='false'/>
+								<text text='~missionXP' align='Right' word-wrapping='false'/>
+							</horizontal>
+						</horizontal>
+						<horizontal>
+							<text text='~description' align='Left' font-size='2.5' word-wrapping='true' overflow-mode='Ellipsis'/>
+							<text text='~missionBand' align='Right' font-size='2.5' word-wrapping='false'/>
+						</horizontal>
+					</vertical>
+				</custom-list>
 			</vertical>
-			<image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='50' pref-height='0.5' size-delta-x='50' size-delta-y='0.5' />
-			<text text='Weekly' align='Center' font-size='5'/>
-			<image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='50' pref-height='0.5' size-delta-x='50' size-delta-y='0.5' />
-			<vertical vertical-fit='PreferredSize' preferred-height='15'>
-				<text text='Weekly 1' align='Left'></text>
-				<text text='Weekly 2' align='Left'></text>
+			<vertical preferred-width='100' bg='panel-top' skew='0'>
+				<text text='Weekly' align='Center' font-size='5'/>
+				<custom-list id='weekly-list' contents='weekly-cells' visible-cells='3' cell-size='12' >
+					<vertical id='background-container' vertical-fit='Unconstrained' bg='panel-top' skew='0' pref-width='65' horizontal-fit='PreferredSize' pad='1'>
+						<horizontal>
+							<text text='~mission' align='Left' font-size='3' word-wrapping='false'/>
+							<text text='~missionXP' align='Right' word-wrapping='false'/>
+						</horizontal>
+						<horizontal>
+							<text text='~description' align='Left' font-size='2.5' word-wrapping='true' overflow-mode='Ellipsis'/>
+							<text text='~missionBand' align='Right' font-size='2.5' word-wrapping='false'/>
+						</horizontal>
+					</vertical>
+				</custom-list>
 			</vertical>
 		</vertical>
 	</vertical>

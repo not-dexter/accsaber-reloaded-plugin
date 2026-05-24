@@ -75,11 +75,11 @@ namespace AccSaber.Models
         [JsonProperty("xpReward")]
         public int? XpReward { get; set; }
 
-        [JsonProperty("crateRewardId")]
-        public string? CrateRewardId { get; set; }
+        [JsonProperty("itemRewardId")]
+        public string? ItemRewardId { get; set; }
 
-        [JsonProperty("crateRewardName")]
-        public string? CrateRewardName { get; set; }
+        [JsonProperty("itemRewardName")]
+        public string? ItemRewardName { get; set; }
 
         [JsonProperty("assignedAt")]
         public DateTime AssignedAt { get; set; }
@@ -100,7 +100,7 @@ namespace AccSaber.Models
         private void OnDeserialized(StreamingContext context)
         {
             MissionPool = (MissionPool)Enum.Parse(typeof(MissionPool), char.ToUpper(Pool[0]) + Pool[1..]);
-            MissionBand = (MissionBand)Enum.Parse(typeof(MissionPool), Band.ToLower());
+            MissionBand = (MissionBand)Enum.Parse(typeof(MissionBand), Band.ToLower());
         }
     }
 

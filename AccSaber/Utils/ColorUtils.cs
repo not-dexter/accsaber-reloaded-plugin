@@ -23,7 +23,7 @@ namespace AccSaber.Utils
         public const string TECH = "#E65454";
         public const string STANDARD = "#53B6FF";
         public const string TRUE = "#39DD85";
-        public const string OVERALL = "#FFD23C";
+        public const string OVERALL = "#A855F7";
 
         public const string TECH_DIM = "#600000"; // dim by 8
         public const string STANDARD_DIM = "#003077"; // dim by 8
