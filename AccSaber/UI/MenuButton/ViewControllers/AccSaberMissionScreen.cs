@@ -48,22 +48,26 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private AccSaberStore _accSaberStore = null!;
+        private AccSaberMenuViewController _accSaberMenuViewController = null!;
         [Inject]
-        public void Construct(AccSaberStore accSaberStore)
+        public void Construct(AccSaberStore accSaberStore, AccSaberMenuViewController accSaberMenuViewController)
         {
             _accSaberStore = accSaberStore;
+            _accSaberMenuViewController = accSaberMenuViewController;
         }
         public void Initialize()
         {
             missionScreen = FloatingScreen.CreateFloatingScreen(new Vector2(70, 90), true, new Vector3(0f, 0.05f, 1.8f), new Quaternion(0, 60, 0, 0));
             missionScreen.gameObject.name = "AccSaberMissionScreen";
-            missionScreen.gameObject.SetActive(true);
+            missionScreen.gameObject.SetActive(false);
             missionScreen.transform.eulerAngles = new Vector3(90, 0, 0);
             missionScreen.transform.localScale = new Vector3(0.03f, 0.03f, 0.03f);
 
             missionScreen.Handle().SetActive(false);
             VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), "AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml"), missionScreen.gameObject, this);
 
+            _accSaberMenuViewController.HubActivated += ShowMissions;
+            _accSaberMenuViewController.HubDeactivated += HideMissions;
         }
 
         [UIValue("is-loading")]
@@ -84,9 +88,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void ShowMissions()
         {
-            missionScreen.gameObject.SetActive(true);
+            missionScreen.gameObject.SetActive(false);
         }
-
+        public void HideMissions()
+        {
+            missionScreen.gameObject.SetActive(false);
+        }
         [UIAction("#post-parse")]
         void Parsed()
         {
@@ -113,17 +120,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             try
             {
-                 var missions = await _accSaberStore.GetMissions();
+                var missions = await _accSaberStore.GetMissions();
 
-                Plugin.Log.Info(JsonConvert.SerializeObject(missions));
-                   foreach (var post in missions)
-                   {
-                       switch (post.MissionPool)
-                       {
-                           case MissionPool.Daily: _dailyCells.Add(new MissionCell(post)); break;
-                           case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post)); break;
-                       }
-                   }
+                foreach (var post in missions)
+                {
+                    switch (post.MissionPool)
+                    {
+                        case MissionPool.Daily: _dailyCells.Add(new MissionCell(post)); break;
+                        case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post)); break;
+                    }
+                }
                 _dailyList.TableView().ReloadData();
                 _weeklyList.TableView().ReloadData();
                 IsLoading = false;
@@ -136,7 +142,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void Dispose()
         {
-
+            _accSaberMenuViewController.HubActivated -= ShowMissions;
+            _accSaberMenuViewController.HubDeactivated -= HideMissions;
         }
 
         internal class MissionCell(AccSaberMission data)

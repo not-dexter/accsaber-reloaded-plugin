@@ -54,7 +54,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		[Inject] private AccSaberCampaignFlow campaignFlow = null!;
 
-		[UIValue("score-cells")]
+        [UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
 
 
@@ -81,9 +81,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private CanvasGroup? _userInfoCanvasGroup;
 
 		private AccSaberStore _accSaberStore = null!;
-		private TimeTweeningManager _timeTweeningManager = null!;
+        private TimeTweeningManager _timeTweeningManager = null!;
 
-		[Inject]
+		public event Action? HubActivated;
+        public event Action? HubDeactivated;
+
+        [Inject]
         public void Construct(AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager)
         {
             _accSaberStore = accSaberStore;
@@ -91,7 +94,22 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		}
 
 
-		private int PageNumber
+        protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+        {
+            base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
+
+			HubActivated!.Invoke();
+		}
+
+        protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
+        {
+            base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
+
+            HubDeactivated!.Invoke();
+        }
+
+
+        private int PageNumber
 		{
 			get => _pageNumber;
 			set
