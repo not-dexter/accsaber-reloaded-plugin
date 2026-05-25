@@ -46,10 +46,7 @@ namespace AccSaber.Utils
             try
             {
                 if (!Directory.Exists(ResourcePaths.ACC_SABER_DATA_FOLDER))
-                {
                     Directory.CreateDirectory(ResourcePaths.ACC_SABER_DATA_FOLDER);
-                    return;
-                }
 
                 JsonSerializer serializer = new();
 
@@ -59,7 +56,7 @@ namespace AccSaber.Utils
                 Load(ResourcePaths.ACC_SABER_MAP_CACHE, ref maps, serializer);
                 Load(ResourcePaths.ACC_SABER_PLAYER_SCORE_CACHE, ref playerScores, serializer);
 
-                if (maps is not null && (await ValidateMapCache(maps.Content.Count)))
+                if (maps is not null && (await ValidateMapCache(maps.Content.Select(map => map.Difficulties.Count).Aggregate(0, (total, current) => total + current))))
                     CachedMaps.AddRange(maps.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)));
 
                 //Plugin.Log.Info($"loaded maps = {maps?.Content.Count}, total maps = {TotalMaps}, cached maps = {CachedMaps.Count}");
@@ -117,7 +114,7 @@ namespace AccSaber.Utils
 
         private async Task<bool> ValidateMapCache(int mapCount)
         {
-            AccSaberPagedContent? response = await APIHandler.CallAPI_Json<AccSaberPagedContent>(string.Format(HelpfulPaths.APAPI_MAPS, 0, 1) + "&status=RANKED", AccsaberAPI.throttler);
+            AccSaberPagedContent? response = await APIHandler.CallAPI_Json<AccSaberPagedContent>(string.Format(HelpfulPaths.APAPI_DIFF, "RANKED", 0, 1), AccsaberAPI.throttler);
 
             if (response is null)
                 return true; // If we don't get a good response from the API, then we can't invalidate it, so might as well use what we have.

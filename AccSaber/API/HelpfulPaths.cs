@@ -47,6 +47,9 @@
         /// </remarks>
         public const string APAPI_MAPS = APAPI + "maps?page={0}&size={1}"; //page (zero indexed), count
 
+        public const string APAPI_DIFF = APAPI + "maps/difficulties?status={0}&page={1}&size={2}"; // status (QUEUE, QUALIFIED, RANK), page (zero indexed), size 
+
+
         /// <summary>
         /// Retrieves a user's profile by ID.
         /// </summary>

@@ -229,7 +229,8 @@ namespace AccSaber.ScoreTracking
                 return;
             }
 
-            AccSaberLeaderboardViewController.Instance.LoadUntilNextRefresh();
+            if (!score.UncompletedMap!.Value)
+                AccSaberLeaderboardViewController.Instance.LoadUntilNextRefreshIfScoreBeaten((int)score.Score);
 
             await AccsaberAPI.SubmitScore(score);
         }

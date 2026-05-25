@@ -592,6 +592,7 @@ namespace AccSaber.UI.ViewControllers
                             titlePaneTitleText?.SetText(UNRANKED_HEADER);
 
                             leaderboardContainer.SetActive(false);
+                            leaderboardLoader.SetActive(false);
                             badMapMessage.SetActive(true);
                         }
                         StartCoroutine(ShowBad());
@@ -612,6 +613,11 @@ namespace AccSaber.UI.ViewControllers
             return true;
         }
 
+        public void LoadUntilNextRefreshIfScoreBeaten(int score)
+        {
+            if ((currentPlayerScore?.Score ?? -1) < score)
+                LoadUntilNextRefresh();
+        }
         public void LoadUntilNextRefresh()
         {
             if (!ShowLoading(true))
@@ -730,6 +736,8 @@ namespace AccSaber.UI.ViewControllers
                         leaderboard.Data = LeaderboardInfos;
 
                         titlePaneTitleText?.SetText(RANKED_HEADER);
+
+                        badMapMessage.SetActive(false);
 
                         leaderboardContainer.SetActive(true);
                         leaderboardLoader.SetActive(false);
