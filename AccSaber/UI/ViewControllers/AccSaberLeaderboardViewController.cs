@@ -72,6 +72,8 @@ namespace AccSaber.UI.ViewControllers
         public BeatmapDifficulty CurrentDiff { get; private set; }
         public float CurrentComplexity => difficultyInfo?.Complexity ?? 0f;
 
+        public int AccDecimals => PC.AccDecimals;
+
         public APCategory? CurrentCategory => difficultyInfo?.Category;
 
         internal Func<AccSaberLeaderboardEntry, bool>? CurrentFilter

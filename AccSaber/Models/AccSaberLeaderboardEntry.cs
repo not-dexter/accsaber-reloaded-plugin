@@ -156,7 +156,7 @@ namespace AccSaber.Models
 
         [UIValue(nameof(AP))] public string AP => $"<color={ColorUtils.AP}>{ScoreData.AP:N2}ap</color>";
 
-        [UIValue(nameof(Acc))] public string Acc => $"<color=#22c55e>{ScoreData.Accuracy * 100f:N4}%</color>";
+        [UIValue(nameof(Acc))] public string Acc => $"<color=#22c55e>{(ScoreData.Accuracy * 100f).ToString($"N{Instance.AccDecimals}")}%</color>";
         [UIValue(nameof(BGColor))]
         public string BGColor
         {

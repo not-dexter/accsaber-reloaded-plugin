@@ -12,6 +12,7 @@ namespace AccSaber.Configuration
 	{
         public virtual bool CombineRelations { get; set; } = false;
         public virtual bool RainbowHeader { get; set; } = false;
+        public virtual int AccDecimals { get; set; } = 4;
 
         [UseConverter(typeof(ListConverter<string>))]
         public List<string> Friends { get; set; } = new List<string>();
