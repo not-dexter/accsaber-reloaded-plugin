@@ -6,6 +6,7 @@ using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Zenject;
@@ -25,12 +26,14 @@ namespace AccSaber.ScoreTracking
         private GameEnergyCounter? energy = null;
         private AccSaberStore? store = null;
 
+        private static readonly HashSet<string> AllowedModes = [ "Solo", "Multiplayer" ];
 
         private AccSaberScore score = null!;
 
         private int current115Streak, combo, notes, totalNotes;
         private readonly object submitLock = new();
         private bool transitionFinished, counterDisposed, failed;
+        private string gamemode = null!;
 
         private bool AtEndsOfMap => notes == 0 || notes == totalNotes;
 
@@ -183,6 +186,8 @@ namespace AccSaber.ScoreTracking
         {
             score.UncompletedMap = results.levelEndAction != LevelCompletionResults.LevelEndAction.None || results.levelEndStateType != LevelCompletionResults.LevelEndStateType.Cleared;
 
+            gamemode = data.gameMode;
+
             lock (submitLock)
             {
                 transitionFinished = true;
@@ -192,26 +197,41 @@ namespace AccSaber.ScoreTracking
         }
         private async void SubmitScore()
         {
+            const float completionPercent = 0.75f;
+
             float completion = (float)notes / totalNotes;
 
             Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
 
             Plugin.Log.Info(JsonConvert.SerializeObject(score));
 
-            if (completion >= 0.75f && SubmissionPatch.Submit)
+            if (completion < completionPercent)
             {
-                if (totalNotes < 115 || notes > totalNotes)
-                {
-                    Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
-                    return;
-                }
-
-                AccSaberLeaderboardViewController.Instance.LoadUntilNextRefresh();
-
-                await AccsaberAPI.SubmitScore(score);
+                Plugin.Log.Info($"No score submit, completion did not reach the threshold of {completionPercent * 100f:N2}%.");
+                return;
             }
-            else
+
+            if (!AllowedModes.Contains(gamemode))
+            {
+                Plugin.Log.Info($"The gamemode played is not an allowed mode (mode = {gamemode})");
+                return;
+            }
+
+            if (!SubmissionPatch.Submit)
+            {
                 Plugin.Log.Info("No score submit: " + SubmissionPatch.GetSubmitReason());
+                return;
+            }
+
+            if (totalNotes < 115 || notes > totalNotes)
+            {
+                Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
+                return;
+            }
+
+            AccSaberLeaderboardViewController.Instance.LoadUntilNextRefresh();
+
+            await AccsaberAPI.SubmitScore(score);
         }
     }
 }

@@ -121,9 +121,7 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly StandardLevelDetailViewController sldvc = null!;
         [Inject] private readonly AccSaberStore store = null!;
-        [Inject] private readonly AccSaberPanelViewController aspvc = null!;
         [Inject] private readonly LeaderboardScoreModalController lsmc = null!; //psmvc
-        [Inject] private readonly LeaderboardUserModalController lumc = null!; //pmmvc
 
         #endregion Injects
 
@@ -342,8 +340,6 @@ namespace AccSaber.UI.ViewControllers
         {
             Plugin.Log.Debug("LeaderboardViewController Init");
             Instance = this;
-
-            aspvc.OnPanelLogoClicked += () => lumc.ShowModal(leaderboard.transform, this, store.GetCurrentUserAsync().GetAwaiter().GetResult().PlayerId);
         }
         public void Dispose()
         {
@@ -629,18 +625,33 @@ namespace AccSaber.UI.ViewControllers
             if (leaderboardLoader.activeInHierarchy || DifficultyId is null)
                 return true; // Return true because load is already happening, or it isn't valid to want to load on an unranked map.
 
+            if (forceLoad)
+            {
+                badMapMessage.SetActive(false);
+                leaderboardContainer.SetActive(false);
+                leaderboardLoader.SetActive(true);
+
+                return true;
+            }
+
             int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;
 
             bool gotCachedData = !forceLoad && (DisplayType != LeaderboardDisplayType.Country ?
                 ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country));
 
-            badMapMessage.SetActive(false);
-
-            if (!gotCachedData)
+            IEnumerator WaitThenUpdate()
             {
-                leaderboardContainer.SetActive(false);
-                leaderboardLoader.SetActive(true);
+                yield return new WaitForEndOfFrame();
+
+                badMapMessage.SetActive(false);
+
+                if (!gotCachedData)
+                {
+                    leaderboardContainer.SetActive(false);
+                    leaderboardLoader.SetActive(true);
+                }
             }
+            StartCoroutine(WaitThenUpdate());
 
             return true;
         }

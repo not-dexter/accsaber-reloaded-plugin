@@ -38,7 +38,6 @@ namespace AccSaber.UI.ViewControllers
 		private AccSaberStore _accSaberStore = null!;
 		private TimeTweeningManager _timeTweeningManager = null!;
 		private AccSaberMainFlowCoordinator _mainFlowCoordinator = null!;
-		public event Action? OnPanelLogoClicked;
 
 		[Inject]
 		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, AccSaberMainFlowCoordinator accSaberMainFlowCoordinator)
@@ -267,8 +266,6 @@ namespace AccSaber.UI.ViewControllers
 				return;
 
 			_mainFlowCoordinator.PresentFlowCoordinator();
-			//OnPanelLogoClicked?.Invoke();
-			//System.Diagnostics.Process.Start("https://accsaberreloaded.com/");
 		}
 
 		[UIValue("loading-active")]
