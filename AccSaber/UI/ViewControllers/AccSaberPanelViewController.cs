@@ -318,7 +318,7 @@ namespace AccSaber.UI.ViewControllers
 
         [UIValue("map-complexity-text")]
 		private string MapComplexityText => _accSaberStore.CurrentRankedMap is not AccSaberDifficulty diff || diff.Status == MapStatus.Ranked ?
-			$"<color=#EDFF55>Map Complexity:</color> {_accSaberStore.CurrentRankedMap?.Complexity ?? -1f:0.##} <size=75%>(<color={ColorUtils.GetColor(_accSaberStore.CurrentRankedMap?.Category)}>{_accSaberStore.CurrentRankedMap?.Category?.ToString()}</color>)" :
+			$"<color=#EDFF55>Map Complexity:</color> {_accSaberStore.CurrentRankedMap?.Complexity ?? -1f:0.##} <size=1250%>(<color={ColorUtils.GetColor(_accSaberStore.CurrentRankedMap?.Category)}>{_accSaberStore.CurrentRankedMap?.Category?.ToString()}</color>)" :
 			$"<color=#EDFF55>Category:</color> {GetCategoryName(diff.CategoryId ?? "")}";
 	}
 }
