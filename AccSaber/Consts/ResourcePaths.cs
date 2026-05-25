@@ -33,6 +33,8 @@ namespace AccSaber.Consts
         public const string GRADIENT_CORNER = RESOURCE_PATH + ".cornerGradient.png";
         //public const string RESOURCE_GRADIENT_HEADER = RESOURCE_PATH + ".headerBG.png";
         public const string DISCORD = RESOURCE_PATH + ".discord.png";
+        public const string KOFI = RESOURCE_PATH + ".kofi.png";
+        public const string GITHUB = RESOURCE_PATH + ".github.png";
 
         #endregion
         #region BSML File Paths

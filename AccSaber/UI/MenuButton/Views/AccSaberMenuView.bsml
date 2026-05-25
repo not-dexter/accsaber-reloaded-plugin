@@ -55,8 +55,10 @@
   
   <button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign' active='false'/>
 
-  <vertical bg='round-rect-panel' anchor-pos-x='70' pref-width='15' pref-height='25' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
+  <vertical bg='round-rect-panel' anchor-pos-x='70' anchor-pos-y='-5' pref-width='15' pref-height='45' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
     <text text='Socials' align='Center' font-size='5'/>
-    <clickable-image src='~discordImg' on-click='on-discord-clicked' preserve-aspect='true' preferred-height='15'/>
+    <clickable-image src='~discordImg' on-click='on-discord-clicked' preserve-aspect='true' preferred-height='12'/>
+	<clickable-image src='~githubImg' on-click='on-github-clicked' preserve-aspect='true' preferred-height='12'/>
+	<clickable-image src='~kofiImg' on-click='on-kofi-clicked' preserve-aspect='true' preferred-height='11'/>
   </vertical>
 </bg>

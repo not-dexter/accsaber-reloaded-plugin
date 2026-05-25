@@ -294,8 +294,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIValue("discordImg")]
 		private const string DiscordImg = ResourcePaths.DISCORD;
 
+        [UIValue("kofiImg")]
+        private const string KofiImg = ResourcePaths.KOFI;
 
-		[UIAction("#post-parse")]
+		[UIValue("githubImg")]
+		private const string GithubImg = ResourcePaths.GITHUB;
+
+
+        [UIAction("#post-parse")]
         void Parsed()
         {
 			if (!_parsed)
@@ -340,7 +346,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		{
             System.Diagnostics.Process.Start("https://discord.gg/DmzKSgcJWe");
         }
-
+        [UIAction("on-kofi-clicked")]
+        private void OnKofiClicked()
+        {
+            System.Diagnostics.Process.Start("https://ko-fi.com/accsaberreloaded");
+        }
+        [UIAction("on-github-clicked")]
+        private void OnGithubClicked()
+        {
+            System.Diagnostics.Process.Start("https://github.com/not-dexter/accsaber-reloaded-plugin");
+        }
         private async Task UpdateUserInfo()
 		{
 			var user = await _accSaberStore.GetPlatformUserInfo();

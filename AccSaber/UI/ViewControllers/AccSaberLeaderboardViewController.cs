@@ -138,7 +138,7 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("mapStarColor")] private const string mapStarColor = OVERALL_DIM;
 
         [UIValue("topArrowPic")] private const string topArrowPic = ResourcePaths.TOP_ARROW;
-        [UIValue("youPic")] private const string youPic = ResourcePaths.YOU;
+        [UIValue("youPic")] private const string youPic = ResourcePaths.PLAYER_ICON;
         [UIValue("swapPic")] private const string swapPic = ResourcePaths.SWAP;
         [UIValue("globalPic")] private const string globalPic = ResourcePaths.GLOBAL;
         [UIValue("friendsPic")] private const string friendsPic = ResourcePaths.FRIEND;
@@ -154,7 +154,7 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("complexityFontSize")] public const float complexityFontSize = 5f;
 
         [UIValue("iconSize")] public const float iconSize = 7f;
-        [UIValue("globeIconSize")] public const float globeIconSize = iconSize - 1f;
+        [UIValue("globeIconSize")] public const float globeIconSize = iconSize - 2f;
 
         //[UIParams] private BSMLParserParams parserParams = null!; // Currently unused.
         [UIComponent("leaderboard")] private MyCustomCellListTableData leaderboard = null!;
@@ -231,6 +231,7 @@ namespace AccSaber.UI.ViewControllers
 
             HandleHeaderPane();
 
+            globalSelector.DefaultColor = GREY.Color();
             selectorDefaultColor = globalSelector.DefaultColor;
             DisplayType = LeaderboardDisplayType.Global;
             UpdateSelectors(LeaderboardDisplayType.Global);
@@ -353,7 +354,7 @@ namespace AccSaber.UI.ViewControllers
             if (titlePaneTitleText is not null)
             {
                 titlePanelTitle = titlePaneTitleText.text;
-                titlePaneTitleText.SetText(RANKED_HEADER);
+                titlePaneTitleText.SetText(CurrentCategory.ToString() + " ACC");
             }
 
             Task.Run(DoEnableUpdate);
@@ -735,7 +736,7 @@ namespace AccSaber.UI.ViewControllers
                         leaderboard.MainCellSize = CellSize;
                         leaderboard.Data = LeaderboardInfos;
 
-                        titlePaneTitleText?.SetText(RANKED_HEADER);
+                        titlePaneTitleText?.SetText(CurrentCategory.ToString() + " ACC");
 
                         badMapMessage.SetActive(false);
 
