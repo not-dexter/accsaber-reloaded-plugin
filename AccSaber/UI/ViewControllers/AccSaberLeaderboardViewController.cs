@@ -569,14 +569,11 @@ namespace AccSaber.UI.ViewControllers
 
         private async Task<bool> ForceRefresh(bool overridePlayerScore)
         {
+            if (!gameObject.activeInHierarchy)
+                return false;
             AsyncLock.Releaser? theLock = await forceRefreshLock.TryLockAsync();
             if (theLock is null) 
                 return false;
-            if (!gameObject.activeInHierarchy)
-            {
-                theLock?.Dispose();
-                return false;
-            }
             using (theLock.Value)
             {
                 try
@@ -637,20 +634,13 @@ namespace AccSaber.UI.ViewControllers
             bool gotCachedData = !forceLoad && (DisplayType != LeaderboardDisplayType.Country ?
                 ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country));
 
-            IEnumerator StartLoading()
+            badMapMessage.SetActive(false);
+
+            if (!gotCachedData)
             {
-                yield return new WaitForEndOfFrame();
-
-                badMapMessage.SetActive(false);
-
-                if (!gotCachedData)
-                {
-                    leaderboardContainer.SetActive(false);
-                    leaderboardLoader.SetActive(true);
-                    Plugin.Log.Info("loader shown");
-                }
+                leaderboardContainer.SetActive(false);
+                leaderboardLoader.SetActive(true);
             }
-            StartCoroutine(StartLoading());
 
             return true;
         }
