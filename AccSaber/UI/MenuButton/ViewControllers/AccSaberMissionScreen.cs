@@ -1,20 +1,18 @@
-﻿using AccSaber.Managers;
+﻿using AccSaber.Consts;
+using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.FloatingScreen;
-using BeatSaberMarkupLanguage.Parser;
 using HMUI;
-using IPA.Utilities;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Reflection;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -121,7 +119,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             try
             {
                 var missions = await _accSaberStore.GetMissions();
-
                 foreach (var post in missions)
                 {
                     switch (post.MissionPool)
@@ -149,6 +146,18 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         internal class MissionCell(AccSaberMission data)
         {
             #region BSML Values
+
+            private float Progress()
+            {
+                if (data.TargetCount is not null || data.TargetCount < 0)
+                {
+                    if (data.ProgressCount > 0)
+                        return (float)(data.ProgressCount / data.TargetCount);
+                    else
+                        return (float)(0.01f / data.TargetCount);
+                }
+                return 0f;
+            }
 
             private string color = data.Band switch
             {
@@ -181,10 +190,68 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue(nameof(missionBand))] public string missionBand => $"<color={color}>{data.Band.ToUpper()}</color>";
 
-            [UIValue(nameof(description))] public string description => $"<color={ColorUtils.GREY}>{data.Description}</color>";
+            [UIValue(nameof(description))] public string description => descriptionRegex(data.Description);
+
+            public string descriptionRegex(string input)
+            {
+                var pattern = new Regex(@"(?<=\().+?(?=\))");
+                var match = pattern.Match(input);
+
+                if (match.Success)
+                {
+                    var newString = "";
+
+                    if (EnumUtils.ReloadedDiffToDiff(match.Groups[0].Value) == BeatmapDifficulty.ExpertPlus)
+                        newString = input.Replace(match.Groups[0].Value, "Expert Plus");
+                    else
+                        newString = input.Replace(match.Groups[0].Value, EnumUtils.ReloadedDiffToDiff(match.Groups[0].Value).ToString());
+
+
+                    return $"<color={ColorUtils.GREY}>{newString}</color>";
+                }
+                else
+                    return $"<color={ColorUtils.GREY}>{input}</color>";
+            }
 
             [UIValue(nameof(missionXP))] public string missionXP => $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
 
+            [UIValue(nameof(ExactProgress))]
+            public string ExactProgress
+            {
+                get
+                {
+                    if (data.TargetCount is not null || data.Status != "completed")
+                        return $"<color={ColorUtils.GREY}>({data.ProgressCount} / {data.TargetCount})</color>";
+                    else 
+                        return "";
+                }
+            }
+
+            [UIValue(nameof(completed))] private readonly bool completed = data.Status == "completed";
+
+            [UIValue(nameof(targetExists))] private readonly bool targetExists = data.TargetCount is not null;
+
+            [UIValue(nameof(oneXonePic))] public const string oneXonePic = ResourcePaths.PIXEL;
+
+            [UIComponent(nameof(PercentBarTop))] private readonly LayoutElement PercentBarTop = null!;
+            [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
+            [UIComponent(nameof(PercentBarBottom))] private readonly LayoutElement PercentBarBottom = null!;
+            [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!; 
+            
+            [UIValue(nameof(listWidth))] public const float listWidth = 55f;
+            [UIValue(nameof(barSpacer))] public const float barSpacer = 3f;
+            [UIValue(nameof(exactProgLen))] public const float exactProgLen = 4f;
+            [UIValue(nameof(barLen))] public const float barLen = listWidth - barSpacer  - exactProgLen;
+
+            [UIAction("#post-parse")]
+            private void PostParse()
+            {
+                PercentBarTop?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * Progress());
+                PercentBarBottom?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - Progress()));
+
+                PercentBarTop_image?.color = ColorUtils.GetColor(EnumUtils.ReloadedCategoryToEnum(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005")).Color();
+                PercentBarBottom_image?.color = ColorUtils.GREY.Color();
+            }
             #endregion
         }
     }
