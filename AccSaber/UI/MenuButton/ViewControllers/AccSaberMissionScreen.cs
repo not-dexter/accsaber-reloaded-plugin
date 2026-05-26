@@ -87,6 +87,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         public void ShowMissions()
         {
             missionScreen.gameObject.SetActive(false);
+            IsLoading = true;
+            _ = SetMissions();
         }
         public void HideMissions()
         {

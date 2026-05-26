@@ -68,7 +68,7 @@ namespace AccSaber.UI.ViewControllers
         private TextMeshProUGUI? titlePaneTitleText = null;
 
         public new event PropertyChangedEventHandler? PropertyChanged;
-        public string RankedHeader => $"<color={GetColor(CurrentCategory)}>{CurrentCategory}</color> " + RANKED_HEADER;
+        public string RankedHeader => $"{RANKED_HEADER} | <color={GetColor(CurrentCategory)}>{CurrentCategory}</color>";
         public LeaderboardDisplayType DisplayType { get; private set; }
         public string? DifficultyId => difficultyInfo?.DifficultyId;
         public bool ValidMapSelected => !string.IsNullOrEmpty(CurrentHash) && CurrentDiff != default;
