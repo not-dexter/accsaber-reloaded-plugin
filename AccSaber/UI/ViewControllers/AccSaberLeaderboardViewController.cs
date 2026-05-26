@@ -290,6 +290,8 @@ namespace AccSaber.UI.ViewControllers
             // Subscribe to the websocket
             AccSaberStore.OnPlayerScoreUpdated += token =>
             {
+                Plugin.Log.Info("Player score recieved");
+
                 if (currentPlayerScore is not null && currentPlayerScore.Accuracy > token.Accuracy)
                     return;
 
@@ -404,6 +406,9 @@ namespace AccSaber.UI.ViewControllers
         internal void OnGameRefresh()
         {
             InvalidateCache();
+
+            page = 1;
+            currentPage = -1;
             refreshRequested = true;
         }
 

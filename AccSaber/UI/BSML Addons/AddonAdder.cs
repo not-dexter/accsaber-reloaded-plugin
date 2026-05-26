@@ -14,12 +14,12 @@ namespace AccsaberLeaderboard.UI.BSML_Addons
 #endif
         public void Initialize()
         {
+            AccSaberLeaderboardViewController.Instance?.OnGameRefresh();
+
 #if !NEW_VERSION
             if (inited) return;
             inited = true;
 #endif
-            AccSaberLeaderboardViewController.Instance?.OnGameRefresh();
-
             BSMLParser instance = VersionUtils.BSMLParser_Instance;
 
             instance.RegisterTag(new BetterVertical());

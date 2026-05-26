@@ -33,10 +33,9 @@ namespace AccSaber.Managers
 		public List<AccSaberMilestone> _currentUserMilestones = [];
         
 		internal static CancellationTokenSource WebsocketCanceller { get; private set; } = new();
-        internal const int RecieveBufferSize = 1024;
+        internal const int RecieveBufferSize = 5120;
         internal const int SendBufferSize = 16;
 
-        private static readonly ClientWebSocket webSocket = new();
         private static readonly AsyncLock listenerLock = new();
 
         private AccSaberBasicDifficulty? _currentRankedMap;
@@ -215,6 +214,7 @@ namespace AccSaber.Managers
         }
         private async Task ListenForScores(CancellationToken ct)
         {
+			using ClientWebSocket webSocket = new();
             await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), ct);
             try
             {
@@ -239,7 +239,9 @@ namespace AccSaber.Managers
 					{
 						AccSaberLeaderboardEntry? entry = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(Encoding.UTF8.GetString(ms.ToArray()));
 						if (entry is not null)
-                            OnScoreUpdated?.Invoke(entry);
+							OnScoreUpdated?.Invoke(entry);
+						else
+							Plugin.Log.Error("The websocket was not able to deserialize a given entry.");
                     }
 
                     ms.SetLength(0);
