@@ -63,8 +63,10 @@ namespace AccSaber.UI.ViewControllers
         private bool refreshRequested = false, loadRequested = false, loaded = false;
 
         private string? titlePanelTitle;
+        private bool titlePanelRich;
         private TextMeshProUGUI? titlePaneTitleText = null;
 
+        public string RankedHeader => $"<color={GetColor(CurrentCategory)}>{CurrentCategory}</color> " + RANKED_HEADER;
         public LeaderboardDisplayType DisplayType { get; private set; }
         public string? DifficultyId => difficultyInfo?.DifficultyId;
         public bool ValidMapSelected => !string.IsNullOrEmpty(CurrentHash) && CurrentDiff != default;
@@ -356,7 +358,10 @@ namespace AccSaber.UI.ViewControllers
             if (titlePaneTitleText is not null)
             {
                 titlePanelTitle = titlePaneTitleText.text;
-                titlePaneTitleText.SetText(CurrentCategory.ToString() + " ACC");
+                titlePanelRich = titlePaneTitleText.richText;
+
+                titlePaneTitleText.richText = true;
+                titlePaneTitleText.SetText(RankedHeader);
             }
 
             Task.Run(DoEnableUpdate);
@@ -367,7 +372,9 @@ namespace AccSaber.UI.ViewControllers
 
             if (titlePaneTitleText is not null)
             {
+                titlePaneTitleText.richText = titlePanelRich;
                 titlePaneTitleText.SetText(titlePanelTitle);
+
                 titlePanelTitle = null;
             }
         }
@@ -738,7 +745,7 @@ namespace AccSaber.UI.ViewControllers
                         leaderboard.MainCellSize = CellSize;
                         leaderboard.Data = LeaderboardInfos;
 
-                        titlePaneTitleText?.SetText(CurrentCategory.ToString() + " ACC");
+                        titlePaneTitleText?.SetText(RankedHeader);
 
                         badMapMessage.SetActive(false);
 
