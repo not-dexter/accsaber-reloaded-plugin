@@ -11,6 +11,7 @@ using HMUI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ namespace AccSaber.UI.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.Views.AccSaberLeaderboardView.bsml")]
     [HotReload(RelativePathToLayout = @"..\UI\Views\AccSaberLeaderboardView.bsml")]
-    internal sealed class AccSaberLeaderboardViewController : BSMLAutomaticViewController, IInitializable, IDisposable
+    internal sealed class AccSaberLeaderboardViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable
     {
 #pragma warning disable IDE0044, IDE0051
 
@@ -66,6 +67,7 @@ namespace AccSaber.UI.ViewControllers
         private bool titlePanelRich;
         private TextMeshProUGUI? titlePaneTitleText = null;
 
+        public new event PropertyChangedEventHandler? PropertyChanged;
         public string RankedHeader => $"<color={GetColor(CurrentCategory)}>{CurrentCategory}</color> " + RANKED_HEADER;
         public LeaderboardDisplayType DisplayType { get; private set; }
         public string? DifficultyId => difficultyInfo?.DifficultyId;
@@ -129,13 +131,6 @@ namespace AccSaber.UI.ViewControllers
 
         #endregion Injects
 
-        #region Loading UI objects
-
-        [UIObject("leaderboard_loading")] private GameObject leaderboardLoader = null!;
-        [UIObject("leaderboard")] private GameObject leaderboardContainer = null!;
-
-        #endregion Loading UI objects
-
         #region UI Values & Components
 
         [UIValue("colorGrey")] private const string grey = GREY;
@@ -178,9 +173,8 @@ namespace AccSaber.UI.ViewControllers
 
         private float CellSize => OnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE;
 
-        [UIObject("leaderboard_badMap")] private GameObject badMapMessage = null!;
-
         [UIObject("titleContainer")] private GameObject titleContainer = null!;
+        [UIObject("leaderboard")] private GameObject leaderboardContainer = null!;
 
         [UIComponent("GlobalSelector")] private ClickableImage globalSelector = null!;
         [UIComponent("FollowedSelector")] private ClickableImage followedSelector = null!;
@@ -196,6 +190,35 @@ namespace AccSaber.UI.ViewControllers
         [UIComponent("PageDownSelector")] private ButtonIconImage pageDownImage = null!;
 
         [UIComponent("selectorContainer")] private LayoutElement selectorContainer = null!;
+
+        private bool _loading, _unranked;
+        [UIValue("loading")] private bool Loading
+        {
+            get => _loading; 
+            set
+            {
+                _loading = value;
+                _unranked = false;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Unranked)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Loading)));
+
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Ranked)));
+            }
+        }
+        [UIValue("unranked")] private bool Unranked
+        {
+            get => _unranked; 
+            set
+            {
+                _unranked = value;
+                _loading = false;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Loading)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Unranked)));
+
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Ranked)));
+            }
+        }
+        [UIValue("ranked")] private bool Ranked => !_unranked && !_loading;
 
         #endregion UI Values & Components
 
@@ -601,9 +624,7 @@ namespace AccSaber.UI.ViewControllers
 
                             titlePaneTitleText?.SetText(UNRANKED_HEADER);
 
-                            leaderboardContainer.SetActive(false);
-                            leaderboardLoader.SetActive(false);
-                            badMapMessage.SetActive(true);
+                            Unranked = true;
                         }
                         StartCoroutine(ShowBad());
                         return true;
@@ -638,14 +659,12 @@ namespace AccSaber.UI.ViewControllers
             if (!gameObject.activeInHierarchy)
                 return false;
 
-            if (leaderboardLoader.activeInHierarchy || DifficultyId is null)
+            if (Loading || DifficultyId is null)
                 return true; // Return true because load is already happening, or it isn't valid to want to load on an unranked map.
 
             if (forceLoad)
             {
-                badMapMessage.SetActive(false);
-                leaderboardContainer.SetActive(false);
-                leaderboardLoader.SetActive(true);
+                Loading = true;
 
                 return true;
             }
@@ -659,12 +678,15 @@ namespace AccSaber.UI.ViewControllers
             {
                 yield return new WaitForEndOfFrame();
 
-                badMapMessage.SetActive(false);
+                
 
                 if (!gotCachedData)
                 {
-                    leaderboardContainer.SetActive(false);
-                    leaderboardLoader.SetActive(true);
+                    Loading = true;
+                } 
+                else
+                {
+                    Unranked = false;
                 }
             }
             StartCoroutine(WaitThenUpdate());
@@ -747,10 +769,7 @@ namespace AccSaber.UI.ViewControllers
 
                         titlePaneTitleText?.SetText(RankedHeader);
 
-                        badMapMessage.SetActive(false);
-
-                        leaderboardContainer.SetActive(true);
-                        leaderboardLoader.SetActive(false);
+                        Unranked = false;
                     }
 
                     StartCoroutine(ReloadData());

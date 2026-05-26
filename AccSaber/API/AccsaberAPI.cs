@@ -1053,7 +1053,6 @@ namespace AccSaber.API
             if (category == APCategory.Overall) // TODO: At some point, support caching for any context the score returns. As it is, it would take too much time.
             {
                 SerializerHandler.CachedPlayerScores.AddRange(outp);
-                SerializerHandler.UpdateCachedPlayerScores();
 
                 if (SerializerHandler.CachedPlayerScoreLength < 0)
                     SerializerHandler.CachedPlayerScoreLength = response.TotalElements;

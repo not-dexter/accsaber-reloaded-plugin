@@ -26,8 +26,6 @@ namespace AccSaber.Utils
             set => cachedPlayerScores.MaxLength = value;
         }
 
-        public static void UpdateCachedPlayerScores() => cachedPlayerScores.LastUpdated = DateTime.UtcNow;
-
         public void Initialize()
         {
             Task.Run(Load);
