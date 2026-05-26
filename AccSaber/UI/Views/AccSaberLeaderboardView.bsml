@@ -21,7 +21,7 @@
     <clickable-image id='GlobalSelector' src='~globalPic' preserve-aspect='true' pref-width='~globeIconSize' pref-height='~globeIconSize' on-click='ShowGlobal' hover-hint='Global'/>
     <clickable-image id='FollowedSelector' src='~followedPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowFollowed' hover-hint='Followed'/>
     <clickable-image id='RivalsSelector' src='~rivalsPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowRivals' hover-hint='Rivals' default-color='~colorGrey'/>
-    <clickable-image id='RelationsSelector' src='~relationsPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowRelations' hover-hint='Friends, Followed, &amp; Rivals' default-color='~colorGrey' active='false'/>
+    <clickable-image id='RelationsSelector' src='~relationsPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowRelations' hover-hint='Followed, &amp; Rivals' default-color='~colorGrey' active='false'/>
     <clickable-image id='CountrySelector' src='~countryPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowCountry' hover-hint='Country'/>
   </vertical>
 

@@ -26,6 +26,8 @@ namespace AccSaber.Utils
             set => cachedPlayerScores.MaxLength = value;
         }
 
+        public static void UpdateCachedPlayerScores() => cachedPlayerScores.LastUpdated = DateTime.UtcNow;
+
         public void Initialize()
         {
             Task.Run(Load);
@@ -60,8 +62,6 @@ namespace AccSaber.Utils
                     CachedMaps.AddRange(maps.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)));
                 else
                     await AccsaberAPI.LoadAllBasicDiffs();
-
-                //Plugin.Log.Info($"loaded maps = {maps?.Content.Count}, total maps = {TotalMaps}, cached maps = {CachedMaps.Count}");
 
                 if (playerScores is not null && (await ValidatePlayerScoreCache(playerScores.LastUpdated)))
                     cachedPlayerScores = playerScores;
@@ -119,8 +119,6 @@ namespace AccSaber.Utils
                 return true; // If we don't get a good response from the API, then we can't invalidate it, so might as well use what we have.
 
             TotalMaps = response.TotalElements;
-
-            Plugin.Log.Info($"total maps = {TotalMaps}, given map count = {mapCount}");
 
             return TotalMaps == mapCount;
         }
