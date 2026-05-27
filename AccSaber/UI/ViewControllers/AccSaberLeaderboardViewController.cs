@@ -699,6 +699,10 @@ namespace AccSaber.UI.ViewControllers
             return true;
         }
 
+        public void ForceShowLeaderboard()
+        {
+            Unranked = false;
+        }
         private async Task LoadLeaderboardAsync()
         {
             if (page == currentPage || DifficultyId is null) return; // already on this page or no leaderboard selected, no need to reload

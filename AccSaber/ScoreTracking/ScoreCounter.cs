@@ -4,6 +4,7 @@ using AccSaber.Models;
 using AccSaber.Patches;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
+using IPA.Loader;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -232,7 +233,10 @@ namespace AccSaber.ScoreTracking
             if (!score.UncompletedMap!.Value)
                 AccSaberLeaderboardViewController.Instance.LoadUntilNextRefreshIfScoreBeaten((int)score.Score);
 
-            await AccsaberAPI.SubmitScore(score);
+            bool submitted = await AccsaberAPI.SubmitScore(score);
+
+            if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
+                AccSaberLeaderboardViewController.Instance.ForceShowLeaderboard();
         }
     }
 }
