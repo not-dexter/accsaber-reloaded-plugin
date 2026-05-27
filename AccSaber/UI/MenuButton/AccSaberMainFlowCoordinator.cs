@@ -44,6 +44,7 @@ namespace AccSaber.UI.MenuButton
 
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
+            _accSaberRelationsViewController.HideNewsModal();
             SetRightScreenViewController(null, ViewController.AnimationType.None);
             SetLeftScreenViewController(null, ViewController.AnimationType.None);
             _parentFlowCoordinator?.DismissFlowCoordinator(this);

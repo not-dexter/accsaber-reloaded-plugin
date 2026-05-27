@@ -1,8 +1,9 @@
 <bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
 	<modal id='modal' show-event='open-modal' hide-event='close-modal' clickerino-offerino-closerino='true' size-delta-x='120' size-delta-y='80' anchor-pos-y='20' move-to-center='true'>
-		<vertical pref-width='115' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' child-control-height='false' spacing='5'>
-			<horizontal pref-height='5' pad-top='3'>
-				<text text='~news-title' align='Center'/>
+    <button text='Exit' on-click='hide-modal' align='Right' anchor-pos-x='100' anchor-pos-y='-7'/>
+		<vertical pref-width='115' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' child-expand-height='false' spacing='5'>
+			<horizontal pref-height='5' pad-top='8'>
+				<text text='~news-title' align='Center' font-size='7'/>
 			</horizontal>
 			<horizontal bg='panel-top' pref-height='70' skew='0' pad='2'>
 				<text-page id='content-page' text='~news-content' rich-text='true'/>

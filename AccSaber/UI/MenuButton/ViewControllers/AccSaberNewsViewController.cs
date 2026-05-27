@@ -60,7 +60,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
 
         [UIAction("#post-parse")]
-        void Parsed()
+        private void Parsed()
         {
             if (!_parsed)
             {
@@ -72,7 +72,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
 
         [UIAction("tab-selected")]
-        void TabSelected(SegmentedControl segmentedControl, int index)
+        private void TabSelected(SegmentedControl segmentedControl, int index)
         {
             IsLoading = true;
             _currentTab = (AccSaberStore.NewsType)segmentedControl.selectedCellNumber;
@@ -80,11 +80,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
 
         [UIAction("post-selected")]
-        void PostSelected(TableView tableView, NewsCell post)
+        private void PostSelected(TableView tableView, NewsCell post)
         {
             nmc.ShowModal(_newsList.transform, this, post._post);
             tableView.ClearSelection();
         }
+
+        public void HideNewsModal() => nmc.ForceCloseModal();
 
         private async Task SetNews(AccSaberStore.NewsType tab)
         {

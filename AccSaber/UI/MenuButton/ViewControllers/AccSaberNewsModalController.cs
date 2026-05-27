@@ -1,22 +1,20 @@
 ﻿using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Utils;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
-using IPA.Utilities;
 using System;
 using System.Collections;
 using System.ComponentModel;
-using System.Reflection;
-using TMPro;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
     internal sealed class AccSaberNewsModal : INotifyPropertyChanged, IDisposable
     {
+#pragma warning disable IDE0051
         private bool _parsed;
         private string _title = null!;
         private string _content = null!;
@@ -85,7 +83,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
             _host.StartCoroutine(Show());
         }
-        public void HideModal()
+        [UIAction("hide-modal")]
+        private void HideModal()
         {
             if (!_parsed)
             {
@@ -93,6 +92,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
 
             _parserParams.EmitEvent("close-modal");
+            OnModalClosed();
+        }
+        public void ForceCloseModal() 
+        {
+            _modalView.Hide(false);
             OnModalClosed();
         }
 

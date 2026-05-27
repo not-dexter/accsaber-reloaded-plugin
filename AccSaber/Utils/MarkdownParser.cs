@@ -10,8 +10,6 @@ namespace AccSaber.Utils
 
             string[] lines = md.Split('\n');
 
-            bool list = false;
-
             for (int i = 0; i < lines.Length; i++)
             {
                 if (lines[i].Length == 0)
@@ -27,18 +25,8 @@ namespace AccSaber.Utils
                         HandleHeader(ref line);
                         break;
                     case '-':
-                        if (list)
-                            line = bulletPoint + line[1..];
-                        else
-                            line = $"<indent=5%>{bulletPoint}" + line[1..];
-                        list = true;
+                        line = $"{bulletPoint} <indent=5%>{line[2..]}</indent>";
                         break;
-                }
-
-                if (list && specialChar != '-')
-                {
-                    list = false;
-                    lines[i - 1] += "</indent>";
                 }
             }
 
@@ -58,6 +46,9 @@ namespace AccSaber.Utils
             }
 
             line = $"<size={headerSize - headerStep * (hashtags - 1)}%>{line[hashtags..]}</size>";
+
+            if (hashtags == 1)
+                line = $"<align=\"center\">{line}</align>";
         }
     }
 }
