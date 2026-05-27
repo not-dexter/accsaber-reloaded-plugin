@@ -209,6 +209,8 @@
         /// </remarks>
         public const string APAPI_NEWS_TYPE = APAPI + "news?type={0}"; //type
 
+        public const string APAPI_CURVE_AP = APAPI + "curves/acc00000-0000-0000-0000-000000000001"; // param entered already
+
 
         /// <summary>
         /// Retrieves relations for a user with type and direction filters (paged).

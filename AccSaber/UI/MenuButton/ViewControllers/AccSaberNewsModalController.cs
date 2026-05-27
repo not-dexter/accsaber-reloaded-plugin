@@ -68,8 +68,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             _modalView.transform.SetParent(parentTransform.transform);
             Accessors.ViewValidAccessor(ref _modalView) = false;
-
-            TextMeshProUGUI text = _scrollView.GetField<TextMeshProUGUI, TextPageScrollView>("_text");
         }
         public void ShowModal(Transform parentTransform, MonoBehaviour host, AccSaberNewsEntry post)
         {

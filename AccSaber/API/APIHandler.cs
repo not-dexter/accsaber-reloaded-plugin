@@ -168,7 +168,15 @@ namespace AccSaber.API
             if (string.IsNullOrEmpty(dataStr))
                 return default;
 
-            return JsonConvert.DeserializeObject<T>(dataStr!);
+            try
+            {
+                return JsonConvert.DeserializeObject<T>(dataStr!);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error("There was an issue parsing the json into the provided object:\n" + ex);
+                return default;
+            }
         }
     }
 }
