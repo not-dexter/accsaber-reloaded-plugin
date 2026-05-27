@@ -22,6 +22,7 @@ using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Patches;
+using BS_Utils.Gameplay;
 
 namespace AccSaber.API
 {
@@ -1084,12 +1085,12 @@ namespace AccSaber.API
             if (PlayerSocialLife.AuthInfo is not null && PlayerSocialLife.AuthInfo.ExpirationDate > DateTime.Now)
                 return PlayerSocialLife.AuthInfo;
 
+            await GetUserInfo.GetUserAsync();
             IPlatformUserModel platformUserModel = Plugin.Container.TryResolve<IPlatformUserModel>();
             PlatformUserAuthTokenData authToken = await platformUserModel.GetUserAuthToken();
             UserInfo userInfo = await platformUserModel.GetUserInfo();
             string token = "";
             string provider = "";
-
             switch (userInfo.platform)
             {
                 case UserInfo.Platform.Steam:
@@ -1098,9 +1099,9 @@ namespace AccSaber.API
                     break;
                 case UserInfo.Platform.Oculus:
 #if NEW_VERSION
-                    token = authToken.token + "," + platformUserModel.RequestXPlatformAccessToken(CancellationToken.None).GetAwaiter().GetResult().token;
+                    token = (await platformUserModel.RequestXPlatformAccessToken(CancellationToken.None)).token;
 #else
-                    token = GetOculusToken();
+                    token = await OculusTicket();
 #endif
                     provider = "oculusTicket";
                     break;
@@ -1126,7 +1127,7 @@ namespace AccSaber.API
 
                 AuthInfo? outp = JsonConvert.DeserializeObject<AuthInfo>(dataStr);
 
-                if (outp is not null) 
+                if (outp is not null)
                 {
                     SetAuthForClient(outp);
                     return outp;
@@ -1136,26 +1137,14 @@ namespace AccSaber.API
             return null;
         }
 #if !NEW_VERSION
-        private static string GetOculusToken()
+        public static async Task<string> OculusTicket()
         {
-
-            string token = "";
-            Users.GetLoggedInUser().OnComplete(delegate (Message<Oculus.Platform.Models.User> loggedInMessage) {
-                if (!loggedInMessage.IsError)
-                {
-                    Users.GetUserProof().OnComplete(delegate (Message<Oculus.Platform.Models.UserProof> userProofMessage) {
-                        if (!userProofMessage.IsError)
-                        {
-                            Users.GetAccessToken().OnComplete(delegate (Message<string> authTokenMessage)
-                            {
-                                token = userProofMessage.Data.Value + "," + authTokenMessage.Data;
-                            });
-
-                        }
-                    });
-                }
-            });
-            return token;
+            await GetUserInfo.GetUserAsync();
+            TaskCompletionSource<string> tcs = new();
+#pragma warning disable CS8604 // Possible null reference argument.
+            Users.GetAccessToken().OnComplete(delegate (Message<string> message) { tcs.TrySetResult(message.IsError ? null : message.Data); });
+#pragma warning restore CS8604 // Possible null reference argument.
+            return await tcs.Task;
         }
 #endif
         internal static async Task<bool> SubmitScore(AccSaberScore score)
