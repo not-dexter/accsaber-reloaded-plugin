@@ -96,6 +96,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
         public void ForceCloseModal() 
         {
+            if (!_parsed || !_modalView.isActiveAndEnabled)
+                return;
+
             _modalView.Hide(false);
             OnModalClosed();
         }
