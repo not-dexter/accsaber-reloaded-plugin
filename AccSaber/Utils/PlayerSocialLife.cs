@@ -161,7 +161,7 @@ namespace AccSaber.Utils
             lock (loadLock)
                 Monitor.PulseAll(loadLock);
         }
-        public void Dispose()
+        public void Dispose() // This is currently unused, as it just returns a 500.
         {
             if (AuthInfo is null)
                 return;

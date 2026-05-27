@@ -5,10 +5,12 @@ using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
+using IPA.Utilities;
 using System;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;
+using TMPro;
 using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
@@ -49,7 +51,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             get => _content;
             set
             {
-                _content = value;
+                _content = MarkdownParser.ParseMarkdown(value);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Content)));
             }
         }
@@ -58,7 +60,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
             if (!_parsed)
             {
-                VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_NEWS_MODAL), parentTransform.gameObject, this);
+                VersionUtils.Parse(ResourcePaths.ACC_SABER_NEWS_MODAL, parentTransform, this);
                 _modalView.name = "AccSaberNewsModal";
                 _modalView.blockerClickedEvent += OnModalClosed;
                 _parsed = true;
@@ -66,6 +68,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             _modalView.transform.SetParent(parentTransform.transform);
             Accessors.ViewValidAccessor(ref _modalView) = false;
+
+            TextMeshProUGUI text = _scrollView.GetField<TextMeshProUGUI, TextPageScrollView>("_text");
         }
         public void ShowModal(Transform parentTransform, MonoBehaviour host, AccSaberNewsEntry post)
         {

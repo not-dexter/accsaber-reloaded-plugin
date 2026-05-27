@@ -99,24 +99,20 @@ namespace AccSaber.Managers
             if (platformUser is not null)
             {
                 string call = string.Format(allPools ? HelpfulPaths.APAPI_MISSIONS : HelpfulPaths.APAPI_MISSIONS_POOL, platformUser.platformUserId, nameof(pool).ToLower());
-                string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
 
-                if (response is not null)
+                List<AccSaberMission>? outp = await APIHandler.CallAPI_Json<List<AccSaberMission>>(call, AccsaberAPI.throttler);
+
+                if (outp is null)
+                    return [];
+
+                List<AccSaberMission> newMissions = [];
+
+                foreach (AccSaberMission mission in outp)
                 {
-                    List<AccSaberMission>? outp = JsonConvert.DeserializeObject<List<AccSaberMission>>(response);
-
-                    if (outp is null)
-                        return [];
-
-                    List<AccSaberMission> newMissions = [];
-
-                    foreach (AccSaberMission mission in outp)
-                    {
-                        newMissions.Add(mission);
-                    }
-
-                    return newMissions;
+                    newMissions.Add(mission);
                 }
+
+                return newMissions;
             }
             return [];
         }
@@ -144,23 +140,20 @@ namespace AccSaber.Managers
             };
 
             string call = string.Format(type == NewsType.All ? HelpfulPaths.APAPI_NEWS : HelpfulPaths.APAPI_NEWS_TYPE, typeString);
-			string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
-			if (response is not null)
-			{
-                AccSaberPagedContent<AccSaberNewsEntry>? content = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberNewsEntry>>(response);
 
-                if (content is null)
-                    return [];
+            AccSaberPagedContent<AccSaberNewsEntry>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberNewsEntry>>(call, AccsaberAPI.throttler);
 
-                List<AccSaberNewsEntry> newNewsEntries = [];
+            if (content is null)
+                return [];
 
-				foreach (AccSaberNewsEntry newsEntry in content.Content!)
-				{
-					newNewsEntries.Add(newsEntry);
-				}
-				return newNewsEntries;
-			}
-			return [];
+            List<AccSaberNewsEntry> newNewsEntries = [];
+
+            foreach (AccSaberNewsEntry newsEntry in content.Content!)
+            {
+                newNewsEntries.Add(newsEntry);
+            }
+
+            return newNewsEntries;
         }
 
         private async Task UpdateAccSaberInfo()

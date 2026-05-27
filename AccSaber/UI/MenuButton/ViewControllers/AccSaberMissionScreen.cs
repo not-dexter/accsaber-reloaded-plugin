@@ -6,9 +6,11 @@ using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.FloatingScreen;
+using BeatSaberMarkupLanguage.Harmony_Patches;
 using HMUI;
 using Newtonsoft.Json;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
@@ -25,9 +27,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
     internal class AccSaberMissionScreen : IInitializable, IDisposable, INotifyPropertyChanged
     {
+#pragma warning disable IDE0051
         public FloatingScreen missionScreen = null!;
         private bool _parsed;
         private bool _isLoading;
+        private AsyncLock _missionLock = new();
 
         [UIComponent("daily-list")]
         private readonly CustomCellListTableData _dailyList = null!;
@@ -41,7 +45,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("weekly-cells")]
         private readonly List<object> _weeklyCells = [];
 
-        private List<Action> _lsPropertyChangedActions = new List<Action>();
+        private List<Action> _lsPropertyChangedActions = [];
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -62,7 +66,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             missionScreen.transform.localScale = new Vector3(0.03f, 0.03f, 0.03f);
 
             missionScreen.Handle().SetActive(false);
-            VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), "AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml"), missionScreen.gameObject, this);
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, missionScreen, this);
 
             _accSaberMenuViewController.HubActivated += ShowMissions;
             _accSaberMenuViewController.HubDeactivated += HideMissions;
@@ -87,7 +91,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         public void ShowMissions()
         {
             missionScreen.gameObject.SetActive(true);
-            IsLoading = true;
             _ = SetMissions();
         }
         public void HideMissions()
@@ -101,41 +104,50 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 _parsed = true;
             }
-            IsLoading = true;
-            _ = SetMissions();
         }
         private async Task SetMissions()
         {
-            var session = PlayerSocialLife.AuthInfo;
-            if(session is null)
-            {
-                await Task.Delay(5000);
-                await SetMissions();
-            }
+            AsyncLock.Releaser? locker = await _missionLock.TryLockAsync();
 
-            _dailyCells.Clear();
-            _weeklyCells.Clear();
-            _dailyList.Data().Clear();
-            _weeklyList.Data().Clear();
+            if (locker is null)
+                return;
 
-            try
+            using (locker.Value)
             {
-                var missions = await _accSaberStore.GetMissions();
-                foreach (var post in missions)
+                if (!IsLoading)
+                    IsLoading = true;
+
+                await PlayerSocialLife.LoadTask;
+
+                _dailyCells.Clear();
+                _weeklyCells.Clear();
+                _dailyList.Data().Clear();
+                _weeklyList.Data().Clear();
+
+                try
                 {
-                    switch (post.MissionPool)
+                    var missions = await _accSaberStore.GetMissions();
+                    foreach (var post in missions)
                     {
-                        case MissionPool.Daily: _dailyCells.Add(new MissionCell(post)); break;
-                        case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post)); break;
+                        switch (post.MissionPool)
+                        {
+                            case MissionPool.Daily: _dailyCells.Add(new MissionCell(post)); break;
+                            case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post)); break;
+                        }
                     }
+
+                    if (missionScreen.gameObject.activeInHierarchy)
+                    {
+                        _dailyList.TableView().ReloadData();
+                        _weeklyList.TableView().ReloadData();
+                    }
+                    IsLoading = false;
+
                 }
-                _dailyList.TableView().ReloadData();
-                _weeklyList.TableView().ReloadData();
-                IsLoading = false;
-            }
-            catch (Exception e)
-            {
-                Plugin.Log.Error(e);
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
             }
         }
 
@@ -164,9 +176,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             private string color = data.Band switch
             {
                 "extreme" => "#ffd700",
-                /*"hard" => "#f97316",
+                "hard" => "#f97316",
                 "medium" => "#3cb371",
-                "easy" => "#3cb371",*/
+                /*"easy" => "#3cb371",*/
                 _ => ColorUtils.GREY
             };
             private string GetCategoryName(string category)
@@ -192,16 +204,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue(nameof(missionBand))] public string missionBand => $"<color={color}>{data.Band.ToUpper()}</color>";
 
-            [UIValue(nameof(description))] public string description => descriptionRegex(data.Description);
+            [UIValue(nameof(description))] public string description => DescriptionParser(data.Description);
 
-            public string descriptionRegex(string input)
+            private static readonly Regex DescriptionRegex = new(@"(?<=\().+?(?=\))");
+            public string DescriptionParser(string input)
             {
-                var pattern = new Regex(@"(?<=\().+?(?=\))");
-                var match = pattern.Match(input);
+                Match match = DescriptionRegex.Match(input);
 
                 if (match.Success)
                 {
-                    var newString = "";
+                    string newString;
 
                     if (EnumUtils.ReloadedDiffToDiff(match.Groups[0].Value) == BeatmapDifficulty.ExpertPlus)
                         newString = input.Replace(match.Groups[0].Value, "Expert Plus");
@@ -251,7 +263,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PercentBarTop?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * Progress());
                 PercentBarBottom?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - Progress()));
 
-                PercentBarTop_image?.color = ColorUtils.GetColor(EnumUtils.ReloadedCategoryToEnum(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005")).Color();
+                PercentBarTop_image?.color = ColorUtils.GetColor(data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(data.CategoryId)).Color();
                 PercentBarBottom_image?.color = ColorUtils.GREY.Color();
             }
             #endregion

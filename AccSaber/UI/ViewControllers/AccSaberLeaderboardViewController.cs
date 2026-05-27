@@ -456,7 +456,7 @@ namespace AccSaber.UI.ViewControllers
             titlePaneTitleText = headerPane.GetComponentInChildren<TextMeshProUGUI>();
             OnEnable();
 
-            VersionUtils.Parse(ResourcePaths.LEADERBOARD_TITLE_PANEL, headerPane.transform, this);
+            VersionUtils.Parse(ResourcePaths.LEADERBOARD_TITLE_PANEL, headerPane, this);
         }
 
         private void ChangeFilter(LeaderboardDisplayType type)

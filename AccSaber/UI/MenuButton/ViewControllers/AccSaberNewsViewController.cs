@@ -19,6 +19,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberNewsView.bsml")]
     internal class AccSaberNewsViewController : BSMLAutomaticViewController, INotifyPropertyChanged
     {
+#pragma warning disable IDE0051
         public new event PropertyChangedEventHandler? PropertyChanged;
 
         private bool _parsed;

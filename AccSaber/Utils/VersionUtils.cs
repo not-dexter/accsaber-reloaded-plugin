@@ -48,7 +48,8 @@ namespace AccSaber.Utils
         public static MenuButtons MenuButtons_Instance => MenuButtons.instance;
 #endif
 
-        public static BSMLParserParams Parse(string resourcePath, Transform parent, object controller) =>
-            BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), resourcePath), parent.gameObject, controller);
+        public static BSMLParserParams Parse(string resourcePath, Component parent, object controller) => Parse(resourcePath, parent.gameObject, controller);
+        public static BSMLParserParams Parse(string resourcePath, GameObject parent, object controller) =>
+            BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), resourcePath), parent, controller);
     }
 }
