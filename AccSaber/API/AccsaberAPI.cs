@@ -1104,8 +1104,6 @@ namespace AccSaber.API
                     token = await OculusTicket();
 #endif
                     provider = "oculusTicket";
-                    Plugin.Log.Debug(token);
-                    Plugin.Log.Debug(provider);
                     break;
             }
 
