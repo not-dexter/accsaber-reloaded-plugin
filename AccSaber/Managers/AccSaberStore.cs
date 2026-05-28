@@ -122,9 +122,9 @@ namespace AccSaber.Managers
             All,
             General,
             Batch,
-            Campaign,
-            Curve,
-            Milestones
+            Milestones,
+            Items,
+            Plugin
         }
 
         public async Task<List<AccSaberNewsEntry>> GetNewsPosts(NewsType type)
@@ -133,9 +133,9 @@ namespace AccSaber.Managers
             {
                 NewsType.General => "GENERAL",
                 NewsType.Batch => "BATCH",
-                NewsType.Campaign => "CAMPAIGN",
-                NewsType.Curve => "CURVE",
                 NewsType.Milestones => "MILESTONE_SET",
+                NewsType.Items => "ITEMS",
+                NewsType.Plugin => "PLUGIN",
                 _ => ""
             };
 

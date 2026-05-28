@@ -243,7 +243,7 @@ namespace AccSaber.UI.ViewControllers
                 rivalsSelector.gameObject.SetActive(!toggle);
                 relationsSelector.gameObject.SetActive(toggle);
 
-                selectorContainer.preferredHeight = toggle ? globeIconSize + iconSize * 2 + 2 : globeIconSize + iconSize * 3 + 2;
+                selectorContainer.preferredHeight = toggle ? globeIconSize + iconSize * 2 + 3 : globeIconSize + iconSize * 3 + 3;
             }
             StartCoroutine(UpdateUI());
             PC.CombineRelations = toggle;

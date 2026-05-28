@@ -1,12 +1,20 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-    <modal id='modal' show-event='open-modal' hide-event='close-modal' clickerino-offerino-closerino='true' size-delta-x='65' size-delta-y='38' move-to-center='true'>
+    <modal id='modal' show-event='open-modal' hide-event='close-modal' clickerino-offerino-closerino='true' size-delta-x='65' size-delta-y='45' move-to-center='true'>
         <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
-        <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='63' pref-height='34' active='~is-not-loading'>
+        <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='63' pref-height='43' active='~is-not-loading'>
             <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='65' spacing='-1'>
-                <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='25' pref-height='32' pad-top='2' spacing='2'>
+                <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='25' pref-height='41' pad-top='2' spacing='2'>
                   <text text='~username' align='Center' bold='true'/>
                   <text text='~title' align='Center' font-size='3.5' />
-                   <img id='profile-image' spacing='0' pad='0' preserve-aspect='true' pref-width='23' pref-height='23'/>
+					<stack pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+						<img id='playerImageBorder' src='~playerImageBorder' pref-width='~playerImageBGSize' pref-height='~playerImageBGSize'/>
+						<vertical pref-width='~playerImageSize' pref-height='~playerImageSize' child-expand-width='false' child-expand-height='false'>
+							<stack pref-width='~playerImageSize' pref-height='~playerImageSize'>
+								<img id='playerImageBackground' src='~image1x1' img-color='~dimColor' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
+								<img id='profile-image' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
+							</stack>
+						</vertical>
+					</stack>
                   <text text='~level' align='Center' font-size='2.5'/>
                   <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
                     <vertical pref-width='2.5'/>
@@ -15,29 +23,27 @@
                   </horizontal>
                    <text text='~xp' align='Center' font-size='2.5'/>
                 </vertical>
-                <vertical id='user-info' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='35' pref-height='32' spacing='1'>
+                <vertical id='user-info' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='35' pref-height='41' spacing='1'>
                   <dropdown-list-setting id='category-dropdown' text='' value='category-value' choices='category-choices' formatter='format-category' bind-value='true' apply-on-change='true' pref-width='5'/>
                   <horizontal horizontal-fit='PreferredSize' pref-width='23' pad='2'>
                     <vertical vertical-fit='PreferredSize' pref-height='6'>
-                      <text text='Global' align='Center' font-size='3.5'/>
-                      <text text='~rank' align='Center' font-size='3'/>
+                      <text text='Global' align='Center' color='#AAA' font-size='2.5'/>
+                      <text text='~rank' align='Center' font-size='4'/>
                     </vertical>
                     <vertical vertical-fit='PreferredSize' pref-height='6'>
-                      <text text='Country' align='Center' font-size='3.5'/>
-                      <text text='~country' align='Center' font-size='3'/>
+                      <text text='Country' color='#AAA' align='Center' font-size='2.5'/>
+                      <text text='~country' align='Center' font-size='4'/>
                     </vertical>
                   </horizontal>
                   <text text='~ap' align='Center' font-size='3.5'/>
                   <text text='~plays' align='Center' font-size='3.5'/>
                   <text text='~headset' align='Center' font-size='3.5'/>
-                  <horizontal child-expand-width='false' child-expand-height='false'>
-                    <my-vertical id='add-friend-bg' pref-width='7' pref-height='7' bg='~pixelImg' color='~followColor'>
-                      <clickable-image id='add-friend' on-click='friend-clicked' src='~followImg' preserve-aspect='true' hover-hint='Follow'/>
-                    </my-vertical>
-                    <my-vertical id='add-rival-bg'  pref-width='7' pref-height='7' bg='~pixelImg' color='~rivalColor'>
-                      <clickable-image id='add-rival'  on-click='rival-clicked' src='~rivalImg'   preserve-aspect='true' hover-hint='Rival' />
-                    </my-vertical>
-                  </horizontal>
+                    <vertical>
+						<button id='add-friend' text='Add Friend' font-size='3.5' on-click='friend-clicked' />
+                    </vertical>
+                    <vertical>
+                      <button id='add-rival' text='Add Rival' font-size='3.5'  on-click='rival-clicked' />
+                    </vertical>
                   <loading-indicator active='~relation-loading' preserve-aspect='true' pref-width='7' pref-height='7'/>
                 </vertical>
             </horizontal>

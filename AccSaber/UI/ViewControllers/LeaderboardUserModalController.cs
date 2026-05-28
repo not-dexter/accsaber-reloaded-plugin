@@ -53,12 +53,6 @@ namespace AccSaber.UI.ViewControllers
 
 		public event PropertyChangedEventHandler? PropertyChanged;
 
-		[UIValue("followImg")]
-		private const string FollowImg = ResourcePaths.FOLLOWED;
-
-		[UIValue("rivalImg")]
-		private const string RivalImg = ResourcePaths.RIVALS;
-
 		[UIValue("pixelImg")]
 		private const string PixelImg = ResourcePaths.PIXEL;
 
@@ -89,7 +83,19 @@ namespace AccSaber.UI.ViewControllers
 		[UIComponent("progress-bar-inverse")]
 		private readonly LayoutElement _progressBarInverse = null!;
 
-		[UIParams]
+        [UIValue("dimColor")] public const string dimColor = ColorUtils.DARK_BLUE;
+        [UIValue("image1x1")] public const string image1x1 = ResourcePaths.PIXEL;
+        [UIValue("playerImageBorder")] public const string playerImageBorderPath = ResourcePaths.GRADIENT_CORNER;
+
+        [UIComponent("playerImageBackground")] private ImageView _playerImageBackground = null!;
+        [UIComponent("playerImageBorder")] private ImageView _playerImageBorder = null!;
+
+
+        [UIValue("playerImageSize")] public const float playerImageSize = 15f;
+        public const float borderSize = 1.5f;
+        [UIValue("playerImageBGSize")] public const float playerImageBGSize = borderSize + playerImageSize;
+
+        [UIParams]
 		private readonly BSMLParserParams _parserParams = null!;
 
 		private CanvasGroup? _userInfoCanvasGroup;
@@ -237,15 +243,15 @@ namespace AccSaber.UI.ViewControllers
 		#endregion
 
 		[UIComponent("add-friend")]
-		private readonly ClickableImage _friendButton = null!;
+		private readonly Button _friendButton = null!;
 		[UIComponent("add-rival")]
-		private readonly ClickableImage _rivalButton = null!;
-		[UIComponent("add-friend-bg")]
-		private readonly CustomBackground _friendButtonBG = null!;
-		[UIComponent("add-rival-bg")]
-		private readonly CustomBackground _rivalButtonBG = null!;
+		private readonly Button _rivalButton = null!;
+        //[UIComponent("add-friend-bg")]
+        //private readonly CustomBackground _friendButtonBG = null!;
+        //[UIComponent("add-rival-bg")]
+        //private readonly CustomBackground _rivalButtonBG = null!;
 
-		[UIValue("relation-loading")]
+        [UIValue("relation-loading")]
 		private bool RelationLoading
 		{
 			get => _relationLoading;
@@ -277,19 +283,16 @@ namespace AccSaber.UI.ViewControllers
 
 			if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(_userId))
 			{
-				RelationLoading = true;
                 await PlayerSocialLife.RemoveId(_userId, LeaderboardDisplayType.Followed);
-				RelationLoading = false;
-			}
+				_friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
+            }
 			else
-			{
-				RelationLoading = true;
-				await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Followed);
-                RelationLoading = false;
-			}
+            {
+                await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Followed);
+                _friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
+            }
 
 			friendColorSwapped = !friendColorSwapped;
-            (_friendButton.DefaultColor, _friendButton.HighlightColor) = (_friendButton.HighlightColor, _friendButton.DefaultColor);
         }
 
 		[UIAction("rival-clicked")]
@@ -302,19 +305,14 @@ namespace AccSaber.UI.ViewControllers
 
 			if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(_userId))
 			{
-				RelationLoading = true;
                 await PlayerSocialLife.RemoveId(_userId, LeaderboardDisplayType.Rivals);
-				RelationLoading = false;
+                _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
 			}
 			else
 			{
-				RelationLoading = true;
-				await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Rivals);
-                RelationLoading = false;
+                await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Rivals);
+                _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
 			}
-
-			rivalColorSwapped = !rivalColorSwapped;
-            (_rivalButton.DefaultColor, _rivalButton.HighlightColor) = (_rivalButton.HighlightColor, _rivalButton.DefaultColor);
         }
 		private void Parse(Transform parentTransform)
 		{
@@ -332,12 +330,13 @@ namespace AccSaber.UI.ViewControllers
                 _userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
 
 				_profileImage.material = ResourcePaths.BORDER_MATERIAL;
+                _playerImageBackground.material = ResourcePaths.BORDER_MATERIAL;
+                _playerImageBorder.material = ResourcePaths.BORDER_MATERIAL;
+                //_friendButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
+				//_rivalButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
 
-                _friendButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
-				_rivalButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
-
-                _friendButton.HighlightColor = ColorUtils.RELOADED.Color();
-				_rivalButton.HighlightColor = ColorUtils.TARGETED.Color();
+                //_friendButton.HighlightColor = ColorUtils.RELOADED.Color();
+				//_rivalButton.HighlightColor = ColorUtils.TARGETED.Color();
 
 				_parsed = true;
 			}
@@ -364,31 +363,24 @@ namespace AccSaber.UI.ViewControllers
 				if (PlayerSocialLife.PlayerID != userId)
 				{
                     _friendButton.gameObject.SetActive(true);
-                    _friendButtonBG.gameObject.SetActive(true);
                     _rivalButton.gameObject.SetActive(true);
-                    _rivalButtonBG.gameObject.SetActive(true);
 
-                    if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId) ^ friendColorSwapped)
-					{
-						(_friendButton.DefaultColor, _friendButton.HighlightColor) = (_friendButton.HighlightColor, _friendButton.DefaultColor);
-						friendColorSwapped = !friendColorSwapped;
+                    if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId))
+						_friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
+                    else
+                        _friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
 
-                    }
-					if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(userId) ^ rivalColorSwapped)
-					{
-                        (_rivalButton.DefaultColor, _rivalButton.HighlightColor) = (_rivalButton.HighlightColor, _rivalButton.DefaultColor);
-                        rivalColorSwapped = !rivalColorSwapped;
-                    }
-
+                    if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(userId))
+                        _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
+                    else
+                        _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
                 } else
 				{
 					_friendButton.gameObject.SetActive(false);
-                    _friendButtonBG.gameObject.SetActive(false);
                     _rivalButton.gameObject.SetActive(false);
-                    _rivalButtonBG.gameObject.SetActive(false);
-				}
+                }
 
-				CategoryValue = APCategory.Overall.ToString();
+                CategoryValue = APCategory.Overall.ToString();
 
 				yield return new WaitForFixedUpdate();
 
@@ -464,9 +456,9 @@ namespace AccSaber.UI.ViewControllers
 			if (stats.StatDiffs is null && !await stats.LoadStatDiff())
 				return;
 
-			// this stat diff positioning fix is so lazy LMAO
+            // this stat diff positioning fix is so lazy LMAO
 
-			Username = $"{userInfo.PlayerName}";
+            Username = $"{userInfo.PlayerName}";
 			Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
 			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
 			Title = $"{"<color=" + _color + ">" +userInfo.LevelData.PlayerTitle}</color>";
@@ -480,13 +472,15 @@ namespace AccSaber.UI.ViewControllers
 
             if (_firstLoad)
 			{
+                _playerImageBorder.color = _color.Color();
 				await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
 				if (userInfo.AvatarUrl is not null)
 					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
 				if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
 					_progressBarImage.color = _color.Color();
 
-				IEnumerator SetBarLen()
+
+                IEnumerator SetBarLen()
 				{
 					yield return new WaitForEndOfFrame();
 

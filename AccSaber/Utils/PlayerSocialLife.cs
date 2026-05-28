@@ -89,7 +89,12 @@ namespace AccSaber.Utils
             if (!UserIdToRelationId[displayType.Convert()].TryGetValue(id, out string relationId))
                 return false;
 
+            RelationType rt = displayType.Convert();
+
             bool success = await RemovePlayerRelation(relationId);
+
+            if (success && UserIdToRelationId.ContainsKey(rt))
+                UserIdToRelationId[rt].Remove(id);
 
             OnRelationChanged?.Invoke();
 
