@@ -28,9 +28,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private string? _userId;
 		private bool _parsed;
 		private bool _isLoading;
-		private Tabs _currentTab;
+		private CategoryTab _currentTab;
+        private MilestoneTab _currentMilestoneTab = 0;
 
-        private Tabs CurrentTab
+        private CategoryTab CurrentTab
         {
             get => _currentTab;
             set
@@ -38,13 +39,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 _currentTab = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMilestoneTab)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMissionTab)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerOffset)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerWidth)));
             }
         }
 
         private readonly AsyncLock milestoneLock = new();
 
-        [Inject] private AccSaberStore _accSaberStore = null!;
-        [Inject] internal AccSaberMissionScreen mc = null!;
+        [Inject] private readonly AccSaberStore _accSaberStore = null!;
+        [Inject] private readonly AccSaberMissionScreen mc = null!;
 
 		private List<AccSaberMilestone> _milestones = null!;
 
@@ -56,9 +59,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		[UIValue("milestone-cells")]
         private readonly List<object> _milestoneCells = [];
-
-		//[UIComponent("tab-selector")]
-		//private readonly TabSelector _tabSelector = null!; // Just commented this out since it isn't used currently. If needed just uncomment it.
 
 		[UIValue("is-loading")]
 		private bool IsLoading
@@ -79,19 +79,30 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private string MilestoneCellBsml => Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_MILESTONE_CELL);
 
         [UIValue("is-milestone-tab")]
-        private bool IsMilestoneTab => CurrentTab <= Tabs.Progress;
+        private bool IsMilestoneTab => CurrentTab == CategoryTab.Milestones;
 
         [UIValue("is-mission-tab")]
-        private bool IsMissionTab => CurrentTab == Tabs.Missions;
+        private bool IsMissionTab => CurrentTab == CategoryTab.Missions;
+
+        [UIValue("container-offset")]
+        private float ContainerOffset => CurrentTab == CategoryTab.Missions ? 7.5f : 0f;
+
+        [UIValue("container-width")]
+        private float ContainerWidth => CurrentTab == CategoryTab.Missions ? 135f : 120f;
 
 
-        private enum Tabs { 
-			Completed = 0,
-			Progress,
-            Missions
+        private enum CategoryTab {
+            Missions = 0,
+			Milestones
 		}
+        private enum MilestoneTab
+        {
+            Progress = 0,
+            Completed
+        }
 
-		[UIAction("#post-parse")]
+
+        [UIAction("#post-parse")]
 		private void Parsed()
 		{
 			if (!_parsed)
@@ -101,30 +112,40 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, _contentContainer, mc);
 
-			CurrentTab = Tabs.Completed;
+			CurrentTab = 0;
 
 			IsLoading = true;
-			_ = SetMilestones(CurrentTab);
-		}
+			_ = SetMilestones(0);
+            mc.ShowMissions();
+        }
 
 #pragma warning disable IDE0060 // index is needed for this function to be called correctly.
-        [UIAction("tab-selected")]
-		private void TabSelected(SegmentedControl segmentedControl, int index)
+        [UIAction("category-tab-selected")]
+		private void CategoryTabSelected(SegmentedControl segmentedControl, int index)
 		{
-            CurrentTab = (Tabs)segmentedControl.selectedCellNumber;
+            CurrentTab = (CategoryTab)segmentedControl.selectedCellNumber;
 
             if (IsMilestoneTab)
             {
                 IsLoading = true;
-                _ = SetMilestones(CurrentTab);
+                _ = SetMilestones(_currentMilestoneTab);
             }
             else
                 mc.ShowMissions();
 
 		}
+
+        [UIAction("milestone-tab-selected")]
+        private void MilestoneTabSelected(SegmentedControl segmentedControl, int index)
+        {
+            _currentMilestoneTab = (MilestoneTab)segmentedControl.selectedCellNumber;
+
+            IsLoading = true;
+            _ = SetMilestones(_currentMilestoneTab);
+        }
 #pragma warning restore IDE0060
 
-        private async Task SetMilestones(Tabs tab)
+        private async Task SetMilestones(MilestoneTab tab)
         {
             AsyncLock.Releaser? locker = await milestoneLock.LockAsync();
 
@@ -146,7 +167,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 _userId = user.platformUserId;
 
-                _milestones = await _accSaberStore.GetUserMilestones(tab == Tabs.Completed);
+                _milestones = await _accSaberStore.GetUserMilestones(tab == MilestoneTab.Completed);
 
                 foreach (var milestone in _milestones)
                 {

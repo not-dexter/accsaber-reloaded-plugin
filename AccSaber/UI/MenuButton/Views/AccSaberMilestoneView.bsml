@@ -1,28 +1,33 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-  <vertical pref-width='135' anchor-pos-x='7.5' child-expand-height='false'>
-    <horizontal bg='panel-top' pref-height='17'>
-      <text text='Milestones &amp; Missions' align='Center' font-size='10'/>
+  <vertical pref-width='~container-width' anchor-pos-x='~container-offset' child-expand-height='false' child-control-height='false'>
+    <horizontal bg='panel-top' vertical-fit='PreferredSize' pref-height='12'>
+      <text text='Objectives' align='Center' font-size='10'/>
     </horizontal>
-    <vertical vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pad='1' pad-top='0' >
-      <tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected'/>
+    <vertical vertical-fit='PreferredSize' pref-height='8' pad='1'>
+      <tab-selector tab-tag='category-tabs' select-cell='category-tab-selected'/>
     </vertical>
+    <vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-milestone-tab'>
+      <tab-selector tab-tag='milestone-tabs' select-cell='milestone-tab-selected'/>
+    </vertical>
+
+    <tab tags='category-tabs' tab-name='Missions'/>
+    <tab tags='category-tabs' tab-name='Milestones'/>
     
-    <tab tags='tabs' tab-name='Completed'/>
-    <tab tags='tabs' tab-name='In Progress'/>
-    <tab tags='tabs' tab-name='Missions'/>
+    <tab tags='milestone-tabs' tab-name='In Progress'/>
+    <tab tags='milestone-tabs' tab-name='Completed'/>
     
     <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10' anchor-pos-y='-35'/>
     
-    <horizontal pref-width='120' pref-height='60' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-milestone-tab'>
+    <horizontal pref-width='120' pref-height='55' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' child-expand-width='false' active='~is-milestone-tab'>
       <vertical bg='panel-top' skew='0' pref-width='105' pad='2'>
         <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' cell-size='15' stick-scrolling='true' _children='~milestone-cell' active='~is-not-loading'/>
       </vertical>
-      <vertical preferred-width='4'>
+      <vertical pref-width='4'>
         <page-button event-click='milestone-list#PageUp' direction='Up' pref-height='3' pref-width='4'/>
         <page-button event-click='milestone-list#PageDown' direction='Down' pref-height='3' pref-width='4'/>
       </vertical>
     </horizontal>
-    <vertical id='content-container' pref-width='135' pref-height='80' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-mission-tab'/>
+    <vertical id='content-container' pref-width='135' pref-height='55' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-mission-tab'/>
     
   </vertical>
 </bg>
