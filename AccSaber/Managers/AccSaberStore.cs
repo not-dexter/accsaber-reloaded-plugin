@@ -16,7 +16,7 @@ using Zenject;
 
 namespace AccSaber.Managers
 {
-	internal sealed class AccSaberStore : IInitializable
+	internal sealed class AccSaberStore : IInitializable, IDisposable
 	{
 		private readonly SiraLog _log;
 		private readonly IPlatformUserModel _platformUserModel;
