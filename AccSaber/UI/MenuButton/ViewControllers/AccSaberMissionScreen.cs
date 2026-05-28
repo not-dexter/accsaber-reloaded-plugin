@@ -5,12 +5,8 @@ using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.FloatingScreen;
-using BeatSaberMarkupLanguage.Harmony_Patches;
 using HMUI;
-using Newtonsoft.Json;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
@@ -25,13 +21,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
-    internal class AccSaberMissionScreen : IInitializable, IDisposable, INotifyPropertyChanged
+    internal class AccSaberMissionScreen : INotifyPropertyChanged
     {
 #pragma warning disable IDE0051
-        public FloatingScreen missionScreen = null!;
-        private bool _parsed;
         private bool _isLoading;
-        private AsyncLock _missionLock = new();
+        private readonly AsyncLock _missionLock = new();
 
         [UIComponent("daily-list")]
         private readonly CustomCellListTableData _dailyList = null!;
@@ -45,33 +39,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("weekly-cells")]
         private readonly List<object> _weeklyCells = [];
 
-        private List<Action> _lsPropertyChangedActions = [];
-
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        private AccSaberStore _accSaberStore = null!;
-        private AccSaberMenuViewController _accSaberMenuViewController = null!;
-        [Inject]
-        public void Construct(AccSaberStore accSaberStore, AccSaberMenuViewController accSaberMenuViewController)
-        {
-            _accSaberStore = accSaberStore;
-            _accSaberMenuViewController = accSaberMenuViewController;
-        }
-        public void Initialize()
-        {
-            missionScreen = FloatingScreen.CreateFloatingScreen(new Vector2(70, 90), true, new Vector3(0f, 0.05f, 1.8f), new Quaternion(0, 60, 0, 0));
-            missionScreen.gameObject.name = "AccSaberMissionScreen";
-            missionScreen.gameObject.SetActive(false);
-            missionScreen.transform.eulerAngles = new Vector3(90, 0, 0);
-            missionScreen.transform.localScale = new Vector3(0.03f, 0.03f, 0.03f);
+        [Inject] private readonly AccSaberStore _accSaberStore = null!;
 
-            missionScreen.Handle().SetActive(false);
-            VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, missionScreen, this);
-
-            _accSaberMenuViewController.HubActivated += ShowMissions;
-            _accSaberMenuViewController.HubDeactivated += HideMissions;
-        }
-
+        [UIValue("mission-cell")]
+        private string MissionCellBsml => Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_MISSION_CELL);
+        
         [UIValue("is-loading")]
         private bool IsLoading
         {
@@ -90,20 +64,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void ShowMissions()
         {
-            missionScreen.gameObject.SetActive(true);
             _ = SetMissions();
-        }
-        public void HideMissions()
-        {
-            missionScreen.gameObject.SetActive(false);
-        }
-        [UIAction("#post-parse")]
-        void Parsed()
-        {
-            if (!_parsed)
-            {
-                _parsed = true;
-            }
         }
         private async Task SetMissions()
         {
@@ -136,11 +97,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         }
                     }
 
-                    if (missionScreen.gameObject.activeInHierarchy)
-                    {
-                        _dailyList.TableView().ReloadData();
-                        _weeklyList.TableView().ReloadData();
-                    }
+                    _dailyList.TableView().ReloadData();
+                    _weeklyList.TableView().ReloadData();
+
                     IsLoading = false;
 
                 }
@@ -149,12 +108,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     Plugin.Log.Error(e);
                 }
             }
-        }
-
-        public void Dispose()
-        {
-            _accSaberMenuViewController.HubActivated -= ShowMissions;
-            _accSaberMenuViewController.HubDeactivated -= HideMissions;
         }
 
         internal class MissionCell(AccSaberMission data)
