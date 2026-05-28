@@ -100,14 +100,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
             base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
 
-			HubActivated!.Invoke();
+			HubActivated?.Invoke();
 		}
 
         protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
         {
             base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
 
-            HubDeactivated!.Invoke();
+            HubDeactivated?.Invoke();
         }
 
 

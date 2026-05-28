@@ -3,12 +3,14 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.Components;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -28,9 +30,26 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private bool _isLoading;
 		private Tabs _currentTab;
 
-		private AccSaberStore _accSaberStore = null!;
+        private Tabs CurrentTab
+        {
+            get => _currentTab;
+            set
+            {
+                _currentTab = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMilestoneTab)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMissionTab)));
+            }
+        }
+
+        private readonly AsyncLock milestoneLock = new();
+
+        [Inject] private AccSaberStore _accSaberStore = null!;
+        [Inject] internal AccSaberMissionScreen mc = null!;
 
 		private List<AccSaberMilestone> _milestones = null!;
+
+        [UIObject("content-container")]
+        private readonly GameObject _contentContainer = null!;
 
 		[UIComponent("milestone-list")]
 		private readonly CustomCellListTableData _milestonesList = null!;
@@ -53,66 +72,89 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 		}
 
-		private enum Tabs { 
+        [UIValue("is-not-loading")]
+        private bool IsNotLoading => !_isLoading;
+
+        [UIValue("milestone-cell")]
+        private string MilestoneCellBsml => Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_MILESTONE_CELL);
+
+        [UIValue("is-milestone-tab")]
+        private bool IsMilestoneTab => CurrentTab <= Tabs.Progress;
+
+        [UIValue("is-mission-tab")]
+        private bool IsMissionTab => CurrentTab == Tabs.Missions;
+
+
+        private enum Tabs { 
 			Completed = 0,
-			Progress = 1
-		}
-
-		[UIValue("is-not-loading")]
-		private bool IsNotLoading => !_isLoading;
-
-		[Inject]
-		public void Construct(AccSaberStore accSaberStore)
-		{
-			_accSaberStore = accSaberStore;
+			Progress,
+            Missions
 		}
 
 		[UIAction("#post-parse")]
-		void Parsed()
+		private void Parsed()
 		{
 			if (!_parsed)
 			{
 				_parsed = true;
 			}
-			_currentTab = Tabs.Completed;
+
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, _contentContainer, mc);
+
+			CurrentTab = Tabs.Completed;
+
 			IsLoading = true;
-			_ = SetMilestones(_currentTab);
+			_ = SetMilestones(CurrentTab);
 		}
 
 #pragma warning disable IDE0060 // index is needed for this function to be called correctly.
         [UIAction("tab-selected")]
-		void TabSelected(SegmentedControl segmentedControl, int index)
+		private void TabSelected(SegmentedControl segmentedControl, int index)
 		{
-			IsLoading = true;
-			_currentTab = (Tabs)segmentedControl.selectedCellNumber;
-			_ = SetMilestones(_currentTab);	 
+            CurrentTab = (Tabs)segmentedControl.selectedCellNumber;
+
+            if (IsMilestoneTab)
+            {
+                IsLoading = true;
+                _ = SetMilestones(CurrentTab);
+            }
+            else
+                mc.ShowMissions();
 
 		}
 #pragma warning restore IDE0060
 
         private async Task SetMilestones(Tabs tab)
         {
-			_milestoneCells.Clear();
-			_milestonesList.Data().Clear();
+            AsyncLock.Releaser? locker = await milestoneLock.LockAsync();
 
-			UserInfo? user = await _accSaberStore.GetPlatformUserInfo();
+            if (locker is null)
+                return;
 
-            if (user is null)
+            using (locker.Value)
             {
-				return;
+                _milestoneCells.Clear();
+                _milestonesList.Data().Clear();
+
+                UserInfo? user = await _accSaberStore.GetPlatformUserInfo();
+
+                if (user is null)
+                {
+                    return;
+                }
+
+
+                _userId = user.platformUserId;
+
+                _milestones = await _accSaberStore.GetUserMilestones(tab == Tabs.Completed);
+
+                foreach (var milestone in _milestones)
+                {
+                    _milestoneCells.Add(new MilestoneCell(milestone));
+                }
+                _milestonesList.TableView().ReloadData();
+                IsLoading = false;
             }
-
-
-			_userId = user.platformUserId;
-
-			_milestones = await _accSaberStore.GetUserMilestones(tab == Tabs.Completed);
-
-			foreach (var milestone in _milestones)
-            {
-                _milestoneCells.Add(new MilestoneCell(milestone));
-            }
-			_milestonesList.TableView().ReloadData();
-			IsLoading = false;
         }
 		internal class MilestoneCell
 		{
