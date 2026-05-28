@@ -2,10 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/bsmg/BSIPA-MetadataFileSchema/master/Schema.json",
   "id": "AccSaber",
   "name": "AccSaber",
-  "author": "AccSaber Team",
-  "version": "1.0.1",
+  "author": "AccSaber Reloaded Team",
+  "version": "1.1.1",
   "description": "AccSaber Plugin",
-  "gameVersion": "1.39.0",
+  "gameVersion": "1.39.1",
   "dependsOn": {
     "BSIPA": "^4.2.2",
     "BeatSaberMarkupLanguage": "^1.6.10",

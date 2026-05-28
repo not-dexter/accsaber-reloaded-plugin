@@ -202,31 +202,31 @@ namespace AccSaber.ScoreTracking
 
             float completion = (float)notes / totalNotes;
 
-            Plugin.Log.Info($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
+            Plugin.Log.Debug($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
 
-            Plugin.Log.Info(JsonConvert.SerializeObject(score));
+            Plugin.Log.Debug(JsonConvert.SerializeObject(score));
 
             if (completion < completionPercent)
             {
-                Plugin.Log.Info($"No score submit, completion did not reach the threshold of {completionPercent * 100f:N2}%.");
+                Plugin.Log.Debug($"No score submit, completion did not reach the threshold of {completionPercent * 100f:N2}%.");
                 return;
             }
 
             if (!AllowedModes.Contains(gamemode))
             {
-                Plugin.Log.Info($"The gamemode played is not an allowed mode (mode = {gamemode})");
+                Plugin.Log.Debug($"The gamemode played is not an allowed mode (mode = {gamemode})");
                 return;
             }
 
             if (!SubmissionPatch.Submit)
             {
-                Plugin.Log.Info("No score submit: " + SubmissionPatch.GetSubmitReason());
+                Plugin.Log.Debug("No score submit: " + SubmissionPatch.GetSubmitReason());
                 return;
             }
 
             if (totalNotes < 115 || notes > totalNotes)
             {
-                Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
+                Plugin.Log.Debug("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
                 return;
             }
 
