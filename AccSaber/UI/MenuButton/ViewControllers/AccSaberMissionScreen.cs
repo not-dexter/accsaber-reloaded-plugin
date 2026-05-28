@@ -119,9 +119,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 if (data.TargetCount is not null || data.TargetCount < 0)
                 {
                     if (data.ProgressCount > 0)
-                        return (float)(data.ProgressCount / data.TargetCount);
+                        return (float)data.ProgressCount / data.TargetCount.Value;
                     else
-                        return (float)(0.01f / data.TargetCount);
+                        return 0.01f / data.TargetCount.Value;
                 }
                 return 0f;
             }
@@ -144,7 +144,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             };
 
             [UIValue("showProgress")]
-            public bool ShowProgress => data.TargetCount is not null;
+            public bool ShowProgress => data.TargetCount is not null && !completed;
 
 
             [UIValue("target")]

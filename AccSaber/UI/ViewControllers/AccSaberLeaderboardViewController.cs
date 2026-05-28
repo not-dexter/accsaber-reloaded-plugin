@@ -299,6 +299,8 @@ namespace AccSaber.UI.ViewControllers
                 page = 1;
                 currentPage = -1;
 
+                InvalidateCache();
+
                 Task.Run(async () =>
                 {
                     if (!await ForceRefresh(false))
