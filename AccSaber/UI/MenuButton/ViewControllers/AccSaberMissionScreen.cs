@@ -162,6 +162,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 Match match = DescriptionRegex.Match(input);
 
+                string AccToBeat = data.TargetAcc is not null ? $" ({data.TargetAcc:N2}%)": "";
+
                 if (match.Success)
                 {
                     string newString;
@@ -172,10 +174,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         newString = input.Replace(match.Groups[0].Value, EnumUtils.ReloadedDiffToDiff(match.Groups[0].Value).ToString());
 
 
-                    return $"<color={ColorUtils.GREY}>{newString}</color>";
+                    return $"<color={ColorUtils.GREY}>{newString[..^1] + AccToBeat}</color>";
                 }
                 else
-                    return $"<color={ColorUtils.GREY}>{input}</color>";
+                    return $"<color={ColorUtils.GREY}>{input[..^1] + AccToBeat}</color>";
             }
 
             [UIValue("missionXP")] public string MissionXP => $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
