@@ -25,7 +25,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 #pragma warning disable IDE0051
 		public new event PropertyChangedEventHandler? PropertyChanged;
 
-		private string? _userId;
 		private bool _parsed;
 		private bool _isLoading;
 		private CategoryTab _currentTab;
@@ -114,7 +113,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 			CurrentTab = 0;
 
-			IsLoading = true;
 			_ = SetMilestones(0);
             mc.ShowMissions();
         }
@@ -123,13 +121,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("category-tab-selected")]
 		private void CategoryTabSelected(SegmentedControl segmentedControl, int index)
 		{
-            CurrentTab = (CategoryTab)segmentedControl.selectedCellNumber;
+            CurrentTab = (CategoryTab)index;
 
             if (IsMilestoneTab)
-            {
-                IsLoading = true;
                 _ = SetMilestones(_currentMilestoneTab);
-            }
             else
                 mc.ShowMissions();
 
@@ -138,9 +133,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("milestone-tab-selected")]
         private void MilestoneTabSelected(SegmentedControl segmentedControl, int index)
         {
-            _currentMilestoneTab = (MilestoneTab)segmentedControl.selectedCellNumber;
+            _currentMilestoneTab = (MilestoneTab)index;
 
-            IsLoading = true;
             _ = SetMilestones(_currentMilestoneTab);
         }
 #pragma warning restore IDE0060
@@ -154,6 +148,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             using (locker.Value)
             {
+                IsLoading = true;
+
                 _milestoneCells.Clear();
                 _milestonesList.Data().Clear();
 
@@ -164,15 +160,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     return;
                 }
 
-
-                _userId = user.platformUserId;
+                //_userId = user.platformUserId;
 
                 _milestones = await _accSaberStore.GetUserMilestones(tab == MilestoneTab.Completed);
 
-                foreach (var milestone in _milestones)
+                foreach (AccSaberMilestone milestone in _milestones)
                 {
                     _milestoneCells.Add(new MilestoneCell(milestone));
                 }
+
                 _milestonesList.TableView().ReloadData();
                 IsLoading = false;
             }
@@ -235,7 +231,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     else
                         middle = $"{Prog:0.####} / {Targ:0.####}";
 
-                    return $"<color={ColorUtils.GetMilestoneRankColor(data.Tier).DimColor(6)}>(" + middle + ")</color>";
+                    return $"<color={ColorUtils.GetMilestoneRankColor(data.Tier).DimColor(6)}>({middle})</color>";
                 }
             }
             [UIValue(nameof(Tier))] public string Tier => $"<color={ColorUtils.GetMilestoneRankColor(data.Tier)}>{data.Tier.Capitialize()}</color>";

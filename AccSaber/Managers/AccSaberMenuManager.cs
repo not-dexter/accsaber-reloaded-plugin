@@ -1,6 +1,5 @@
 ﻿using AccSaber.UI.MenuButton;
 using AccSaber.Utils;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.MenuButtons;
 using System;
 using Zenject;

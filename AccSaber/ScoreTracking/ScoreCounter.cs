@@ -55,7 +55,7 @@ namespace AccSaber.ScoreTracking
             if (transition.practiceSettings is not null)
             {
                 SubmissionPatch.SetPracticeSubmission();
-                Plugin.Log.Info($"Practice mode: start time = {transition.practiceSettings.startSongTime}, speed mult = {transition.practiceSettings.songSpeedMul}");
+                Plugin.Log.Debug($"Practice mode: start time = {transition.practiceSettings.startSongTime}, speed mult = {transition.practiceSettings.songSpeedMul}");
             }
 
             //Plugin.Log.Info($"current map null? {store.CurrentRankedMap is null}");

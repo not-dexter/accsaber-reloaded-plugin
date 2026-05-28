@@ -13,16 +13,14 @@ using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
-using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
-using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
-using IPA.Utilities;
 using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
+using Zenject;
 
 namespace AccSaber.UI.ViewControllers
 {
@@ -31,7 +29,6 @@ namespace AccSaber.UI.ViewControllers
 #pragma warning disable IDE0051
 		private string? _userId;
 		private AccSaberPlayer? _user;
-		private readonly PluginConfig _pluginConfig = null!;
 		private bool _parsed;
 		private bool _firstLoad;
 		private bool _isLoading;
@@ -47,7 +44,7 @@ namespace AccSaber.UI.ViewControllers
 		private string _plays = null!;
 		private string _headset = null!;
 
-		private bool friendColorSwapped = false, rivalColorSwapped = false;
+		//private bool friendColorSwapped = false, rivalColorSwapped = false;
 
 		private MonoBehaviour? _host;
 
@@ -87,8 +84,8 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("image1x1")] public const string image1x1 = ResourcePaths.PIXEL;
         [UIValue("playerImageBorder")] public const string playerImageBorderPath = ResourcePaths.GRADIENT_CORNER;
 
-        [UIComponent("playerImageBackground")] private ImageView _playerImageBackground = null!;
-        [UIComponent("playerImageBorder")] private ImageView _playerImageBorder = null!;
+        [UIComponent("playerImageBackground")] private readonly ImageView _playerImageBackground = null!;
+        [UIComponent("playerImageBorder")] private readonly ImageView _playerImageBorder = null!;
 
 
         [UIValue("playerImageSize")] public const float playerImageSize = 15f;
@@ -100,15 +97,7 @@ namespace AccSaber.UI.ViewControllers
 
 		private CanvasGroup? _userInfoCanvasGroup;
 
-		private readonly AccSaberStore _accSaberStore;
-		private readonly TimeTweeningManager _timeTweeningManager;
-
-		public LeaderboardUserModalController(AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, PluginConfig pluginConfig)
-		{
-			_accSaberStore = accSaberStore;
-			_timeTweeningManager = timeTweeningManager;
-			_pluginConfig = pluginConfig;
-		}
+		[Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
 
 		#region UI Values
 
@@ -140,9 +129,9 @@ namespace AccSaber.UI.ViewControllers
 		}
 
 		[UIValue("category-choices")]
-		private List<object> _categoryChoices = [.. new APCategory[] { APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech }.Select(a => a.ToString())];	
+        private readonly List<object> _categoryChoices = [.. new APCategory[] { APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech }.Select(a => a.ToString())];
 
-		[UIValue("username")]
+        [UIValue("username")]
 		private string Username
 		{
 			get => _username.Length > 18 ? $"{_username[..15]}..." : _username + "</color>";
@@ -291,8 +280,6 @@ namespace AccSaber.UI.ViewControllers
                 await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Followed);
                 _friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
             }
-
-			friendColorSwapped = !friendColorSwapped;
         }
 
 		[UIAction("rival-clicked")]

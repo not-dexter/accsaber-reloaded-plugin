@@ -1,5 +1,4 @@
 ﻿using AccSaber.Configuration;
-using AccSaber.Counter;
 using AccSaber.Installers;
 using AccSaber.Patches;
 using HarmonyLib;
@@ -23,9 +22,9 @@ namespace AccSaber
 			zenjector.UseLogger(logger);
 			Log = logger;
 
-			APCalc calc = new();
+			//APCalc calc = new();
 
-			zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>(), calc);
+			zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
 			zenjector.Install<AccSaberAppInstaller>(Location.App);
 			zenjector.Install<AccSaberGameInstaller>(Location.StandardPlayer);
 

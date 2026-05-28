@@ -1,5 +1,4 @@
 ﻿using AccSaber.Configuration;
-using AccSaber.Counter;
 using AccSaber.Managers;
 using AccSaber.UI;
 using AccSaber.UI.MenuButton;
@@ -16,12 +15,12 @@ namespace AccSaber.Installers
 	internal sealed class AccSaberMenuInstaller : Installer
 	{
 		private readonly PluginConfig _pluginConfig;
-		private readonly APCalc _calc;
+		//private readonly APCalc _calc;
 
-		public AccSaberMenuInstaller(PluginConfig pluginConfig, APCalc calc)
+		public AccSaberMenuInstaller(PluginConfig pluginConfig)
 		{
 			_pluginConfig = pluginConfig;
-			_calc = calc;
+			//_calc = calc;
 		}
 		
 		public override void InstallBindings()
@@ -29,7 +28,7 @@ namespace AccSaber.Installers
 			Plugin.Container = Container;
 
 			Container.BindInstance(_pluginConfig).AsSingle();
-			Container.BindInstance(_calc).AsSingle();
+			//Container.BindInstance(_calc).AsSingle();
 
 			Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
             Container.Bind<AccSaberMissionScreen>().AsSingle();

@@ -126,7 +126,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 return 0f;
             }
 
-            private string color = data.Band switch
+            private readonly string color = data.Band switch
             {
                 "extreme" => "#ffd700",
                 "hard" => "#f97316",
@@ -134,30 +134,28 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 /*"easy" => "#3cb371",*/
                 _ => ColorUtils.GREY
             };
-            private string GetCategoryName(string category)
+            private string GetCategoryName(string category) => category switch
             {
-                return category switch
-                {
-                    "b0000000-0000-0000-0000-000000000001" => "True",
-                    "b0000000-0000-0000-0000-000000000002" => "Standard",
-                    "b0000000-0000-0000-0000-000000000003" => "Tech",
+                "b0000000-0000-0000-0000-000000000001" => "True",
+                "b0000000-0000-0000-0000-000000000002" => "Standard",
+                "b0000000-0000-0000-0000-000000000003" => "Tech",
 
-                    _ => "Overall"
-                };
-            }
-            [UIValue(nameof(showProgress))]
-            public bool showProgress => data.TargetCount is not null;
+                _ => "Overall"
+            };
+
+            [UIValue("showProgress")]
+            public bool ShowProgress => data.TargetCount is not null;
 
 
-            [UIValue(nameof(target))]
-            public string target => $"{data.ProgressCount}/{data.TargetCount}";
-            public string missionCategory => $"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryToEnum(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005"))}>{GetCategoryName(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005").ToUpper()}</color>";
+            [UIValue("target")]
+            public string Target => $"{data.ProgressCount}/{data.TargetCount}";
+            public string MissionCategory => $"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryToEnum(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005"))}>{GetCategoryName(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005").ToUpper()}</color>";
 
-            [UIValue(nameof(mission))] public string mission =>  $"{data.Name}  <size=80%>{missionCategory}</size>";
+            [UIValue("mission")] public string Mission => $"{data.Name}  <size=80%>{MissionCategory}</size>";
 
-            [UIValue(nameof(missionBand))] public string missionBand => $"<color={color}>{data.Band.ToUpper()}</color>";
+            [UIValue("missionBand")] public string MissionBand => $"<color={color}>{data.Band.ToUpper()}</color>";
 
-            [UIValue(nameof(description))] public string description => DescriptionParser(data.Description);
+            [UIValue("description")] public string Description => DescriptionParser(data.Description);
 
             private static readonly Regex DescriptionRegex = new(@"(?<=\().+?(?=\))");
             public string DescriptionParser(string input)
@@ -180,9 +178,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     return $"<color={ColorUtils.GREY}>{input}</color>";
             }
 
-            [UIValue(nameof(missionXP))] public string missionXP => $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
+            [UIValue("missionXP")] public string MissionXP => $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
 
-            [UIValue(nameof(ExactProgress))]
+            [UIValue("exactProgress")]
             public string ExactProgress
             {
                 get

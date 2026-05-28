@@ -1,5 +1,4 @@
-﻿using AccSaber.Models;
-using AccSaber.ScoreTracking;
+﻿using AccSaber.ScoreTracking;
 using Zenject;
 
 namespace AccSaber.Installers

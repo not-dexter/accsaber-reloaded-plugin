@@ -7,7 +7,6 @@ using HMUI;
 using System;
 using System.Collections;
 using System.ComponentModel;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers

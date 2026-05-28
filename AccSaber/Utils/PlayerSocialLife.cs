@@ -1,9 +1,7 @@
 ﻿using AccSaber.API;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
@@ -11,7 +9,7 @@ using static AccSaber.API.AccsaberAPI;
 
 namespace AccSaber.Utils
 {
-    public sealed class PlayerSocialLife : IInitializable, IDisposable
+    public sealed class PlayerSocialLife : IInitializable//, IDisposable
     {
         public static event Action? OnRelationChanged;
 
@@ -86,14 +84,14 @@ namespace AccSaber.Utils
             if (displayType != LeaderboardDisplayType.Relations)
                 PlayerRelations!.Remove(id);
 
-            if (!UserIdToRelationId[displayType.Convert()].TryGetValue(id, out string relationId))
-                return false;
-
             RelationType rt = displayType.Convert();
+
+            if (!UserIdToRelationId[rt].TryGetValue(id, out string relationId))
+                return false;
 
             bool success = await RemovePlayerRelation(relationId);
 
-            if (success && UserIdToRelationId.ContainsKey(rt))
+            if (success)
                 UserIdToRelationId[rt].Remove(id);
 
             OnRelationChanged?.Invoke();
@@ -166,7 +164,7 @@ namespace AccSaber.Utils
             lock (loadLock)
                 Monitor.PulseAll(loadLock);
         }
-        public void Dispose() // This is currently unused, as it just returns a 500.
+        /*public void Dispose() // This is currently unused, as it just returns a 500.
         {
             if (AuthInfo is null)
                 return;
@@ -176,6 +174,6 @@ namespace AccSaber.Utils
             HttpRequestMessage request = new(HttpMethod.Post, HelpfulPaths.APAPI_AUTH_END) { Content = sc };
 
             APIHandler.CallAPI(request, throttler, maxRetries: 1).GetAwaiter().GetResult();
-        }
+        }*/
     }
 }
