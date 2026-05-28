@@ -30,8 +30,6 @@ namespace AccSaber.Managers
 		private AccSaberPlayer? _currentUser;
 
         public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
-		public List<AccSaberMilestone> _currentUserMilestones = [];
-        
 		internal static CancellationTokenSource WebsocketCanceller { get; private set; } = new();
         internal const int RecieveBufferSize = 5120;
         internal const int SendBufferSize = 16;
@@ -198,19 +196,34 @@ namespace AccSaber.Managers
 
         public async Task StartWebsocket(CancellationToken ct = default)
         {
-            AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
-            if (theLock is null)
-                return;
-            using (theLock.Value)
-                while (!ct.IsCancellationRequested)
-					await ListenForScores(ct);
+            try
+            {
+                AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
+                if (theLock is null)
+                    return;
+                using (theLock.Value)
+                    while (true)
+                    {
+                        Plugin.Log.Info("websocket starting");
+                        await ListenForScores(ct);
+                        await Task.Delay(1000, ct);
+                    }
+            }
+            catch (OperationCanceledException)
+            {
+                Plugin.Log.Info("Websocket closed.");
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error starting the websocket!\n" + e);
+            }
         }
         private async Task ListenForScores(CancellationToken ct)
         {
-			using ClientWebSocket webSocket = new();
-            await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), ct);
             try
             {
+                using ClientWebSocket webSocket = new();
+                await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), ct);
                 using MemoryStream ms = new();
                 WebSocketReceiveResult result;
                 while (webSocket.State == WebSocketState.Open)
@@ -238,9 +251,11 @@ namespace AccSaber.Managers
                     }
 
                     ms.SetLength(0);
-                    ms.Seek(0, SeekOrigin.Begin);
-                    ms.Position = 0;
                 }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (OperationCanceledException)
             {
@@ -253,6 +268,7 @@ namespace AccSaber.Managers
         }
 		private void UpdatePlayerScore(AccSaberLeaderboardEntry score)
 		{
+            //Plugin.Log.Debug($"score name = {score.PlayerName}, score id = {score.PlayerId}, player id = {PlayerSocialLife.PlayerID}");
 			if (score.PlayerId.Equals(PlayerSocialLife.PlayerID))
 				OnPlayerScoreUpdated?.Invoke(score);
 		}
@@ -279,9 +295,12 @@ namespace AccSaber.Managers
 			OnScoreUpdated += UpdatePlayerScore;
 
             //These are all independent tasks, so start each of them on their own thread
-			Task.Run(async () => _currentUserMilestones = await GetUserMilestones(true));
 			Task.Run(UpdateAccSaberInfo);
 			Task.Run(() => StartWebsocket(WebsocketCanceller.Token));
 		}
+        public void Dispose()
+        {
+            OnScoreUpdated -= UpdatePlayerScore;
+        }
 	}
 }
