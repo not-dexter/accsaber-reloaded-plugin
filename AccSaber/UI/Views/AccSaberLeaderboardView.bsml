@@ -16,7 +16,7 @@
     <page-button id='PageDownSelector' direction='Down' pref-width='5' on-click='OnPageDown'/>
   </vertical>
 
-  <vertical id='selectorContainer' anchor-pos-x='-41.75' anchor-pos-y='18' vertical-fit='PreferredSize' pref-height='30' pref-width='8' child-expand-width='true' child-expand-height='false' bg='panel-top' bg-color='#0009' skew='0'>
+  <vertical id='selectorContainer' anchor-pos-x='-41.75' anchor-pos-y='18' vertical-fit='PreferredSize' pref-height='29' pref-width='8' child-expand-width='true' child-expand-height='false' bg='panel-top' bg-color='#0009' skew='0'>
     <vertical pref-height='2'/>
     <clickable-image id='GlobalSelector' src='~globalPic' preserve-aspect='true' pref-width='~globeIconSize' pref-height='~globeIconSize' on-click='ShowGlobal' hover-hint='Global'/>
     <clickable-image id='FollowedSelector' src='~followedPic' preserve-aspect='true' pref-width='~iconSize' pref-height='~iconSize' on-click='ShowFollowed' hover-hint='Followed'/>

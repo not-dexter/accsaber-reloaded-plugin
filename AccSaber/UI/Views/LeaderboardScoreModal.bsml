@@ -1,54 +1,48 @@
 <modal id='modal' show-event='~modalShowName' hide-event='~modalHideName' click-off-closes='true' move-to-center='true'>
   <loading id='loader' preserve-aspect='true'/>
   <vertical id='container' pref-width='~containerWidth' pref-height='~containerHeight'>
-    <horizontal>
-      <text id='playerNameText' text='PLAYER NAME' align='Center' font-size='~playerNameFontSize'/>
+    <horizontal pref-height="6" pref-width="45" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pad='1'>
+		<text id='playerNameText' text='PLAYER NAME' align='Center' font-size='~playerNameFontSize'/>
     </horizontal>
-    <stack pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
-      <img id='playerImageBorder' src='~playerImageBorder' pref-width='~playerImageBGSize' pref-height='~playerImageBGSize'/>
-      <vertical pref-width='~playerImageSize' pref-height='~playerImageSize' child-expand-width='false' child-expand-height='false'>
-        <stack pref-width='~playerImageSize' pref-height='~playerImageSize'>
-          <img id='playerImageBackground' src='~image1x1' img-color='~dimColor' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
-          <img id='playerImage' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
-        </stack>
-      </vertical>
-    </stack>
+	  <vertical pref-width='45' pref-height='0.5' horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
+	    <image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='45' pref-height='0.5' size-delta-x='45' size-delta-y='0.5' />
+	  </vertical>
     <horizontal>
-      <button text='View Profile' on-click='ShowProfile' align='Center'/>
     </horizontal>
     <horizontal>
       <vertical pref-width='~containerWidth'>
-        <text text='Time' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
-        <text id='timeSetText' text='time set' font-size='~valueFontSize' word-wrapping='false' align='Center'/>
+        <text text='Time Set' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
+        <text id='timeSetText' text='time set' font-size='~timeFontSize' word-wrapping='false' align='Center'/>
       </vertical>
     </horizontal>
     <horizontal child-expand-width='false'>
       <vertical pref-width='~valueWidth'>
-        <text text='AP' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
-        <text id='apText' text='AP' font-size='~valueFontSize' align='Center'/>
+		  <text text='Rank' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
+		  <text id='rankText' text='Rank' font-size='~valueFontSize' align='Center'/>
       </vertical>
       <vertical pref-width='~valueWidth'>
         <text text='Acc' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
         <text id='accText' text='acc' font-size='~valueFontSize' align='Center'/>
       </vertical>
       <vertical pref-width='~valueWidth'>
-        <text text='Rank' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
-        <text id='rankText' text='Rank' font-size='~valueFontSize' align='Center'/>
+		  <text text='AP' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
+		  <text id='apText' text='AP' font-size='~valueFontSize' align='Center'/>
       </vertical>
     </horizontal>
     <horizontal child-expand-width='false'>
       <vertical pref-width='~valueWidth'>
-        <text text='Weighted AP' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
-        <text id='weightedText' text='Weighted AP' font-size='~valueFontSize' align='Center'/>
+		  <text text='Score' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
+		  <text id='scoreText' text='Score' font-size='~valueFontSize' align='Center'/>
       </vertical>
       <vertical pref-width='~valueWidth'>
         <text text='XP Gained' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
         <text id='xpText' text='XP gained' font-size='~valueFontSize' align='Center'/>
       </vertical>
       <vertical pref-width='~valueWidth'>
-        <text text='Score' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
-        <text id='scoreText' text='Score' font-size='~valueFontSize' align='Center'/>
+		  <text text='Weighted AP' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
+		  <text id='weightedText' text='Weighted AP' font-size='~valueFontSize' align='Center'/>
       </vertical>
     </horizontal>
   </vertical>
+	<button-with-icon icon='AccSaber.Resources.open.png' anchor-pos-y='-3.5' anchor-pos-x='42' hover-hint='View Profile' pref-width="9" pref-height="7" on-click='ShowProfile'/>
 </modal>

@@ -31,20 +31,14 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("modalShowName")] public const string modalShowName = "ShowContainer";
         [UIValue("modalHideName")] public const string modalHideName = "HideContainer";
 
-        [UIValue("image1x1")] public const string image1x1 = ResourcePaths.PIXEL;
-        [UIValue("playerImageBorder")] public const string playerImageBorderPath = ResourcePaths.GRADIENT_CORNER;
-
-        [UIValue("containerWidth")] public const float containerWidth = 80f;
-        [UIValue("containerHeight")] public const float containerHeight = 80f;
+        [UIValue("containerWidth")] public const float containerWidth = 50f;
+        [UIValue("containerHeight")] public const float containerHeight = 40f;
 
         [UIValue("valueWidth")] public const float valueWidth = containerWidth / 3f;
 
-        [UIValue("playerImageSize")] public const float playerImageSize = 20f;
-        public const float borderSize = 3f;
-        [UIValue("playerImageBGSize")] public const float playerImageBGSize = borderSize + playerImageSize;
-
-        [UIValue("playerNameFontSize")] public const float playerNameFontSize = 7f;
+        [UIValue("playerNameFontSize")] public const float playerNameFontSize = 5f;
         [UIValue("valueFontSize")] public const float valueFontSize = 4f;
+        [UIValue("timeFontSize")] public const float timeFontSize = 3f;
         [UIValue("labelFontSize")] public const float labelFontSize = 2.5f;
 
         #endregion
@@ -59,11 +53,7 @@ namespace AccSaber.UI.ViewControllers
         [UIObject("loader")] private GameObject loader = null!;
 
         [UIComponent("playerNameText")] private TextMeshProUGUI playerNameText = null!;
-
-        [UIComponent("playerImage")] private ImageView playerImage = null!;
-        [UIComponent("playerImageBackground")] private ImageView playerImageBackground = null!;
-        [UIComponent("playerImageBorder")] private ImageView playerImageBorder = null!;
-
+        [UIComponent("separator")] private ImageView _separator = null!;
         [UIComponent("timeSetText")] private TextMeshProUGUI timeSetText = null!;
 
         [UIComponent("apText")] private TextMeshProUGUI apText = null!;
@@ -86,9 +76,7 @@ namespace AccSaber.UI.ViewControllers
         [UIAction("#post-parse")]
         private void PostParse()
         {
-            playerImage.material = ResourcePaths.BORDER_MATERIAL;
-            playerImageBackground.material = ResourcePaths.BORDER_MATERIAL;
-            playerImageBorder.material = ResourcePaths.BORDER_MATERIAL;
+            _separator.color = GREY.Color();
             playerNameText.enableVertexGradient = true;
         }
         [UIAction("ShowProfile")]
@@ -149,8 +137,6 @@ namespace AccSaber.UI.ViewControllers
             playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
             playerNameText.SetText(scoreInfo.PlayerName);
 
-            playerImageBorder.color = titleColor.Color();
-
             timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(2));
 
             apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
@@ -160,8 +146,6 @@ namespace AccSaber.UI.ViewControllers
             weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
             xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
             scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
-
-            _ = playerImage.SetImageAsync(scoreInfo.AvatarURL);
 
             yield return new WaitForFixedUpdate();
 
