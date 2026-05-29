@@ -1,8 +1,10 @@
 <modal id='modal' show-event='~modalShowName' hide-event='~modalHideName' click-off-closes='true' move-to-center='true'>
   <loading id='loader' preserve-aspect='true'/>
   <vertical id='container' pref-width='~containerWidth' pref-height='~containerHeight'>
-    <horizontal pref-height="6" pref-width="45" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pad='1'>
-		<text id='playerNameText' text='PLAYER NAME' align='Center' font-size='~playerNameFontSize'/>
+    <horizontal pref-height="6" pref-width="28" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pad='1'>
+		<horizontal pref-height="15" pref-width="25" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pad='1'>
+			<text id='playerNameText' text='PLAYER NAME' align='Center' overflow-mode='Ellipsis' font-size='~playerNameFontSize'/>
+		</horizontal>
     </horizontal>
 	  <vertical pref-width='45' pref-height='0.5' horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
 	    <image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='45' pref-height='0.5' size-delta-x='45' size-delta-y='0.5' />

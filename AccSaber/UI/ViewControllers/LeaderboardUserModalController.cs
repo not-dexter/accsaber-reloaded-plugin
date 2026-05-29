@@ -134,7 +134,7 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("username")]
 		private string Username
 		{
-			get => _username.Length > 18 ? $"{_username[..15]}..." : _username + "</color>";
+			get => _username;//_username.Length > 18 ? $"{_username[..15]}..." : _username + "</color>";
 			set
 			{
 				_username = value;
@@ -428,14 +428,14 @@ namespace AccSaber.UI.ViewControllers
 			string StatDiff(float stat)
             {
 				if (stat != 0)
-					return (stat < 0) ? $"<color=#ef4444><size=75%>▼{Math.Abs(stat):F2}</size></color>" : $"<color=#22c55e><size=75%>▲{Math.Abs(stat):F2}</size></color>";
+					return (stat < 0) ? $"<color=#ef4444><size=65%>▼{Math.Abs(stat):F2}</size></color>" : $"<color=#22c55e><size=65%>▲{Math.Abs(stat):F2}</size></color>";
 				else
 					return "";
 			}
 			string StatDiffInt(int stat)
 			{
 				if (stat != 0)
-					return (stat < 0) ? $"<color=#ef4444><size=75%>▼{Math.Abs(stat)}</size></color>" : $"<color=#22c55e><size=75%>▲{Math.Abs(stat)}</size></color>";
+					return (stat < 0) ? $"<color=#ef4444><size=65%>▼{Math.Abs(stat)}</size></color>" : $"<color=#22c55e><size=65%>▲{Math.Abs(stat)}</size></color>";
 				else
 					return "";
 			}
@@ -446,10 +446,10 @@ namespace AccSaber.UI.ViewControllers
             // this stat diff positioning fix is so lazy LMAO
 
             Username = $"{userInfo.PlayerName}";
-			Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
-			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
+			Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color> #{stats.Rank} {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
+			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color> #{stats.CountryRank} {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
 			Title = $"{"<color=" + _color + ">" +userInfo.LevelData.PlayerTitle}</color>";
-			Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color>  {stats.AP:N2} AP  {StatDiff(stats.StatDiffs.ApDiff)}": $"{stats.AP:N2} AP";
+			Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color> {stats.AP:N2} AP {StatDiff(stats.StatDiffs.ApDiff)}": $"{stats.AP:N2} AP";
 			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
 			Plays = $"{stats.Plays} ranked plays";

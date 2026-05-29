@@ -4,7 +4,9 @@
         <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='63' pref-height='43' active='~is-not-loading'>
             <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='65' spacing='-1'>
                 <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='25' pref-height='41' pad-top='2' spacing='2'>
-                  <text text='~username' align='Center' bold='true'/>
+				<vertical pref-height='8' pref-width='22' pad='0'>
+                  <text text='~username' align='Center' overflow-mode='Ellipsis' bold='true'/>
+				</vertical>
                   <text text='~title' align='Center' font-size='3.5' />
 					<stack pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
 						<img id='playerImageBorder' src='~playerImageBorder' pref-width='~playerImageBGSize' pref-height='~playerImageBGSize'/>
@@ -27,12 +29,12 @@
                   <dropdown-list-setting id='category-dropdown' text='' value='category-value' choices='category-choices' formatter='format-category' bind-value='true' apply-on-change='true' pref-width='5'/>
                   <horizontal horizontal-fit='PreferredSize' pref-width='23' pad='2'>
                     <vertical vertical-fit='PreferredSize' pref-height='6'>
-                      <text text='Global' align='Center' color='#AAA' font-size='2.5'/>
-                      <text text='~rank' align='Center' font-size='4'/>
+                      <text text='Global' align='Center' font-size='3.5'/>
+                      <text text='~rank' align='Center' font-size='3'/>
                     </vertical>
                     <vertical vertical-fit='PreferredSize' pref-height='6'>
-                      <text text='Country' color='#AAA' align='Center' font-size='2.5'/>
-                      <text text='~country' align='Center' font-size='4'/>
+                      <text text='Country' align='Center' font-size='3.5'/>
+                      <text text='~country' align='Center' font-size='3'/>
                     </vertical>
                   </horizontal>
                   <text text='~ap' align='Center' font-size='3.5'/>
