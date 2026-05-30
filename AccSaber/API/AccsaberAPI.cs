@@ -1055,9 +1055,11 @@ namespace AccSaber.API
             {
                 SerializerHandler.CachedPlayerScores.AddRange(outp);
 
-                if (SerializerHandler.CachedPlayerScoreLength < 0)
-                    SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
+                //if (SerializerHandler.CachedPlayerScoreLength < 0)
+                //    SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
             }
+
+            SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
 
             return outp;
         }
