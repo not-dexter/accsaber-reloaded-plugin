@@ -24,7 +24,9 @@ namespace AccSaber.Utils
 
         public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2)
         {
-            TimeSpan timeSpan = DateTime.UtcNow - dateTime.ToUniversalTime();
+            bool inFuture = DateTime.UtcNow < dateTime;
+
+            TimeSpan timeSpan = inFuture ? dateTime.ToUniversalTime() - DateTime.UtcNow : DateTime.UtcNow - dateTime.ToUniversalTime();
 
             string outp = "";
 
@@ -36,7 +38,7 @@ namespace AccSaber.Utils
                 outp += (layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ") + str;
             }
 
-            return outp[2..] + " ago.";
+            return inFuture ? "In " + outp[2..] + '.' : outp[2..] + " ago.";
         }
         public static (TimeSpan timeDiff, string str) GetMostSignificantTime(TimeSpan timeDiff, DateTime startTime)
         {

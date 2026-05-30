@@ -158,8 +158,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 yield return new WaitForEndOfFrame();
 
-                DailyTime = $"<color={ColorUtils.GREY}>({_dailyRefreshDate.TimeLeft()})</color>";
-                WeeklyTime = $"<color={ColorUtils.GREY}>({_weeklyRefreshDate.TimeLeft()})</color>";
+                DailyTime = $"<color={ColorUtils.GREY}>Resets {_dailyRefreshDate.ToRelativeTime(2).ToLower()}</color>";
+                WeeklyTime = $"<color={ColorUtils.GREY}>Resets {_weeklyRefreshDate.ToRelativeTime(3).ToLower()}</color>";
+
+                if (_dailyRefreshDate <= DateTime.UtcNow)
+                {
+                    StopTimer();
+                    SetMissions().ContinueWith(finish => UpdateTimer());
+                }
             }
 
             if (TimeUpdaterCanceller is not null) 
