@@ -25,6 +25,7 @@ namespace AccSaber.Utils
             get => cachedPlayerScores.MaxLength;
             set => cachedPlayerScores.MaxLength = value;
         }
+        public static int[] CategoryPlayerScoreLength = [-1, -1, -1]; // A bit hardcoded, but whatever
 
         public void Initialize()
         {

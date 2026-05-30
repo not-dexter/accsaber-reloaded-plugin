@@ -1032,11 +1032,14 @@ namespace AccSaber.API
         { // page is zero indexed.
             // The cache should be sorted, so this should not be an issue.
             IEnumerable<AccSaberPlayerScore> filteredCache = SerializerHandler.CachedPlayerScores;
-            if (category != APCategory.Overall)
-                filteredCache = filteredCache.Where(score => score.Category == category);
+            if (category == APCategory.Overall || SerializerHandler.CategoryPlayerScoreLength[(int)category] >= 0)
+            {
+                if (category != APCategory.Overall)
+                    filteredCache = filteredCache.Where(score => score.Category == category);
 
-            if (filteredCache.Count() >= (page + 1) * pageLength)
-                return filteredCache.Skip(page * pageLength).Take(pageLength);
+                if (filteredCache.Count() >= (page + 1) * pageLength)
+                    return filteredCache.Skip(page * pageLength).Take(pageLength);
+            }
 
             await PlayerSocialLife.LoadTask;
 
@@ -1055,11 +1058,13 @@ namespace AccSaber.API
             {
                 SerializerHandler.CachedPlayerScores.AddRange(outp);
 
-                //if (SerializerHandler.CachedPlayerScoreLength < 0)
-                //    SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
+                if (SerializerHandler.CachedPlayerScoreLength < 0)
+                    SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
+            } else
+            {
+                if (SerializerHandler.CategoryPlayerScoreLength[(int)category] < 0)
+                    SerializerHandler.CategoryPlayerScoreLength[(int)category] = response.TotalElements;
             }
-
-            SerializerHandler.CachedPlayerScoreLength = response.TotalElements;
 
             return outp;
         }

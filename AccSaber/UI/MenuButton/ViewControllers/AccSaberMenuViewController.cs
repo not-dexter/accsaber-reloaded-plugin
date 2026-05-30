@@ -496,7 +496,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					//_maxPage = content.TotalPages;
 
 					// Otherwise, AccsaberAPI will save it to cache (well, it'll save the number of elements, gotta divide by page length).
-					_maxPage = (int)Math.Ceiling(SerializerHandler.CachedPlayerScoreLength / 5f);
+					_maxPage = (int)Math.Ceiling((_categoryValue == APCategory.Overall ? SerializerHandler.CachedPlayerScoreLength : SerializerHandler.CategoryPlayerScoreLength[(int)_categoryValue]) / 5f);
 
 					Pagnation = $"{_pageNumber + 1}/{_maxPage}";
 
@@ -509,7 +509,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					// Just gotta use a different type with AccsaberAPI (I did this so that I wouldn't have to cache a full LeaderboardEntry, just the important parts.
 					foreach (AccSaberPlayerScore score in content)
 					{
-						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty.ToString(), score.Accuracy.ToString(), score.AP.ToString(), score.AP.ToString(), EnumUtils.EnumToReloadedCategory(score.Category)!, score.CoverUrl));
+						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty.ToString(), score.Accuracy.ToString(), score.AP.ToString(), score.WeightedAP.ToString(), EnumUtils.EnumToReloadedCategory(score.Category)!, score.CoverUrl));
 					}
 
 
@@ -625,7 +625,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			if (entry.PlayerId == PlayerSocialLife.PlayerID)
             {
 				_user = null;
-				UpdateUserInfo();
+				await UpdateUserInfo();
 			}
         }
 
