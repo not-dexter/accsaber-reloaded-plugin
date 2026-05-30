@@ -394,12 +394,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 switch(Data.Type)
                 {
-                    case MissionType.STREAK_N_IN_CATEGORY:
-                    case MissionType.STREAK_ON_MAP:
-                    case MissionType.PLAY_N_MAPS:
-                        target = Data.TargetCount!.Value; break;
                     case MissionType.XP_IN_WINDOW: 
                         target = Data.TargetXp!.Value; break;
+                    default:
+                        if (Data.TargetCount is not null)
+                        target = Data.TargetCount!.Value; break;
                 }
 
                 if (target > 0)
