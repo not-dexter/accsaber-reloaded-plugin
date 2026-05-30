@@ -4,9 +4,11 @@ using AccSaber.Utils;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
+using IPA.Utilities;
 using System;
 using System.Collections;
 using System.ComponentModel;
+using TMPro;
 using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
@@ -60,6 +62,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 VersionUtils.Parse(ResourcePaths.ACC_SABER_NEWS_MODAL, parentTransform, this);
                 _modalView.name = "AccSaberNewsModal";
                 _modalView.blockerClickedEvent += OnModalClosed;
+                _scrollView.gameObject.AddComponent<Hyperlink>().pTextMeshPro = _scrollView.GetField<TextMeshProUGUI, TextPageScrollView>("_text");
                 _parsed = true;
             }
 
