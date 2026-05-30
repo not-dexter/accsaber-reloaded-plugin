@@ -17,16 +17,12 @@ using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Reflection;
-using System.Security.Policy;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
-using static UnityEngine.UI.Button;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
@@ -130,7 +126,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     IsLoading = true;
 
                 _songPresentInfo ??= new(
-                //(GameObject.Find("SoloButton") ?? GameObject.Find("Wrapper/BeatmapWithModifiers/BeatmapSelection/EditButton"))?.GetComponent<NoTransitionsButton>()?.onClick,
                 _mainFlowCoordinator,
                 UnityEngine.Object.FindObjectOfType<SoloFreePlayFlowCoordinator>(),
                 UnityEngine.Object.FindObjectOfType<MultiplayerLevelSelectionFlowCoordinator>(),
@@ -185,7 +180,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
-        internal readonly struct SongPresentInfo(MainFlowCoordinator mainFlowCoordinator,//ButtonClickedEvent? openSolo,
+        internal readonly struct SongPresentInfo(MainFlowCoordinator mainFlowCoordinator,
             SoloFreePlayFlowCoordinator soloCoordinator, MultiplayerLevelSelectionFlowCoordinator multiCoordinator,
             AccSaberMainFlowCoordinator parentFlowCoordinator)
         {
@@ -395,18 +390,26 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         SongPresentInfo.MultiCoordinator.Setup(flow);
                         SongPresentInfo.SoloCoordinator.Setup(flow);
 
-                        //SongPresentInfo.OpenSolo!.Invoke();
                         SongPresentInfo.MainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(SongPresentInfo.SoloCoordinator, immediately: true);
 
                         StandardLevelDetailViewController? sldvc = UnityEngine.Object.FindObjectOfType<StandardLevelDetailViewController>();
                         StandardLevelDetailView? sldv = sldvc?.GetField<StandardLevelDetailView, StandardLevelDetailViewController>("_standardLevelDetailView");
 
+#if NEW_VERSION
                         if (sldv is not null && sldv.beatmapKey != key)
                         {
                             sldv.SetContent(level, BeatmapDifficultyMask.All, [], key.difficulty, key.beatmapCharacteristic,
                                 sldv.GetField<PlayerData, StandardLevelDetailView>("_playerData"));
                             typeof(StandardLevelDetailView).GetMethod("TriggerEvent", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(sldv, []);
                         }
+#else
+                        if (sldv is not null && sldv.selectedDifficultyBeatmap.difficulty != diff.difficulty)
+                        {
+                            sldv.SetContent(level, diff.difficulty, diff.parentDifficultyBeatmapSet.beatmapCharacteristic, sldv.GetField<PlayerData, StandardLevelDetailView>("_playerData"));
+                            sldv.GetField<Action<StandardLevelDetailView, IDifficultyBeatmap>, StandardLevelDetailView>("didChangeDifficultyBeatmapEvent").Invoke(sldv, diff);
+                        }
+#endif
+
 
                         AccSaberLeaderboardViewController.Instance.ShowPlayerPage(Data.TargetPlayerId!);
                     } catch (Exception e)
