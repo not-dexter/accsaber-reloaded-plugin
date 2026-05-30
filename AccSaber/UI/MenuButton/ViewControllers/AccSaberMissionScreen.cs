@@ -22,6 +22,9 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+using IPA.Config.Data;
+using System.Security.Policy;
+
 
 #if NEW_VERSION
 using System.Reflection;
@@ -38,6 +41,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     {
 #pragma warning disable IDE0051
         private bool _isLoading, _parsed = false;
+        private string _dailyTime = null!, _weeklyTime = null!;
+        private DateTime _dailyRefreshDate, _weeklyRefreshDate;
+
+        private CancellationTokenSource TimeUpdaterCanceller = new();
+
         private readonly AsyncLock _missionLock = new();
         private static readonly object LoadWaiterLock = new();
 
@@ -77,6 +85,27 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !_isLoading;
 
+        [UIValue("daily-time")]
+        private string DailyTime
+        {
+            get => _dailyTime;
+            set
+            {
+                _dailyTime = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DailyTime)));
+            }
+        }
+        [UIValue("weekly-time")]
+        private string WeeklyTime
+        {
+            get => _weeklyTime;
+            set
+            {
+                _weeklyTime = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(WeeklyTime)));
+            }
+        }
+
         [UIAction("on-cell-click")]
         private void OnCellClick(ICellDataSource data)
         {
@@ -92,7 +121,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
 
         [UIAction("#post-parse")]
-        private void PostParse() => _parsed = true;
+        private void PostParse()
+        {
+            _parsed = true;
+        }
 
         public async void Initialize()
         {
@@ -114,13 +146,32 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 Monitor.PulseAll(LoadWaiterLock);
         }
 
+        private void UpdateTimer()
+        {
+            TimeUpdaterCanceller.Cancel();
+            TimeUpdaterCanceller.Dispose();
+            TimeUpdaterCanceller = new();
+
+            CancellationToken ct = TimeUpdaterCanceller.Token;
+
+            Task.Run(() =>
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    DailyTime = $"<color={ColorUtils.GREY}>({_dailyRefreshDate.TimeLeft()})</color>";
+                    WeeklyTime = $"<color={ColorUtils.GREY}>({_weeklyRefreshDate.TimeLeft()})</color>";
+                    Task.Delay(1000, ct).Wait();
+                }
+            }, ct);
+        }
+
         public void ShowMissions()
         {
             _ = SetMissions();
         }
         private async Task SetMissions()
         {
-            AsyncLock.Releaser? locker = await _missionLock.LockAsync();
+            AsyncLock.Releaser? locker = await _missionLock.TryLockAsync();
 
             if (locker is null)
                 return;
@@ -155,6 +206,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 {
                     List<AccSaberMission> missions = await _accSaberStore.GetMissions();
 
+                    bool setDailyTime = false, setWeeklyTime = false;
+
                     foreach (AccSaberMission post in missions)
                     {
                         if (updateUI)
@@ -164,9 +217,22 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                                 case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post, _songPresentInfo!.Value)); break;
                             }
 
+                        if (!setDailyTime && post.MissionPool == MissionPool.Daily)
+                        {
+                            _dailyRefreshDate = post.ExpiresAt;
+                            setDailyTime = true;
+                        }
+                        if (!setWeeklyTime && post.MissionPool == MissionPool.Weekly)
+                        {
+                            _weeklyRefreshDate = post.ExpiresAt;
+                            setWeeklyTime = true;
+                        }
+
                         if (post.TargetPlayerId is not null)
                             AccSaberLeaderboardViewController.Instance.MissionTargets.Add(post.TargetPlayerId);
                     }
+
+                    UpdateTimer();
 
                     if (updateUI)
                     {
@@ -259,7 +325,25 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue("missionBand")] public string MissionBand => $"<color={color}>{Data.Band.ToString().ToUpper()}</color>";
 
-            [UIValue("description")] public string Description => $"<color={ColorUtils.GREY}>{Data.Description}</color>";
+            [UIValue("description")] public string Description => $"<color={ColorUtils.GREY}>{DescriptionParser()}</color>";
+
+            private string DescriptionParser()
+            {
+                if (Data.TargetMapDifficultyId is null)
+                    return Data.Description;
+
+                AccSaberBasicDifficulty cachedDiff;
+
+                foreach (string currentHash in SerializerHandler.CachedMaps.Keys)
+                {
+                    cachedDiff = SerializerHandler.CachedMaps[currentHash].Difficulties.FirstOrDefault(diff => diff.DifficultyId.Equals(Data.TargetMapDifficultyId));
+
+                    if (cachedDiff is not null)
+                        return Data.Description.Replace(EnumUtils.DiffToReloadedDiff(cachedDiff.Difficulty), cachedDiff.Difficulty.ToString());
+                }
+
+                return Data.Description;
+            }
 
             [UIValue("extraText")]
             public string ExtraText = data.Type switch
@@ -305,7 +389,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             private float Progress()
             {
-                float progress = (float)Data.ProgressCount;
+                float progress = Data.ProgressCount;
                 int target = 0;
 
                 switch(Data.Type)
@@ -329,7 +413,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
 
             private const string header = "custom_level_";
-            private static readonly Regex FilenameRegex = new(@"(?<=filename="")[^""]+(?="";)");
+            private static readonly Regex FilenameRegex = new("(?<=filename=\")[^\"]+(?=\";)");
 
             // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
             public async void GoToSong()

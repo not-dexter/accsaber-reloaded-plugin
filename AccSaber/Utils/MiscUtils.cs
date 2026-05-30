@@ -152,6 +152,17 @@ namespace AccSaber.Utils
             return Convert.ToBase64String(byteArray);
         }
 
+        public static string TimeLeft(this DateTime time)
+        {
+            DateTime now = DateTime.UtcNow;
+
+            if (time <= now)
+                return "00:00:00";
+
+            TimeSpan timeLeft = time - now;
+
+            return $"{timeLeft.TotalHours:00}:{timeLeft.Minutes:00}:{timeLeft.Seconds:00}";
+        }
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)
         {
             foreach (KeyValuePair<K, V> kvp in vals)
