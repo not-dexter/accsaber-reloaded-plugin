@@ -85,7 +85,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             switch (cell.Data.Type)
             {
-                case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP:
+                case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
                     cell.GoToSong();
                     break;
             }
