@@ -224,7 +224,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             };
 
             [UIValue("showProgress")]
-            public bool ShowProgress = data.TargetCount is not null && !data.Completed;
+            public bool ShowProgress = (data.TargetCount is not null || data.TargetXp is not null) && !data.Completed;
 
             [UIValue("showStatus")]
             public bool ShowStatus
@@ -273,11 +273,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIValue("missionXP")] public string MissionXP = $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
 
             [UIValue("exactProgress")]
-            public string ExactProgress => ShowProgress ? $"<color={ColorUtils.GREY}>({Data.ProgressCount} / {Data.TargetCount})</color>" : "";
+            public string ExactProgress => ShowProgress ? $"<color={ColorUtils.GREY}>({Data.ProgressCount} / {Data.TargetCount ?? Data.TargetXp} {(Data.TargetXp is null ? "" : " XP")})</color>" : "";
 
             [UIValue(nameof(completed))] private readonly bool completed = data.Completed;
 
-            [UIValue(nameof(targetExists))] private readonly bool targetExists = data.TargetCount is not null;
+            [UIValue(nameof(targetExists))] private readonly bool targetExists = data.TargetCount is not null || data.TargetXp is not null;
 
             [UIValue(nameof(oneXonePic))] public const string oneXonePic = ResourcePaths.PIXEL;
 
@@ -285,10 +285,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
             [UIComponent(nameof(PercentBarBottom))] private readonly LayoutElement PercentBarBottom = null!;
             [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!;
-
+                
             [UIValue(nameof(listWidth))] public const float listWidth = 55f;
-            [UIValue(nameof(barSpacer))] public const float barSpacer = 3f;
-            [UIValue(nameof(exactProgLen))] public const float exactProgLen = 4f;
+            [UIValue(nameof(barSpacer))] public const float barSpacer = 0f;
+            [UIValue(nameof(exactProgLen))] public const float exactProgLen = 8f;
             [UIValue(nameof(barLen))] public const float barLen = listWidth - barSpacer - exactProgLen;
 
             [UIAction("#post-parse")]
@@ -305,12 +305,25 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             private float Progress()
             {
-                if (Data.TargetCount is not null || Data.TargetCount < 0)
+                float progress = (float)Data.ProgressCount;
+                int target = 0;
+
+                switch(Data.Type)
                 {
-                    if (Data.ProgressCount > 0)
-                        return (float)Data.ProgressCount / Data.TargetCount.Value;
+                    case MissionType.STREAK_N_IN_CATEGORY:
+                    case MissionType.STREAK_ON_MAP:
+                    case MissionType.PLAY_N_MAPS:
+                        target = Data.TargetCount!.Value; break;
+                    case MissionType.XP_IN_WINDOW: 
+                        target = Data.TargetXp!.Value; break;
+                }
+
+                if (Data.TargetCount is not null || Data.TargetXp is not null)
+                {
+                    if (progress > 0)
+                        return progress / target;
                     else
-                        return 0.01f / Data.TargetCount.Value;
+                        return 0.01f / target;
                 }
                 return 0f;
             }

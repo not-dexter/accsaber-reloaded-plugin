@@ -71,6 +71,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 		}
 
+        protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+        {
+            base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
+
+            mc.ShowMissions();
+        }
+
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !_isLoading;
 
