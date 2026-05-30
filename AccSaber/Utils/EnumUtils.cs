@@ -69,6 +69,16 @@ namespace AccSaber.Utils
             9 => "EXPERT_PLUS",
             _ => throw new ArgumentException("Invalid difficulty number. Must be one of the following: 1, 3, 5, 7, 9.")
         };
+
+        public static string DiffENumToReloadedDiff(BeatmapDifficulty diff) => diff switch
+        {
+            BeatmapDifficulty.Easy => "EASY",
+            BeatmapDifficulty.Normal => "NORMAL",
+            BeatmapDifficulty.Hard => "HARD",
+            BeatmapDifficulty.Expert => "EXPERT",
+            BeatmapDifficulty.ExpertPlus => "EXPERT_PLUS",
+            _ => throw new ArgumentException("Invalid difficulty. Must be one of the following: Easy, NORMAL, HARD, EXPERT, EXPERT_PLUS.")
+        };
         public static string DiffToReloadedDiff(BeatmapDifficulty diff) => DiffNumToReloadedDiff(FromDiff(diff));
         public static int ReloadedDiffToDiffNum(string diff) => diff switch
         {
