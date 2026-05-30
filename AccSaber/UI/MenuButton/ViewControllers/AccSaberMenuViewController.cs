@@ -19,6 +19,8 @@ using UnityEngine.UI;
 using Zenject;
 using AccSaber.Models.PlayerModels;
 using AccSaber.UI.MenuButton.Campaigns;
+using AccSaber.Models;
+
 
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
@@ -616,23 +618,27 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		}
 
-		private void OnAccSaberPlayerUpdated(bool isNew)
+		private async void OnAccSaberPlayerUpdated(AccSaberLeaderboardEntry entry)
         {
-			if(isNew)
+			await PlayerSocialLife.LoadTask;
+
+			if (entry.PlayerId == PlayerSocialLife.PlayerID)
             {
 				_user = null;
+				UpdateUserInfo();
 			}
         }
 
 
 		public void Initialize()
 		{
-			_accSaberStore.OnUpdatedFromAccSaberAPI += OnAccSaberPlayerUpdated;
-		}
+			AccSaberStore.OnScoreUpdated += OnAccSaberPlayerUpdated;
+
+        }
 
 		public void Dispose()
 		{
-			_accSaberStore.OnUpdatedFromAccSaberAPI -= OnAccSaberPlayerUpdated;
+            AccSaberStore.OnScoreUpdated -= OnAccSaberPlayerUpdated;
 		}
 
 	}
