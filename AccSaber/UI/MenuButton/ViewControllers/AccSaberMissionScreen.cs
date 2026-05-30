@@ -402,7 +402,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         target = Data.TargetXp!.Value; break;
                 }
 
-                if (Data.TargetCount is not null || Data.TargetXp is not null)
+                if (target > 0)
                 {
                     if (progress > 0)
                         return progress / target;
