@@ -6,7 +6,6 @@ using AccSaber.Models.CacheModels;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
 using IPA.Utilities;
@@ -23,6 +22,12 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+
+#if NEW_VERSION
+using System.Reflection;
+#else
+using BeatSaberMarkupLanguage;
+#endif
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {

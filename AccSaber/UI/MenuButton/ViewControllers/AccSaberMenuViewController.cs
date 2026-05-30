@@ -32,7 +32,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     internal class AccSaberMenuViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable, IDisposable
 	{
 #pragma warning disable IDE0051
-		private string? _userId;
 		private AccSaberPlayer? _user;
         private bool _parsed;
         private bool _firstLoad;

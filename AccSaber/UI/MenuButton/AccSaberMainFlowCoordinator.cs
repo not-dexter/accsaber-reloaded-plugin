@@ -1,7 +1,6 @@
 ﻿using AccSaber.UI.MenuButton.ViewControllers;
 using BeatSaberMarkupLanguage;
 using HMUI;
-using System.Threading.Tasks;
 using Zenject;
 
 namespace AccSaber.UI.MenuButton
