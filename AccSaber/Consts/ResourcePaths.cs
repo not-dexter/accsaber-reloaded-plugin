@@ -72,6 +72,8 @@ namespace AccSaber.Consts
         public static readonly string ACC_SABER_PLAYER_SCORE_CACHE = Path.Combine(ACC_SABER_DATA_FOLDER, PLAYER_SCORE_CACHE_NAME + ".json");
         public static readonly string ACC_SABER_MAP_CACHE = Path.Combine(ACC_SABER_DATA_FOLDER, MAP_CACHE_NAME + ".json");
 
+        public static readonly string CUSTOM_SONGS = Path.Combine(Environment.CurrentDirectory, "Beat Saber_Data", "CustomLevels");
+
         #endregion
     }
 }

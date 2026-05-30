@@ -106,6 +106,12 @@
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem">
+      <HintPath>C:\Users\sman6\BSManager\BSInstances\v39 Test\Beat Saber_Data\Managed\System.IO.Compression.FileSystem.dll</HintPath>
+      <Private>False</Private>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
     <Reference Include="Tweening" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Tweening.dll</HintPath>
       <Private>False</Private>

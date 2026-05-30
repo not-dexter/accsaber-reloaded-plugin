@@ -9,9 +9,6 @@ namespace AccSaber.Models.CacheModels
     [UsedImplicitly]
     internal class AccSaberBasicMap : Model
     {
-        [JsonProperty("songName")]
-        public string? SongName { get; set; }
-
         [JsonProperty("songHash")]
         public string Hash { get; set; } = null!;
 

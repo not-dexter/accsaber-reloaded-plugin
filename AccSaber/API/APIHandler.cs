@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -154,11 +155,25 @@ namespace AccSaber.API
             if (!Success) return null;
             return await Content!.ReadAsStringAsync().ConfigureAwait(false);
         }
-        public static async Task<byte[]?> CallAPI_Bytes(string path, Throttler? t, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
+        public static async Task<(byte[]? data, HttpContentHeaders? headers)> CallAPI_Bytes(string path, Throttler? t, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)
         {
             var (Success, Content) = await CallAPI(path, t, quiet, maxRetries, ct).ConfigureAwait(false);
-            if (!Success) return null;
-            return await Content!.ReadAsByteArrayAsync().ConfigureAwait(false);
+
+            //var response = await client.GetAsync(path, ct).ConfigureAwait(false);
+            //HttpContent Content = response.Content;
+
+            //foreach (var header in response.Headers)
+            //{
+            //    Plugin.Log.Info($"a {header.Key}: {string.Join(", ", header.Value)}");
+            //}
+
+            //foreach (var header in response.Content.Headers)
+            //{
+            //    Plugin.Log.Info($"b {header.Key}: {string.Join(", ", header.Value)}");
+            //}
+
+            if (!Success) return (null, null);
+            return (await Content!.ReadAsByteArrayAsync().ConfigureAwait(false), Content.Headers);
         }
 
         public static async Task<T?> CallAPI_Json<T>(string path, Throttler? t, bool quiet = false, int maxRetries = 3, CancellationToken ct = default)

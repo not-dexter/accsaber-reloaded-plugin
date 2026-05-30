@@ -111,7 +111,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, _contentContainer, mc);
 
-			CurrentTab = 0;
+            CurrentTab = 0;
 
 			_ = SetMilestones(0);
             mc.ShowMissions();
@@ -123,11 +123,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		{
             CurrentTab = (CategoryTab)index;
 
-            if (IsMilestoneTab)
-                _ = SetMilestones(_currentMilestoneTab);
-            else
-                mc.ShowMissions();
-
+            UpdateTabs();
 		}
 
         [UIAction("milestone-tab-selected")]
@@ -138,6 +134,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _ = SetMilestones(_currentMilestoneTab);
         }
 #pragma warning restore IDE0060
+
+        public void UpdateTabs()
+        {
+            if (IsMilestoneTab)
+                _ = SetMilestones(_currentMilestoneTab);
+            else
+                mc.ShowMissions();
+        }
 
         private async Task SetMilestones(MilestoneTab tab)
         {

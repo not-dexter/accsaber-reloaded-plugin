@@ -226,7 +226,7 @@ namespace AccSaber.ScoreTracking
 
             if (totalNotes < 115 || notes > totalNotes)
             {
-                Plugin.Log.Debug("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
+                Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
                 return;
             }
 

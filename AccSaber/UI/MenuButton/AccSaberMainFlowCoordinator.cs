@@ -1,11 +1,12 @@
 ﻿using AccSaber.UI.MenuButton.ViewControllers;
 using BeatSaberMarkupLanguage;
 using HMUI;
+using System.Threading.Tasks;
 using Zenject;
 
 namespace AccSaber.UI.MenuButton
 {
-    class AccSaberMainFlowCoordinator : FlowCoordinator
+    internal class AccSaberMainFlowCoordinator : FlowCoordinator
     {
         private MainFlowCoordinator _mainFlowCoordinator = null!;
         private FlowCoordinator? _parentFlowCoordinator;
@@ -39,15 +40,38 @@ namespace AccSaber.UI.MenuButton
         {
             _parentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
             _parentFlowCoordinator.PresentFlowCoordinator(this);
+
+            //Plugin.Log.Info($"parent flow coordinator: type = {_parentFlowCoordinator.GetType()}, name = {_parentFlowCoordinator.name}");
+
+            _accSaberMilestoneViewController.UpdateTabs();
         }
 
 
-        protected override void BackButtonWasPressed(ViewController topViewController)
+        private void OnDismiss()
         {
             _accSaberRelationsViewController.HideNewsModal();
             SetRightScreenViewController(null, ViewController.AnimationType.None);
             SetLeftScreenViewController(null, ViewController.AnimationType.None);
+        }
+        protected override void BackButtonWasPressed(ViewController topViewController)
+        {
+            OnDismiss();
             _parentFlowCoordinator?.DismissFlowCoordinator(this);
+        }
+
+        internal void Close(bool instant = false)
+        {
+            OnDismiss();
+            _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: instant);
+        }
+        internal void CloseToMainMenu()
+        {
+            OnDismiss();
+
+            _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: true);
+
+            if (_parentFlowCoordinator is SoloFreePlayFlowCoordinator)
+                _mainFlowCoordinator.DismissFlowCoordinator(_parentFlowCoordinator, immediately: true);
         }
     }
 }

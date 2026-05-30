@@ -1,51 +1,65 @@
-﻿using AccSaber.Consts;
+﻿using AccSaber.API;
+using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.Models.CacheModels;
+using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
+using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
-using BeatSaberMarkupLanguage.Components;
 using HMUI;
+using IPA.Utilities;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
 using System.Reflection;
+using System.Security.Policy;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+using static UnityEngine.UI.Button;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
 
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
-    internal class AccSaberMissionScreen : INotifyPropertyChanged
+    internal class AccSaberMissionScreen : INotifyPropertyChanged, IInitializable, IDisposable
     {
 #pragma warning disable IDE0051
-        private bool _isLoading;
+        private bool _isLoading, _parsed = false;
         private readonly AsyncLock _missionLock = new();
+        private static readonly object LoadWaiterLock = new();
+
+        private static SongPresentInfo? _songPresentInfo;
 
         [UIComponent("daily-list")]
-        private readonly CustomCellListTableData _dailyList = null!;
+        private readonly MyCustomCellListTableData _dailyList = null!;
 
         [UIValue("daily-cells")]
-        private readonly List<object> _dailyCells = [];
+        private readonly List<ICellDataSource> _dailyCells = [];
 
         [UIComponent("weekly-list")]
-        private readonly CustomCellListTableData _weeklyList = null!;
+        private readonly MyCustomCellListTableData _weeklyList = null!;
 
         [UIValue("weekly-cells")]
-        private readonly List<object> _weeklyCells = [];
+        private readonly List<ICellDataSource> _weeklyCells = [];
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
+        [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
+        [Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
 
-        [UIValue("mission-cell")]
-        private string MissionCellBsml => Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_MISSION_CELL);
-        
         [UIValue("is-loading")]
         private bool IsLoading
         {
@@ -62,13 +76,50 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !_isLoading;
 
+        [UIAction("on-cell-click")]
+        private void OnCellClick(ICellDataSource data)
+        {
+            if (data is not MissionCell cell)
+                return;
+
+            switch (cell.Data.Type)
+            {
+                case "SNIPE_PLAYER_ON_MAP":
+                    cell.GoToSong();
+                    break;
+            }
+        }
+
+        [UIAction("#post-parse")]
+        private void PostParse() => _parsed = true;
+
+        public async void Initialize()
+        {
+            SongCore.Loader.SongsLoadedEvent += LoadWaiter;
+            //await Task.Run(ShowMissions);
+        }
+        public void Dispose()
+        {
+            SongCore.Loader.SongsLoadedEvent -= LoadWaiter;
+        }
+
+#if NEW_VERSION
+        private static void LoadWaiter(SongCore.Loader loader, ConcurrentDictionary<string, BeatmapLevel> maps)
+#else
+        private static void LoadWaiter(SongCore.Loader loader, ConcurrentDictionary<string, CustomPreviewBeatmapLevel> maps)
+#endif
+        {
+            lock (LoadWaiterLock)
+                Monitor.PulseAll(LoadWaiterLock);
+        }
+
         public void ShowMissions()
         {
             _ = SetMissions();
         }
         private async Task SetMissions()
         {
-            AsyncLock.Releaser? locker = await _missionLock.TryLockAsync();
+            AsyncLock.Releaser? locker = await _missionLock.LockAsync();
 
             if (locker is null)
                 return;
@@ -78,123 +129,158 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 if (!IsLoading)
                     IsLoading = true;
 
-                await PlayerSocialLife.LoadTask;
+                _songPresentInfo ??= new(
+                //(GameObject.Find("SoloButton") ?? GameObject.Find("Wrapper/BeatmapWithModifiers/BeatmapSelection/EditButton"))?.GetComponent<NoTransitionsButton>()?.onClick,
+                _mainFlowCoordinator,
+                UnityEngine.Object.FindObjectOfType<SoloFreePlayFlowCoordinator>(),
+                UnityEngine.Object.FindObjectOfType<MultiplayerLevelSelectionFlowCoordinator>(),
+                _parentFlowCoordinator
+                );
+
+                //Plugin.Log.Info($"solo: {_songPresentInfo.Value.SoloCoordinator is null}, multi: {_songPresentInfo.Value.MultiCoordinator is null}, main flow: {_songPresentInfo.Value.MainFlowCoordinator is null}");
+
+                if (_songPresentInfo.Value.SoloCoordinator is null || _songPresentInfo.Value.MultiCoordinator is null || _songPresentInfo.Value.MainFlowCoordinator is null)
+                    _songPresentInfo = null;
+
+                bool updateUI = _songPresentInfo is not null && _parsed;
 
                 _dailyCells.Clear();
                 _weeklyCells.Clear();
-                _dailyList.Data().Clear();
-                _weeklyList.Data().Clear();
+
+                AccSaberLeaderboardViewController.Instance.MissionTargets.Clear();
+
+                await PlayerSocialLife.LoadTask;
 
                 try
                 {
-                    var missions = await _accSaberStore.GetMissions();
-                    foreach (var post in missions)
+                    List<AccSaberMission> missions = await _accSaberStore.GetMissions();
+
+                    foreach (AccSaberMission post in missions)
                     {
-                        switch (post.MissionPool)
-                        {
-                            case MissionPool.Daily: _dailyCells.Add(new MissionCell(post)); break;
-                            case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post)); break;
-                        }
+                        if (updateUI)
+                            switch (post.MissionPool)
+                            {
+                                case MissionPool.Daily: _dailyCells.Add(new MissionCell(post, _songPresentInfo!.Value)); break;
+                                case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post, _songPresentInfo!.Value)); break;
+                            }
+
+                        if (post.TargetPlayerId is not null)
+                            AccSaberLeaderboardViewController.Instance.MissionTargets.Add(post.TargetPlayerId);
                     }
 
-                    _dailyList.TableView().ReloadData();
-                    _weeklyList.TableView().ReloadData();
-
-                    IsLoading = false;
-
+                    if (updateUI)
+                    {
+                        _dailyList.Data = _dailyCells;
+                        _weeklyList.Data = _weeklyCells;
+                    }
                 }
                 catch (Exception e)
                 {
                     Plugin.Log.Error(e);
                 }
+                finally
+                {
+                    IsLoading = false;
+                }
             }
         }
 
-        internal class MissionCell(AccSaberMission data)
+        internal readonly struct SongPresentInfo(MainFlowCoordinator mainFlowCoordinator,//ButtonClickedEvent? openSolo,
+            SoloFreePlayFlowCoordinator soloCoordinator, MultiplayerLevelSelectionFlowCoordinator multiCoordinator,
+            AccSaberMainFlowCoordinator parentFlowCoordinator)
         {
-            #region BSML Values
+            //public readonly ButtonClickedEvent? OpenSolo = openSolo;
+            public readonly MainFlowCoordinator MainFlowCoordinator = mainFlowCoordinator;
+            public readonly SoloFreePlayFlowCoordinator SoloCoordinator = soloCoordinator;
+            public readonly MultiplayerLevelSelectionFlowCoordinator MultiCoordinator = multiCoordinator;
+            public readonly AccSaberMainFlowCoordinator ParentFlowCoordinator = parentFlowCoordinator;
+        }
 
-            private float Progress()
-            {
-                if (data.TargetCount is not null || data.TargetCount < 0)
-                {
-                    if (data.ProgressCount > 0)
-                        return (float)data.ProgressCount / data.TargetCount.Value;
-                    else
-                        return 0.01f / data.TargetCount.Value;
-                }
-                return 0f;
-            }
+        internal class MissionCell(AccSaberMission data, SongPresentInfo songPresentInfo) : ICellDataSource, INotifyPropertyChanged
+        {
+            public string TemplatePath => ResourcePaths.ACC_SABER_MISSION_CELL;
 
-            private readonly string color = data.Band switch
+            public float CellSize => 12;
+
+            public int TemplateId { get; set; }
+
+            private static readonly AsyncLock OpenMapLock = new();
+
+            public readonly AccSaberMission Data = data;
+            private readonly SongPresentInfo SongPresentInfo = songPresentInfo;
+
+            private bool _showStatus = false;
+            private string _statusText = null!;
+
+            public event PropertyChangedEventHandler? PropertyChanged;
+
+            private readonly string color = data.MissionBand switch
             {
-                "extreme" => "#ffd700",
-                "hard" => "#f97316",
-                "medium" => "#3cb371",
+                Utils.MissionBand.extreme => "#ffd700",
+                Utils.MissionBand.hard => "#f97316",
+                Utils.MissionBand.medium => "#3cb371",
                 /*"easy" => "#3cb371",*/
                 _ => ColorUtils.GREY
             };
-            private string GetCategoryName(string category) => category switch
-            {
-                "b0000000-0000-0000-0000-000000000001" => "True",
-                "b0000000-0000-0000-0000-000000000002" => "Standard",
-                "b0000000-0000-0000-0000-000000000003" => "Tech",
-
-                _ => "Overall"
-            };
 
             [UIValue("showProgress")]
-            public bool ShowProgress => data.TargetCount is not null && !completed;
+            public bool ShowProgress = data.TargetCount is not null && !data.Completed;
 
+            [UIValue("showStatus")]
+            public bool ShowStatus
+            {
+                get => _showStatus;
+                set
+                {
+                    _showStatus = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowStatus)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotShowStatus)));
+                }
+            }
+
+            [UIValue("notShowStatus")]
+            public bool NotShowStatus => !ShowStatus;
+
+            [UIValue("statusText")]
+            public string StatusText
+            {
+                get => _statusText;
+                set
+                {
+                    _statusText = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusText)));
+                }
+            }
 
             [UIValue("target")]
-            public string Target => $"{data.ProgressCount}/{data.TargetCount}";
-            public string MissionCategory => $"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryToEnum(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005"))}>{GetCategoryName(data.CategoryId ?? "b0000000-0000-0000-0000-000000000005").ToUpper()}</color>";
+            public string Target = $"{data.ProgressCount}/{data.TargetCount}";
 
-            [UIValue("mission")] public string Mission => $"{data.Name}  <size=80%>{MissionCategory}</size>";
+            [UIValue("mission")] public string Mission = $"{data.Name} <size=80%><color={ColorUtils.GetColor(data.Category)}>{data.Category.ToString().ToUpper()}</color></size>";
 
-            [UIValue("missionBand")] public string MissionBand => $"<color={color}>{data.Band.ToUpper()}</color>";
+            [UIValue("missionBand")] public string MissionBand => $"<color={color}>{Data.Band.ToUpper()}</color>";
 
-            [UIValue("description")] public string Description => DescriptionParser(data.Description);
+            [UIValue("description")] public string Description => $"<color={ColorUtils.GREY}>{DescriptionParser(Data.Description)}</color>";
 
-            private static readonly Regex DescriptionRegex = new(@"(?<=\().+?(?=\))");
-            public string DescriptionParser(string input)
+            public string DescriptionParser(string input) => Data.Type switch
             {
-                Match match = DescriptionRegex.Match(input);
+                _ => input,
+            };
 
-                string AccToBeat = data.TargetAcc is not null ? $" ({data.TargetAcc:N2}%)": "";
+            [UIValue("extraText")]
+            public string ExtraText = data.Type switch
+            {
+                "SNIPE_PLAYER_ON_MAP" => $"<color={ColorUtils.GREY}>(Get <color={ColorUtils.AP}>{data.TargetAp:N2}ap</color> or <color={ColorUtils.GetColor(data.Category)}>{data.TargetAcc:N2}%</color>)</color>",
+                _ => "",
+            };
 
-                if (match.Success)
-                {
-                    string newString;
+            [UIValue("showExtraText")] public bool ShowExtraText => ExtraText.Length > 0;
 
-                    if (EnumUtils.ReloadedDiffToDiff(match.Groups[0].Value) == BeatmapDifficulty.ExpertPlus)
-                        newString = input.Replace(match.Groups[0].Value, "Expert Plus");
-                    else
-                        newString = input.Replace(match.Groups[0].Value, EnumUtils.ReloadedDiffToDiff(match.Groups[0].Value).ToString());
-
-
-                    return $"<color={ColorUtils.GREY}>{newString[..^1] + AccToBeat}</color>";
-                }
-                else
-                    return $"<color={ColorUtils.GREY}>{input[..^1] + AccToBeat}</color>";
-            }
-
-            [UIValue("missionXP")] public string MissionXP => $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
+            [UIValue("missionXP")] public string MissionXP = $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
 
             [UIValue("exactProgress")]
-            public string ExactProgress
-            {
-                get
-                {
-                    if (data.TargetCount is not null || data.Status != "completed")
-                        return $"<color={ColorUtils.GREY}>({data.ProgressCount} / {data.TargetCount})</color>";
-                    else 
-                        return "";
-                }
-            }
+            public string ExactProgress => ShowProgress ? $"<color={ColorUtils.GREY}>({Data.ProgressCount} / {Data.TargetCount})</color>" : "";
 
-            [UIValue(nameof(completed))] private readonly bool completed = data.Status == "completed";
+            [UIValue(nameof(completed))] private readonly bool completed = data.Completed;
 
             [UIValue(nameof(targetExists))] private readonly bool targetExists = data.TargetCount is not null;
 
@@ -203,23 +289,170 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIComponent(nameof(PercentBarTop))] private readonly LayoutElement PercentBarTop = null!;
             [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
             [UIComponent(nameof(PercentBarBottom))] private readonly LayoutElement PercentBarBottom = null!;
-            [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!; 
-            
+            [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!;
+
             [UIValue(nameof(listWidth))] public const float listWidth = 55f;
             [UIValue(nameof(barSpacer))] public const float barSpacer = 3f;
             [UIValue(nameof(exactProgLen))] public const float exactProgLen = 4f;
-            [UIValue(nameof(barLen))] public const float barLen = listWidth - barSpacer  - exactProgLen;
+            [UIValue(nameof(barLen))] public const float barLen = listWidth - barSpacer - exactProgLen;
 
             [UIAction("#post-parse")]
             private void PostParse()
             {
-                PercentBarTop?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * Progress());
-                PercentBarBottom?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - Progress()));
+                float progress = Progress();
 
-                PercentBarTop_image?.color = ColorUtils.GetColor(data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(data.CategoryId)).Color();
+                PercentBarTop?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * progress);
+                PercentBarBottom?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - progress));
+
+                PercentBarTop_image?.color = ColorUtils.GetColor(Data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(Data.CategoryId)).Color();
                 PercentBarBottom_image?.color = ColorUtils.GREY.Color();
             }
-            #endregion
+
+            private float Progress()
+            {
+                if (Data.TargetCount is not null || Data.TargetCount < 0)
+                {
+                    if (Data.ProgressCount > 0)
+                        return (float)Data.ProgressCount / Data.TargetCount.Value;
+                    else
+                        return 0.01f / Data.TargetCount.Value;
+                }
+                return 0f;
+            }
+
+            private const string header = "custom_level_";
+            private static readonly Regex FilenameRegex = new(@"(?<=filename="")[^""]+(?="";)");
+
+            // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
+            public async void GoToSong()
+            {
+                AsyncLock.Releaser? locker = await OpenMapLock.TryLockAsync();
+
+                if (locker is null)
+                    return;
+
+                using (locker.Value)
+                {
+
+                    StatusText = "Loading...";
+                    ShowStatus = true;
+
+                    string diffId = Data.TargetMapDifficultyId!;
+
+                    AccSaberBasicMap map = null!;
+                    AccSaberBasicDifficulty? cachedDiff = null;
+                    string? hash = null;
+
+                    foreach (string currentHash in SerializerHandler.CachedMaps.Keys)
+                    {
+                        map = SerializerHandler.CachedMaps[currentHash];
+                        cachedDiff = map.Difficulties.FirstOrDefault(diff => diff.DifficultyId.Equals(diffId));
+
+                        if (cachedDiff is not null)
+                        {
+                            hash = currentHash;
+                            break;
+                        }
+                    }
+
+                    if (hash is null || cachedDiff is null)
+                    {
+                        Plugin.Log.Critical("Somehow you have a mission for a level that isn't cached!! Please report this on Discord.");
+                        ShowStatus = false;
+                        return;
+                    }
+
+#if NEW_VERSION
+                    BeatmapLevel? level = SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + hash.ToUpper()) ?? await DownloadSong(map);
+#else
+                    IBeatmapLevel? level = (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + hash.ToUpper(), CancellationToken.None)).beatmapLevel ?? await DownloadSong(map);
+#endif
+
+                    ShowStatus = false;
+
+                    if (level is null)
+                    {
+                        Plugin.Log.Warn("Cannot open the map for this mission (" + header + hash.ToUpper() + ").");
+                        return;
+                    }
+
+                    try
+                    {
+
+                        SongPresentInfo.ParentFlowCoordinator.CloseToMainMenu();
+
+#if NEW_VERSION
+                        BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);
+
+                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, in key, level);
+#else
+                        IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
+                        IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == cachedDiff.Difficulty);
+
+                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, diff);
+#endif
+
+                        SongPresentInfo.MultiCoordinator.Setup(flow);
+                        SongPresentInfo.SoloCoordinator.Setup(flow);
+
+                        //SongPresentInfo.OpenSolo!.Invoke();
+                        SongPresentInfo.MainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(SongPresentInfo.SoloCoordinator, immediately: true);
+
+                        StandardLevelDetailViewController? sldvc = UnityEngine.Object.FindObjectOfType<StandardLevelDetailViewController>();
+                        StandardLevelDetailView? sldv = sldvc?.GetField<StandardLevelDetailView, StandardLevelDetailViewController>("_standardLevelDetailView");
+
+                        if (sldv is not null && sldv.beatmapKey != key)
+                        {
+                            sldv.SetContent(level, BeatmapDifficultyMask.All, [], key.difficulty, key.beatmapCharacteristic,
+                                sldv.GetField<PlayerData, StandardLevelDetailView>("_playerData"));
+                            typeof(StandardLevelDetailView).GetMethod("TriggerEvent", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(sldv, []);
+                        }
+
+                        AccSaberLeaderboardViewController.Instance.ShowPlayerPage(Data.TargetPlayerId!);
+                    } catch (Exception e)
+                    {
+                        Plugin.Log.Error("There was an error going to the map!\n" + e);
+                    }
+                }
+            }
+#if NEW_VERSION
+            private async Task<BeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
+#else
+            private async Task<IBeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
+#endif
+            {
+                StatusText = "Downloading...";
+
+                var (map, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.BEATSAVER_DOWNLOAD, cachedMap.Hash.ToLowerInvariant()), null);
+
+                if (map is null)
+                    return null;
+
+                using Stream stream = new MemoryStream(map);
+                using ZipArchive zip = new(stream, ZipArchiveMode.Read);
+
+                string folderPath = Path.Combine(ResourcePaths.CUSTOM_SONGS, FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value[..^4]);
+
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                zip.ExtractToDirectory(folderPath);
+
+                SongCore.Loader.Instance.RefreshSongs(false);
+
+                await Task.Run(() =>
+                {
+                    lock (LoadWaiterLock)
+                        Monitor.Wait(LoadWaiterLock);
+                });
+
+#if NEW_VERSION
+                return SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + cachedMap.Hash.ToUpper());
+#else
+                //return SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelIfLoaded(header + cachedMap.Hash.ToUpper());
+                return (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + cachedMap.Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
+#endif
+            }
         }
     }
 }

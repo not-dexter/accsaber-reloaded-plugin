@@ -29,6 +29,8 @@ namespace AccSaber.Utils
     }
     public static class EnumUtils
     {
+        public const string OverallReloadedCategory = "b0000000-0000-0000-0000-000000000005";
+
         public static string DiffNumToReloadedDiff(int diffNum) => diffNum switch
         {
             1 => "EASY",

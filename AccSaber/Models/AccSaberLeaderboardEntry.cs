@@ -164,7 +164,7 @@ namespace AccSaber.Models
                     return HIGHLIGHT;
 
                 if (Instance.DisplayType != LeaderboardDisplayType.Relations)
-                    return DIMMER;
+                    return Instance.MissionTargets.Contains(ScoreData.PlayerId) ? RELATIONS_TARGETED : DIMMER;
 
                 if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(ScoreData.PlayerId))
                     return RELATIONS_TARGETED;

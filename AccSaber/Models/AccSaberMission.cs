@@ -27,11 +27,17 @@ namespace AccSaber.Models
         [JsonProperty("status")]
         public string Status { get; set; } = null!;
 
+        [JsonIgnore]
+        public bool Completed => Status.Equals("completed");
+
         [JsonProperty("band")]
         public string Band { get; set; } = null!; // Mission difficulty
 
         [JsonProperty("categoryId")]
-        public string? CategoryId { get; set; } 
+        public string CategoryId { get; set; } = EnumUtils.OverallReloadedCategory;
+
+        [JsonIgnore]
+        public APCategory Category { get; set; }
 
         [JsonProperty("categoryCode")]
         public string? CategoryCode { get; set; }
@@ -99,8 +105,9 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            MissionPool = (MissionPool)Enum.Parse(typeof(MissionPool), char.ToUpper(Pool[0]) + Pool[1..]);
+            MissionPool = (MissionPool)Enum.Parse(typeof(MissionPool), Pool.Capitialize());
             MissionBand = (MissionBand)Enum.Parse(typeof(MissionBand), Band.ToLower());
+            Category = EnumUtils.ReloadedCategoryToEnum(CategoryId)!.Value;
         }
     }
 

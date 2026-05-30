@@ -19,7 +19,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
 
         private MyCustomCell? previouslySelected = null;
         private List<ICellDataSource> data = [];
-        private bool clickableCells = false;
+        private bool clickableCells = true;
         private int prefNumberOfCells = 10;
         private float mainCellSize = 8.5f;
         private float initialAnchorY = -1f;
@@ -77,7 +77,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             cell.ParserParams = VersionUtils.BSMLParser_Instance.Parse(cellTemplates[tempId], cell.gameObject, data[idx]);
             cell.SetupPostParse();
 
-            foreach (var g in cell.GetComponentsInChildren<Graphic>(true))
+            foreach (Graphic g in cell.GetComponentsInChildren<Graphic>(true))
                 g.raycastTarget = false;
 
             cell.GetComponent<Touchable>().raycastTarget = true;
@@ -198,6 +198,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             hoveredTags = ParserParams.GetObjectsWithTag("hovered");
             neitherTags = ParserParams.GetObjectsWithTag("un-selected-un-hovered");
         }
+#pragma warning disable IDE0051
         private void Awake()
         {
             RectTransform rt = (gameObject.transform as RectTransform)!;
@@ -213,6 +214,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             gameObject.AddComponent<LayoutElement>();
             gameObject.AddComponent<Touchable>();
         }
+#pragma warning restore IDE0051
     }
 
     public interface ICellDataSource

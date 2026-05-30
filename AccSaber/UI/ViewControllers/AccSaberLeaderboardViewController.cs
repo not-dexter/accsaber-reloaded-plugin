@@ -67,6 +67,8 @@ namespace AccSaber.UI.ViewControllers
         private bool titlePanelRich;
         private TextMeshProUGUI? titlePaneTitleText = null;
 
+        internal HashSet<string> MissionTargets = [];
+
         public new event PropertyChangedEventHandler? PropertyChanged;
         public string RankedHeader => $"{RANKED_HEADER} | <color={GetColor(CurrentCategory)}>{CurrentCategory}</color>";
         public LeaderboardDisplayType DisplayType { get; private set; }
@@ -678,14 +680,12 @@ namespace AccSaber.UI.ViewControllers
 
             int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;
 
-            bool gotCachedData = !forceLoad && (DisplayType != LeaderboardDisplayType.Country ?
-                ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country));
+            bool gotCachedData = DisplayType != LeaderboardDisplayType.Country ?
+                ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country);
 
             IEnumerator WaitThenUpdate()
             {
                 yield return new WaitForEndOfFrame();
-
-                
 
                 if (!gotCachedData)
                 {
@@ -705,90 +705,147 @@ namespace AccSaber.UI.ViewControllers
         {
             Unranked = false;
         }
+        public async void ShowPlayerPage(string playerId)
+        {
+            AsyncLock.Releaser theLock = await loadLeaderboardLock.LockAsync();
+
+            try
+            {
+                if (CurrentHash is null)
+                {
+                    object PageLocker = new();
+
+                    void ReleaseFunc(bool ranked)
+                    {
+                        if (ranked)
+                            lock (PageLocker)
+                                Monitor.PulseAll(PageLocker);
+                    }
+
+                    OnMapChanged += ReleaseFunc;
+
+                    await Task.Run(() =>
+                    {
+                        lock (PageLocker)
+                            Monitor.Wait(PageLocker);
+                    });
+
+                    OnMapChanged -= ReleaseFunc;
+                }
+
+                ShowLoading();
+
+                AccSaberLeaderboardEntry? playerScore = await GetScoreData(playerId, CurrentHash!, CurrentDiff);
+
+                if (DisplayType != LeaderboardDisplayType.Global)
+                {
+                    currentPage = 0;
+                    UpdateSelectors(LeaderboardDisplayType.Global);
+                    currentPlayerPage = await GetPlayerPage(false);
+                }
+
+                if (playerScore is not null)
+                {
+                    page = (int)Math.Ceiling(playerScore.Rank / (float)PAGE_LENGTH);
+                }
+
+                await LoadLeaderboardAsyncNoLock();
+            } 
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error setting the leaderboard page to target!\n" + e);
+            }
+            finally
+            {
+                theLock.Dispose();
+            }
+        }
         private async Task LoadLeaderboardAsync()
         {
             if (page == currentPage || DifficultyId is null) return; // already on this page or no leaderboard selected, no need to reload
-            AsyncLock.Releaser? theLock = await loadLeaderboardLock.LockAsync();
-            if (theLock is null) return;
-            using (theLock.Value)
+            AsyncLock.Releaser theLock = await loadLeaderboardLock.LockAsync();
+            using (theLock)
+                await LoadLeaderboardAsyncNoLock();
+        }
+        private async Task LoadLeaderboardAsyncNoLock()
+        {
+            try
             {
-                try
+                if (DifficultyId is null)
+                    return;
+
+                currentPage = page;
+
+                ShowLoading();
+
+                await PlayerSocialLife.LoadTask;
+
+                scoreDatas.RemoveRange(0, Math.Min(PAGE_LENGTH, scoreDatas.Count));
+
+                AccSaberLeaderboardEntry[]? scores;
+
+                switch (DisplayType)
                 {
-                    currentPage = page;
+                    case LeaderboardDisplayType.Global:
+                        scores = await GetScoreData(page, DifficultyId);
+                        nextPage = page + 1;
+                        break;
 
-                    ShowLoading();
+                    case LeaderboardDisplayType.Relations:
+                        IEnumerable<AccSaberLeaderboardEntry>? totalData;
+                        totalData = await GetScoreData(page, DifficultyId, RelationType.follower);
+                        totalData = (await GetScoreData(page, DifficultyId, RelationType.rival)).Union(totalData, new EntryComparer());
 
-                    await PlayerSocialLife.LoadTask;
+                        scores = totalData is null ? null : [.. totalData];
+                        Array.Sort(scores, (a, b) => a.Rank - b.Rank);
 
-                    scoreDatas.RemoveRange(0, Math.Min(PAGE_LENGTH, scoreDatas.Count));
+                        nextPage = page + 1;
 
-                    AccSaberLeaderboardEntry[]? scores;
+                        break;
 
-                    switch (DisplayType)
-                    {
-                        case LeaderboardDisplayType.Global:
-                            scores = await GetScoreData(page, DifficultyId);
-                            nextPage = page + 1;
-                            break;
+                    case LeaderboardDisplayType.Followed:
+                    case LeaderboardDisplayType.Rivals:
+                        scores = await GetScoreData(page, DifficultyId, DisplayType.Convert());
+                        nextPage = page + 1;
+                        break;
 
-                        case LeaderboardDisplayType.Relations:
-                            IEnumerable<AccSaberLeaderboardEntry>? totalData;
-                            totalData = await GetScoreData(page, DifficultyId, RelationType.follower);
-                            totalData = (await GetScoreData(page, DifficultyId, RelationType.rival)).Union(totalData, new EntryComparer());
+                    case LeaderboardDisplayType.Country:
+                        string country = store.GetCurrentUserAsync().GetAwaiter().GetResult().Country;
 
-                            scores = totalData is null ? null : [.. totalData];
-                            Array.Sort(scores, (a, b) => a.Rank - b.Rank);
+                        scores = await GetScoreData(page, DifficultyId, country);
+                        nextPage = page + 1;
 
-                            nextPage = page + 1;
+                        break;
 
-                            break;
-
-                        case LeaderboardDisplayType.Followed:
-                        case LeaderboardDisplayType.Rivals:
-                            scores = await GetScoreData(page, DifficultyId, DisplayType.Convert());
-                            nextPage = page + 1;
-                            break;
-
-                        case LeaderboardDisplayType.Country:
-                            string country = store.GetCurrentUserAsync().GetAwaiter().GetResult().Country;
-
-                            scores = await GetScoreData(page, DifficultyId, country);
-                            nextPage = page + 1;
-
-                            break;
-
-                        default:
-                            scores = null;
-                            break;
-                    }
-                    if (scores is not null)
-                        scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score)));
-
-                    bool knowCurrentPlayerPage = currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage();
-
-                    IEnumerator ReloadData()
-                    {
-                        yield return new WaitForEndOfFrame();
-
-                        SetSelectorButtonSelectability(knowCurrentPlayerPage);
-
-                        yield return new WaitForFixedUpdate();
-
-                        leaderboard.PrefNumberOfCells = OnPlayerPage ? PAGE_LENGTH : PAGE_LENGTH + 2;
-                        leaderboard.MainCellSize = CellSize;
-                        leaderboard.Data = LeaderboardInfos;
-
-                        titlePaneTitleText?.SetText(RankedHeader);
-
-                        Unranked = false;
-                    }
-
-                    StartCoroutine(ReloadData());
+                    default:
+                        scores = null;
+                        break;
                 }
-                catch (Exception ex)
+                if (scores is not null)
+                    scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score)));
+
+                bool knowCurrentPlayerPage = currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage();
+
+                IEnumerator ReloadData()
                 {
-                    Plugin.Log.Error($"Error loading leaderboard: {ex}");
+                    yield return new WaitForEndOfFrame();
+
+                    SetSelectorButtonSelectability(knowCurrentPlayerPage);
+
+                    leaderboard.PrefNumberOfCells = OnPlayerPage ? PAGE_LENGTH : PAGE_LENGTH + 2;
+                    leaderboard.MainCellSize = CellSize;
+                    leaderboard.Data = LeaderboardInfos;
+
+                    titlePaneTitleText?.SetText(RankedHeader);
+
+                    Unranked = false;
                 }
+
+                StartCoroutine(ReloadData());
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error($"Error loading leaderboard: {ex}");
             }
         }
 

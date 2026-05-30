@@ -1,21 +1,25 @@
-<vertical id='background-container' vertical-fit='Unconstrained' bg='panel-top' skew='0' pref-width='65' horizontal-fit='PreferredSize' pad='1'>
-	<horizontal>
+<vertical id='background-container' bg='panel-top' skew='0' pref-width='65' horizontal-fit='PreferredSize' pad='1'>
+	<horizontal active='~notShowStatus'>
 		<text text='~mission' align='Left' font-size='3' word-wrapping='false'/>
 			<text text='~missionXP' align='Right' word-wrapping='false'/>
 	</horizontal>
-	<horizontal>
+	<horizontal active='~notShowStatus'>
 		<text text='~description' align='Left' font-size='2.5' word-wrapping='true' overflow-mode='Ellipsis'/>
 		<text text='~missionBand' align='Right' font-size='2.5' word-wrapping='false'/>
 	</horizontal>
-	<horizontal>
+	<horizontal active='~notShowStatus'>
 		<horizontal pref-width='~barLen'  active='~targetExists' child-expand-width='false' child-control-width='false'>
 			<image id='PercentBarTop' src='~oneXonePic' pref-height='1'/>
 			<image id='PercentBarBottom' src='~oneXonePic' pref-height='1'/>
 		</horizontal>
 		<horizontal pref-width='~barSpacer' active='~targetExists'/>
+    <text text='~extraText' font-size='2.5' active='~showExtraText'/>
 		<horizontal pref-width='~exactProgLen'>
 			<text text='~exactProgress' align='Right' font-size='2' active='~targetExists' word-wrapping='false' overflow-mode='Ellipsis'/>
 			<text text='Completed!' align='Right' font-size='3' active='~completed' color='#0F0' word-wrapping='false'/>
 		</horizontal>
 	</horizontal>
+  <vertical pref-width='65' child-expand-width='true' active='~showStatus'>
+    <text text='~statusText' align='Center' font-size='5'/>
+  </vertical>
 </vertical>

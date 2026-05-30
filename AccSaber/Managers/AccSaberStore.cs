@@ -96,21 +96,14 @@ namespace AccSaber.Managers
 
             if (PlayerSocialLife.PlayerID is not null)
             {
-                string call = string.Format(allPools ? HelpfulPaths.APAPI_MISSIONS : HelpfulPaths.APAPI_MISSIONS_POOL, PlayerSocialLife.PlayerID, nameof(pool).ToLower());
+                string call = allPools ? HelpfulPaths.APAPI_MISSIONS : string.Format(HelpfulPaths.APAPI_MISSIONS_POOL, pool);
 
                 List<AccSaberMission>? outp = await APIHandler.CallAPI_Json<List<AccSaberMission>>(call, AccsaberAPI.throttler);
 
                 if (outp is null)
                     return [];
 
-                List<AccSaberMission> newMissions = [];
-
-                foreach (AccSaberMission mission in outp)
-                {
-                    newMissions.Add(mission);
-                }
-
-                return newMissions;
+                return outp;
             }
             return [];
         }
