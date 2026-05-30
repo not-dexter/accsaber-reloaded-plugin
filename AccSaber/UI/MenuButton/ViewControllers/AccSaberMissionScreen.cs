@@ -228,8 +228,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                             setWeeklyTime = true;
                         }
 
-                        if (post.TargetPlayerId is not null)
-                            AccSaberLeaderboardViewController.Instance.MissionTargets.Add(post.TargetPlayerId);
+                        if (post.TargetPlayerId is not null && post.TargetMapDifficultyId is not null)
+                            AccSaberLeaderboardViewController.Instance.MissionTargets.Add((post.TargetPlayerId, post.TargetMapDifficultyId));
                     }
 
                     UpdateTimer();

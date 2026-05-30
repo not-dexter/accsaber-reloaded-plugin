@@ -28,7 +28,7 @@ namespace AccSaber.Models
         public MissionStatus Status { get; set; }
 
         [JsonIgnore]
-        public bool Completed => Status.Equals("completed");
+        public bool Completed => Status == MissionStatus.completed;
 
         [JsonProperty("band")]
         public MissionBand Band { get; set; }

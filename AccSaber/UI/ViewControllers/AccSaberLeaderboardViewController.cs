@@ -67,7 +67,7 @@ namespace AccSaber.UI.ViewControllers
         private bool titlePanelRich;
         private TextMeshProUGUI? titlePaneTitleText = null;
 
-        internal HashSet<string> MissionTargets = [];
+        internal HashSet<(string playerId, string diffId)> MissionTargets = [];
 
         public new event PropertyChangedEventHandler? PropertyChanged;
         public string RankedHeader => $"{RANKED_HEADER} | <color={GetColor(CurrentCategory)}>{CurrentCategory}</color>";
