@@ -1043,7 +1043,7 @@ namespace AccSaber.API
 
             await PlayerSocialLife.LoadTask;
 
-            string url = string.Format(APAPI_SCORES, PlayerSocialLife.PlayerID, page, pageLength);
+            string url = string.Format(APAPI_SCORES, PlayerSocialLife.PlayerID, page, pageLength) + "&sort=weightedAp,desc";
             if (category != APCategory.Overall)
                 url += "&categoryId=" + EnumUtils.EnumToReloadedCategory(category);
 
