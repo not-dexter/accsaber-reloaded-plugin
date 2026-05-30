@@ -121,7 +121,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             CurrentTab = 0;
 
 			_ = SetMilestones(0);
-            mc.ShowMissions();
         }
 
 #pragma warning disable IDE0060 // index is needed for this function to be called correctly.

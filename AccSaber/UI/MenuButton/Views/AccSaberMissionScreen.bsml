@@ -1,22 +1,22 @@
 ﻿<horizontal pad='2' spacing='1.5' child-expand-width='false' active='~is-not-loading'>
 	<vertical pref-width='65' bg='panel-top' skew='0'>
     <horizontal child-expand-width='false'>
-      <horizontal pref-width='45'>
-        <text text='Daily' align='Center' font-size='5'/>
+      <horizontal pad-left='2' pref-width='45'>
+        <text text='Daily' align='Left' font-size='5'/>
       </horizontal>
-      <horizontal pref-width='25'>
-        <text text='~daily-time' align='Center' font-size='4'/>
+      <horizontal pad-right='2' pref-width='25'>
+        <text text='~daily-time' align='Right' font-size='4'/>
       </horizontal>
     </horizontal>
     <my-custom-list id='daily-list' contents='daily-cells' visible-cells='2' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='55'/>
 	</vertical>
 	<vertical pref-width='65' bg='panel-top' skew='0'>
     <horizontal child-expand-width='false'>
-      <horizontal pref-width='45'>
-        <text text='Weekly' align='Center' font-size='5'/>
+      <horizontal pad-left='2' pref-width='45'>
+        <text text='Weekly' align='Left' font-size='5'/>
       </horizontal>
-      <horizontal pref-width='25'>
-        <text text='~weekly-time' align='Center' font-size='4'/>
+      <horizontal pad-right='2' pref-width='25'>
+        <text text='~weekly-time' align='Right' font-size='4'/>
       </horizontal>
     </horizontal>
 		<my-custom-list id='weekly-list' contents='weekly-cells' visible-cells='3' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='55'/>
