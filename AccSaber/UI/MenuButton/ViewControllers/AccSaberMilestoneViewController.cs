@@ -148,6 +148,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             else
                 mc.ShowMissions();
         }
+        public void StopTimer()
+        {
+            mc.StopTimer();
+        }
 
         private async Task SetMilestones(MilestoneTab tab)
         {

@@ -24,6 +24,12 @@ using UnityEngine.UI;
 using Zenject;
 using IPA.Config.Data;
 using System.Security.Policy;
+using TMPro;
+using BeatSaberMarkupLanguage.ViewControllers;
+using System.Collections;
+
+
+
 
 
 #if NEW_VERSION
@@ -44,7 +50,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private string _dailyTime = null!, _weeklyTime = null!;
         private DateTime _dailyRefreshDate, _weeklyRefreshDate;
 
-        private CancellationTokenSource TimeUpdaterCanceller = new();
+        private CancellationTokenSource? TimeUpdaterCanceller = null;
 
         private readonly AsyncLock _missionLock = new();
         private static readonly object LoadWaiterLock = new();
@@ -148,8 +154,19 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         private void UpdateTimer()
         {
-            TimeUpdaterCanceller.Cancel();
-            TimeUpdaterCanceller.Dispose();
+            IEnumerator UpdateTime()
+            {
+                yield return new WaitForEndOfFrame();
+
+                DailyTime = $"<color={ColorUtils.GREY}>({_dailyRefreshDate.TimeLeft()})</color>";
+                WeeklyTime = $"<color={ColorUtils.GREY}>({_weeklyRefreshDate.TimeLeft()})</color>";
+            }
+
+            if (TimeUpdaterCanceller is not null) 
+            {
+                TimeUpdaterCanceller.Cancel();
+                TimeUpdaterCanceller.Dispose();
+            }
             TimeUpdaterCanceller = new();
 
             CancellationToken ct = TimeUpdaterCanceller.Token;
@@ -158,11 +175,19 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    DailyTime = $"<color={ColorUtils.GREY}>({_dailyRefreshDate.TimeLeft()})</color>";
-                    WeeklyTime = $"<color={ColorUtils.GREY}>({_weeklyRefreshDate.TimeLeft()})</color>";
+                    _parentFlowCoordinator.StartCoroutine(UpdateTime());
                     Task.Delay(1000, ct).Wait();
                 }
             }, ct);
+        }
+        public void StopTimer()
+        {
+            if (TimeUpdaterCanceller is null)
+                return;
+
+            TimeUpdaterCanceller.Cancel();
+            TimeUpdaterCanceller.Dispose();
+            TimeUpdaterCanceller = null;
         }
 
         public void ShowMissions()
@@ -357,7 +382,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIValue("missionXP")] public string MissionXP = $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>";
 
             [UIValue("exactProgress")]
-            public string ExactProgress => ShowProgress ? $"<color={ColorUtils.GREY}>({Data.ProgressCount} / {Data.TargetCount ?? Data.TargetXp} {(Data.TargetXp is null ? "" : " XP")})</color>" : "";
+            public string ExactProgress => ShowProgress ? $"<color={ColorUtils.GREY}>({Data.ProgressCount} / {Data.TargetCount ?? Data.TargetXp}{(Data.TargetXp is null ? "" : " XP")})</color>" : "";
 
             [UIValue(nameof(completed))] private readonly bool completed = data.Completed;
 
@@ -369,7 +394,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
             [UIComponent(nameof(PercentBarBottom))] private readonly LayoutElement PercentBarBottom = null!;
             [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!;
-                
+            [UIComponent(nameof(DescriptionText))] private readonly TextMeshProUGUI DescriptionText = null!;
+
             [UIValue(nameof(listWidth))] public const float listWidth = 55f;
             [UIValue(nameof(barSpacer))] public const float barSpacer = 0f;
             [UIValue(nameof(exactProgLen))] public const float exactProgLen = 8f;
@@ -385,6 +411,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 PercentBarTop_image?.color = ColorUtils.GetColor(Data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(Data.CategoryId)).Color();
                 PercentBarBottom_image?.color = ColorUtils.GREY.Color();
+
+                DescriptionText.enableAutoSizing = true;
+                DescriptionText.fontSizeMin = 2f;
+                DescriptionText.fontSizeMax = 2.5f;
             }
 
             private float Progress()

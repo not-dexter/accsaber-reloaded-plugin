@@ -22,6 +22,8 @@ using AccSaber.UI.MenuButton.Campaigns;
 using AccSaber.Models;
 using static StandardScoreSyncState;
 using static SongCore.Data.ExtraSongData;
+using TMPro;
+
 
 
 
@@ -164,7 +166,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 _categoryValue = (APCategory)Enum.Parse(typeof(APCategory), value);
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CategoryValue)));
-                _ = UpdateUserInfo();
+				WaitThenUpdateUserInfo();
             }
         }
 
@@ -321,7 +323,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 			IsLoading = true;
 			_firstLoad = true;
-			CategoryValue = "Overall";
+			CategoryValue = nameof(APCategory.Overall);
         }
 
 		[UIAction("prev-clicked")]
@@ -363,21 +365,39 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
             System.Diagnostics.Process.Start("https://github.com/not-dexter/accsaber-reloaded-plugin");
         }
+
+		private void WaitThenUpdateUserInfo()
+		{
+			IEnumerator WaitThenUpdate()
+			{
+				yield return new WaitForEndOfFrame();
+
+				_ = UpdateUserInfo();
+			}
+			StartCoroutine(WaitThenUpdate());
+		}
         private async Task UpdateUserInfo()
 		{
+			try
+			{
+				IsLoading = true;
 
-            IsLoading = true;
+				await PlayerSocialLife.LoadTask;
 
-            await PlayerSocialLife.LoadTask;
+				string? user = PlayerSocialLife.PlayerID;
 
-            var user = PlayerSocialLife.PlayerID;
+				if (user is null)
+					return;
 
-			if (user is null)
-				return;
+				_user = await AccsaberAPI.GetPlayerInfo(user, true, true);
 
-            _user = await AccsaberAPI.GetPlayerInfo(user, true, true);        
-
-            await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == _categoryValue));
+				await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == _categoryValue));
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.Error("There was an error trying to refresh the player!\n" + e);
+				IsLoading = false;
+			}
         }
 
 		private async Task SetUserInfo(AccSaberPlayer userInfo, AccSaberPlayerStats stats)
