@@ -58,11 +58,11 @@ namespace AccSaber.Managers
 
 		public async Task<List<AccSaberMilestone>> GetUserMilestones(bool completed)
 		{
-			var platformUser = await GetPlatformUserInfo();
+            await PlayerSocialLife.LoadTask;
 
-			if (platformUser is not null)
+			if (PlayerSocialLife.PlayerID is not null)
 			{
-				string call = string.Format(completed ? HelpfulPaths.APAPI_MILESTONE_COMPLETE : HelpfulPaths.APAPI_MILESTONE_INCOMPLETE, platformUser.platformUserId);
+				string call = string.Format(completed ? HelpfulPaths.APAPI_MILESTONE_COMPLETE : HelpfulPaths.APAPI_MILESTONE_INCOMPLETE, PlayerSocialLife.PlayerID);
                 string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
 
 				if (response is not null)
@@ -92,11 +92,11 @@ namespace AccSaber.Managers
 		}
         public async Task<List<AccSaberMission>> GetMissions(MissionPool pool = MissionPool.Daily, bool allPools = true)
         {
-            var platformUser = await GetPlatformUserInfo();
+            await PlayerSocialLife.LoadTask;
 
-            if (platformUser is not null)
+            if (PlayerSocialLife.PlayerID is not null)
             {
-                string call = string.Format(allPools ? HelpfulPaths.APAPI_MISSIONS : HelpfulPaths.APAPI_MISSIONS_POOL, platformUser.platformUserId, nameof(pool).ToLower());
+                string call = string.Format(allPools ? HelpfulPaths.APAPI_MISSIONS : HelpfulPaths.APAPI_MISSIONS_POOL, PlayerSocialLife.PlayerID, nameof(pool).ToLower());
 
                 List<AccSaberMission>? outp = await APIHandler.CallAPI_Json<List<AccSaberMission>>(call, AccsaberAPI.throttler);
 
@@ -158,15 +158,15 @@ namespace AccSaber.Managers
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();
 
-			UserInfo? platformUser = await GetPlatformUserInfo();
+            await PlayerSocialLife.LoadTask;
 
-			if (platformUser is null)
+            if (PlayerSocialLife.PlayerID is null)
 			{
-				_log.Error("platformUser is null");
-				return;
+				_log.Error("PlayerID not found.");
+                return;
 			}
 
-			AccSaberPlayer? newOverall = await AccsaberAPI.GetPlayerInfo(platformUser.platformUserId, true, false);
+			AccSaberPlayer? newOverall = await AccsaberAPI.GetPlayerInfo(PlayerSocialLife.PlayerID, true, false);
 
 			// Check if the data fetched is the same as what we already have cached
 			// Saves us from calling the API three more times for the True, Standard and Tech user categories.

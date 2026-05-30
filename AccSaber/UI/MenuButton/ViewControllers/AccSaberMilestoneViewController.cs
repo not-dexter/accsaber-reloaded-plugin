@@ -152,15 +152,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 _milestoneCells.Clear();
                 _milestonesList.Data().Clear();
+                await PlayerSocialLife.LoadTask;
 
-                UserInfo? user = await _accSaberStore.GetPlatformUserInfo();
-
-                if (user is null)
+                if (PlayerSocialLife.PlayerID is null)
                 {
                     return;
                 }
-
-                //_userId = user.platformUserId;
 
                 _milestones = await _accSaberStore.GetUserMilestones(tab == MilestoneTab.Completed);
 

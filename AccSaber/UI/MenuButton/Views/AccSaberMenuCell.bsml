@@ -13,8 +13,9 @@
             <vertical pad-top='1' pad-bottom='1' pref-width='8'>
             <text text='~score-acc' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
         </vertical>
-            <vertical pad-top='1' pad-bottom='1' pref-width='10'>
+            <vertical pad-top='3' pad-bottom='3' pref-width='10'>
             <text text='~score-ap' align='Left' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>
+			<text text='~score-weighted' align='Left' font-size='2' overflow-mode='Ellipsis' word-wrapping='false'/>
         </vertical>
             <vertical pad-top='1' pad-bottom='1' pref-width='8'>
             <text text='~map-category' align='Center' font-size='2.5' overflow-mode='Ellipsis' word-wrapping='false'/>

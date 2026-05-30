@@ -360,18 +360,17 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
         private async Task UpdateUserInfo()
 		{
-			var user = await _accSaberStore.GetPlatformUserInfo();
+
+            IsLoading = true;
+
+            await PlayerSocialLife.LoadTask;
+
+            var user = PlayerSocialLife.PlayerID;
 
 			if (user is null)
 				return;
 
-            _userId = user.platformUserId;
-
-            if (_user is null)
-            {
-                IsLoading = true;
-                _user = await AccsaberAPI.GetPlayerInfo(_userId, true, true);
-            }
+            _user = await AccsaberAPI.GetPlayerInfo(user, true, true);        
 
             await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == _categoryValue));
         }
@@ -509,7 +508,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					// Just gotta use a different type with AccsaberAPI (I did this so that I wouldn't have to cache a full LeaderboardEntry, just the important parts.
 					foreach (AccSaberPlayerScore score in content)
 					{
-						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty.ToString(), score.Accuracy.ToString(), score.AP.ToString(), EnumUtils.EnumToReloadedCategory(score.Category)!, score.CoverUrl));
+						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty.ToString(), score.Accuracy.ToString(), score.AP.ToString(), score.AP.ToString(), EnumUtils.EnumToReloadedCategory(score.Category)!, score.CoverUrl));
 					}
 
 
@@ -557,7 +556,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			[UIValue("score-ap")]
 			private readonly string _scoreAp;
 
-			[UIValue("map-category")]
+            [UIValue("score-weighted")]
+            private readonly string _scoreWeighted;
+
+            [UIValue("map-category")]
 			private readonly string _mapCategory;
 
 			[UIValue("map-cover")]
@@ -565,7 +567,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 
 			#endregion
-			public ScoreCell(string scoreRank, string mapName, string mapAuthor, string mapDiff, string scoreAcc, string scoreAp, string mapCategory, string mapCover)
+			public ScoreCell(string scoreRank, string mapName, string mapAuthor, string mapDiff, string scoreAcc, string scoreAp, string scoreWeighted, string mapCategory, string mapCover)
 			{
 				_scoreRank = $"#{scoreRank}";
 				_mapName = mapName;
@@ -573,7 +575,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_mapDiff = DiffName(mapDiff);
 				_scoreAcc = $"{float.Parse(scoreAcc) * 100:F2}%";
 				_scoreAp = $"{float.Parse(scoreAp):F2} AP";
-				_mapCategory = CategoryName(mapCategory);
+                _scoreWeighted = $"<color={ColorUtils.GREY}>({float.Parse(scoreWeighted):F2} AP)</color>";
+                _mapCategory = CategoryName(mapCategory);
 				_mapCover = mapCover;
             }
 

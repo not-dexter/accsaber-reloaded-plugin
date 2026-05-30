@@ -27,6 +27,9 @@ namespace AccSaber.Models.CacheModels
         [JsonProperty("ap")]
         public float AP { get; set; }
 
+        [JsonProperty("weightedAp")]
+        public float WeightedAP { get; set; }
+
         [JsonProperty("timeSet")]
         public DateTime TimeSet { get; set; }
 
