@@ -19,13 +19,42 @@ namespace AccSaber.Utils
     {
         Queue, Qualified, Ranked
     }
+
+    // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/mission/MissionPool.java
+    // (not exactly the same since "event" cannot be made an enum)
     public enum MissionPool
     {
         Daily, Weekly, Event
     }
+
+    // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/mission/MissionBand.java
     public enum MissionBand
     {
         easy, medium, hard, extreme
+    }
+    // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/mission/MissionType.java
+    // Moved them around to group up specific types
+    public enum MissionType
+    {
+        PLAY_N_MAPS,
+        XP_IN_WINDOW,
+        ACC_ON_MAP,
+        AP_ON_MAP,
+        PB_SPECIFIC_MAP,
+        SNIPE_PLAYER_ON_MAP,
+        STREAK_ON_MAP,
+        PB_ABOVE_THRESHOLD,
+        STREAK_N_IN_CATEGORY,
+        COMEBACK_PB,
+        SCORES_N
+    }
+    // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/mission/MissionStatus.java
+    public enum MissionStatus
+    {
+        active,
+        completed,
+        expired,
+        voided
     }
     public static class EnumUtils
     {

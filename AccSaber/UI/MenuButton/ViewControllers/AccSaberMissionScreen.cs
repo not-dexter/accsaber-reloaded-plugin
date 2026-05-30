@@ -85,7 +85,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             switch (cell.Data.Type)
             {
-                case "SNIPE_PLAYER_ON_MAP":
+                case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP:
                     cell.GoToSong();
                     break;
             }
@@ -214,7 +214,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             public event PropertyChangedEventHandler? PropertyChanged;
 
-            private readonly string color = data.MissionBand switch
+            private readonly string color = data.Band switch
             {
                 Utils.MissionBand.extreme => "#ffd700",
                 Utils.MissionBand.hard => "#f97316",
@@ -257,19 +257,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue("mission")] public string Mission = $"{data.Name} <size=80%><color={ColorUtils.GetColor(data.Category)}>{data.Category.ToString().ToUpper()}</color></size>";
 
-            [UIValue("missionBand")] public string MissionBand => $"<color={color}>{Data.Band.ToUpper()}</color>";
+            [UIValue("missionBand")] public string MissionBand => $"<color={color}>{Data.Band.ToString().ToUpper()}</color>";
 
-            [UIValue("description")] public string Description => $"<color={ColorUtils.GREY}>{DescriptionParser(Data.Description)}</color>";
-
-            public string DescriptionParser(string input) => Data.Type switch
-            {
-                _ => input,
-            };
+            [UIValue("description")] public string Description => $"<color={ColorUtils.GREY}>{Data.Description}</color>";
 
             [UIValue("extraText")]
             public string ExtraText = data.Type switch
             {
-                "SNIPE_PLAYER_ON_MAP" => $"<color={ColorUtils.GREY}>(Get <color={ColorUtils.AP}>{data.TargetAp:N2}ap</color> or <color={ColorUtils.GetColor(data.Category)}>{data.TargetAcc:N2}%</color>)</color>",
+                MissionType.SNIPE_PLAYER_ON_MAP => $"<color={ColorUtils.GREY}>(Get <color={ColorUtils.AP}>{data.TargetAp:N2}ap</color> or <color={ColorUtils.GetColor(data.Category)}>{data.TargetAcc:N2}%</color>)</color>",
                 _ => "",
             };
 
@@ -414,9 +409,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                             sldv.GetField<Action<StandardLevelDetailView, IDifficultyBeatmap>, StandardLevelDetailView>("didChangeDifficultyBeatmapEvent").Invoke(sldv, diff);
                         }
 #endif
-
-
-                        AccSaberLeaderboardViewController.Instance.ShowPlayerPage(Data.TargetPlayerId!);
+                        if (Data.TargetPlayerId is not null)
+                            AccSaberLeaderboardViewController.Instance.ShowPlayerPage(Data.TargetPlayerId);
                     } catch (Exception e)
                     {
                         Plugin.Log.Error("There was an error going to the map!\n" + e);
