@@ -28,7 +28,7 @@ namespace AccSaber.Models.CacheModels
         public float AP { get; set; }
 
         [JsonProperty("weightedAp")]
-        public float WeightedAP { get; set; }
+        public float WeightedAp { get; set; }
 
         [JsonProperty("timeSet")]
         public DateTime TimeSet { get; set; }
@@ -48,6 +48,7 @@ namespace AccSaber.Models.CacheModels
             SongAuthor = score.SongAuthor;
             Accuracy = score.Accuracy;
             AP = score.AP;
+            WeightedAp = score.WeightedAp;
             TimeSet = score.TimeSet;
             Difficulty = EnumUtils.ReloadedDiffToDiff(score.Difficulty);
             Category = EnumUtils.ReloadedCategoryToEnum(score.CategoryId)!.Value;

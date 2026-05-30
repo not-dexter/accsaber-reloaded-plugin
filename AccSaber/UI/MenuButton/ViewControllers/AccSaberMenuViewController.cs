@@ -20,6 +20,10 @@ using Zenject;
 using AccSaber.Models.PlayerModels;
 using AccSaber.UI.MenuButton.Campaigns;
 using AccSaber.Models;
+using static StandardScoreSyncState;
+using static SongCore.Data.ExtraSongData;
+
+
 
 
 #if NEW_VERSION
@@ -509,7 +513,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					// Just gotta use a different type with AccsaberAPI (I did this so that I wouldn't have to cache a full LeaderboardEntry, just the important parts.
 					foreach (AccSaberPlayerScore score in content)
 					{
-						_scoreCells.Add(new ScoreCell(score.Rank.ToString(), score.SongName, score.SongAuthor, score.Difficulty.ToString(), score.Accuracy.ToString(), score.AP.ToString(), score.WeightedAP.ToString(), EnumUtils.EnumToReloadedCategory(score.Category)!, score.CoverUrl));
+						_scoreCells.Add(new ScoreCell(score));
 					}
 
 
@@ -532,54 +536,42 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
         }
 
-		internal class ScoreCell : ICellDataSource
-		{
+		internal class ScoreCell(AccSaberPlayerScore data) : ICellDataSource
+        {
 			public string TemplatePath => ResourcePaths.ACC_SABER_MENU_CELL;
 			public float CellSize => 9f;
 			public int TemplateId { get; set; }
 
 			#region BSML Values
 			[UIValue("score-rank")]
-			private readonly string _scoreRank;
+			private string _scoreRank => $"#{data.Rank}";
 
 			[UIValue("map-name")]
-			private readonly string _mapName;
+			private string _mapName => data.SongName;
 
 			[UIValue("map-author")]
-			private readonly string _mapAuthor;
+			private string _mapAuthor => data.SongAuthor;
 
 			[UIValue("map-diff")]
-			private readonly string _mapDiff;
+			private string _mapDiff => DiffName(EnumUtils.DiffENumToReloadedDiff(data.Difficulty));
 
 			[UIValue("score-acc")]
-			private readonly string _scoreAcc;
+			private string _scoreAcc => $"{data.Accuracy * 100:F2}%";
 
-			[UIValue("score-ap")]
-			private readonly string _scoreAp;
+            [UIValue("score-ap")]
+			private string _scoreAp => $"{data.AP:F2} AP";
 
             [UIValue("score-weighted")]
-            private readonly string _scoreWeighted;
+            private string _scoreWeighted => $"<color={ColorUtils.GREY}>({data.WeightedAp:F2} AP)</color>";
 
             [UIValue("map-category")]
-			private readonly string _mapCategory;
+			private string _mapCategory => CategoryName(EnumUtils.EnumToReloadedCategory(data.Category)!);
 
 			[UIValue("map-cover")]
-			private readonly string _mapCover;
+			private string _mapCover => data.CoverUrl;
 
 
-			#endregion
-			public ScoreCell(string scoreRank, string mapName, string mapAuthor, string mapDiff, string scoreAcc, string scoreAp, string scoreWeighted, string mapCategory, string mapCover)
-			{
-				_scoreRank = $"#{scoreRank}";
-				_mapName = mapName;
-				_mapAuthor = mapAuthor;
-				_mapDiff = DiffName(mapDiff);
-				_scoreAcc = $"{float.Parse(scoreAcc) * 100:F2}%";
-				_scoreAp = $"{float.Parse(scoreAp):F2} AP";
-                _scoreWeighted = $"<color={ColorUtils.GREY}>({float.Parse(scoreWeighted):F2} AP)</color>";
-                _mapCategory = CategoryName(mapCategory);
-				_mapCover = mapCover;
-            }
+            #endregion
 
 			private string DiffName(string CategoryId)
 			{
