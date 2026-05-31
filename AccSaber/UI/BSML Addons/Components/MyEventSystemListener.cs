@@ -1,9 +1,12 @@
-﻿using BeatSaberMarkupLanguage;
-using HMUI;
+﻿using HMUI;
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+
+#if !NEW_VERSION
+using BeatSaberMarkupLanguage;
+#endif
 
 namespace AccsaberLeaderboard.UI.BSML_Addons.Components
 {

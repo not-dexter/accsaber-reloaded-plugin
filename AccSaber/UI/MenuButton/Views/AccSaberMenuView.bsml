@@ -53,7 +53,7 @@
             <vertical active='~scores-is-loading' vertical-fit='PreferredSize' pref-width='10' pref-height='45'>
               <loading-indicator  preserve-aspect='true' pref-width='10' pref-height='10'/>
             </vertical>
-            <my-custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' pref-width='75' active='~scores-is-not-loading'/>
+            <my-custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' pref-width='75' clickable-cells='true' select-cell='on-cell-clicked' active='~scores-is-not-loading'/>
             <horizontal>
               <button text='Previous' on-click='prev-clicked' pref-width='18'/>
               <text text='~pagnation' align='Center' />

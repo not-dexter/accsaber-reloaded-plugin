@@ -3,8 +3,6 @@ using AccSaber.Models.Base;
 using AccSaber.Models.ItemModels.Base;
 using AccSaber.Models.ItemModels.ValueTypes;
 using AccSaber.Models.ItemModels.ValueTypes.States;
-using HMUI;
-using IPA.Loader.Features;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
