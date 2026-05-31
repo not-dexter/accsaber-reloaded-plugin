@@ -3,6 +3,7 @@ using AccSaber.Models.ItemModels.Base;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
+using System.Runtime.Serialization;
 
 namespace AccSaber.Models.ItemModels
 {
@@ -62,6 +63,13 @@ namespace AccSaber.Models.ItemModels
 
         [JsonProperty("createdAt")]
         public DateTime CreatedAt { get; set; }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            Value.ItemId = Id;
+            Value.Propagate();
+        }
 
     }
 }

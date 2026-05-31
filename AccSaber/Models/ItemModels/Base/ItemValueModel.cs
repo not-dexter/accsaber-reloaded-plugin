@@ -1,9 +1,13 @@
 ﻿using AccSaber.Models.Base;
+using Newtonsoft.Json;
 
 namespace AccSaber.Models.ItemModels.Base
 {
-#pragma warning disable IDE1006
-    internal interface ItemValueModel : Model
+    internal abstract class ItemValueModel : Model
     {
+        [JsonIgnore]
+        public string ItemId { get; set; } = null!;
+
+        public virtual void Propagate() { }
     }
 }

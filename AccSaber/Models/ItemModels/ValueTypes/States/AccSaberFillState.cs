@@ -1,4 +1,5 @@
-﻿using AccSaber.Models.ItemModels.Base;
+﻿using Accsaber.Utils;
+using AccSaber.Models.ItemModels.Base;
 using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
@@ -17,6 +18,9 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
         [JsonIgnore]
         private Gradient? _gradient;
 
+        [JsonIgnore]
+        private static readonly ObjectCacher<Gradient> GradientCache = new(TimeSpan.FromMinutes(30)); 
+
         public override bool Equals(AccSaberFillState other)
         {
             return Fill.Equals(other.Fill);
@@ -26,6 +30,9 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
         {
             if (_gradient is not null)
                 return _gradient;
+
+            if (GradientCache.TryGetCachedItem(ItemId, out _gradient))
+                return _gradient!;
 
             Gradient g = new();
 
@@ -58,6 +65,8 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
             }
 
             _gradient = g;
+            GradientCache.CacheItem(g, ItemId);
+
             return g;
         }
     }

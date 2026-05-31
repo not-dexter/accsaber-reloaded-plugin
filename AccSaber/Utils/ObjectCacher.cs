@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Accsaber.Utils
 {
-    public class ObjectCacher<K, V>(TimeSpan defaultItemLifespan = default) : IEnumerable<KeyValuePair<K,V>> where K : IComparable<K>
+    public class ObjectCacher<K, V>(TimeSpan defaultItemLifespan = default) : IEnumerable<KeyValuePair<K,V>>
     {
         private readonly Dictionary<K, V> cache = [];
         private readonly SortedSet<(DateTime expiration, K key)> expirationDates = [];
@@ -44,7 +44,7 @@ namespace Accsaber.Utils
             lock (cacheLock)
             {
                 CleanOutCache();
-                if (!cache.TryGetValue(key, out V val))
+                if (key is null || !cache.TryGetValue(key, out V val))
                     return default;
                 return val;
             }
@@ -54,18 +54,30 @@ namespace Accsaber.Utils
             lock (cacheLock)
             {
                 CleanOutCache();
-                return cache.TryGetValue(key, out val);
+                val = default;
+                return key is not null && cache.TryGetValue(key, out val);
+            }
+        }
+        public bool ContainsKey(K key)
+        {
+            lock (cacheLock)
+            {
+                CleanOutCache();
+                return cache.ContainsKey(key);
             }
         }
 
         public void RemoveItem(K key)
         {
+            if (key is null)
+                return;
+
             lock (cacheLock)
             {
                 if (cache.TryGetValue(key, out V item))
                 {
                     cache.Remove(key);
-                    var expirationDate = expirationDates.FirstOrDefault(token => token.key.Equals(key));
+                    var expirationDate = expirationDates.FirstOrDefault(token => key.Equals(token.key));
                     if (expirationDate.expiration != default)
                         expirationDates.Remove(expirationDate);
                 }
@@ -123,5 +135,5 @@ namespace Accsaber.Utils
         }
     }
 
-    public class ObjectCacher<T> : ObjectCacher<string, T> { }
+    public class ObjectCacher<T>(TimeSpan defaultItemLifespan = default) : ObjectCacher<string, T>(defaultItemLifespan) { }
 }

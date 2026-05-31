@@ -1,4 +1,5 @@
-﻿using AccSaber.Models.Base;
+﻿using Accsaber.Utils;
+using AccSaber.Models.Base;
 using AccSaber.Models.ItemModels.Base;
 using AccSaber.Models.ItemModels.ValueTypes;
 using AccSaber.Models.ItemModels.ValueTypes.States;
@@ -25,7 +26,7 @@ namespace AccSaber.Models.ItemModels
         public AccSaberItemType<AccSaberItemStateValue<AccSaberFillState>> ProfileBorderColor { get; set; } = null!;
 
         [JsonIgnore]
-        private static readonly Dictionary<Gradient, Texture2D[]> TextureBuffer = [];
+        private static readonly ObjectCacher<Gradient, Texture2D[]> TextureBuffer = new();
 
         public Coroutine SetTitle(TextMeshProUGUI text, MonoBehaviour host)
         {
@@ -118,9 +119,9 @@ namespace AccSaber.Models.ItemModels
         {
             int degreesInt = (int)Mathf.Round(degrees) % 360;
 
-            if (TextureBuffer.ContainsKey(gradient) && TextureBuffer[gradient][degreesInt] is not null)
+            if (TextureBuffer.TryGetCachedItem(gradient, out Texture2D[]? arr) && arr![degreesInt] is not null)
             {
-                return TextureBuffer[gradient][degreesInt];
+                return arr[degreesInt];
             }
 
             Texture2D texture = new(width, height)
@@ -156,9 +157,9 @@ namespace AccSaber.Models.ItemModels
             }
 
             if (!TextureBuffer.ContainsKey(gradient))
-                TextureBuffer.Add(gradient, new Texture2D[360]);
+                TextureBuffer.CacheItem(new Texture2D[360], gradient);
 
-            TextureBuffer[gradient][degreesInt] = texture;
+            TextureBuffer.GetCachedItem(gradient)![degreesInt] = texture;
 
             texture.Apply();
             return texture;

@@ -13,5 +13,14 @@ namespace AccSaber.Models.ItemModels.ValueTypes
 
         [JsonProperty("durationMs")]
         public int DurationMs { get; set; } = 1000;
+
+        public override void Propagate()
+        {
+            foreach (T state in States)
+            {
+                state.ItemId = ItemId;
+                state.Propagate();
+            }
+        }
     }
 }
