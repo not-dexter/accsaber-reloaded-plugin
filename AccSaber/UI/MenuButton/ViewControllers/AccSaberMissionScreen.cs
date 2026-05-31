@@ -161,8 +161,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 DailyTime = $"<color={ColorUtils.GREY}>Resets {_dailyRefreshDate.ToRelativeTime(2).ToLower()}</color>";
                 WeeklyTime = $"<color={ColorUtils.GREY}>Resets {_weeklyRefreshDate.ToRelativeTime(3).ToLower()}</color>";
 
-                _dailyRefreshDate -= TimeSpan.FromMinutes(20);
-
                 if (_dailyRefreshDate <= DateTime.UtcNow)
                 {
                     StopTimer();
