@@ -15,6 +15,7 @@ using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
+using TMPro;
 using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,7 +36,7 @@ namespace AccSaber.UI.ViewControllers
 		private string _username = "";
 		private string _rank = null!;
 		private string _country = null!;
-		private string _title = null!;
+		private Coroutine? titleRoutine, borderRoutine;
 		private string _level = null!;
 		private string _ap = null!;
 		private string _xp = null!;
@@ -78,8 +79,10 @@ namespace AccSaber.UI.ViewControllers
 		[UIComponent("progress-bar-inverse")]
 		private readonly LayoutElement _progressBarInverse = null!;
 
+		[UIComponent("title-text")]
+		private readonly TextMeshProUGUI _titleText = null!;
+
         [UIValue("dimColor")] public const string dimColor = ColorUtils.DARK_BLUE;
-        [UIValue("image1x1")] public const string image1x1 = ResourcePaths.PIXEL;
         [UIValue("playerImageBorder")] public const string playerImageBorderPath = ResourcePaths.GRADIENT_CORNER;
 
         [UIComponent("playerImageBackground")] private readonly ImageView _playerImageBackground = null!;
@@ -162,7 +165,7 @@ namespace AccSaber.UI.ViewControllers
 			}
 		}
 
-		[UIValue("title")]
+		/*[UIValue("title")]
 		private string Title
 		{
 			get => _title;
@@ -171,7 +174,7 @@ namespace AccSaber.UI.ViewControllers
 				_title = value;
 				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
 			}
-		}
+		}*/
 		[UIValue("level")]
 		private string Level
 		{
@@ -318,12 +321,12 @@ namespace AccSaber.UI.ViewControllers
                 _playerImageBackground.material = ResourcePaths.BORDER_MATERIAL;
                 _playerImageBorder.material = ResourcePaths.BORDER_MATERIAL;
                 //_friendButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
-				//_rivalButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
+                //_rivalButtonBG.background!.material = ResourcePaths.BORDER_MATERIAL;
 
                 //_friendButton.HighlightColor = ColorUtils.RELOADED.Color();
-				//_rivalButton.HighlightColor = ColorUtils.TARGETED.Color();
+                //_rivalButton.HighlightColor = ColorUtils.TARGETED.Color();
 
-				_parsed = true;
+                _parsed = true;
 			}
 			
 			_modalView.transform.SetParent(parentTransform.transform);
@@ -446,24 +449,41 @@ namespace AccSaber.UI.ViewControllers
             Username = $"{userInfo.PlayerName}";
 			Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color> #{stats.Rank} {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
 			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color> #{stats.CountryRank} {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
-			Title = $"{"<color=" + _color + ">" +userInfo.LevelData.PlayerTitle}</color>";
 			Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color> {stats.AP:N2} AP {StatDiff(stats.StatDiffs.ApDiff)}": $"{stats.AP:N2} AP";
 			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
 			Plays = $"{stats.Plays} ranked plays";
 			Headset = userInfo.Headset ?? "";
 
-			const float barLen = 20f;
+			if (titleRoutine is not null)
+                _host!.StopCoroutine(titleRoutine);
+
+			await userInfo.LoadItems;
+
+			IEnumerator WaitThenUpdate()
+			{
+				yield return new WaitUntil(_titleText.IsActive);
+				yield return new WaitForEndOfFrame();
+                titleRoutine = userInfo.Items!.SetTitle(_titleText, _host!);
+            }
+
+			_host!.StartCoroutine(WaitThenUpdate());
+
 
             if (_firstLoad)
 			{
-                _playerImageBorder.color = _color.Color();
-				await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
+				if (borderRoutine is not null)
+					_host!.StopCoroutine(borderRoutine);
+
+                borderRoutine = userInfo.Items!.SetProfileBorder(_playerImageBorder, _host!);
+
+                await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
 				if (userInfo.AvatarUrl is not null)
 					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
 				if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
 					_progressBarImage.color = _color.Color();
 
+                const float barLen = 20f;
 
                 IEnumerator SetBarLen()
 				{
@@ -494,7 +514,17 @@ namespace AccSaber.UI.ViewControllers
 		private void OnModalClosed()
 		{
 			_userId = null;
-		}
+			if (titleRoutine is not null)
+			{
+				_host!.StopCoroutine(titleRoutine);
+				titleRoutine = null;
+			}
+            if (borderRoutine is not null)
+			{
+                _host!.StopCoroutine(borderRoutine);
+				borderRoutine = null;
+            }
+        }
 
 		public void Dispose()
 		{

@@ -1,5 +1,6 @@
 ﻿using AccSaber.API;
 using AccSaber.Models.Base;
+using AccSaber.Models.ItemModels;
 using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
@@ -13,6 +14,7 @@ namespace AccSaber.Models.PlayerModels
     [UsedImplicitly]
     internal sealed class AccSaberPlayer : Model
     {
+        [JsonIgnore]
         public Task LoadStatDiffs
         {
             get
@@ -25,7 +27,26 @@ namespace AccSaber.Models.PlayerModels
                 return loadStatDiffs;
             }
         }
+
+        [JsonIgnore]
         private Task? loadStatDiffs = null;
+
+        [JsonIgnore]
+        public Task LoadItems
+        {
+            get
+            {
+                if (loadItems is null)
+                {
+                    loadItems = LoadPlayerItems();
+                    return loadItems;
+                }
+                return loadItems;
+            }
+        }
+
+        [JsonIgnore]
+        private Task? loadItems = null;
 
         [JsonProperty("avatarUrl")]
         public string? AvatarUrl { get; set; }
@@ -64,6 +85,9 @@ namespace AccSaber.Models.PlayerModels
 
         //xpCountryRanking, xpRanking
 
+        [JsonIgnore]
+        public AccSaberEquippedItems? Items;
+
         public AccSaberPlayerStats? GetStat(APCategory category) => Statistics?.FirstOrDefault(stat => stat.Category == category);
 
         private async Task LoadStatDiffsFunc()
@@ -87,6 +111,10 @@ namespace AccSaber.Models.PlayerModels
                 if (diff is not null)
                     stat.StatDiffs = diff;
             }
+        }
+        private async Task LoadPlayerItems()
+        {
+            Items = await APIHandler.CallAPI_Json<AccSaberEquippedItems>(string.Format(HelpfulPaths.APAPI_PLAYERID_ITEMS_EQUIPPED, PlayerId), AccsaberAPI.throttler);
         }
     }
 }

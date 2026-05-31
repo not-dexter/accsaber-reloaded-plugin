@@ -9,7 +9,7 @@
         <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='105' spacing='-1' active='~is-not-loading'>
           <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pad-left='0' pref-width='25' pref-height='55'>
             <text text='~username' align='Center' bold='true'/>
-            <text text='~title' align='Center' font-size='3.5' />
+            <text id='title-text' align='Center' font-size='3.5' />
             <img id='profile-image' spacing='0' pad='0' preserve-aspect='true' pref-width='18' pref-height='18'/>
             <text text='~level' align='Center' font-size='2.5'/>
             <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>

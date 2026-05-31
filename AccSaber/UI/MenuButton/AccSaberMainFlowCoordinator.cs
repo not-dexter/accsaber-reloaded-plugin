@@ -50,6 +50,7 @@ namespace AccSaber.UI.MenuButton
         {
             _accSaberRelationsViewController.HideNewsModal();
             _accSaberMilestoneViewController.StopTimer();
+            _accSaberMenuViewController.OnClose();
             SetRightScreenViewController(null, ViewController.AnimationType.None);
             SetLeftScreenViewController(null, ViewController.AnimationType.None);
         }

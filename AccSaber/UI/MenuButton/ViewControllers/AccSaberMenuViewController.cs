@@ -20,12 +20,7 @@ using Zenject;
 using AccSaber.Models.PlayerModels;
 using AccSaber.UI.MenuButton.Campaigns;
 using AccSaber.Models;
-using static StandardScoreSyncState;
-using static SongCore.Data.ExtraSongData;
 using TMPro;
-
-
-
 
 
 #if NEW_VERSION
@@ -52,12 +47,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private string _pagnation = "";
 		private string _rank = null!;
         private string _country = null!;
-        private string _title = null!;
         private string _level = null!;
         private string _ap = null!;
         private string _xp = null!;
         private string _plays = null!;
         private string _headset = null!;
+
+		private Coroutine? titleRoutine;
 
 		private readonly AsyncLock refreshLock = new();
 
@@ -87,21 +83,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIComponent("top-scores-list")]
 		private readonly MyCustomCellListTableData _topScoresList = null!;
 
+		[UIComponent("title-text")]
+		private readonly TextMeshProUGUI _titleText = null!;
+
 		private CanvasGroup? _userInfoCanvasGroup;
 
-		private AccSaberStore _accSaberStore = null!;
-        private TimeTweeningManager _timeTweeningManager = null!;
+        [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
 
 		public event Action? HubActivated;
         public event Action? HubDeactivated;
-
-        [Inject]
-        public void Construct(AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager)
-        {
-            _accSaberStore = accSaberStore;
-			_timeTweeningManager = timeTweeningManager;
-		}
-
 
         protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
@@ -203,17 +193,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			{
 				_country = value;
 				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Country)));
-			}
-		}
-
-		[UIValue("title")]
-		private string Title
-		{
-			get => _title;
-			set
-			{
-				_title = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
 			}
 		}
 		[UIValue("level")]
@@ -366,6 +345,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             System.Diagnostics.Process.Start("https://github.com/not-dexter/accsaber-reloaded-plugin");
         }
 
+		internal void OnClose()
+		{
+            if (titleRoutine is not null)
+			{
+				StopCoroutine(titleRoutine);
+				titleRoutine = null;
+			}
+        }
 		private void WaitThenUpdateUserInfo()
 		{
 			IEnumerator WaitThenUpdate()
@@ -443,7 +430,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			Username = $"{userInfo.PlayerName}";
 			Rank = stats.StatDiffs.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
 			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
-			Title = $"{"<color=" + _color + ">" + userInfo.LevelData.PlayerTitle}</color>";
 			Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color>  {stats.AP:N2} AP  {StatDiff(stats.StatDiffs.ApDiff)}" : $"{stats.AP:N2} AP";
 			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
@@ -451,6 +437,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			Headset = userInfo.Headset ?? "";
 
 			userInfo.LevelData.ProgressPercent /= 100f;
+
+			if (titleRoutine is not null)
+				StopCoroutine(titleRoutine);
+
+			await userInfo.LoadItems;
+
+			titleRoutine = userInfo.Items!.SetTitle(_titleText, this);
 
 
 			const float barLen = 20f;

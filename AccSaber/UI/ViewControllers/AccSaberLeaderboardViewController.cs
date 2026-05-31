@@ -678,10 +678,11 @@ namespace AccSaber.UI.ViewControllers
                 return true;
             }
 
-            int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;
+            //int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;
 
-            bool gotCachedData = DisplayType != LeaderboardDisplayType.Country ?
-                ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country);
+            //bool gotCachedData = DisplayType != LeaderboardDisplayType.Country ?
+            //    ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country);
+            bool gotCachedData = false;
 
             IEnumerator WaitThenUpdate()
             {
@@ -828,6 +829,7 @@ namespace AccSaber.UI.ViewControllers
 
                 IEnumerator ReloadData()
                 {
+                    yield return null;
                     yield return new WaitForEndOfFrame();
 
                     SetSelectorButtonSelectability(knowCurrentPlayerPage);

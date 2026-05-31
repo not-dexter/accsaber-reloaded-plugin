@@ -211,6 +211,7 @@
 
         public const string APAPI_CURVE_AP = APAPI + "curves/acc00000-0000-0000-0000-000000000001"; // param entered already
 
+        public const string APAPI_PLAYERID_ITEMS_EQUIPPED = APAPI + "users/{0}/items/equipped"; // user_id
 
         /// <summary>
         /// Retrieves relations for a user with type and direction filters (paged).
