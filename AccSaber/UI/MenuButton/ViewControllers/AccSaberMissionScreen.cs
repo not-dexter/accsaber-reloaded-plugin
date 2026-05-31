@@ -161,10 +161,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 DailyTime = $"<color={ColorUtils.GREY}>Resets {_dailyRefreshDate.ToRelativeTime(2).ToLower()}</color>";
                 WeeklyTime = $"<color={ColorUtils.GREY}>Resets {_weeklyRefreshDate.ToRelativeTime(3).ToLower()}</color>";
 
+                _dailyRefreshDate -= TimeSpan.FromMinutes(20);
+
                 if (_dailyRefreshDate <= DateTime.UtcNow)
                 {
                     StopTimer();
-                    SetMissions().ContinueWith(finish => UpdateTimer());
+                    SetMissions(true).ContinueWith(finish => UpdateTimer());
                 }
             }
 
@@ -198,9 +200,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void ShowMissions()
         {
-            _ = SetMissions();
+            _ = SetMissions(false);
         }
-        private async Task SetMissions()
+        private async Task SetMissions(bool forceNewContent)
         {
             AsyncLock.Releaser? locker = await _missionLock.TryLockAsync();
 
@@ -226,6 +228,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 bool updateUI = _songPresentInfo is not null && _parsed;
 
+                DateTime expiration = ((MissionCell?)_dailyCells.FirstOrDefault())?.Data.ExpiresAt ?? DateTime.MinValue;
+
                 _dailyCells.Clear();
                 _weeklyCells.Clear();
 
@@ -236,6 +240,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 try
                 {
                     List<AccSaberMission> missions = await _accSaberStore.GetMissions();
+
+                    while (forceNewContent && missions.First(mission => mission.MissionPool == MissionPool.Daily).ExpiresAt <= expiration)
+                    {
+                        await Task.Delay(15000);
+                        missions = await _accSaberStore.GetMissions();
+                    }
 
                     bool setDailyTime = false, setWeeklyTime = false;
 
