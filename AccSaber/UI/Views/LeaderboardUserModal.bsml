@@ -5,7 +5,7 @@
       <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='65' spacing='-1'>
         <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='25' pref-height='41' pad-top='2' spacing='2'>
           <vertical pref-height='8' pref-width='22' pad='0'>
-            <text text='~username' align='Center' overflow-mode='Ellipsis' bold='true' />
+            <text text='~username' align='Center' overflow-mode='Ellipsis' word-wrapping='false' bold='true' />
           </vertical>
           <text id='title-text' align='Center' font-size='3.5' />
           <stack pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>

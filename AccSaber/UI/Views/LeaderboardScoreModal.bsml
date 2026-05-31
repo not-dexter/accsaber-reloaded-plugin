@@ -3,7 +3,7 @@
   <vertical id='container' pref-width='~containerWidth' pref-height='~containerHeight'>
     <horizontal pref-height="6" pref-width="28" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pad='1'>
 		<horizontal pref-height="15" pref-width="25" horizontal-fit="PreferredSize" vertical-fit="PreferredSize" pad='1'>
-			<text id='playerNameText' text='PLAYER NAME' align='Center' overflow-mode='Ellipsis' font-size='~playerNameFontSize'/>
+			<text id='playerNameText' text='PLAYER NAME' align='Center' overflow-mode='Ellipsis' word-wrapping='false' font-size='~playerNameFontSize'/>
 		</horizontal>
     </horizontal>
 	  <vertical pref-width='45' pref-height='0.5' horizontal-fit="PreferredSize" vertical-fit="PreferredSize">
