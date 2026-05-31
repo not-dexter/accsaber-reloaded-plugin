@@ -2,28 +2,28 @@
   <horizontal pad='2' spacing='1.5' child-expand-width='false' active='~is-not-loading'>
     <vertical pref-width='65' child-expand-height='false' bg='panel-top' skew='0'>
       <horizontal child-expand-width='false' pref-height='10'>
-        <horizontal pad-left='2' pref-width='45'>
+        <horizontal pad-left='2' pref-width='25'>
           <text text='Daily' align='Left' font-size='5'/>
         </horizontal>
-        <horizontal pad-right='2' pref-width='25'>
-          <text text='~daily-time' align='Right' font-size='4'/>
+        <horizontal pad-right='2' pref-width='45'>
+          <text text='~daily-time' align='Right' font-size='4' word-wrapping='false'/>
         </horizontal>
       </horizontal>
       <vertical pref-height='35'>
-        <my-custom-list id='daily-list' contents='daily-cells' visible-cells='2' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='55'/>
+        <my-custom-list id='daily-list' contents='daily-cells' visible-cells='2' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
       </vertical>
     </vertical>
     <vertical pref-width='65' child-expand-height='false' bg='panel-top' skew='0'>
       <horizontal child-expand-width='false' pref-height='10'>
-        <horizontal pad-left='2' pref-width='45'>
+        <horizontal pad-left='2' pref-width='25'>
           <text text='Weekly' align='Left' font-size='5'/>
         </horizontal>
-        <horizontal pad-right='2' pref-width='25'>
-          <text id='weekly-time-text' text='~weekly-time' align='Right'/>
+        <horizontal pad-right='2' pref-width='45'>
+          <text id='weekly-time-text' text='~weekly-time' align='Right' word-wrapping='false'/>
         </horizontal>
       </horizontal>
       <vertical pref-height='35'>
-        <my-custom-list id='weekly-list' contents='weekly-cells' visible-cells='3' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='55'/>
+        <my-custom-list id='weekly-list' contents='weekly-cells' visible-cells='3' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
       </vertical>
     </vertical>
   </horizontal>
