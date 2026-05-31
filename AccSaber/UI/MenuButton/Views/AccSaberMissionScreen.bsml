@@ -19,7 +19,7 @@
           <text text='Weekly' align='Left' font-size='5'/>
         </horizontal>
         <horizontal pad-right='2' pref-width='25'>
-          <text text='~weekly-time' align='Right' font-size='3.25'/>
+          <text id='weekly-time-text' text='~weekly-time' align='Right'/>
         </horizontal>
       </horizontal>
       <vertical pref-height='35'>

@@ -54,6 +54,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         private readonly AsyncLock _missionLock = new();
         private static readonly object LoadWaiterLock = new();
+        private static readonly WaitForEndOfFrame LoopWaitInstruction = new();
 
         private static SongPresentInfo? _songPresentInfo;
 
@@ -68,6 +69,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [UIValue("weekly-cells")]
         private readonly List<ICellDataSource> _weeklyCells = [];
+
+        [UIComponent("weekly-time-text")]
+        private readonly TextMeshProUGUI _weeklyTimeText = null!;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -129,6 +133,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("#post-parse")]
         private void PostParse()
         {
+            _weeklyTimeText.enableAutoSizing = true;
+            _weeklyTimeText.fontSizeMin = 2.75f;
+            _weeklyTimeText.fontSizeMax = 4f;
+
             _parsed = true;
         }
 
@@ -156,7 +164,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
             IEnumerator UpdateTime()
             {
-                yield return new WaitForEndOfFrame();
+                yield return LoopWaitInstruction;
 
                 DailyTime = $"<color={ColorUtils.GREY}>Resets {_dailyRefreshDate.ToRelativeTime(2).ToLower()}</color>";
                 WeeklyTime = $"<color={ColorUtils.GREY}>Resets {_weeklyRefreshDate.ToRelativeTime(3).ToLower()}</color>";
