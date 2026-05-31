@@ -53,7 +53,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private string _plays = null!;
         private string _headset = null!;
 
-		private Coroutine? titleRoutine;
+		private Coroutine? titleRoutine, borderRoutine;
 
 		private readonly AsyncLock refreshLock = new();
 
@@ -118,7 +118,18 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 		}
 
-		[UIValue("is-loading")]
+        [UIValue("dimColor")] public const string dimColor = ColorUtils.DARK_BLUE;
+        [UIValue("pixelImg")] public const string pixelImg = ResourcePaths.PIXEL;
+
+        [UIComponent("playerImageBackground")] private readonly ImageView _playerImageBackground = null!;
+        [UIComponent("playerImageBorder")] private readonly ImageView _playerImageBorder = null!;
+
+
+        [UIValue("playerImageSize")] public const float playerImageSize = 13.5f;
+        public const float borderSize = 1.5f;
+        [UIValue("playerImageBGSize")] public const float playerImageBGSize = borderSize + playerImageSize;
+
+        [UIValue("is-loading")]
         private bool IsLoading
         {
             get => _isLoading;
@@ -297,8 +308,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
 
 				_profileImage.material = ResourcePaths.BORDER_MATERIAL;
+				_playerImageBackground.material = ResourcePaths.BORDER_MATERIAL;
+				_playerImageBorder.material = ResourcePaths.BORDER_MATERIAL;
 
-				_parsed = true;
+                _parsed = true;
 			}
 			IsLoading = true;
 			_firstLoad = true;
@@ -351,6 +364,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			{
 				StopCoroutine(titleRoutine);
 				titleRoutine = null;
+			}
+			if (borderRoutine is not null)
+			{
+				StopCoroutine(borderRoutine);
+				borderRoutine = null;
 			}
         }
 		private void WaitThenUpdateUserInfo()
@@ -443,13 +461,24 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 			await userInfo.LoadItems;
 
-			titleRoutine = userInfo.Items!.SetTitle(_titleText, this);
+			IEnumerator WaitThenUpdate()
+			{
+                yield return new WaitUntil(_titleText.IsActive);
+                yield return new WaitForEndOfFrame();
+                titleRoutine = userInfo.Items!.SetTitle(_titleText, this);
+            }
+			StartCoroutine(WaitThenUpdate());
 
 
 			const float barLen = 20f;
 
 			if (_firstLoad)
 			{
+				if (borderRoutine is not null)
+					StopCoroutine(borderRoutine);
+
+				borderRoutine = userInfo.Items!.SetProfileBorder(_playerImageBorder, this);
+
 				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
 				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
 				await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);

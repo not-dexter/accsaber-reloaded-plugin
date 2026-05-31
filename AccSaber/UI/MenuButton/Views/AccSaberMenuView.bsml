@@ -7,15 +7,27 @@
       <vertical id='container' bg='panel-top' skew='0' pref-width='120' pref-height='60' pad='2'>
       <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
         <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='105' spacing='-1' active='~is-not-loading'>
-          <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pad-left='0' pref-width='25' pref-height='55'>
+          <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pad-left='0' pref-width='25' pref-height='55' child-expand-height='false'>
             <text text='~username' align='Center' bold='true'/>
-            <text id='title-text' align='Center' font-size='3.5' />
-            <img id='profile-image' spacing='0' pad='0' preserve-aspect='true' pref-width='18' pref-height='18'/>
-            <text text='~level' align='Center' font-size='2.5'/>
+            <vertical pref-height='8' child-align='UpperCenter' pad-bottom='2'>
+              <text id='title-text' align='Center' font-size='3.5'/>
+            </vertical>
+            <stack pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+              <img id='playerImageBorder' src='~pixelImg' pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' />
+              <vertical pref-width='~playerImageSize' pref-height='~playerImageSize' child-expand-width='false' child-expand-height='false'>
+                <stack pref-width='~playerImageSize' pref-height='~playerImageSize'>
+                  <img id='playerImageBackground' src='~pixelImg' img-color='~dimColor' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
+                  <img id='profile-image' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
+                </stack>
+              </vertical>
+            </stack>
+            <vertical pref-height='8' child-align='LowerCenter' pad-top='2'>
+              <text text='~level' align='Center' font-size='2.5'/>
+            </vertical>
             <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
               <vertical pref-width='2.5'/>
               <image id='progress-bar' image-color='#fbbf24' pref-width='20' pref-height='1'/>
-              <image id='progress-bar-inverse' src='AccSaber.Resources.Pixel.png' image-color='#CCC' pref-width='30' pref-height='1'/>
+              <image id='progress-bar-inverse' src='~pixelImg' image-color='#CCC' pref-width='30' pref-height='1'/>
             </horizontal>
             <text text='~xp' align='Center' font-size='2.5'/>
             <vertical pref-height='25' >

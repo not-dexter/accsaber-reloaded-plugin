@@ -165,16 +165,6 @@ namespace AccSaber.UI.ViewControllers
 			}
 		}
 
-		/*[UIValue("title")]
-		private string Title
-		{
-			get => _title;
-			set
-			{
-				_title = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
-			}
-		}*/
 		[UIValue("level")]
 		private string Level
 		{

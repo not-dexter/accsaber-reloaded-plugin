@@ -4,6 +4,7 @@ using AccSaber.Models.ItemModels.Base;
 using AccSaber.Models.ItemModels.ValueTypes;
 using AccSaber.Models.ItemModels.ValueTypes.States;
 using HMUI;
+using IPA.Loader.Features;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -26,7 +27,7 @@ namespace AccSaber.Models.ItemModels
         public AccSaberItemType<AccSaberItemStateValue<AccSaberFillState>> ProfileBorderColor { get; set; } = null!;
 
         [JsonIgnore]
-        private static readonly ObjectCacher<Gradient, Texture2D[]> TextureBuffer = new();
+        private static readonly ObjectCacher<Gradient, Sprite[]> TextureBuffer = new();
 
         public Coroutine SetTitle(TextMeshProUGUI text, MonoBehaviour host)
         {
@@ -117,13 +118,6 @@ namespace AccSaber.Models.ItemModels
         }
         public static Texture2D CreateGradientTexture(Gradient gradient, int width = 128, int height = 128, float degrees = 0f)
         {
-            int degreesInt = (int)Mathf.Round(degrees) % 360;
-
-            if (TextureBuffer.TryGetCachedItem(gradient, out Texture2D[]? arr) && arr![degreesInt] is not null)
-            {
-                return arr[degreesInt];
-            }
-
             Texture2D texture = new(width, height)
             {
                 wrapMode = TextureWrapMode.Clamp,
@@ -156,19 +150,28 @@ namespace AccSaber.Models.ItemModels
                 }
             }
 
-            if (!TextureBuffer.ContainsKey(gradient))
-                TextureBuffer.CacheItem(new Texture2D[360], gradient);
-
-            TextureBuffer.GetCachedItem(gradient)![degreesInt] = texture;
-
             texture.Apply();
             return texture;
         }
         public static void ApplyGradient(Image image, Gradient gradient, int width = 128, int height = 128, float angle = 0f)
         {
-            //Plugin.Log.Info("angle = " + angle);
+            int degreesInt = (int)Mathf.Round(angle) % 360;
+
+            if (TextureBuffer.TryGetCachedItem(gradient, out Sprite[]? arr) && arr![degreesInt] is not null)
+            {
+                image.sprite = arr[degreesInt];
+                return;
+            }
+
             Texture2D tex = CreateGradientTexture(gradient, width, height, angle);
-            image.sprite = Sprite.Create(tex, new(0, 0, width, height), new(0.5f, 0.5f));
+            Sprite outp = Sprite.Create(tex, new(0, 0, width, height), new(0.5f, 0.5f));
+
+            if (!TextureBuffer.ContainsKey(gradient))
+                TextureBuffer.CacheItem(new Sprite[360], gradient);
+
+            TextureBuffer.GetCachedItem(gradient)![degreesInt] = outp;
+
+            image.sprite = outp;
         }
     }
 }
