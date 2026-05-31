@@ -1,9 +1,7 @@
 ﻿using AccSaber.Models.ItemModels.Base;
 using AccSaber.Utils;
 using Newtonsoft.Json;
-using System.Linq;
 using TMPro;
-using UnityEngine;
 
 namespace AccSaber.Models.ItemModels.ValueTypes.States
 {

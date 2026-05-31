@@ -1,7 +1,10 @@
 ﻿using AccSaber.UI.MenuButton.ViewControllers;
-using BeatSaberMarkupLanguage;
 using HMUI;
 using Zenject;
+
+#if !NEW_VERSION
+using BeatSaberMarkupLanguage;
+#endif
 
 namespace AccSaber.UI.MenuButton
 {

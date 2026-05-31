@@ -21,6 +21,9 @@ namespace AccSaber.Models.CacheModels
         [JsonProperty("songAuthor")]
         public string SongAuthor { get; set; } = null!;
 
+        [JsonProperty("difficultyId")]
+        public string DifficultyId { get; set; } = null!;
+
         [JsonProperty("accuracy")]
         public float Accuracy { get; set; }
 
@@ -46,6 +49,7 @@ namespace AccSaber.Models.CacheModels
             CoverUrl = score.CoverUrl;
             SongName = score.SongName;
             SongAuthor = score.SongAuthor;
+            DifficultyId = score.DifficultyId;
             Accuracy = score.Accuracy;
             AP = score.AP;
             WeightedAp = score.WeightedAp;

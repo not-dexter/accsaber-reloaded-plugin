@@ -1,40 +1,24 @@
-﻿using AccSaber.API;
-using AccSaber.Consts;
+﻿using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
-using AccSaber.Models.CacheModels;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
-using IPA.Utilities;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
-using IPA.Config.Data;
-using System.Security.Policy;
 using TMPro;
-using BeatSaberMarkupLanguage.ViewControllers;
 using System.Collections;
 
-
-
-
-
-#if NEW_VERSION
-using System.Reflection;
-#else
+#if !NEW_VERSION
 using BeatSaberMarkupLanguage;
 #endif
 
@@ -43,7 +27,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
-    internal class AccSaberMissionScreen : INotifyPropertyChanged, IInitializable, IDisposable
+    internal class AccSaberMissionScreen : INotifyPropertyChanged
     {
 #pragma warning disable IDE0051
         private bool _isLoading, _parsed = false;
@@ -53,10 +37,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private CancellationTokenSource? TimeUpdaterCanceller = null;
 
         private readonly AsyncLock _missionLock = new();
-        private static readonly object LoadWaiterLock = new();
         private static readonly WaitForEndOfFrame LoopWaitInstruction = new();
-
-        private static SongPresentInfo? _songPresentInfo;
 
         [UIComponent("daily-list")]
         private readonly MyCustomCellListTableData _dailyList = null!;
@@ -77,7 +58,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
-        [Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
+        [Inject] private readonly LevelUtils _levelUtils = null!;
 
         [UIValue("is-loading")]
         private bool IsLoading
@@ -125,7 +106,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             switch (cell.Data.Type)
             {
                 case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
-                    cell.GoToSong();
+                    _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, cell.UpdateStatus);
                     break;
             }
         }
@@ -138,26 +119,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _weeklyTimeText.fontSizeMax = 4f;
 
             _parsed = true;
-        }
-
-        public async void Initialize()
-        {
-            SongCore.Loader.SongsLoadedEvent += LoadWaiter;
-            //await Task.Run(ShowMissions);
-        }
-        public void Dispose()
-        {
-            SongCore.Loader.SongsLoadedEvent -= LoadWaiter;
-        }
-
-#if NEW_VERSION
-        private static void LoadWaiter(SongCore.Loader loader, ConcurrentDictionary<string, BeatmapLevel> maps)
-#else
-        private static void LoadWaiter(SongCore.Loader loader, ConcurrentDictionary<string, CustomPreviewBeatmapLevel> maps)
-#endif
-        {
-            lock (LoadWaiterLock)
-                Monitor.PulseAll(LoadWaiterLock);
         }
 
         private void UpdateTimer()
@@ -220,20 +181,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 if (!IsLoading)
                     IsLoading = true;
 
-                _songPresentInfo ??= new(
-                _mainFlowCoordinator,
-                UnityEngine.Object.FindObjectOfType<SoloFreePlayFlowCoordinator>(),
-                UnityEngine.Object.FindObjectOfType<MultiplayerLevelSelectionFlowCoordinator>(),
-                _parentFlowCoordinator
-                );
-
-                //Plugin.Log.Info($"solo: {_songPresentInfo.Value.SoloCoordinator is null}, multi: {_songPresentInfo.Value.MultiCoordinator is null}, main flow: {_songPresentInfo.Value.MainFlowCoordinator is null}");
-
-                if (_songPresentInfo.Value.SoloCoordinator is null || _songPresentInfo.Value.MultiCoordinator is null || _songPresentInfo.Value.MainFlowCoordinator is null)
-                    _songPresentInfo = null;
-
-                bool updateUI = _songPresentInfo is not null && _parsed;
-
                 DateTime expiration = ((MissionCell?)_dailyCells.FirstOrDefault())?.Data.ExpiresAt ?? DateTime.MinValue;
 
                 _dailyCells.Clear();
@@ -257,11 +204,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                     foreach (AccSaberMission post in missions)
                     {
-                        if (updateUI)
+                        if (_parsed)
                             switch (post.MissionPool)
                             {
-                                case MissionPool.Daily: _dailyCells.Add(new MissionCell(post, _songPresentInfo!.Value)); break;
-                                case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post, _songPresentInfo!.Value)); break;
+                                case MissionPool.Daily: _dailyCells.Add(new MissionCell(post)); break;
+                                case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post)); break;
                             }
 
                         if (!setDailyTime && post.MissionPool == MissionPool.Daily)
@@ -281,7 +228,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                     UpdateTimer();
 
-                    if (updateUI)
+                    if (_parsed)
                     {
                         _dailyList.Data = _dailyCells;
                         _weeklyList.Data = _weeklyCells;
@@ -298,18 +245,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
-        internal readonly struct SongPresentInfo(MainFlowCoordinator mainFlowCoordinator,
-            SoloFreePlayFlowCoordinator soloCoordinator, MultiplayerLevelSelectionFlowCoordinator multiCoordinator,
-            AccSaberMainFlowCoordinator parentFlowCoordinator)
-        {
-            //public readonly ButtonClickedEvent? OpenSolo = openSolo;
-            public readonly MainFlowCoordinator MainFlowCoordinator = mainFlowCoordinator;
-            public readonly SoloFreePlayFlowCoordinator SoloCoordinator = soloCoordinator;
-            public readonly MultiplayerLevelSelectionFlowCoordinator MultiCoordinator = multiCoordinator;
-            public readonly AccSaberMainFlowCoordinator ParentFlowCoordinator = parentFlowCoordinator;
-        }
-
-        internal class MissionCell(AccSaberMission data, SongPresentInfo songPresentInfo) : ICellDataSource, INotifyPropertyChanged
+        internal class MissionCell(AccSaberMission data) : ICellDataSource, INotifyPropertyChanged
         {
             public string TemplatePath => ResourcePaths.ACC_SABER_MISSION_CELL;
 
@@ -320,7 +256,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             private static readonly AsyncLock OpenMapLock = new();
 
             public readonly AccSaberMission Data = data;
-            private readonly SongPresentInfo SongPresentInfo = songPresentInfo;
 
             private bool _showStatus = false;
             private string _statusText = null!;
@@ -345,9 +280,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 get => _showStatus;
                 set
                 {
+                    bool update = value ^ _showStatus;
                     _showStatus = value;
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowStatus)));
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotShowStatus)));
+
+                    if (update)
+                    {
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowStatus)));
+                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotShowStatus)));
+                    }
                 }
             }
 
@@ -462,146 +402,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 }
                 return 0f;
             }
-
-            private const string header = "custom_level_";
-            private static readonly Regex FilenameRegex = new("(?<=filename=\")[^\"]+(?=\";)");
-
-            // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
-            public async void GoToSong()
+            internal void UpdateStatus(string? text)
             {
-                AsyncLock.Releaser? locker = await OpenMapLock.TryLockAsync();
+                bool update = text is not null;
+                ShowStatus = update;
 
-                if (locker is null)
-                    return;
-
-                using (locker.Value)
-                {
-
-                    StatusText = "Loading...";
-                    ShowStatus = true;
-
-                    string diffId = Data.TargetMapDifficultyId!;
-
-                    AccSaberBasicMap map = null!;
-                    AccSaberBasicDifficulty? cachedDiff = null;
-                    string? hash = null;
-
-                    foreach (string currentHash in SerializerHandler.CachedMaps.Keys)
-                    {
-                        map = SerializerHandler.CachedMaps[currentHash];
-                        cachedDiff = map.Difficulties.FirstOrDefault(diff => diff.DifficultyId.Equals(diffId));
-
-                        if (cachedDiff is not null)
-                        {
-                            hash = currentHash;
-                            break;
-                        }
-                    }
-
-                    if (hash is null || cachedDiff is null)
-                    {
-                        Plugin.Log.Critical("Somehow you have a mission for a level that isn't cached!! Please report this on Discord.");
-                        ShowStatus = false;
-                        return;
-                    }
-
-#if NEW_VERSION
-                    BeatmapLevel? level = SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + hash.ToUpper()) ?? await DownloadSong(map);
-#else
-                    IBeatmapLevel? level = (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + hash.ToUpper(), CancellationToken.None)).beatmapLevel ?? await DownloadSong(map);
-#endif
-
-                    ShowStatus = false;
-
-                    if (level is null)
-                    {
-                        Plugin.Log.Warn("Cannot open the map for this mission (" + header + hash.ToUpper() + ").");
-                        return;
-                    }
-
-                    try
-                    {
-
-                        SongPresentInfo.ParentFlowCoordinator.CloseToMainMenu();
-
-#if NEW_VERSION
-                        BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);
-
-                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, in key, level);
-#else
-                        IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
-                        IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == cachedDiff.Difficulty);
-
-                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, diff);
-#endif
-
-                        SongPresentInfo.MultiCoordinator.Setup(flow);
-                        SongPresentInfo.SoloCoordinator.Setup(flow);
-
-                        SongPresentInfo.MainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(SongPresentInfo.SoloCoordinator, immediately: true);
-
-                        StandardLevelDetailViewController? sldvc = UnityEngine.Object.FindObjectOfType<StandardLevelDetailViewController>();
-                        StandardLevelDetailView? sldv = sldvc?.GetField<StandardLevelDetailView, StandardLevelDetailViewController>("_standardLevelDetailView");
-
-#if NEW_VERSION
-                        if (sldv is not null && sldv.beatmapKey != key)
-                        {
-                            sldv.SetContent(level, BeatmapDifficultyMask.All, [], key.difficulty, key.beatmapCharacteristic,
-                                sldv.GetField<PlayerData, StandardLevelDetailView>("_playerData"));
-                            typeof(StandardLevelDetailView).GetMethod("TriggerEvent", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(sldv, []);
-                        }
-#else
-                        if (sldv is not null && sldv.selectedDifficultyBeatmap.difficulty != diff.difficulty)
-                        {
-                            sldv.SetContent(level, diff.difficulty, diff.parentDifficultyBeatmapSet.beatmapCharacteristic, sldv.GetField<PlayerData, StandardLevelDetailView>("_playerData"));
-                            sldv.GetField<Action<StandardLevelDetailView, IDifficultyBeatmap>, StandardLevelDetailView>("didChangeDifficultyBeatmapEvent").Invoke(sldv, diff);
-                        }
-#endif
-                        if (Data.TargetPlayerId is not null)
-                            AccSaberLeaderboardViewController.Instance.ShowPlayerPage(Data.TargetPlayerId);
-                    } catch (Exception e)
-                    {
-                        Plugin.Log.Error("There was an error going to the map!\n" + e);
-                    }
-                }
-            }
-#if NEW_VERSION
-            private async Task<BeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
-#else
-            private async Task<IBeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
-#endif
-            {
-                StatusText = "Downloading...";
-
-                var (map, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.BEATSAVER_DOWNLOAD, cachedMap.Hash.ToLowerInvariant()), null);
-
-                if (map is null)
-                    return null;
-
-                using Stream stream = new MemoryStream(map);
-                using ZipArchive zip = new(stream, ZipArchiveMode.Read);
-
-                string folderPath = Path.Combine(ResourcePaths.CUSTOM_SONGS, FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value[..^4]);
-
-                if (!Directory.Exists(folderPath))
-                    Directory.CreateDirectory(folderPath);
-
-                zip.ExtractToDirectory(folderPath);
-
-                SongCore.Loader.Instance.RefreshSongs(false);
-
-                await Task.Run(() =>
-                {
-                    lock (LoadWaiterLock)
-                        Monitor.Wait(LoadWaiterLock);
-                });
-
-#if NEW_VERSION
-                return SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + cachedMap.Hash.ToUpper());
-#else
-                //return SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelIfLoaded(header + cachedMap.Hash.ToUpper());
-                return (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + cachedMap.Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
-#endif
+                if (update)
+                    StatusText = text!;
             }
         }
     }

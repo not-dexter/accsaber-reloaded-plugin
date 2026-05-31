@@ -31,7 +31,9 @@ namespace AccSaber.Installers
 			//Container.BindInstance(_calc).AsSingle();
 
 			Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
-            Container.BindInterfacesAndSelfTo<AccSaberMissionScreen>().AsSingle();
+            Container.Bind<AccSaberMissionScreen>().AsSingle();
+
+			Container.BindInterfacesAndSelfTo<LevelUtils>().AsSingle();
 
 			Container.Bind<AccSaberCampaignViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberCampaignFlow>().FromNewComponentOnNewGameObject().AsSingle();

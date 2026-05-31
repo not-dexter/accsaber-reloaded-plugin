@@ -14,7 +14,6 @@ using static AccSaber.API.AccsaberAPI;
 using static AccSaber.Utils.ColorUtils;
 
 #if NEW_VERSION
-using BeatSaberMarkupLanguage;
 #endif
 
 namespace AccSaber.UI.ViewControllers

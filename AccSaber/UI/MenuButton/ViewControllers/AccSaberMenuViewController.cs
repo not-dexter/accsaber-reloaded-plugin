@@ -57,7 +57,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		private readonly AsyncLock refreshLock = new();
 
-		[Inject] private AccSaberCampaignFlow campaignFlow = null!;
+		[Inject] private readonly AccSaberCampaignFlow campaignFlow = null!;
+		[Inject] private readonly LevelUtils levelUtils = null!;
 
         [UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
@@ -172,7 +173,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
 
         [UIValue("category-choices")]
-        private List<object> _categoryChoices = [.. new APCategory[] { APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech }.Select(a => a.ToString())];
+        private readonly List<object> _categoryChoices = [.. new APCategory[] { APCategory.Overall, APCategory.True, APCategory.Standard, APCategory.Tech }.Select(a => a.ToString())];
 
         [UIValue("username")]
 		private string Username
@@ -340,6 +341,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private void ShowCampaign()
         {
             campaignFlow.PresentFlowCoordinator();
+        }
+
+		[UIAction("on-cell-clicked")]
+		private void OnCellClicked(ICellDataSource source)
+		{
+			if (source is ScoreCell cell)
+                _ = levelUtils.GoToSong(cell.Data.DifficultyId, null, cell.UpdateStatus);
         }
 
 		[UIAction("on-discord-clicked")]
@@ -578,40 +586,95 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
         }
 
-		internal class ScoreCell(AccSaberPlayerScore data) : ICellDataSource
+        private async void OnAccSaberPlayerUpdated(AccSaberLeaderboardEntry entry)
+        {
+            await PlayerSocialLife.LoadTask;
+
+            if (entry.PlayerId == PlayerSocialLife.PlayerID)
+            {
+                _user = null;
+                await UpdateUserInfo();
+            }
+        }
+
+
+        public void Initialize()
+        {
+            AccSaberStore.OnScoreUpdated += OnAccSaberPlayerUpdated;
+
+        }
+
+        public void Dispose()
+        {
+            AccSaberStore.OnScoreUpdated -= OnAccSaberPlayerUpdated;
+        }
+
+        internal class ScoreCell(AccSaberPlayerScore data) : ICellDataSource, INotifyPropertyChanged
         {
 			public string TemplatePath => ResourcePaths.ACC_SABER_MENU_CELL;
 			public float CellSize => 9f;
 			public int TemplateId { get; set; }
 
+            public readonly AccSaberPlayerScore Data = data;
+
+			public event PropertyChangedEventHandler? PropertyChanged;
+
 			#region BSML Values
+			private bool _showStatus;
+			private string _statusText = null!;
+
 			[UIValue("score-rank")]
-			private string _scoreRank => $"#{data.Rank}";
+			private readonly string _scoreRank = $"#{data.Rank}";
 
 			[UIValue("map-name")]
-			private string _mapName => data.SongName;
+			private readonly string _mapName = data.SongName;
 
 			[UIValue("map-author")]
-			private string _mapAuthor => data.SongAuthor;
+			private readonly string _mapAuthor = data.SongAuthor;
 
 			[UIValue("map-diff")]
-			private string _mapDiff => DiffName(EnumUtils.DiffENumToReloadedDiff(data.Difficulty));
+			private string _mapDiff => DiffName(EnumUtils.DiffENumToReloadedDiff(Data.Difficulty));
 
 			[UIValue("score-acc")]
-			private string _scoreAcc => $"{data.Accuracy * 100:F2}%";
+			private readonly string _scoreAcc = $"{data.Accuracy * 100:F2}%";
 
             [UIValue("score-ap")]
-			private string _scoreAp => $"{data.AP:F2} AP";
+			private readonly string _scoreAp = $"{data.AP:F2} AP";
 
             [UIValue("score-weighted")]
-            private string _scoreWeighted => $"<color={ColorUtils.GREY}>({data.WeightedAp:F2} AP)</color>";
+            private readonly string _scoreWeighted = $"<color={ColorUtils.GREY}>({data.WeightedAp:F2} AP)</color>";
 
             [UIValue("map-category")]
-			private string _mapCategory => CategoryName(EnumUtils.EnumToReloadedCategory(data.Category)!);
+			private string _mapCategory => CategoryName(EnumUtils.EnumToReloadedCategory(Data.Category)!);
 
 			[UIValue("map-cover")]
-			private string _mapCover => data.CoverUrl;
+			private readonly string _mapCover = data.CoverUrl;
 
+			[UIValue("show-status")]
+			public bool ShowStatus
+			{
+				get => _showStatus;
+				set
+				{
+					_showStatus = value;
+					PropertyChanged?.Invoke(this, new(nameof(ShowStatus)));
+					PropertyChanged?.Invoke(this, new(nameof(NotShowStatus)));
+
+                }
+			}
+			[UIValue("not-show-status")]
+			public bool NotShowStatus => !_showStatus;
+
+			[UIValue("status-text")]
+			public string StatusText
+			{
+				get => _statusText;
+				set
+				{
+					_statusText = value;
+                    PropertyChanged?.Invoke(this, new(nameof(StatusText)));
+                }
+			}
 
             #endregion
 
@@ -645,35 +708,18 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			private readonly ImageView cover = null!;
 
 			[UIAction("#post-parse")]
-			void Parse()
+			private void Parse()
             {
 				cover.material = ResourcePaths.BORDER_MATERIAL;
 			}
-
-		}
-
-		private async void OnAccSaberPlayerUpdated(AccSaberLeaderboardEntry entry)
-        {
-			await PlayerSocialLife.LoadTask;
-
-			if (entry.PlayerId == PlayerSocialLife.PlayerID)
+            internal void UpdateStatus(string? text)
             {
-				_user = null;
-				await UpdateUserInfo();
-			}
+                bool update = text is not null;
+                ShowStatus = update;
+
+                if (update)
+                    StatusText = text!;
+            }
         }
-
-
-		public void Initialize()
-		{
-			AccSaberStore.OnScoreUpdated += OnAccSaberPlayerUpdated;
-
-        }
-
-		public void Dispose()
-		{
-            AccSaberStore.OnScoreUpdated -= OnAccSaberPlayerUpdated;
-		}
-
 	}
 }
