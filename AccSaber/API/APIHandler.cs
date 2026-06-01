@@ -69,6 +69,15 @@ namespace AccSaber.API
                 Plugin.Log.Warn("API call skipped due to CancellationToken.");
                 return (false, null);
             }
+
+            HttpRequestMessage Clone()
+            {
+                return new(request.Method, request.RequestUri)
+                {
+                    Content = request.Content
+                };
+            }
+
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
                 try
@@ -81,12 +90,12 @@ namespace AccSaber.API
                     HttpResponseMessage response;
                     if (closeRequest)
                     {
-                        request.Headers.ConnectionClose = true;
-                        response = await client.SendAsync(request, ct).ConfigureAwait(false);
-                        request.Headers.ConnectionClose = false;
+                        HttpRequestMessage requestClone = Clone();
+                        requestClone.Headers.ConnectionClose = true;
+                        response = await client.SendAsync(requestClone, ct).ConfigureAwait(false);
                         closeRequest = false;
                     }
-                    else response = await client.SendAsync(request, ct).ConfigureAwait(false);
+                    else response = await client.SendAsync(Clone(), ct).ConfigureAwait(false);
 
                     int status = (int)response.StatusCode;
                     if (status >= 400 && status < 500)

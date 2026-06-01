@@ -38,6 +38,10 @@
         /// </summary>
         public const string APAPI_MODS = APAPI + "modifiers"; //no params
 
+
+        public const string APAPI_PLAYLIST = APAPI + "playlists/{0}"; // category (true_acc, standard_acc, tech_acc, overall)
+
+
         /// <summary>
         /// Retrieves paged list of maps.
         /// </summary>

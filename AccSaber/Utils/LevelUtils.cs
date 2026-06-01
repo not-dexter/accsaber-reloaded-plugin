@@ -14,8 +14,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
-using System.Net.Http.Headers;
-
+using IPA.Loader;
+using System.Collections.Generic;
 
 #if NEW_VERSION
 using System.Reflection;
@@ -27,16 +27,16 @@ namespace AccSaber.Utils
 {
     internal class LevelUtils : IInitializable, IDisposable
     {
-        private const string header = "custom_level_";
+        public const string header = "custom_level_";
 
         private static readonly AsyncLock OpenMapLock = new();
         private static readonly object LoadWaiterLock = new();
 
-        private static readonly Regex FilenameRegex = new(@"filename\*=(?<charset>[\w-]+)''(?<name>[^\s;]+)");
+        private static readonly Regex FilenameStarRegex = new(@"filename\*=(?<charset>[\w-]+)''(?<name>[^\s;]+)");
+        private static readonly Regex FilenameRegex = new(@"(?<=filename="")[^""]+(?="")");
 
         [Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
         [Inject] private readonly SoloFreePlayFlowCoordinator _soloCoordinator = null!;
-        [Inject] private readonly MultiplayerLevelSelectionFlowCoordinator _multiCoordinator = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
 
         public event Action<string?>? StatusTextChanged;
@@ -58,6 +58,107 @@ namespace AccSaber.Utils
         {
             lock (LoadWaiterLock)
                 Monitor.PulseAll(LoadWaiterLock);
+        }
+
+        public async Task LoadPlaylist(string playlistName, IEnumerable<string> hashes, Action<string?>? statEvent = null)
+        {
+            if (!PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
+            {
+                Plugin.Log.Warn("PlaylistManager is not enabled, cannot load playlists!");
+                return;
+            }
+
+            StatusTextChanged += statEvent;
+
+            PlaylistUtils.LoadPlaylist(playlistName, hashes, StatusTextChanged);
+
+            StatusTextChanged -= statEvent;
+        }
+        public async Task LoadPlaylist(APCategory type, Action<string?>? statEvent = null)
+        {
+            try
+            {
+                StatusTextChanged += statEvent;
+
+                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!;
+
+                string filename = $"accsaber-reloaded-{categoryName.Replace('_', '-')}.bplist";
+
+                //Plugin.Log.Info($"{Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Print()}");
+
+                if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename))) {
+
+                    StatusTextChanged?.Invoke("Downloading...");
+
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST, categoryName), AccsaberAPI.throttler);
+
+                    filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
+
+                    StatusTextChanged?.Invoke("Saving...");
+
+                    File.WriteAllBytes(Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, filename), data);
+
+                    if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
+                        PlaylistUtils.RefreshPlaylist(filename);
+                }
+
+                await GoToPlaylist(filename[..filename.LastIndexOf('.')]);
+            } 
+            catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an issue loading the playlist of type {type}\n{e}");
+            } 
+            finally
+            {
+                StatusTextChanged?.Invoke(null);
+
+                StatusTextChanged -= statEvent;
+            }
+        }
+
+        public async Task GoToPlaylist(string filename, Action<string?>? statEvent = null)
+        {
+            StatusTextChanged += statEvent;
+
+            StatusTextChanged?.Invoke("Loading...");
+
+            try
+            {
+#if NEW_VERSION
+                BeatmapLevelPack? levelPack = null;
+#else
+                IBeatmapLevelPack? levelPack = null;
+#endif
+
+                if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("PlaylistManager")))
+                    levelPack = PlaylistUtils.GetPlaylistLevelpack(filename);
+
+                //Plugin.Log.Info("levelPack null? " + (levelPack is null));
+                if (levelPack is null)
+                    return;
+
+                _parentFlowCoordinator.CloseToMainMenu();
+
+#if NEW_VERSION
+                LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, default, null);
+#else
+                LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, new EmptyDifficultyBeatmap());
+#endif
+
+                _soloCoordinator.Setup(flow);
+
+                _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(_soloCoordinator, immediately: true);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error going to the map!\n" + e);
+            }
+            finally
+            {
+                StatusTextChanged?.Invoke(null);
+
+                StatusTextChanged -= statEvent;
+            }
         }
 
         // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
@@ -121,15 +222,14 @@ namespace AccSaber.Utils
 #if NEW_VERSION
                     BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);
 
-                    LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, in key, level);
+                    LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, SongCore.Loader.CustomLevelsPack, in key, level);
 #else
                         IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
                         IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == cachedDiff.Difficulty);
 
-                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, diff);
+                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, SongCore.Loader.CustomLevelsPack, diff);
 #endif
 
-                    _multiCoordinator.Setup(flow);
                     _soloCoordinator.Setup(flow);
 
                     _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(_soloCoordinator, immediately: true);
@@ -179,7 +279,7 @@ namespace AccSaber.Utils
                 using Stream stream = new MemoryStream(map);
                 using ZipArchive zip = new(stream, ZipArchiveMode.Read);
 
-                string folderName = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Groups["name"].Value[..^4];
+                string folderName = FilenameStarRegex.Match(headers!.GetValues("Content-Disposition").First()).Groups["name"].Value[..^4];
                 folderName = Uri.UnescapeDataString(folderName);
 
                 string folderPath = Path.Combine(ResourcePaths.CUSTOM_SONGS, folderName);

@@ -108,6 +108,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
                     _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, cell.UpdateStatus);
                     break;
+                case MissionType.STREAK_N_IN_CATEGORY or MissionType.PLAY_N_MAPS or MissionType.SCORES_N:
+                    _ = _levelUtils.LoadPlaylist(cell.Data.Category, cell.UpdateStatus);
+                    break;
             }
         }
 

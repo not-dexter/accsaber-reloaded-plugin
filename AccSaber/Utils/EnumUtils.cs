@@ -100,10 +100,18 @@ namespace AccSaber.Utils
         };
         public static string? CategoryIdToReloadedCategory(string? category) => category switch
         {
-            "True" => "b0000000-0000-0000-0000-000000000001",
-            "Standard" => "b0000000-0000-0000-0000-000000000002",
-            "Tech" => "b0000000-0000-0000-0000-000000000003",
-            "Overall" => "b0000000-0000-0000-0000-000000000005",
+            nameof(APCategory.True) => "b0000000-0000-0000-0000-000000000001",
+            nameof(APCategory.Standard) => "b0000000-0000-0000-0000-000000000002",
+            nameof(APCategory.Tech) => "b0000000-0000-0000-0000-000000000003",
+            nameof(APCategory.Overall) => "b0000000-0000-0000-0000-000000000005",
+            _ => null
+        };
+        public static string? CategoryIdToOtherReloadedCategory(string? category) => category switch
+        {
+            nameof(APCategory.True) => "true_acc",
+            nameof(APCategory.Standard) => "standard_acc",
+            nameof(APCategory.Tech) => "tech_acc",
+            nameof(APCategory.Overall) => "overall",
             _ => null
         };
         public static string? EnumToReloadedCategory(APCategory category) => CategoryIdToReloadedCategory(category.ToString());
