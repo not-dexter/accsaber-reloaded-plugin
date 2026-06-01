@@ -503,7 +503,7 @@ namespace AccSaber.UI.ViewControllers
 
 		private void OnModalClosed()
 		{
-			_userId = null;
+			_user = null;
 			if (titleRoutine is not null)
 			{
 				_host!.StopCoroutine(titleRoutine);

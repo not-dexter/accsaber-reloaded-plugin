@@ -588,25 +588,19 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         private async void OnAccSaberPlayerUpdated(AccSaberLeaderboardEntry entry)
         {
-            await PlayerSocialLife.LoadTask;
-
-            if (entry.PlayerId == PlayerSocialLife.PlayerID)
-            {
-                _user = null;
-                await UpdateUserInfo();
-            }
+            _user = null;
+            await UpdateUserInfo();
         }
 
 
         public void Initialize()
         {
-            AccSaberStore.OnScoreUpdated += OnAccSaberPlayerUpdated;
-
+            AccSaberStore.OnPlayerScoreUpdated += OnAccSaberPlayerUpdated;
         }
 
         public void Dispose()
         {
-            AccSaberStore.OnScoreUpdated -= OnAccSaberPlayerUpdated;
+            AccSaberStore.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
         }
 
         internal class ScoreCell(AccSaberPlayerScore data) : ICellDataSource, INotifyPropertyChanged

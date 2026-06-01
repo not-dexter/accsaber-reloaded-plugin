@@ -259,11 +259,13 @@ namespace AccSaber.Managers
                 Plugin.Log.Error("There was an error with the websocket!\n" + e);
             }
         }
-		private void UpdatePlayerScore(AccSaberLeaderboardEntry score)
-		{
+        private void UpdatePlayerScore(AccSaberLeaderboardEntry score)
+        {
             //Plugin.Log.Debug($"score name = {score.PlayerName}, score id = {score.PlayerId}, player id = {PlayerSocialLife.PlayerID}");
-			if (score.PlayerId.Equals(PlayerSocialLife.PlayerID))
-				OnPlayerScoreUpdated?.Invoke(score);
+            if (score.PlayerId.Equals(PlayerSocialLife.PlayerID)) { 
+                OnPlayerScoreUpdated?.Invoke(score);
+                _ = UpdateAccSaberInfo();
+            }
 		}
 
 		public async Task<UserInfo?> GetPlatformUserInfo()

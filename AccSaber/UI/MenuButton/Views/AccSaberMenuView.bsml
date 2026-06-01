@@ -31,21 +31,22 @@
               <image id='progress-bar' image-color='#fbbf24' pref-width='20' pref-height='1'/>
               <image id='progress-bar-inverse' src='~pixelImg' image-color='#CCC' pref-width='30' pref-height='1'/>
             </horizontal>
+			<vertical pref-height='1'/>
             <text text='~xp' align='Center' font-size='2.5'/>
             <vertical pref-height='25' >
               <horizontal horizontal-fit='PreferredSize' pref-width='25'>
                 <vertical vertical-fit='PreferredSize' pref-height='6'>
-                  <text text='Global' align='Center' font-size='3.5'/>
-                  <text text='~rank' align='Center' font-size='3'/>
+                  <text text='Global' align='Center' font-size='3'/>
+                  <text text='~rank' align='Center' font-size='2.5'/>
                 </vertical>
                 <vertical vertical-fit='PreferredSize' pref-height='6'>
-                  <text text='Country' align='Center' font-size='3.5'/>
-                  <text text='~country' align='Center' font-size='3'/>
+                  <text text='Country' align='Center' font-size='3'/>
+                  <text text='~country' align='Center' font-size='2.5'/>
                 </vertical>
               </horizontal>
-              <text text='~ap' align='Center' font-size='3.5'/>
-              <text text='~plays' align='Center' font-size='3.5'/>
-              <text text='~headset' align='Center' font-size='3.5'/>
+              <text text='~ap' align='Center' font-size='2.8'/>
+              <text text='~plays' align='Center' font-size='2.8'/>
+              <text text='~headset' align='Center' font-size='2.8'/>
             </vertical>
             <dropdown-list-setting id='category-dropdown'  anchor-pos-x='5.5' text='' align='Center' value='category-value' choices='category-choices' formatter='format-category' bind-value='true' apply-on-change='true'/>
           </vertical>

@@ -107,4 +107,60 @@ namespace AccSaber.Models
         }
     }
 
+    [UsedImplicitly]
+    internal class AccSaberMissionResponse
+    {
+
+        [JsonProperty("userId")]
+        public string UserId { get; set; } = null!;
+
+        [JsonProperty("userName")]
+        public string UserName { get; set; } = null!;
+
+        [JsonProperty("userCountry")]
+        public string UserCountry { get; set; } = null!;
+
+        [JsonProperty("userAvatarUrl")]
+        public string UserAvatarUrl { get; set; } = null!;
+
+        [JsonProperty("completedAt")]
+        public DateTime CompletedAt { get; set; }
+
+        [JsonProperty("missionId")]
+        public string MissionId { get; set; } = null!;
+
+        [JsonProperty("templateId")]
+        public string TemplateId { get; set; } = null!;
+
+        [JsonProperty("templateCode")]
+        public string TemplateCode { get; set; } = null!;
+
+        [JsonProperty("templateDescription")]
+        public string TemplateDescription { get; set; } = null!;
+
+        [JsonProperty("type")]
+        public string Type { get; set; } = null!;
+
+        [JsonProperty("pool")]
+        public string Pool { get; set; } = null!;
+
+        [JsonProperty("band")]
+        public string Band { get; set; } = null!;
+
+        [JsonProperty("categoryId")]
+        public string CategoryId { get; set; } = null!;
+
+        [JsonProperty("categoryCode")]
+        public string CategoryCode { get; set; } = null!;
+
+        [JsonProperty("targetMapDifficultyId")]
+        public string TargetMapDifficultyId { get; set; } = null!;
+
+        [JsonProperty("xpAwarded")]
+        public int XpAwarded { get; set; }
+
+        [JsonProperty("itemAwardedId")]
+        public string ItemAwardedId { get; set; } = null!;
+    }
+
 }

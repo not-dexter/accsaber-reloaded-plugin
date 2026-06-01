@@ -372,7 +372,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PercentBarBottom?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - progress));
 
                 PercentBarTop_image?.color = ColorUtils.GetColor(Data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(Data.CategoryId)).Color();
-                PercentBarBottom_image?.color = ColorUtils.GREY.Color();
+                PercentBarBottom_image?.color = ColorUtils.GREY.Color().ColorWithAlpha(0.15f);
 
                 DescriptionText.enableAutoSizing = true;
                 DescriptionText.fontSizeMin = 2f;

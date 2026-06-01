@@ -272,6 +272,9 @@
         /// </summary>
         public const string APAPI_WEBSOCKET = "wss://accsaberreloaded.com/ws/scores";
 
+        // Unused for now. Could possibly be used for mission completion notifications in the future
+        public const string APAPI_MISSIONS_WEBSOCKET = "wss://accsaberreloaded.com/ws/missions"; 
+
         // Example: https://cdn.beatsaver.com/943e3a95d8fdd12180d7aa8348f9687d7d34c431.zip
         public const string BEATSAVER_DOWNLOAD = "https://cdn.beatsaver.com/{0}.zip"; // hash (lowercase)
     }
