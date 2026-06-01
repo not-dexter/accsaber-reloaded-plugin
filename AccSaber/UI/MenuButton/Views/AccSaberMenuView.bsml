@@ -28,7 +28,7 @@
             </vertical>
             <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
               <vertical pref-width='2.5'/>
-              <image id='progress-bar' image-color='#fbbf24' pref-width='20' pref-height='1'/>
+              <image id='progress-bar' src='~pixelImg' image-color='#FFF' pref-width='20' pref-height='1'/>
               <image id='progress-bar-inverse' src='~pixelImg' image-color='#CCC' pref-width='30' pref-height='1'/>
             </horizontal>
 			<vertical pref-height='1'/>

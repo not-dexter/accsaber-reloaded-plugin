@@ -2,8 +2,9 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
-namespace AccSaber.Models.ItemModels.ValueTypes.States
+namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
     internal class AccSaberItemFill : IEquatable<AccSaberItemFill>
@@ -13,6 +14,15 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
 
         [JsonProperty("hex")]
         public string? Color { get; set; }
+
+        [JsonProperty("base")]
+        public string? Base { get; set; }
+
+        [JsonProperty("shadow")]
+        public string? Shadow { get; set; }
+
+        [JsonProperty("highlight")]
+        public string? Highlight { get; set; }
 
         [JsonProperty("stops")]
         public List<AccSaberItemGradientStop>? Stops { get; set; }
@@ -40,10 +50,17 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
 
             return false;
         }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context) 
+        {
+            if (Base is not null && Color is null)
+                Color = Base;
+        }
     }
 
     internal enum FillType
     {
-        solid, linear
+        solid, linear, pixel_metal
     }
 }

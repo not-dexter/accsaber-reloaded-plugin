@@ -1,5 +1,4 @@
-﻿using AccSaber.Models.ItemModels.ValueTypes.States;
-using AccSaber.Utils;
+﻿using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -29,7 +28,7 @@ namespace AccSaber.Models.ItemModels.Base
         {
             textComponent.ForceMeshUpdate();
             TMP_TextInfo textInfo = textComponent.textInfo;
-            int characterCount = textInfo!.characterCount;
+            int characterCount = textInfo.characterCount;
 
             IEnumerator<AccSaberItemGradientStop> colors = colorProvider.GetEnumerator();
             colors.MoveNext();

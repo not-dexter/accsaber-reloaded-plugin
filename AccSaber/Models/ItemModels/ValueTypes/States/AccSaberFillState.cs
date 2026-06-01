@@ -62,6 +62,16 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
                     g.SetKeys(arr, alphaArr);
 
                     break;
+
+                case FillType.pixel_metal:
+                    g.colorKeys = [
+                        new(Fill.Highlight!.Color(), 0f),
+                        new(Fill.Base!.Color(), 0.5f),
+                        new(Fill.Shadow!.Color(), 1f)
+                        ];
+                    g.alphaKeys = [new(1f, 0f), new(1f, 0.5f), new(1f, 1f)];
+                    Fill.AngleDegree = 315;
+                    break;
             }
 
             _gradient = g;

@@ -473,7 +473,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			{
                 yield return new WaitUntil(_titleText.IsActive);
                 yield return new WaitForEndOfFrame();
-                titleRoutine = userInfo.Items!.SetTitle(_titleText, this);
+                titleRoutine = userInfo.Items!.Set(this, _titleText);
             }
 			StartCoroutine(WaitThenUpdate());
 
@@ -485,15 +485,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				if (borderRoutine is not null)
 					StopCoroutine(borderRoutine);
 
-				borderRoutine = userInfo.Items!.SetProfileBorder(_playerImageBorder, this);
+				borderRoutine = userInfo.Items!.Set(this, _playerImageBorder, _progressBarImage);
 
 				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
 				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
-				await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
 				if (userInfo.AvatarUrl is not null)
 					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
-				if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
-					_progressBarImage.color = newCol;
 
 				IsLoading = false;
 				_firstLoad = false;

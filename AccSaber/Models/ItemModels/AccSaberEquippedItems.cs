@@ -3,6 +3,7 @@ using AccSaber.Models.Base;
 using AccSaber.Models.ItemModels.Base;
 using AccSaber.Models.ItemModels.ValueTypes;
 using AccSaber.Models.ItemModels.ValueTypes.States;
+using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -27,17 +28,95 @@ namespace AccSaber.Models.ItemModels
         [JsonIgnore]
         private static readonly ObjectCacher<Gradient, Sprite[]> TextureBuffer = new();
 
-        public Coroutine SetTitle(TextMeshProUGUI text, MonoBehaviour host)
+        public Coroutine Set(MonoBehaviour host, TextMeshProUGUI text)
         {
             text.SetText(Title.Item.Value.Text);
 
-            return host.StartCoroutine(SetValueUsingStates(model => model.SetText(text), null, Title.Item.Value.States, Title.Item.Value.DurationMs / 1000f));
+            Coroutine outp = host.StartCoroutine(SetValueUsingStates(model => model.SetText(text), null, Title.Item.Value.States, Title.Item.Value.DurationMs / 1000f));
+
+            if (Title.Item.Value.States.Count == 1)
+            {
+                AccSaberColorState? state = Title.Item.Value.States.FirstOrDefault(state => state.Glisten is not null);
+
+                IEnumerator DoBoth()
+                {
+                    yield return outp;
+                    yield return DoGlisten(state.Glisten!, text);
+                }
+
+                if (state is not null)
+                    return host.StartCoroutine(DoBoth());
+            }
+
+            return outp;
         }
-        public Coroutine SetProfileBorder(Image borderImage, MonoBehaviour host)
+        public Coroutine Set(MonoBehaviour host, Image borderImage)
         {
             return host.StartCoroutine(SetValueUsingStates(model => ApplyGradient(borderImage, model.GetGradient(), angle: model.GradientRotation),
                 (model, degree) => ApplyGradient(borderImage, model.GetGradient(), angle: degree),
                 ProfileBorderColor.Item.Value.States, Title.Item.Value.DurationMs / 1000f));
+        }
+        public Coroutine Set(MonoBehaviour host, params IEnumerable<Image> images)
+        {
+            return host.StartCoroutine(SetValueUsingStates(model => ApplyGradient(images, model.GetGradient(), angle: model.GradientRotation),
+                (model, degree) => ApplyGradient(images, model.GetGradient(), angle: degree),
+                ProfileBorderColor.Item.Value.States, Title.Item.Value.DurationMs / 1000f));
+        }
+        public static IEnumerator DoGlisten(AccSaberItemGlisten glisten, TextMeshProUGUI text)
+        {
+            text.ForceMeshUpdate();
+            TMP_TextInfo textInfo = text.textInfo;
+            int characterCount = text.text.Length;
+
+            float highlightLen = glisten.DurationMs / (float)characterCount;
+            WaitForSeconds delay = new(highlightLen / 1000f);
+            WaitForSeconds fullDelay = new(glisten.IntervalMs / 1000f);
+
+            Color32[] buffer = new Color32[4];
+            Color highlight = glisten.Color.Color();
+
+            //yield return fullDelay;
+
+            while (true)
+            {
+                buffer[0] = textInfo.meshInfo[textInfo.characterInfo[0].materialReferenceIndex].colors32[0];
+                buffer[1] = textInfo.meshInfo[textInfo.characterInfo[0].materialReferenceIndex].colors32[1];
+                buffer[2] = textInfo.meshInfo[textInfo.characterInfo[0].materialReferenceIndex].colors32[2];
+                buffer[3] = textInfo.meshInfo[textInfo.characterInfo[0].materialReferenceIndex].colors32[3];
+
+                for (int i = 0; i < characterCount; i++)
+                {
+                    TMP_CharacterInfo charInfo = textInfo.characterInfo[i];
+                    if (!charInfo.isVisible) continue;
+
+                    int materialIndex = charInfo.materialReferenceIndex;
+                    int vertexIndex = charInfo.vertexIndex;
+                    Color32[] vertexColors = textInfo.meshInfo[materialIndex].colors32;
+
+                    buffer[0] = vertexColors[vertexIndex + 0];
+                    buffer[1] = vertexColors[vertexIndex + 1];
+                    buffer[2] = vertexColors[vertexIndex + 2];
+                    buffer[3] = vertexColors[vertexIndex + 3];
+
+                    vertexColors[vertexIndex + 0] = highlight;
+                    vertexColors[vertexIndex + 1] = highlight;
+                    vertexColors[vertexIndex + 2] = highlight;
+                    vertexColors[vertexIndex + 3] = highlight;
+
+                    text.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+
+                    yield return delay;
+
+                    vertexColors[vertexIndex + 0] = buffer[0];
+                    vertexColors[vertexIndex + 1] = buffer[1];
+                    vertexColors[vertexIndex + 2] = buffer[2];
+                    vertexColors[vertexIndex + 3] = buffer[3];
+
+                    text.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+                }
+
+                yield return fullDelay;
+            }
         }
         public static IEnumerator SetValueUsingStates<T>(Action<T> setter, Action<T, float>? rotator, IEnumerable<T> states, float delayTime = 1f) where T : ItemStateModel<T>
         {
@@ -151,15 +230,17 @@ namespace AccSaber.Models.ItemModels
             texture.Apply();
             return texture;
         }
-        public static void ApplyGradient(Image image, Gradient gradient, int width = 128, int height = 128, float angle = 0f)
+        public static Sprite GetGradientSprite(Gradient gradient, int width = 128, int height = 128, float angle = 0f)
         {
+            if (angle < 0f)
+            {
+                angle += Mathf.Ceil(-angle / 360) * 360;
+            }
+
             int degreesInt = (int)Mathf.Round(angle) % 360;
 
             if (TextureBuffer.TryGetCachedItem(gradient, out Sprite[]? arr) && arr![degreesInt] is not null)
-            {
-                image.sprite = arr[degreesInt];
-                return;
-            }
+                return arr[degreesInt];
 
             Texture2D tex = CreateGradientTexture(gradient, width, height, angle);
             Sprite outp = Sprite.Create(tex, new(0, 0, width, height), new(0.5f, 0.5f));
@@ -169,7 +250,16 @@ namespace AccSaber.Models.ItemModels
 
             TextureBuffer.GetCachedItem(gradient)![degreesInt] = outp;
 
-            image.sprite = outp;
+            return outp;
+        }
+        public static void ApplyGradient(Image image, Gradient gradient, int width = 128, int height = 128, float angle = 0f) =>
+            image.sprite = GetGradientSprite(gradient, width, height, angle);
+        public static void ApplyGradient(IEnumerable<Image> images, Gradient gradient, int width = 128, int height = 128, float angle = 0f)
+        {
+            Sprite sprite = GetGradientSprite(gradient, width, height, angle);
+
+            foreach (Image image in images)
+                image.sprite = sprite;
         }
     }
 }

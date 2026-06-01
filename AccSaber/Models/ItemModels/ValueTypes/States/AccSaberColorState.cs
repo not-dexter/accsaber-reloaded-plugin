@@ -13,6 +13,9 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
         [JsonProperty("gradient")]
         public AccSaberItemGradient? Gradient { get; set; }
 
+        [JsonProperty("glisten")]
+        public AccSaberItemGlisten? Glisten { get; set; }
+
         public override float GradientRotation => Gradient?.AngleDegree ?? 0f;
 
         public override bool Equals(AccSaberColorState other)

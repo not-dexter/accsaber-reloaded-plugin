@@ -454,7 +454,7 @@ namespace AccSaber.UI.ViewControllers
 			{
 				yield return new WaitUntil(_titleText.IsActive);
 				yield return new WaitForEndOfFrame();
-                titleRoutine = userInfo.Items!.SetTitle(_titleText, _host!);
+                titleRoutine = userInfo.Items!.Set(_host!, _titleText);
             }
 
 			_host!.StartCoroutine(WaitThenUpdate());
@@ -465,13 +465,10 @@ namespace AccSaber.UI.ViewControllers
 				if (borderRoutine is not null)
 					_host!.StopCoroutine(borderRoutine);
 
-                borderRoutine = userInfo.Items!.SetProfileBorder(_playerImageBorder, _host!);
+                borderRoutine = userInfo.Items!.Set(_host!, _playerImageBorder, _progressBarImage);
 
-                await _progressBarImage.SetImageAsync(ResourcePaths.PIXEL, false);
 				if (userInfo.AvatarUrl is not null)
 					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
-				if (ColorUtility.TryParseHtmlString(_color, out Color newCol))
-					_progressBarImage.color = _color.Color();
 
                 const float barLen = 20f;
 
@@ -508,7 +505,7 @@ namespace AccSaber.UI.ViewControllers
 			{
 				_host!.StopCoroutine(titleRoutine);
 				titleRoutine = null;
-			}
+            }
             if (borderRoutine is not null)
 			{
                 _host!.StopCoroutine(borderRoutine);

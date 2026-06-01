@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 
-namespace AccSaber.Models.ItemModels.ValueTypes.States
+namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
     internal class AccSaberItemGradient : IEquatable<AccSaberItemGradient>
