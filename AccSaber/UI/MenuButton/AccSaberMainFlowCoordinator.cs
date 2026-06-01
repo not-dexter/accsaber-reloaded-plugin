@@ -1,6 +1,8 @@
 ﻿using AccSaber.UI.MenuButton.ViewControllers;
 using HMUI;
 using Zenject;
+using System;
+
 
 #if !NEW_VERSION
 using BeatSaberMarkupLanguage;
@@ -15,6 +17,9 @@ namespace AccSaber.UI.MenuButton
         private AccSaberNewsViewController _accSaberRelationsViewController = null!;
         private AccSaberMenuViewController _accSaberMenuViewController = null!;
         private AccSaberMilestoneViewController _accSaberMilestoneViewController = null!;
+
+        public event Action? HubActivated;
+        public event Action? HubDeactivated;
 
         // Called immediately when the flow coordinator is activated
 
@@ -36,6 +41,7 @@ namespace AccSaber.UI.MenuButton
                 SetTitle("Accsaber Reloaded");
                 showBackButton = true;
                 ProvideInitialViewControllers(_accSaberMenuViewController, _accSaberRelationsViewController, _accSaberMilestoneViewController);
+                HubDeactivated += OnDismiss;
             }
         }
         internal void PresentFlowCoordinator()
@@ -43,7 +49,7 @@ namespace AccSaber.UI.MenuButton
             _parentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
             _parentFlowCoordinator.PresentFlowCoordinator(this);
 
-            //Plugin.Log.Info($"parent flow coordinator: type = {_parentFlowCoordinator.GetType()}, name = {_parentFlowCoordinator.name}");
+            HubActivated?.Invoke();
 
             _accSaberMilestoneViewController.UpdateTabs();
         }
@@ -53,24 +59,23 @@ namespace AccSaber.UI.MenuButton
         {
             _accSaberRelationsViewController.HideNewsModal();
             _accSaberMilestoneViewController.StopTimer();
-            _accSaberMenuViewController.OnClose();
             SetRightScreenViewController(null, ViewController.AnimationType.None);
             SetLeftScreenViewController(null, ViewController.AnimationType.None);
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
-            OnDismiss();
             _parentFlowCoordinator?.DismissFlowCoordinator(this);
+            HubDeactivated?.Invoke();
         }
 
         internal void Close(bool instant = false)
         {
-            OnDismiss();
+            HubDeactivated?.Invoke();
             _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: instant);
         }
         internal void CloseToMainMenu()
         {
-            OnDismiss();
+            HubDeactivated?.Invoke();
 
             _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: true);
 

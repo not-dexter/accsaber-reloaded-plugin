@@ -1,7 +1,10 @@
 ﻿using AccSaber.API;
 using AccSaber.Consts;
 using AccSaber.Managers;
+using AccSaber.Models;
 using AccSaber.Models.CacheModels;
+using AccSaber.Models.PlayerModels;
+using AccSaber.UI.MenuButton.Campaigns;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
@@ -13,14 +16,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using TMPro;
 using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
-using AccSaber.Models.PlayerModels;
-using AccSaber.UI.MenuButton.Campaigns;
-using AccSaber.Models;
-using TMPro;
 
 
 #if NEW_VERSION
@@ -59,6 +59,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		[Inject] private readonly AccSaberCampaignFlow campaignFlow = null!;
 		[Inject] private readonly LevelUtils levelUtils = null!;
+		[Inject] private readonly AccSaberMainFlowCoordinator parentCoordinator = null!;
+        [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
 
         [UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
@@ -88,26 +90,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private readonly TextMeshProUGUI _titleText = null!;
 
 		private CanvasGroup? _userInfoCanvasGroup;
-
-        [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
-
-		public event Action? HubActivated;
-        public event Action? HubDeactivated;
-
-        protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
-        {
-            base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
-
-			HubActivated?.Invoke();
-		}
-
-        protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
-        {
-            base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
-
-            HubDeactivated?.Invoke();
-        }
-
 
         private int PageNumber
 		{
@@ -366,7 +348,28 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             System.Diagnostics.Process.Start("https://github.com/not-dexter/accsaber-reloaded-plugin");
         }
 
-		internal void OnClose()
+		private void OnOpen()
+		{
+            if (!_firstLoad && _user is not null)
+            {
+                if (titleRoutine is not null)
+                    StopCoroutine(titleRoutine);
+
+                IEnumerator WaitThenUpdate()
+                {
+                    yield return new WaitUntil(_titleText.IsActive);
+                    yield return new WaitForEndOfFrame();
+                    titleRoutine = _user.Items!.Set(this, _titleText);
+                }
+                StartCoroutine(WaitThenUpdate());
+
+                if (borderRoutine is not null)
+                    StopCoroutine(borderRoutine);
+
+                borderRoutine = _user.Items!.Set(this, _playerImageBorder, _progressBarImage);
+            }
+        }
+		private void OnClose()
 		{
             if (titleRoutine is not null)
 			{
@@ -477,16 +480,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
 			StartCoroutine(WaitThenUpdate());
 
+            if (borderRoutine is not null)
+                StopCoroutine(borderRoutine);
 
-			const float barLen = 20f;
+            borderRoutine = userInfo.Items!.Set(this, _playerImageBorder, _progressBarImage);
+
+            const float barLen = 20f;
 
 			if (_firstLoad)
 			{
-				if (borderRoutine is not null)
-					StopCoroutine(borderRoutine);
-
-				borderRoutine = userInfo.Items!.Set(this, _playerImageBorder, _progressBarImage);
-
 				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
 				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
 				if (userInfo.AvatarUrl is not null)
@@ -593,11 +595,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         public void Initialize()
         {
             AccSaberStore.OnPlayerScoreUpdated += OnAccSaberPlayerUpdated;
+            parentCoordinator.HubActivated += OnOpen;
+            parentCoordinator.HubDeactivated += OnClose;
         }
 
         public void Dispose()
         {
             AccSaberStore.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
+            parentCoordinator.HubActivated -= OnOpen;
+            parentCoordinator.HubDeactivated -= OnClose;
         }
 
         internal class ScoreCell(AccSaberPlayerScore data) : ICellDataSource, INotifyPropertyChanged

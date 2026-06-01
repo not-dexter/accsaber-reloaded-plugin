@@ -130,7 +130,7 @@ namespace AccSaber.Utils
                 IBeatmapLevelPack? levelPack = null;
 #endif
 
-                if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("PlaylistManager")))
+                if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
                     levelPack = PlaylistUtils.GetPlaylistLevelpack(filename);
 
                 //Plugin.Log.Info("levelPack null? " + (levelPack is null));
