@@ -256,8 +256,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             public int TemplateId { get; set; }
 
-            private static readonly AsyncLock OpenMapLock = new();
-
             public readonly AccSaberMission Data = data;
 
             private bool _showStatus = false;
@@ -303,7 +301,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 get => _statusText;
                 set
                 {
+#if NEW_VERSION
                     _statusText = value;
+#else
+                    _statusText = $"<size=20%>{value}</size>";
+#endif
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusText)));
                 }
             }
