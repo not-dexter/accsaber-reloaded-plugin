@@ -14,6 +14,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
+using System.Net.Http.Headers;
+
 
 #if NEW_VERSION
 using System.Reflection;
@@ -30,7 +32,7 @@ namespace AccSaber.Utils
         private static readonly AsyncLock OpenMapLock = new();
         private static readonly object LoadWaiterLock = new();
 
-        private static readonly Regex FilenameRegex = new("(?<=filename=\")[^\"]+(?=\";)");
+        private static readonly Regex FilenameRegex = new(@"filename\*=(?<charset>[\w-]+)''(?<name>[^\s;]+)");
 
         [Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
         [Inject] private readonly SoloFreePlayFlowCoordinator _soloCoordinator = null!;
@@ -165,47 +167,47 @@ namespace AccSaber.Utils
             private async Task<IBeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
 #endif
         {
-            StatusTextChanged?.Invoke("Downloading...");
-
-            var (map, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.BEATSAVER_DOWNLOAD, cachedMap.Hash.ToLowerInvariant()), null);
-
-            if (map is null)
-                return null;
-
-            using Stream stream = new MemoryStream(map);
-            using ZipArchive zip = new(stream, ZipArchiveMode.Read);
-
-            string folderPath = Path.Combine(ResourcePaths.CUSTOM_SONGS, FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value[..^4]);
-
-            if (!Directory.Exists(folderPath))
-                Directory.CreateDirectory(folderPath);
-
-            zip.ExtractToDirectory(folderPath);
-
-            SongCore.Loader.Instance.RefreshSongs(false);
-
-            await Task.Run(() =>
+            try
             {
-                lock (LoadWaiterLock)
-                    Monitor.Wait(LoadWaiterLock);
-            });
+                StatusTextChanged?.Invoke("Downloading...");
+
+                var (map, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.BEATSAVER_DOWNLOAD, cachedMap.Hash.ToLowerInvariant()), null);
+
+                if (map is null)
+                    return null;
+
+                using Stream stream = new MemoryStream(map);
+                using ZipArchive zip = new(stream, ZipArchiveMode.Read);
+
+                string folderName = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Groups["name"].Value[..^4];
+                folderName = Uri.UnescapeDataString(folderName);
+
+                string folderPath = Path.Combine(ResourcePaths.CUSTOM_SONGS, folderName);
+
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                zip.ExtractToDirectory(folderPath);
+
+                SongCore.Loader.Instance.RefreshSongs(false);
+
+                await Task.Run(() =>
+                {
+                    lock (LoadWaiterLock)
+                        Monitor.Wait(LoadWaiterLock);
+                });
 
 #if NEW_VERSION
-            return SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + cachedMap.Hash.ToUpper());
+                return SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + cachedMap.Hash.ToUpper());
 #else
                 //return SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelIfLoaded(header + cachedMap.Hash.ToUpper());
                 return (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + cachedMap.Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
 #endif
+            } catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error downloading the map!\n" + e);
+                return null;
+            }
         }
-
-        /*internal readonly struct SongPresentInfo(MainFlowCoordinator mainFlowCoordinator,
-            SoloFreePlayFlowCoordinator soloCoordinator, MultiplayerLevelSelectionFlowCoordinator multiCoordinator,
-            AccSaberMainFlowCoordinator parentFlowCoordinator)
-        {
-            public readonly MainFlowCoordinator MainFlowCoordinator = mainFlowCoordinator;
-            public readonly SoloFreePlayFlowCoordinator SoloCoordinator = soloCoordinator;
-            public readonly MultiplayerLevelSelectionFlowCoordinator MultiCoordinator = multiCoordinator;
-            public readonly AccSaberMainFlowCoordinator ParentFlowCoordinator = parentFlowCoordinator;
-        }*/
     }
 }
