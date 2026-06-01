@@ -68,6 +68,7 @@ namespace AccSaber.API
         public const int FILTER_PAGE_MULT = 10;
 
         public static List<AccSaberModifier>? Modifiers { get; private set; } = null;
+        private static readonly AsyncLock PlayerLoadLock = new();
 
         static AccsaberAPI()
         {
@@ -1000,32 +1001,37 @@ namespace AccSaber.API
         /// </remarks>
         public static async Task<AccSaberPlayer?> GetPlayerInfo(string userId, bool stats, bool statDiff, CancellationToken ct = default)
         {
-            bool playerCached = playerInfoCacher.TryGetCachedItem(userId, out AccSaberPlayer? outp);
-            bool statsCached = playerCached && outp!.Statistics is not null;
-            bool statDiffCached = statsCached && statDiff && outp!.LoadStatDiffs.IsCompleted;
+            AsyncLock.Releaser locker = await PlayerLoadLock.LockAsync();
 
-            //Plugin.Log.Info($"cached = {playerCached}, stats cached = {statsCached}, diff cached = {statDiffCached} || want stats ? {stats}, want diff {statDiff}");
-
-            if (playerCached && (statsCached || !stats) && (statDiffCached || !statDiff))
-                return outp;
-
-            if (statsCached && statDiff)
+            using (locker)
             {
-                await outp!.LoadStatDiffs;
+                bool playerCached = playerInfoCacher.TryGetCachedItem(userId, out AccSaberPlayer? outp);
+                bool statsCached = playerCached && outp!.Statistics is not null;
+                bool statDiffCached = statsCached && statDiff && outp!.LoadStatDiffs.IsCompleted;
+
+                //Plugin.Log.Info($"cached = {playerCached}, stats cached = {statsCached}, diff cached = {statDiffCached} || want stats ? {stats}, want diff {statDiff}");
+
+                if (playerCached && (statsCached || !stats) && (statDiffCached || !statDiff))
+                    return outp;
+
+                if (statsCached && statDiff)
+                {
+                    await outp!.LoadStatDiffs;
+                    return outp;
+                }
+
+                outp = await CallAPI_Json<AccSaberPlayer>(string.Format(APAPI_PLAYERID, userId, stats.ToString().ToLower()), throttler, ct: ct);
+
+                if (outp is null)
+                    return null;
+
+                if (statDiff)
+                    await outp.LoadStatDiffs;
+
+                playerInfoCacher.CacheItem(outp, userId);
+
                 return outp;
             }
-
-            outp = await CallAPI_Json<AccSaberPlayer>(string.Format(APAPI_PLAYERID, userId, stats.ToString().ToLower()), throttler, ct: ct);
-
-            if (outp is null)
-                return null;
-
-            if (statDiff)
-                await outp.LoadStatDiffs;
-
-            playerInfoCacher.CacheItem(outp, userId);
-
-            return outp;
         }
 
         public static async Task<IEnumerable<AccSaberPlayerScore>?> GetPlayerScores(int page, int pageLength, APCategory category = APCategory.Overall, CancellationToken ct = default)

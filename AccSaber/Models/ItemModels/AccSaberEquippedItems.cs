@@ -66,7 +66,7 @@ namespace AccSaber.Models.ItemModels
         {
             text.ForceMeshUpdate();
             TMP_TextInfo textInfo = text.textInfo;
-            int characterCount = text.text.Length;
+            int characterCount = textInfo.characterCount;
 
             float highlightLen = glisten.DurationMs / (float)characterCount;
             WaitForSeconds delay = new(highlightLen / 1000f);
