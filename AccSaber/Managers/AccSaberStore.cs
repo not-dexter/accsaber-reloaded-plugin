@@ -189,6 +189,14 @@ namespace AccSaber.Managers
 
         public async Task StartWebsocket(CancellationToken ct = default)
         {
+            object locker = new();
+            void WaitForHealth(string domain, bool health)
+            {
+                if (health && domain.Equals(HelpfulPaths.APAPI_DOMAIN))
+                    lock (locker)
+                        Monitor.PulseAll(locker);
+            }
+
             try
             {
                 AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
@@ -197,6 +205,17 @@ namespace AccSaber.Managers
                 using (theLock.Value)
                     while (true)
                     {
+                        if (!await APIHandler.CheckDomain(HelpfulPaths.APAPI_DOMAIN))
+                        {
+                            Plugin.Log.Warn("Pausing the websocket loop until the api is found to be healthy again.");
+                            lock (locker)
+                            {
+                                APIHandler.OnHealthUpdated += WaitForHealth;
+                                Monitor.Wait(locker);
+                                APIHandler.OnHealthUpdated -= WaitForHealth;
+                            }
+                        }
+
                         Plugin.Log.Info("Websocket starting.");
                         await ListenForScores(ct);
                         await Task.Delay(1000, ct);

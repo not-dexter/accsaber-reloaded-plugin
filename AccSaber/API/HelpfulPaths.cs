@@ -22,6 +22,7 @@
         /// Base API URL for AccSaber Reloaded (version 1).
         /// </summary>
         public const string APAPI = "https://api.accsaberreloaded.com/v1/";
+        public const string APAPI_DOMAIN = "api.accsaberreloaded.com";
 
         /// <summary>
         /// Health check endpoint (no parameters).
@@ -41,7 +42,7 @@
 
         public const string APAPI_PLAYLIST = APAPI + "playlists/{0}"; // category (true_acc, standard_acc, tech_acc, overall)
 
-        public const string APAPI_PLAYLIST_THRESHOLD = APAPI + "playlists/{0}/user/{1}?threshold={2}"; // category (true_acc, standard_acc, tech_acc, overall), user_id, ap threshold
+        public const string APAPI_PLAYLIST_THRESHOLD = APAPI + "users/{0}/maps-above-ap?apMin={1}"; // user_id, ap threshold
 
 
         /// <summary>

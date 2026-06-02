@@ -89,7 +89,7 @@ namespace AccSaber.Utils
                 string filename = $"accsaber-reloaded-{categoryName}-{apThreshold}ap";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} Above {apThreshold}ap";
 
-                IEnumerable<AccSaberPlayerScore>? scores = await AccsaberAPI.GetPlayerScores(apThreshold, type);
+                IEnumerable<AccSaberDifficulty>? scores = await AccsaberAPI.GetMapsAboveThreshold(apThreshold, type);
 
                 if (scores is null)
                     return;

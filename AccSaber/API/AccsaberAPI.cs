@@ -1085,63 +1085,16 @@ namespace AccSaber.API
 
             return outp;
         }
-        public static async Task<IEnumerable<AccSaberPlayerScore>?> GetPlayerScores(float apThreshold, APCategory category = APCategory.Overall, CancellationToken ct = default)
-        { // Note: All this code is placeholder until Tiku can implement a proper API endpoint for this. The current implementation is very inefficient, but it should work for now and will allow me to avoid making breaking API changes later.
-            int page;
-            const int pageLength = PAGE_LENGTH * FILTER_PAGE_MULT;
+        public static async Task<IEnumerable<AccSaberDifficulty>?> GetMapsAboveThreshold(float apThreshold, APCategory category = APCategory.Overall, CancellationToken ct = default)
+        {
+            await PlayerSocialLife.LoadTask;
 
-            List<AccSaberPlayerScore> outp = [];
+            string url = string.Format(APAPI_PLAYLIST_THRESHOLD, PlayerSocialLife.PlayerID, apThreshold);
 
-            bool returnOnFinish = false;
-            foreach (AccSaberPlayerScore score in SerializerHandler.CachedPlayerScores)
-                if (score.Category == category)
-                {
-                    if (score.AP >= apThreshold)
-                        outp.Add(score);
-                    else
-                    {
-                        returnOnFinish = true;
-                        break;
-                    }
-                }
+            if (category != APCategory.Overall)
+                url += "&categoryId=" + EnumUtils.EnumToReloadedCategory(category);
 
-            if (returnOnFinish)
-                return outp;
-
-            page = outp.Count / pageLength;
-            bool skip = outp.Count > 0;
-
-            do
-            {
-                IEnumerable<AccSaberPlayerScore>? newScores = category == APCategory.Overall ?
-                    await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(APAPI_SCORES, PlayerSocialLife.PlayerID, page, pageLength) + "&sort=ap,desc", throttler, ct: ct)
-                        .ContinueWith(task => task.Result?.Content.Select(score => new AccSaberPlayerScore(score))) :
-                    await GetPlayerScores(page, pageLength, category, ct);
-
-                if (newScores is null)
-                    return outp;
-
-                if (skip)
-                {
-                    newScores = newScores.Skip(outp.Count % pageLength);
-                    skip = false;
-                }
-
-                foreach (AccSaberPlayerScore score in newScores)
-                {
-                    if (score.AP >= apThreshold)
-                        outp.Add(score);
-                    else
-                    {
-                        returnOnFinish = true;
-                        break;
-                    }
-                }
-
-                page++;
-            } while (!returnOnFinish);
-
-            return outp;
+            return await CallAPI_Json<List<AccSaberDifficulty>>(url, throttler);
         }
 
         /// <summary>
@@ -1181,64 +1134,73 @@ namespace AccSaber.API
         /// </summary>
         public static async Task<AuthInfo?> Authenticate()
         {
-            if (PlayerSocialLife.AuthInfo is not null && PlayerSocialLife.AuthInfo.ExpirationDate > DateTime.Now)
-                return PlayerSocialLife.AuthInfo;
-
-            SetLoginState(LoginState.InProgress);
-
-            await GetUserInfo.GetUserAsync();
-            IPlatformUserModel platformUserModel = Plugin.Container.TryResolve<IPlatformUserModel>();
-            PlatformUserAuthTokenData authToken = await platformUserModel.GetUserAuthToken();
-            UserInfo userInfo = await platformUserModel.GetUserInfo();
-            string token = "";
-            string provider = "";
-            switch (userInfo.platform)
+            try
             {
-                case UserInfo.Platform.Steam:
-                    token = authToken.token;
-                    provider = "steamTicket";
-                    break;
-                case UserInfo.Platform.Oculus:
+                if (PlayerSocialLife.AuthInfo is not null && PlayerSocialLife.AuthInfo.ExpirationDate > DateTime.Now)
+                    return PlayerSocialLife.AuthInfo;
+
+                SetLoginState(LoginState.InProgress);
+
+                await GetUserInfo.GetUserAsync();
+                IPlatformUserModel platformUserModel = Plugin.Container.TryResolve<IPlatformUserModel>();
+                PlatformUserAuthTokenData authToken = await platformUserModel.GetUserAuthToken();
+                UserInfo userInfo = await platformUserModel.GetUserInfo();
+                string token = "";
+                string provider = "";
+                switch (userInfo.platform)
+                {
+                    case UserInfo.Platform.Steam:
+                        token = authToken.token;
+                        provider = "steamTicket";
+                        break;
+                    case UserInfo.Platform.Oculus:
 #if NEW_VERSION
-                    token = (await platformUserModel.RequestXPlatformAccessToken(CancellationToken.None)).token;
+                        token = (await platformUserModel.RequestXPlatformAccessToken(CancellationToken.None)).token;
 #else
                     token = await OculusTicket();
 #endif
-                    provider = "oculusTicket";
-                    break;
-            }
+                        provider = "oculusTicket";
+                        break;
+                }
 
-            Dictionary<string, string> jsonValues = new()
+                Dictionary<string, string> jsonValues = new()
             {
                 { "provider", provider },
                 { "ticket", token }
             };
 
-            StringContent sc = new(JsonConvert.SerializeObject(jsonValues), System.Text.Encoding.UTF8, "application/json");
-            HttpRequestMessage request = new(HttpMethod.Post, APAPI_AUTH) { Content = sc };
+                StringContent sc = new(JsonConvert.SerializeObject(jsonValues), System.Text.Encoding.UTF8, "application/json");
+                HttpRequestMessage request = new(HttpMethod.Post, APAPI_AUTH) { Content = sc };
 
-            var (success, content) = await CallAPI(request, throttler, maxRetries: 1).ConfigureAwait(false);
+                var (success, content) = await CallAPI(request, throttler, maxRetries: 1).ConfigureAwait(false);
 
-            if (success)
-            {
-                string? dataStr = await content!.ReadAsStringAsync();
-
-                if (dataStr is null)
-                    return null;
-
-                AuthInfo? outp = JsonConvert.DeserializeObject<AuthInfo>(dataStr);
-
-                if (outp is not null)
+                if (success)
                 {
-                    SetAuthForClient(outp);
-                    SetLoginState(LoginState.Success);
-                    return outp;
-                }
-            }
-            else
-                SetLoginState(LoginState.Failed);
+                    string? dataStr = await content!.ReadAsStringAsync();
 
-            return null;
+                    if (dataStr is null)
+                        return null;
+
+                    AuthInfo? outp = JsonConvert.DeserializeObject<AuthInfo>(dataStr);
+
+                    if (outp is not null)
+                    {
+                        SetAuthForClient(outp);
+                        SetLoginState(LoginState.Success);
+                        return outp;
+                    }
+                }
+                else
+                    SetLoginState(LoginState.Failed);
+
+                return null;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error doing auth!\n" + e);
+                SetLoginState(LoginState.Failed);
+                return null;
+            }
         }
 #if !NEW_VERSION
         public static async Task<string> OculusTicket()

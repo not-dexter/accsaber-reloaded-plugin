@@ -114,6 +114,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 case MissionType.PB_ABOVE_THRESHOLD:
                     _ = _levelUtils.LoadPlaylist(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, cell.UpdateStatus);
                     break;
+                case MissionType.XP_IN_WINDOW:
+                    _ = _levelUtils.LoadPlaylist(APCategory.Standard, PlayerSocialLife.PlayerID!, 900, cell.UpdateStatus);
+                    break;
             }
         }
 
