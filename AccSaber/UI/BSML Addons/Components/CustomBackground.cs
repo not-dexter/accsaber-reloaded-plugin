@@ -36,6 +36,7 @@ namespace AccsaberLeaderboard.UI.Components
         private readonly object applyLock = new();
         public ImageView? Background = null;
         public ImageView? Border = null;
+        public ImageView? Underline = null;
         public bool Rounded = false;
 
         public void Apply(string src, Color tint = default)
@@ -60,7 +61,7 @@ namespace AccsaberLeaderboard.UI.Components
             lock (applyLock)
                 Monitor.PulseAll(applyLock);
         }
-        public void ApplyBorder(float size, string? src = null, Color tint = default)
+        public void ApplyBorder(string? src = null, Color tint = default)
         {
             if (tint == default)
                 tint = Color.white;
@@ -74,8 +75,8 @@ namespace AccsaberLeaderboard.UI.Components
 
             if (_borderTemplate is null)
             {
-                Button button = Resources.FindObjectsOfTypeAll<Button>().FirstOrDefault(x => x.name == "ActionButton");
-                Transform? borderTransform = button != null ? button.transform.Find("Border") : null;
+                Button button = Resources.FindObjectsOfTypeAll<Button>().FirstOrDefault(x => x.name.Equals("ActionButton"));
+                Transform? borderTransform = button?.transform.Find("Border");
                 if (borderTransform is null)
                 {
                     return;
@@ -84,11 +85,9 @@ namespace AccsaberLeaderboard.UI.Components
                 _borderTemplate = borderTransform.gameObject;
             }
 
-            RectTransform? rt = Instantiate(_borderTemplate, Background!.transform).transform as RectTransform;
-
-            if (rt is null)
+            if (Instantiate(_borderTemplate, Background!.transform).transform is not RectTransform rt)
             {
-                AccSaber.Plugin.Log.Info("transform is null");
+                AccSaber.Plugin.Log.Info("Border transform is null");
                 return;
             }
 
@@ -103,14 +102,49 @@ namespace AccsaberLeaderboard.UI.Components
 
             ImageView img = rt.GetComponent<ImageView>();
             img.material = Utilities.ImageResources.NoGlowMat;
-            //img.rectTransform.sizeDelta = new Vector2(size + img.rectTransform.sizeDelta.x, size + img.rectTransform.sizeDelta.y);
-            //img.sprite = src is null ? Utilities.ImageResources.WhitePixel : GetSprite(src);
+
+            if (src is not null)
+                img.sprite = GetSprite(src);
+
             img.color = tint;
 
-            if (!Rounded)
-                img.type = Image.Type.Simple;
-
             Border = img;
+        }
+        public void ApplyUnderline(float size, string? src = null, Color tint = default)
+        {
+            if (tint == default)
+                tint = Color.white;
+
+            if (Background is null)
+                lock (applyLock)
+                    Monitor.Wait(applyLock);
+
+            if (Underline is not null)
+                Destroy(Underline);
+
+            GameObject go = new("CustomBackgroundUnderline");
+            ImageView img = go.AddComponent<ImageView>();
+
+            if (img.transform is not RectTransform rt)
+            {
+                AccSaber.Plugin.Log.Error("CustomBackgroundUnderline transform is null");
+                return;
+            }
+
+            rt.transform.SetParent(Background!.transform, false);
+
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = new(1f, size / Background!.rectTransform.rect.height);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = Vector2.zero;
+
+            rt.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+
+            img.material = Utilities.ImageResources.NoGlowMat;
+            img.sprite = src is null ? Utilities.ImageResources.WhitePixel : GetSprite(src);
+            img.color = tint;
+
+            Underline = img;
         }
 
         private Sprite GetSprite(string src)

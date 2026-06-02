@@ -170,6 +170,8 @@ namespace AccSaber.Models
             }
         }
 
+        [UIValue(nameof(AllowUnderline))] public bool AllowUnderline => !ScoreData.PlayerId.Equals(PlayerSocialLife.PlayerID);
+
 
         [UIValue(nameof(Pixelimg))] private const string Pixelimg = ResourcePaths.PIXEL;
         [UIValue(nameof(FontSize))] public float FontSize => LeaderboardOnPlayerPage ? BIG_FONT_SIZE : SMALL_FONT_SIZE;
