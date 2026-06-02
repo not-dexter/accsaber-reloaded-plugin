@@ -35,6 +35,7 @@ namespace AccSaber.Utils
         public const string LEVEL_DIM = "#070"; // dim by 8
 
         public const string GREY = "#AAA";
+        public const string GREY_DIM = "#666";
         public const string GREYED_OUT = "#9999";
         public const string DARK_BLUE = "#012";
 

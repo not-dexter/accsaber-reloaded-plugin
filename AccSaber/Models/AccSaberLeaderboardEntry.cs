@@ -147,14 +147,12 @@ namespace AccSaber.Models
 
         [UIValue(nameof(Rank))] public string Rank => $"<color={RANK}>#{ScoreData.Rank}</color>";
 
-        [UIValue(nameof(Mistakes))] public string Mistakes => $"<color=#ef4444>{ScoreData.Misses + (ScoreData.BombHits ?? 0) + ScoreData.BadCuts + (ScoreData.WallHits ?? 0)}x</color>";
-
-        [UIValue(nameof(FullCombo))] public bool FullCombo => ScoreData.FC;
-        [UIValue(nameof(NotFullCombo))] public bool NotFullCombo => !FullCombo;
-
         [UIValue(nameof(AP))] public string AP => $"<color={ColorUtils.AP}>{ScoreData.AP:N2}ap</color>";
 
         [UIValue(nameof(Acc))] public string Acc => $"<color=#22c55e>{(ScoreData.Accuracy * 100f).ToString($"N{Instance.AccDecimals}")}%</color>";
+
+        [UIValue(nameof(TimeSet))] public string TimeSet => $"<color={GREY_DIM}><size=80%>{ScoreData.TimeSet.ToRelativeTime(1)[..^1]}</size></color>";
+
         [UIValue(nameof(BGColor))]
         public string BGColor
         {
@@ -182,10 +180,12 @@ namespace AccSaber.Models
         [UIValue(nameof(elementSpacing))] public const float elementSpacing = 0f;
 
         [UIValue(nameof(rankWidth))] public const float rankWidth = 10f;
-        [UIValue(nameof(apWidth))] public const float apWidth = 14f + apPadding;
-        [UIValue(nameof(apPadding))] public const float apPadding = 5f;
-        [UIValue(nameof(accWidth))] public const float accWidth = 14f;
-        [UIValue(nameof(scoreWidth))] public const float scoreWidth = 14f;
-        [UIValue(nameof(nameWidth))] public const float nameWidth = containerWidth - rankWidth - apWidth - accWidth - scoreWidth - elementSpacing * 4f - containerPadding * 2f;
+        [UIValue(nameof(apWidth))] public const float apWidth = 12f + apPadding;
+        [UIValue(nameof(apPadding))] public const float apPadding = 2f;
+        [UIValue(nameof(accWidth))] public const float accWidth = 12f;
+        [UIValue(nameof(scoreWidth))] public const float scoreWidth = 10f + scorePadding;
+        [UIValue(nameof(scorePadding))] public const float scorePadding = 2f;
+        [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 12f;
+        [UIValue(nameof(nameWidth))] public const float nameWidth = containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - elementSpacing * 5f - containerPadding * 2f;
     }
 }

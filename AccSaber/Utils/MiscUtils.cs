@@ -29,16 +29,18 @@ namespace AccSaber.Utils
             TimeSpan timeSpan = inFuture ? dateTime.ToUniversalTime() - DateTime.UtcNow : DateTime.UtcNow - dateTime.ToUniversalTime();
 
             string outp = "";
+            bool single = layersDeep == 1;
 
             while (timeSpan.Ticks > 0 && layersDeep-- > 0)
             {
                 var (timeDiff, str) = GetMostSignificantTime(timeSpan, dateTime);
                 timeSpan -= timeDiff;
                 dateTime = dateTime.AddTicks(timeDiff.Ticks);
-                outp += (layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ") + str;
+                outp += single ? str : (layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ") + str;
             }
 
-            outp = outp[2..];
+            if (!single)
+                outp = outp[2..];
 
             return formatting ? inFuture ? $"In {outp}." : $"{outp} ago." : outp[2..];
         }

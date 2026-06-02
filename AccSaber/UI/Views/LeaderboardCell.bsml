@@ -11,9 +11,10 @@
   <vertical pref-width='~apWidth' child-alignment='MiddleCenter' pad-right='~apPadding'>
     <text text='~AP' align='Right' italics='true' font-size='~FontSize'/>
   </vertical>
-  <horizontal pref-width='~scoreWidth' child-alignment='MiddleCenter' pad-right='~containerPadding'>
+  <horizontal pref-width='~scoreWidth' child-alignment='MiddleCenter' pad-right='~scorePadding'>
     <text text='~Score' align='Right' italics='true' font-size='~FontSize'/>
-	  <text text='FC' align='Right' italics='true' font-size='~FontSize' color='#22c55e' active='~FullCombo'/>
-	  <text text='~Mistakes' align='Right' italics='true' font-size='~FontSize' active='~NotFullCombo'/>
+  </horizontal>
+  <horizontal pref-width='~timeSetWidth' child-alignment='MiddleCenter' pad-right='~containerPadding'>
+    <text text='~TimeSet' align='Right' italics='true' font-size='~FontSize'/>
   </horizontal>
 </my-horizontal>
