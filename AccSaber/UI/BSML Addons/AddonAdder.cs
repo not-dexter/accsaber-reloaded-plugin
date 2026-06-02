@@ -1,4 +1,5 @@
-﻿using AccSaber.UI.ViewControllers;
+﻿using AccSaber.UI.BSML_Addons.TypeHandlers;
+using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Tags;
 using AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers;
@@ -28,6 +29,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons
 
             instance.RegisterTypeHandler(new CustomBackgroundHandler());
             instance.RegisterTypeHandler(new MyCustomCellListTableDataHandler());
+            instance.RegisterTypeHandler(new SkewAdder());
 
             AccSaber.Plugin.Log.Info("Tags Loaded.");
         }

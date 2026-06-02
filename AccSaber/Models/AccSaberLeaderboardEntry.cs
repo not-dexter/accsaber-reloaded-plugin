@@ -173,7 +173,7 @@ namespace AccSaber.Models
         }
 
 
-
+        [UIValue(nameof(Pixelimg))] private const string Pixelimg = ResourcePaths.PIXEL;
         [UIValue(nameof(FontSize))] public float FontSize => LeaderboardOnPlayerPage ? BIG_FONT_SIZE : SMALL_FONT_SIZE;
         [UIValue(nameof(ContainerHeight))] public float ContainerHeight => (LeaderboardOnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE) - 0.1f;
 

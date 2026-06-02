@@ -280,7 +280,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PercentBarTop_image.color = rankColor;
                 PercentBarBottom_image.color = ColorUtils.TECH.Color();
 
-                cellContainer.background?.color = bgColor;
+                cellContainer.Background?.color = bgColor;
             }
         }
 	}

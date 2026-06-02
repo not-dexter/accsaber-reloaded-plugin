@@ -18,7 +18,11 @@ namespace AccSaber.Managers
 				return;
 			}
 
+#if V40
+            string hash = SongCore.Utilities.Hashing.ComputeCustomLevelHash(level).ToLower();
+#else
             string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
+#endif
 
             _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
         }
@@ -38,5 +42,5 @@ namespace AccSaber.Managers
 			_accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
         }
 #endif
-    }
+        }
 }

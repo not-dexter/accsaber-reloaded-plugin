@@ -266,12 +266,12 @@ namespace AccSaber.Utils
 #if NEW_VERSION
                     BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);
 
-                    LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, SongCore.Loader.CustomLevelsPack, in key, level);
+                    LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, in key, level);
 #else
                         IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
                         IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == cachedDiff.Difficulty);
 
-                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, SongCore.Loader.CustomLevelsPack, diff);
+                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, diff);
 #endif
 
                     _soloCoordinator.Setup(flow);

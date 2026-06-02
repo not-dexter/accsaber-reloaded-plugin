@@ -22,7 +22,6 @@ using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Patches;
-using BS_Utils.Gameplay;
 
 namespace AccSaber.API
 {
@@ -1141,7 +1140,6 @@ namespace AccSaber.API
 
                 SetLoginState(LoginState.InProgress);
 
-                await GetUserInfo.GetUserAsync();
                 IPlatformUserModel platformUserModel = Plugin.Container.TryResolve<IPlatformUserModel>();
                 PlatformUserAuthTokenData authToken = await platformUserModel.GetUserAuthToken();
                 UserInfo userInfo = await platformUserModel.GetUserInfo();
