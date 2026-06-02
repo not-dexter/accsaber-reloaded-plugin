@@ -1085,6 +1085,64 @@ namespace AccSaber.API
 
             return outp;
         }
+        public static async Task<IEnumerable<AccSaberPlayerScore>?> GetPlayerScores(float apThreshold, APCategory category = APCategory.Overall, CancellationToken ct = default)
+        { // Note: All this code is placeholder until Tiku can implement a proper API endpoint for this. The current implementation is very inefficient, but it should work for now and will allow me to avoid making breaking API changes later.
+            int page;
+            const int pageLength = PAGE_LENGTH * FILTER_PAGE_MULT;
+
+            List<AccSaberPlayerScore> outp = [];
+
+            bool returnOnFinish = false;
+            foreach (AccSaberPlayerScore score in SerializerHandler.CachedPlayerScores)
+                if (score.Category == category)
+                {
+                    if (score.AP >= apThreshold)
+                        outp.Add(score);
+                    else
+                    {
+                        returnOnFinish = true;
+                        break;
+                    }
+                }
+
+            if (returnOnFinish)
+                return outp;
+
+            page = outp.Count / pageLength;
+            bool skip = outp.Count > 0;
+
+            do
+            {
+                IEnumerable<AccSaberPlayerScore>? newScores = category == APCategory.Overall ?
+                    await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(APAPI_SCORES, PlayerSocialLife.PlayerID, page, pageLength) + "&sort=ap,desc", throttler, ct: ct)
+                        .ContinueWith(task => task.Result?.Content.Select(score => new AccSaberPlayerScore(score))) :
+                    await GetPlayerScores(page, pageLength, category, ct);
+
+                if (newScores is null)
+                    return outp;
+
+                if (skip)
+                {
+                    newScores = newScores.Skip(outp.Count % pageLength);
+                    skip = false;
+                }
+
+                foreach (AccSaberPlayerScore score in newScores)
+                {
+                    if (score.AP >= apThreshold)
+                        outp.Add(score);
+                    else
+                    {
+                        returnOnFinish = true;
+                        break;
+                    }
+                }
+
+                page++;
+            } while (!returnOnFinish);
+
+            return outp;
+        }
 
         /// <summary>
         /// Returns the public visibility settings for friends/rivals from the API.

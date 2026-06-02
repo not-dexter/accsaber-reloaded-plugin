@@ -197,7 +197,7 @@ namespace AccSaber.Managers
                 using (theLock.Value)
                     while (true)
                     {
-                        Plugin.Log.Info("websocket starting");
+                        Plugin.Log.Info("Websocket starting.");
                         await ListenForScores(ct);
                         await Task.Delay(1000, ct);
                     }

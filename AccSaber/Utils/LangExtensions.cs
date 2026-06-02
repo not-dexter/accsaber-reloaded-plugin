@@ -124,3 +124,7 @@ namespace System.Numerics
         public static int Pow2(int n) => 1 << n;
     }
 }
+namespace System.Runtime.CompilerServices
+{
+    public class IsExternalInit;
+}

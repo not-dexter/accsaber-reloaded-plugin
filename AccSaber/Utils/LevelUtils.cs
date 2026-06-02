@@ -60,7 +60,7 @@ namespace AccSaber.Utils
                 Monitor.PulseAll(LoadWaiterLock);
         }
 
-        public async Task LoadPlaylist(string playlistName, IEnumerable<string> hashes, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, Action<string?>? statEvent = null)
         {
             if (!PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
             {
@@ -70,9 +70,53 @@ namespace AccSaber.Utils
 
             StatusTextChanged += statEvent;
 
-            PlaylistUtils.LoadPlaylist(playlistName, hashes, StatusTextChanged);
+            if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                PlaylistUtils.LoadPlaylist(filename, playlistName, maps, StatusTextChanged);
+            await GoToPlaylist(filename);
 
             StatusTextChanged -= statEvent;
+        }
+        public async Task LoadPlaylist(APCategory type, string playerId, float apThreshold, Action<string?>? statEvent = null)
+        {
+            try
+            {
+                StatusTextChanged += statEvent;
+
+                StatusTextChanged?.Invoke("Loading...");
+
+                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!.Replace('_','-');
+
+                string filename = $"accsaber-reloaded-{categoryName}-{apThreshold}ap";
+                string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} Above {apThreshold}ap";
+
+                IEnumerable<AccSaberPlayerScore>? scores = await AccsaberAPI.GetPlayerScores(apThreshold, type);
+
+                if (scores is null)
+                    return;
+
+                int scoreSize = scores.Count();
+                string song = scoreSize == 1 ? "map" : "maps";
+
+                Plugin.Log.Info($"Found {scoreSize} {song}.");
+
+                StatusTextChanged?.Invoke($"Found {scoreSize} {song}.");
+
+                IEnumerable<string> ids = scores.Select(entry => entry.DifficultyId);
+
+                List<PlaylistUtils.PlaylistMapInfo> maps = PlaylistUtils.GetPlaylistData(ids);
+
+                await LoadPlaylist(filename, playlistName, maps);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an exception loading the threshold playlist.\n" + e);
+            }
+            finally
+            {
+                StatusTextChanged?.Invoke(null);
+
+                StatusTextChanged -= statEvent;
+            }
         }
         public async Task LoadPlaylist(APCategory type, Action<string?>? statEvent = null)
         {

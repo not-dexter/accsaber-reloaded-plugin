@@ -41,6 +41,8 @@
 
         public const string APAPI_PLAYLIST = APAPI + "playlists/{0}"; // category (true_acc, standard_acc, tech_acc, overall)
 
+        public const string APAPI_PLAYLIST_THRESHOLD = APAPI + "playlists/{0}/user/{1}?threshold={2}"; // category (true_acc, standard_acc, tech_acc, overall), user_id, ap threshold
+
 
         /// <summary>
         /// Retrieves paged list of maps.

@@ -22,7 +22,7 @@ namespace AccSaber.Utils
         public const int SECONDS_WEEK = SECONDS_DAY * 7; // 604,800
         public const int SECONDS_YEAR = (int)(SECONDS_DAY * DAYS_YEAR); // 31,556,926
 
-        public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2)
+        public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
         {
             bool inFuture = DateTime.UtcNow < dateTime;
 
@@ -38,7 +38,9 @@ namespace AccSaber.Utils
                 outp += (layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ") + str;
             }
 
-            return inFuture ? "In " + outp[2..] + '.' : outp[2..] + " ago.";
+            outp = outp[2..];
+
+            return formatting ? inFuture ? $"In {outp}." : $"{outp} ago." : outp[2..];
         }
         public static (TimeSpan timeDiff, string str) GetMostSignificantTime(TimeSpan timeDiff, DateTime startTime)
         {
@@ -153,24 +155,13 @@ namespace AccSaber.Utils
             // Return as Base64 string for HTTP headers/tags
             return Convert.ToBase64String(byteArray);
         }
-
-        public static string TimeLeft(this DateTime time)
-        {
-            DateTime now = DateTime.UtcNow;
-
-            if (time <= now)
-                return "00:00:00";
-
-            TimeSpan timeLeft = time - now;
-
-            return $"{timeLeft.TotalHours:00}:{timeLeft.Minutes:00}:{timeLeft.Seconds:00}";
-        }
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)
         {
             foreach (KeyValuePair<K, V> kvp in vals)
                 dict.TryAdd(kvp.Key, kvp.Value);
         }
         public static string Capitialize(this string str) => char.ToUpper(str[0]) + str[1..];
+        public static string CapitializeWords(this string str) => string.Join(" ", str.Split(' ').Select(word => word.Capitialize()));
         public static void CapitializeSelf(ref string str) => str = str.Capitialize();
 
         #region Debug functions

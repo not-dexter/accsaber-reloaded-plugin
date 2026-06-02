@@ -42,6 +42,17 @@ namespace AccSaber.Utils
             }
         }
 
+        public static (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(string difficultyId)
+        {
+            foreach (AccSaberBasicMap map in CachedMaps.Values)
+            {
+                AccSaberBasicDifficulty? diff = map.Difficulties.FirstOrDefault(diff => diff.DifficultyId == difficultyId);
+                if (diff is not null)
+                    return (map, diff);
+            }
+            return null;
+        }
+
         private async Task Load()
         {
             try
