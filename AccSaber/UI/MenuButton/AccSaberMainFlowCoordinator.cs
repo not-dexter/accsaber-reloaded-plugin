@@ -57,15 +57,15 @@ namespace AccSaber.UI.MenuButton
 
         private void OnDismiss()
         {
-            _accSaberRelationsViewController.HideNewsModal();
-            _accSaberMilestoneViewController.StopTimer();
             SetRightScreenViewController(null, ViewController.AnimationType.None);
             SetLeftScreenViewController(null, ViewController.AnimationType.None);
+            _accSaberRelationsViewController.HideNewsModal();
+            _accSaberMilestoneViewController.StopTimer();
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
-            _parentFlowCoordinator?.DismissFlowCoordinator(this);
             HubDeactivated?.Invoke();
+            _parentFlowCoordinator?.DismissFlowCoordinator(this);
         }
 
         internal void Close(bool instant = false)
