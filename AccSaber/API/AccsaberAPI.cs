@@ -70,6 +70,17 @@ namespace AccSaber.API
         public static List<AccSaberModifier>? Modifiers { get; private set; } = null;
         private static readonly AsyncLock PlayerLoadLock = new();
 
+        public enum LoginState
+        {
+            InProgress,
+            Success,
+            Failed
+        };
+
+        public static LoginState CurrentLoginState { get; private set; }
+
+        public static event Action<LoginState, string>? OnLoginUpdated;
+
         static AccsaberAPI()
         {
             // Listen for local score updates and invalidate caches when appropriate.
@@ -1088,6 +1099,23 @@ namespace AccSaber.API
             JToken privacySettings = JToken.Parse(dataStr!);
             return (privacySettings["privacy.followingVisibility"]?.ToString().Equals("public") ?? false, privacySettings["privacy.rivalsVisibility"]?.ToString().Equals("public") ?? false);
         }
+        /// <summary>
+        /// Sets the current login state and invokes an event.
+        /// </summary>
+        private static void SetLoginState(LoginState loginState)
+        {
+            CurrentLoginState = loginState;
+
+            string content = loginState switch
+            {
+                LoginState.InProgress => "Logging in to AccSaber Reloaded...",
+                LoginState.Success => "Logged in to AccSaber Reloaded!",
+                LoginState.Failed => "Failed to Log in to AccSaber Reloaded",
+                _ => ""
+            };
+
+            OnLoginUpdated!.Invoke(loginState, content);
+        }
 
         /// <summary>
         /// Authenticates the current platform user against the AccSaber API and returns an <see cref="AuthInfo"/>.
@@ -1097,6 +1125,8 @@ namespace AccSaber.API
         {
             if (PlayerSocialLife.AuthInfo is not null && PlayerSocialLife.AuthInfo.ExpirationDate > DateTime.Now)
                 return PlayerSocialLife.AuthInfo;
+
+            SetLoginState(LoginState.InProgress);
 
             await GetUserInfo.GetUserAsync();
             IPlatformUserModel platformUserModel = Plugin.Container.TryResolve<IPlatformUserModel>();
@@ -1143,9 +1173,12 @@ namespace AccSaber.API
                 if (outp is not null)
                 {
                     SetAuthForClient(outp);
+                    SetLoginState(LoginState.Success);
                     return outp;
                 }
             }
+            else
+                SetLoginState(LoginState.Failed);
 
             return null;
         }

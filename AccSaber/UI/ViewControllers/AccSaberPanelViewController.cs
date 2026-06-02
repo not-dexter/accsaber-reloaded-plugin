@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using AccSaber.API;
 using AccSaber.Configuration;
 using AccSaber.Managers;
 using AccSaber.Models;
@@ -30,6 +31,7 @@ namespace AccSaber.UI.ViewControllers
 		[UIComponent("separator")] private ImageView _separator = null!;
 
 		private bool _parsed;
+		private bool _firstMap = true;
 		private bool _loadingActive;
 		private string _promptText = "";
 
@@ -51,6 +53,11 @@ namespace AccSaber.UI.ViewControllers
         
 		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberBasicDifficulty? mapInfo)
 		{
+			if (AccsaberAPI.CurrentLoginState == AccsaberAPI.LoginState.Success && !_firstMap)
+				PromptText = "";
+
+			_firstMap = false;
+
 			if (mapInfo is null || !_parsed)
 			{
 				return;
@@ -75,43 +82,52 @@ namespace AccSaber.UI.ViewControllers
 			{
 				TweenBannerColor(category);	
 			}
+
 		}
 
 		private void AccSaberStoreOnOnUpdatingFromAccSaberAPI()
 		{
 			LoadingActive = true;
-			PromptText = "<color=#00FF00>Updating leaderboard...</color>";
 		}
 
 		private void AccSaberStoreOnOnUpdatedFromAccSaberAPI(bool isNew)
-		{
+		{		
 			if (isNew)
 			{
 				NotifyPropertyChanged(nameof(OverallRankingText));
 				NotifyPropertyChanged(nameof(CategoryRankingText));
-				PromptText = "<color=#00FF00>Leaderboard Updated!</color>";
 			}
-			else
-			{
-				PromptText = "";
-			}
-			
+	
 			LoadingActive = false;
 		}
+        private void AccSaberAPIOnOnLoginUpdated(AccsaberAPI.LoginState loginState, string content)
+        {
+			LoadingActive = loginState == AccsaberAPI.LoginState.InProgress;
 
-		public void Initialize()
+			string _color = loginState switch {
+				AccsaberAPI.LoginState.InProgress => ColorUtils.GREY,
+				AccsaberAPI.LoginState.Success => "#00FF00",
+				AccsaberAPI.LoginState.Failed => ColorUtils.TECH,
+				_ => ""
+			};
+
+            PromptText = $"<color={_color}>{content}</color>";
+        }
+        public void Initialize()
 		{
 			_accSaberStore.OnAccSaberRankedMapUpdated += AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnUpdatingFromAccSaberAPI += AccSaberStoreOnOnUpdatingFromAccSaberAPI;
 			_accSaberStore.OnUpdatedFromAccSaberAPI += AccSaberStoreOnOnUpdatedFromAccSaberAPI;
-		}
+            AccsaberAPI.OnLoginUpdated += AccSaberAPIOnOnLoginUpdated;
+        }
 
 		public void Dispose()
 		{
 			_accSaberStore.OnAccSaberRankedMapUpdated -= AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnUpdatingFromAccSaberAPI -= AccSaberStoreOnOnUpdatingFromAccSaberAPI;
 			_accSaberStore.OnUpdatedFromAccSaberAPI -= AccSaberStoreOnOnUpdatedFromAccSaberAPI;
-		}
+            AccsaberAPI.OnLoginUpdated -= AccSaberAPIOnOnLoginUpdated;
+        }
 
 		protected override async void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 		{
