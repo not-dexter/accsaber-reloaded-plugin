@@ -232,6 +232,58 @@ namespace AccSaber.UI.ViewControllers
             if (cell is LeaderboardEntryDisplay dataInfo && lsmc is not null)
                 lsmc.ShowModal(this, dataInfo.ScoreData);
         }
+        [UIAction("OnCellHighlightChanged")]
+        private void OnCellHighlightChanged(ICellDataSource cell, bool highlighted)
+        {
+            if (cell is not LeaderboardEntryDisplay dataInfo)
+                return;
+
+            const float duration = 0.1f; // in seconds
+
+            IEnumerator FadeToColorUnderline(Color targetColor)
+            {
+                if (dataInfo.UnderlineFadeRoutine is not null)
+                    StopCoroutine(dataInfo.UnderlineFadeRoutine);
+
+                float time = 0;
+                Color startColor = dataInfo.UnderlineColor;
+                while (time < duration)
+                {
+                    time += Time.deltaTime;
+                    dataInfo.UnderlineColor = Color.Lerp(startColor, targetColor, time / duration);
+                    yield return null;
+                }
+
+                dataInfo.UnderlineColor = targetColor;
+                dataInfo.UnderlineFadeRoutine = null;
+            }
+
+            IEnumerator FadeToColorBackground(Color targetColor)
+            {
+                if (dataInfo.BackgroundFadeRoutine is not null)
+                    StopCoroutine(dataInfo.BackgroundFadeRoutine);
+
+                float time = 0;
+                Color startColor = dataInfo.BackgroundColor;
+                while (time < duration)
+                {
+                    time += Time.deltaTime;
+                    dataInfo.BackgroundColor = Color.Lerp(startColor, targetColor, time / duration);
+                    yield return null;
+                }
+
+                dataInfo.BackgroundColor = targetColor;
+                dataInfo.BackgroundFadeRoutine = null;
+            }
+
+            const string underlineHighlightedColor = "#FFFA";
+
+            if (dataInfo.AllowUnderline)
+                StartCoroutine(highlighted ? FadeToColorUnderline(underlineHighlightedColor.Color()) : FadeToColorUnderline(LeaderboardEntryDisplay.DefaultUnderlineColor.Color()));
+            
+            if (!dataInfo.BGColor.Equals(DIMMER))
+                StartCoroutine(highlighted ? FadeToColorBackground(dataInfo.BGColor.DimColor(-4).Color()) : FadeToColorBackground(dataInfo.BGColor.Color()));
+        }
 
         [UIAction("ToggleCombinedIcons")]
         private async void ToggleCombinedIcons()

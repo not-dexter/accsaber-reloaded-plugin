@@ -1,4 +1,4 @@
-<my-horizontal pref-width='~parentContainerWidth' pref-height='~ContainerHeight' spacing='~elementSpacing' child-alignment='MiddleCenter' rounded='true' underline='~AllowUnderline' underline-size='0.5' underline-color='#AAA6' bg='~Pixelimg' bg-color='~BGColor' child-expand-width='false'>
+<my-horizontal id='Container' pref-width='~parentContainerWidth' pref-height='~ContainerHeight' spacing='~elementSpacing' child-alignment='MiddleCenter' rounded='true' underline='~AllowUnderline' underline-size='0.5' bg='~Pixelimg' bg-color='~BGColor' child-expand-width='false'>
   <vertical pref-width='~rankWidth' child-alignment='MiddleCenter' pad-left='~containerPadding'>
     <text text='~Rank' align='Left' italics='true' font-size='~FontSize'/>
   </vertical>

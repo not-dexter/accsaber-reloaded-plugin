@@ -2,11 +2,13 @@
 using AccSaber.Models.Base;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
+using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage.Attributes;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using UnityEngine;
 using static AccSaber.UI.ViewControllers.AccSaberLeaderboardViewController;
@@ -140,7 +142,12 @@ namespace AccSaber.Models
         public float CellSize => LeaderboardOnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE;
         public int TemplateId { get; set; }
 
+        public Coroutine? UnderlineFadeRoutine { get; set; }
+        public Coroutine? BackgroundFadeRoutine { get; set; }
+
         public readonly AccSaberLeaderboardEntry ScoreData = data;
+
+        [UIComponent(nameof(Container))] public readonly CustomBackground Container = null!;
 
         [UIValue(nameof(Score))] public string Score => $"<color={GREY}>{ScoreData.Score:N0}</color>";
 
@@ -191,6 +198,19 @@ namespace AccSaber.Models
         [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 12f;
         [UIValue(nameof(nameWidth))] public const float nameWidth = containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - elementSpacing * 5f - containerPadding * 2f;
 
+        public const string DefaultUnderlineColor = "#AAA6";
+
+        public Color UnderlineColor
+        {
+            get => Container.Underline!.color;
+            set => Container.Underline!.color = value;
+        }
+        public Color BackgroundColor
+        {
+            get => Container.Background!.color;
+            set => Container.Background!.color = value;
+        }
+
         private static readonly int[] TimeSetPointList = [MiscUtils.SECONDS_WEEK * 2, MiscUtils.SECONDS_YEAR / 2, MiscUtils.SECONDS_YEAR, MiscUtils.SECONDS_YEAR * 2];
         private static readonly float[] TimeSetStepSizes = [0.25f, 0.35f, 0.25f, 0.15f];
 
@@ -213,6 +233,12 @@ namespace AccSaber.Models
             float percent = (seconds - offset) / ((TimeSetPointList[i] - offset) * TimeSetPointList.Length);
 
             return Color.Lerp(Color.white, upperColor.Color(), stepOffset + percent).Color();
+        }
+
+        [UIAction("#post-parse")]
+        private void PostParse()
+        {
+            Container.Underline?.color = DefaultUnderlineColor.Color();
         }
     }
 }

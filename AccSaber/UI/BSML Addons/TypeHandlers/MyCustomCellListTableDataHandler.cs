@@ -16,6 +16,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
         public override Dictionary<string, string[]> Props => new()
         {
             { "selectCell", [ "select-cell" ] },
+            { "highlightCell", [ "highlight-cell" ] },
             { "data", [ "contents", "data" ] },
             { "cellClickable", [ "clickable-cells" ] },
             { "cellNumber", [ "pref-number-cells", "cells", "number-of-cells", "visible-cells" ] },
@@ -48,6 +49,29 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
                     }
 
                     action.Invoke(componentData.Data[index]);
+                };
+            }
+
+            if (data.TryGetValue("highlightCell", out string highlightCell))
+            {
+                componentData.OnCellHighlighted += index =>
+                {
+                    if (!actions.TryGetValue(highlightCell, out BSMLAction action))
+                    {
+                        throw new Exception("select-cell action '" + selectCell + "' not found");
+                    }
+
+                    action.Invoke(componentData.Data[index], true);
+                };
+
+                componentData.OnCellUnhighlighted += index =>
+                {
+                    if (!actions.TryGetValue(highlightCell, out BSMLAction action))
+                    {
+                        throw new Exception("select-cell action '" + selectCell + "' not found");
+                    }
+
+                    action.Invoke(componentData.Data[index], false);
                 };
             }
 

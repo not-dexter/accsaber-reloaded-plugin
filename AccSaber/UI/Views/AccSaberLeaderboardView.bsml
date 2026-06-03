@@ -1,5 +1,5 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-  <my-custom-list id='leaderboard' contents='leaderboard-infos' clickable-cells='true' select-cell='OnCellSelected' pref-width='~containerWidth' pref-height='~containerHeight' anchor-pos-x='5' anchor-pos-y='5' active='~ranked'/>
+  <my-custom-list id='leaderboard' contents='leaderboard-infos' clickable-cells='true' select-cell='OnCellSelected' highlight-cell='OnCellHighlightChanged' pref-width='~containerWidth' pref-height='~containerHeight' anchor-pos-x='5' anchor-pos-y='5' active='~ranked'/>
 
   <vertical anchor-pos-y='-30' anchor-pos-x='0' pref-width='20' pref-height='20' child-expand-width='false' child-expand-height='false' active='~loading'>
     <loading preserve-aspect='true'/>
