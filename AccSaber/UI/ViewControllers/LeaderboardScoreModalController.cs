@@ -1,4 +1,5 @@
-﻿using AccSaber.Consts;
+﻿using AccSaber.Configuration;
+using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
@@ -67,6 +68,8 @@ namespace AccSaber.UI.ViewControllers
         #region Normal Variables
 
         [Inject] private readonly LeaderboardUserModalController lumc = null!;
+        [Inject] private readonly PluginConfig PC = null!;
+
         private AccSaberPlayer lastUser = null!;
         private MonoBehaviour currentHost = null!;
 
@@ -136,7 +139,7 @@ namespace AccSaber.UI.ViewControllers
             playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
             playerNameText.SetText(scoreInfo.PlayerName);
 
-            timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(2));
+            timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(PC.TimePlaces));
 
             apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
             accText.SetText($"<color={ACC}>{scoreInfo.Accuracy * 100f:N4}%</color>");

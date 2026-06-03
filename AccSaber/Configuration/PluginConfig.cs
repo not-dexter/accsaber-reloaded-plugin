@@ -11,5 +11,6 @@ namespace AccSaber.Configuration
         public virtual bool RainbowHeader { get; set; } = false;
         public virtual bool ShowCombo { get; set; } = true;
         public virtual int AccDecimals { get; set; } = 2;
+        public virtual int TimePlaces { get; set; } = 2;
     }
 }

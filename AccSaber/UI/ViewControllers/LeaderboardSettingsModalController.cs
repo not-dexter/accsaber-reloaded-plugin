@@ -73,6 +73,16 @@ namespace AccSaber.UI.ViewControllers
                 OnSettingUpdated!.Invoke();
             }
         }
+        [UIValue("TimePlaces")]
+        public int TimePlaces
+        {
+            get => PC.TimePlaces;
+            set
+            {
+                PC.TimePlaces = value;
+                OnSettingUpdated!.Invoke();
+            }
+        }
         public void ShowModal(Transform parentTransform)
         {
             Parse(parentTransform);

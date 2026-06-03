@@ -557,7 +557,7 @@ namespace AccSaber.API
 
                     foreach (RelationType type in relations)
                     {
-                        relationIds.UnionWith(PlayerSocialLife.GetIds_Internal(type.Convert())!);
+                        relationIds.UnionWith(PlayerSocialLife.GetIds_Internal(type.Convert()));
 
                         if (cache.TryGetLength(type.Convert(), out int count))
                             scoreCount = Math.Max(scoreCount, count);

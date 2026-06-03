@@ -848,7 +848,7 @@ namespace AccSaber.UI.ViewControllers
 
                 await PlayerSocialLife.LoadTask;
 
-                scoreDatas.RemoveRange(0, Math.Min(PAGE_LENGTH, scoreDatas.Count));
+                scoreDatas.Clear();
 
                 AccSaberLeaderboardEntry[]? scores;
 
@@ -871,7 +871,7 @@ namespace AccSaber.UI.ViewControllers
                         break;
 
                     case LeaderboardDisplayType.Country:
-                        string country = store.GetCurrentUserAsync().GetAwaiter().GetResult().Country;
+                        string country = (await store.GetCurrentUserAsync()).Country;
 
                         scores = await GetScoreData(page, DifficultyId, country);
                         nextPage = page + 1;
