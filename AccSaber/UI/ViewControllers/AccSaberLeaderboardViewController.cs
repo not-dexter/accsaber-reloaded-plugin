@@ -79,6 +79,7 @@ namespace AccSaber.UI.ViewControllers
         public float CurrentComplexity => difficultyInfo?.Complexity ?? 0f;
 
         public int AccDecimals => PC.AccDecimals;
+        public bool ShowCombo => PC.ShowCombo;
 
         public APCategory? CurrentCategory => difficultyInfo?.Category;
 
@@ -129,7 +130,9 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly StandardLevelDetailViewController sldvc = null!;
         [Inject] private readonly AccSaberStore store = null!;
+        [Inject] private readonly AccSaberPanelViewController aspvc = null!; //psmvc
         [Inject] private readonly LeaderboardScoreModalController lsmc = null!; //psmvc
+        [Inject] public readonly LeaderboardSettingsModalController lbsmc = null!; //psmvc
 
         #endregion Injects
 
@@ -291,7 +294,7 @@ namespace AccSaber.UI.ViewControllers
             if (locker is null)
                 return; // Another toggle is already in progress, so we won't allow this one to execute to prevent
 
-            bool toggle = !PC.CombineRelations;
+            bool toggle = PC.CombineRelations;
             IEnumerator UpdateUI()
             {
                 yield return new WaitForEndOfFrame();
@@ -322,7 +325,7 @@ namespace AccSaber.UI.ViewControllers
                 }
             }
             StartCoroutine(UpdateUI());
-            PC.CombineRelations = toggle;
+            //PC.CombineRelations = toggle;
         }
 
         [UIAction("#post-parse")]
@@ -383,6 +386,12 @@ namespace AccSaber.UI.ViewControllers
                         refreshRequested = true;
                 });
             };
+            aspvc.OnSettingsClicked += () =>
+            {
+                lbsmc?.ShowModal(leaderboard.transform);
+            };
+
+            lbsmc.OnCombineRelations += () => ToggleCombinedIcons();
 
             // Subscribe to map selection event
             TrySubscribeToMapSelection();

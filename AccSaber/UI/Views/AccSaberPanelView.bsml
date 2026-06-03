@@ -16,4 +16,5 @@
             <text text='~map-complexity-text' font-size='3.25' italics='true' rich-text='true' />
         </vertical>
     </horizontal>
+	<clickable-image anchor-pos-x='35' src="#SettingsIcon" on-click="settings-clicked" preserve-aspect="true" size-delta-x="6" size-delta-y="6" pref-width="6" pref-height="6"/>
 </bg>

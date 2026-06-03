@@ -9,6 +9,7 @@ namespace AccSaber.Configuration
 	{
         public virtual bool CombineRelations { get; set; } = false;
         public virtual bool RainbowHeader { get; set; } = false;
-        public virtual int AccDecimals { get; set; } = 4;
+        public virtual bool ShowCombo { get; set; } = true;
+        public virtual int AccDecimals { get; set; } = 2;
     }
 }

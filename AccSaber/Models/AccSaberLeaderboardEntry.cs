@@ -4,6 +4,7 @@ using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage.Attributes;
+using BeatSaberMarkupLanguage.ViewControllers;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -13,6 +14,7 @@ using System.Linq;
 using UnityEngine;
 using static AccSaber.UI.ViewControllers.AccSaberLeaderboardViewController;
 using static AccSaber.Utils.ColorUtils;
+using static RankModel;
 
 namespace AccSaber.Models
 {
@@ -136,11 +138,13 @@ namespace AccSaber.Models
         
     }
 
-    internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data) : ICellDataSource
+    internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data) : ICellDataSource, INotifyPropertyChanged
     {
         public string TemplatePath => ResourcePaths.LEADERBOARD_CELL;
         public float CellSize => LeaderboardOnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE;
         public int TemplateId { get; set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public Coroutine? UnderlineFadeRoutine { get; set; }
         public Coroutine? BackgroundFadeRoutine { get; set; }
@@ -180,9 +184,17 @@ namespace AccSaber.Models
 
         [UIValue(nameof(AllowUnderline))] public bool AllowUnderline => LeaderboardOnPlayerPage || !ScoreData.PlayerId.Equals(PlayerSocialLife.PlayerID);
 
+        [UIValue(nameof(Mistakes))] public string Mistakes => $"<color=#ef4444>{ScoreData.Misses + (ScoreData.BombHits ?? 0) + ScoreData.BadCuts + (ScoreData.WallHits ?? 0)}x</color>";
+
+        [UIValue(nameof(FullCombo))] public bool FullCombo => ScoreData.FC;
+        [UIValue(nameof(NotFullCombo))] public bool NotFullCombo => !FullCombo;
+        [UIValue(nameof(ShowCombo))] public bool ShowCombo => Instance.ShowCombo;
+
+
 
         [UIValue(nameof(Pixelimg))] private const string Pixelimg = ResourcePaths.PIXEL;
         [UIValue(nameof(FontSize))] public float FontSize => LeaderboardOnPlayerPage ? BIG_FONT_SIZE : SMALL_FONT_SIZE;
+        [UIValue(nameof(TimeSize))] public float TimeSize => LeaderboardOnPlayerPage ? 2.8f : 2.5f;
         [UIValue(nameof(ContainerHeight))] public float ContainerHeight => (LeaderboardOnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE) - 0.1f;
 
         [UIValue(nameof(parentContainerWidth))] public const float parentContainerWidth = containerWidth;
@@ -193,10 +205,15 @@ namespace AccSaber.Models
         [UIValue(nameof(apWidth))] public const float apWidth = 12f + apPadding;
         [UIValue(nameof(apPadding))] public const float apPadding = 2f;
         [UIValue(nameof(accWidth))] public const float accWidth = 12f;
-        [UIValue(nameof(scoreWidth))] public const float scoreWidth = 10f + scorePadding;
+        [UIValue(nameof(scoreWidth))] public const float scoreWidth = 8f + scorePadding;
         [UIValue(nameof(scorePadding))] public const float scorePadding = 2f;
-        [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 12f;
-        [UIValue(nameof(nameWidth))] public const float nameWidth = containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - elementSpacing * 5f - containerPadding * 2f;
+        [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 10f;
+        [UIValue(nameof(comboWidth))] public const float comboWidth = 3f;
+
+        [UIValue(nameof(nameWidth))]
+        public float nameWidth = Instance.ShowCombo ?
+            containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - comboWidth - elementSpacing * 6f - containerPadding * 2f :
+            containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - elementSpacing * 5f - containerPadding * 2f;
 
         public const string DefaultUnderlineColor = "#AAA6";
 
@@ -240,6 +257,12 @@ namespace AccSaber.Models
         private void PostParse()
         {
             Container.Underline?.color = DefaultUnderlineColor.Color();
+
+            Instance.lbsmc.OnSettingUpdated += () =>
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowCombo)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Acc)));
+            };
         }
     }
 }

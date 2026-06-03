@@ -14,7 +14,11 @@
   <horizontal pref-width='~scoreWidth' child-alignment='MiddleCenter' pad-right='~scorePadding'>
     <text text='~Score' align='Right' italics='true' font-size='~FontSize'/>
   </horizontal>
-  <horizontal pref-width='~timeSetWidth' child-alignment='MiddleCenter' pad-right='~containerPadding'>
-    <text text='~TimeSet' align='Right' italics='true' font-size='~FontSize' word-wrapping='false'/>
+  <horizontal pref-width='~timeSetWidth' child-alignment='MiddleCenter' pad-right='~scorePadding'>
+    <text text='~TimeSet' align='Center' italics='true' font-size='~TimeSize' word-wrapping='false'/>
+  </horizontal>
+  <horizontal pref-width='~comboWidth' child-alignment='MiddleCenter' pad-right='~containerPadding' active='~ShowCombo'>
+	<text text='FC' align='Right' italics='true' font-size='~FontSize' color='#22c55e' active='~FullCombo'/>
+	<text text='~Mistakes' align='Right' italics='true' font-size='~FontSize' active='~NotFullCombo'/>
   </horizontal>
 </my-horizontal>
