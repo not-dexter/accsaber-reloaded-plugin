@@ -1,0 +1,9 @@
+<vertical bg='panel-top' skew='0' pref-width='50' pref-height='70' pad='2'>
+	<horizontal bg='round-rect-panel' pad ='2'>
+		<vertical>
+			<text text='~Name' font-size='3'/>
+			<text text='~Author' font-size='2.5'/>
+		</vertical>
+		<text text='~MapCount'></text>
+	</horizontal>
+</vertical>

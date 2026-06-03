@@ -203,6 +203,8 @@
     <None Remove="UI\MenuButton\Views\AccSaberNewsModal.bsml" />
     <None Remove="UI\MenuButton\Views\AccSaberNewsView.bsml" />
     <EmbeddedResource Include="manifest.json" />
+    <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\AccSaberCampaignMapCell.bsml" />
+    <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\AccSaberCampaignCell.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\AccSaberCampaignView.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMenuCell.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMilestoneCell.bsml" />
