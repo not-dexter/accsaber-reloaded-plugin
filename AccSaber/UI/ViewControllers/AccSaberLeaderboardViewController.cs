@@ -56,7 +56,7 @@ namespace AccSaber.UI.ViewControllers
         private readonly List<LeaderboardEntryDisplay> scoreDatas = [];
         private int page, nextPage, currentPage = -1, currentPlayerPage;
         private AccSaberLeaderboardEntry? currentPlayerScore;
-        private AsyncLock loadLeaderboardLock = new(), forceRefreshLock = new();
+        private AsyncLock loadLeaderboardLock = new(), forceRefreshLock = new(), swapCategoriesLock = new();
         private object updateDiffLock = new();
         private Color selectorDefaultColor, defaultPageTopColor, defaultPageUpColor, defaultPageYouColor, defaultPageDownColor;
         private Color highlightPageTopColor, highlightPageYouColor;
@@ -234,18 +234,42 @@ namespace AccSaber.UI.ViewControllers
         }
 
         [UIAction("ToggleCombinedIcons")]
-        private void ToggleCombinedIcons()
+        private async void ToggleCombinedIcons()
         {
+            AsyncLock.Releaser? locker = await swapCategoriesLock.TryLockAsync();
+
+            if (locker is null)
+                return; // Another toggle is already in progress, so we won't allow this one to execute to prevent
+
             bool toggle = !PC.CombineRelations;
             IEnumerator UpdateUI()
             {
                 yield return new WaitForEndOfFrame();
 
-                followedSelector.gameObject.SetActive(!toggle);
-                rivalsSelector.gameObject.SetActive(!toggle);
-                relationsSelector.gameObject.SetActive(toggle);
+                try
+                {
+                    followedSelector.gameObject.SetActive(!toggle);
+                    rivalsSelector.gameObject.SetActive(!toggle);
+                    relationsSelector.gameObject.SetActive(toggle);
 
-                selectorContainer.preferredHeight = toggle ? globeIconSize + iconSize * 2 + 3 : globeIconSize + iconSize * 3 + 3;
+                    selectorContainer.preferredHeight = toggle ? globeIconSize + iconSize * 2 + 3 : globeIconSize + iconSize * 3 + 3;
+
+                    if (toggle)
+                    {
+                        if (DisplayType is LeaderboardDisplayType.Followed or LeaderboardDisplayType.Rivals)
+                            ChangeFilter(LeaderboardDisplayType.Relations);
+                    }
+                    else if (DisplayType is LeaderboardDisplayType.Relations)
+                        ChangeFilter(LeaderboardDisplayType.Followed);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error("There was an error swapping the selector icons!\n" + e);
+                }
+                finally
+                {
+                    locker.Value.Dispose();
+                }
             }
             StartCoroutine(UpdateUI());
             PC.CombineRelations = toggle;
@@ -366,18 +390,12 @@ namespace AccSaber.UI.ViewControllers
 
         #endregion UI Actions
 
-
-
-        #region Private Methods
+        #region Methods
 
         public void Initialize()
         {
             Plugin.Log.Debug("LeaderboardViewController Init");
             Instance = this;
-        }
-        public void Dispose()
-        {
-            
         }
 
         private void OnEnable()
