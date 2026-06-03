@@ -1084,16 +1084,14 @@ namespace AccSaber.API
 
             return outp;
         }
-        public static async Task<IEnumerable<AccSaberDifficulty>?> GetMapsAboveThreshold(float apThreshold, APCategory category = APCategory.Overall, CancellationToken ct = default)
+        public static async Task<IEnumerable<AccSaberDifficulty>?> GetMapsAboveThreshold(string playerId, float apThreshold, APCategory category = APCategory.Overall, CancellationToken ct = default)
         {
-            await PlayerSocialLife.LoadTask;
-
-            string url = string.Format(APAPI_PLAYLIST_THRESHOLD, PlayerSocialLife.PlayerID, apThreshold);
+            string url = string.Format(APAPI_PLAYLIST_THRESHOLD, playerId, apThreshold);
 
             if (category != APCategory.Overall)
                 url += "&categoryId=" + EnumUtils.EnumToReloadedCategory(category);
 
-            return await CallAPI_Json<List<AccSaberDifficulty>>(url, throttler);
+            return await CallAPI_Json<List<AccSaberDifficulty>>(url, throttler, ct: ct);
         }
 
         /// <summary>
@@ -1203,7 +1201,6 @@ namespace AccSaber.API
 #if !NEW_VERSION
         public static async Task<string> OculusTicket()
         {
-            await GetUserInfo.GetUserAsync();
             TaskCompletionSource<string> tcs = new();
 #pragma warning disable CS8604 // Possible null reference argument.
             Users.GetAccessToken().OnComplete(delegate (Message<string> message) { tcs.TrySetResult(message.IsError ? null : message.Data); });

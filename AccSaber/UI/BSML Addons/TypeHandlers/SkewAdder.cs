@@ -1,4 +1,5 @@
-﻿using BeatSaberMarkupLanguage;
+﻿using AccSaber.Utils;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.TypeHandlers;
@@ -19,12 +20,12 @@ namespace AccSaber.UI.BSML_Addons.TypeHandlers
 
         public override void HandleType(BSMLParser.ComponentTypeWithData componentType, BSMLParserParams parserParams)
         {
-            if (componentType.Component is not Backgroundable bg)
+            if (componentType.Component() is not Backgroundable bg)
                 throw new Exception("Component is not Backgroundable");
 
-            if (componentType.Data.TryGetValue("skew", out string skewStr) && float.TryParse(skewStr, out float skew))
+            if (componentType.Data().TryGetValue("skew", out string skewStr) && float.TryParse(skewStr, out float skew))
             {
-                if (bg.Background is ImageView imageView)
+                if (bg.Background() is ImageView imageView)
                 {
                     FieldAccessor<ImageView, float>.GetAccessor("_skew")(ref imageView) = skew;
                 }

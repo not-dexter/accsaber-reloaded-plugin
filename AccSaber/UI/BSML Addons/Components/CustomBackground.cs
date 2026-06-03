@@ -1,6 +1,5 @@
 ﻿using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.Tags;
 using HMUI;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +22,13 @@ namespace AccsaberLeaderboard.UI.Components
                 if (_roundImage is not null)
                     return _roundImage;
 
-                Dictionary<string, ImageView> cache = (Dictionary<string, ImageView>)typeof(Backgroundable).GetField("BackgroundCache", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+#if NEW_VERSION
+                const string fieldName = "BackgroundCache";
+#else
+                const string fieldName = "_backgroundCache";
+#endif
+
+                Dictionary<string, ImageView> cache = (Dictionary<string, ImageView>)typeof(Backgroundable).GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
 
                 if (!cache.TryGetValue("panel-top", out ImageView imageView))
                     imageView = (ImageView)typeof(Backgroundable).GetMethod("FindTemplate", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, ["panel-top", "RoundRect10"]);

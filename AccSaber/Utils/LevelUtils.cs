@@ -2,7 +2,6 @@
 using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Models.CacheModels;
-using AccSaber.UI.MenuButton;
 using AccSaber.UI.ViewControllers;
 using IPA.Utilities;
 using System;
@@ -88,7 +87,7 @@ namespace AccSaber.Utils
                 string filename = $"accsaber-reloaded-{categoryName}-{apThreshold}ap";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} Above {apThreshold}ap";
 
-                IEnumerable<AccSaberDifficulty>? scores = await AccsaberAPI.GetMapsAboveThreshold(apThreshold, type);
+                IEnumerable<AccSaberDifficulty>? scores = await AccsaberAPI.GetMapsAboveThreshold(playerId, apThreshold, type);
 
                 if (scores is null)
                     return;

@@ -1,5 +1,4 @@
-﻿using AccSaber.Consts;
-using AccsaberLeaderboard.UI.Components;
+﻿using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.TypeHandlers;

@@ -19,7 +19,6 @@ using TMPro;
 using System.Collections;
 
 #if !NEW_VERSION
-using BeatSaberMarkupLanguage;
 #endif
 
 namespace AccSaber.UI.MenuButton.ViewControllers
