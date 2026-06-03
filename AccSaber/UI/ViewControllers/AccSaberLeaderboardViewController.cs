@@ -864,15 +864,8 @@ namespace AccSaber.UI.ViewControllers
                         break;
 
                     case LeaderboardDisplayType.Relations:
-                        IEnumerable<AccSaberLeaderboardEntry>? totalData;
-                        totalData = await GetScoreData(page, DifficultyId, RelationType.follower);
-                        totalData = (await GetScoreData(page, DifficultyId, RelationType.rival)).Union(totalData, new EntryComparer());
-
-                        scores = totalData is null ? null : [.. totalData];
-                        Array.Sort(scores, (a, b) => a.Rank - b.Rank);
-
+                        scores = await GetScoreData(page, DifficultyId, RelationType.follower, RelationType.rival);
                         nextPage = page + 1;
-
                         break;
 
                     case LeaderboardDisplayType.Followed:
@@ -989,15 +982,6 @@ namespace AccSaber.UI.ViewControllers
             public float CellSize => 1.5f;
 
             public int TemplateId { get; set; }
-        }
-        private class EntryComparer : IEqualityComparer<AccSaberLeaderboardEntry>
-        {
-            public bool Equals(AccSaberLeaderboardEntry x, AccSaberLeaderboardEntry y) => x.PlayerId.Equals(y.PlayerId);
-
-            public int GetHashCode(AccSaberLeaderboardEntry obj)
-            {
-                return obj.PlayerId.GetHashCode();
-            }
         }
     }
 }

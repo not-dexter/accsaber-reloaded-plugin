@@ -55,7 +55,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             OnCellUnhighlighted += index => { dataSources[index].highlighted = false; dataSources[index].RefreshVisuals(); };
         }
 
-        public int NumberOfCells() => data.Count;
+        public int NumberOfCells() => Math.Min(prefNumberOfCells, data.Count);
         public float CellSize(int idx) => cellSizes.Count > 0 ? cellSizes[data[idx].TemplateId] : mainCellSize;
         public MyCustomCell CellForIdx(int idx)
         {
@@ -104,7 +104,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             int cellId = 0;
             float cellHeight = 0f;
 
-            data = [.. data.Where(cell => cell is not null)];
+            data = [.. data.Where(cell => cell is not null).Take(prefNumberOfCells)];
 
             foreach (ICellDataSource cell in data)
             {

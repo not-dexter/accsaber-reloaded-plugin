@@ -19,7 +19,7 @@ using static RankModel;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal class AccSaberLeaderboardEntry : Model
+    internal class AccSaberLeaderboardEntry : Model, IEquatable<AccSaberLeaderboardEntry>
     {
         [JsonProperty("accuracy")]
         public float Accuracy { get; set; }
@@ -135,7 +135,8 @@ namespace AccSaber.Models
         [JsonIgnore]
         public bool FC => Misses + (BombHits ?? 0) + BadCuts + (WallHits ?? 0) == 0;
 
-        
+        public bool Equals(AccSaberLeaderboardEntry other) =>
+            PlayerId.Equals(other.PlayerId) && AP == other.AP && TimeSet == other.TimeSet;
     }
 
     internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data) : ICellDataSource, INotifyPropertyChanged

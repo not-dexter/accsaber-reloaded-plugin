@@ -22,6 +22,7 @@ using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Patches;
+using static AlphabetScrollInfo;
 
 namespace AccSaber.API
 {
@@ -186,7 +187,7 @@ namespace AccSaber.API
             //Plugin.Log.Info("Passed check 2.");
 
             // take all scores up to the player score, filter it using the filter, then since we know the target score in at the end, just return the length minus 1.
-            rank = info.Data.Take(userIndex + 1).Where(filter).Count() - 1;
+            rank = info.Data.Take(userIndex + 1).Count(filter) - 1;
 
             return true;
         }
@@ -195,8 +196,8 @@ namespace AccSaber.API
         /// Merges and caches a batch of score entries for a difficulty id.
         /// Updates known leaderboard lengths and blocked user indexes.
         /// </summary>
-        private static void CacheScoreData(string diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> BlockedUserIndexes, 
-            int leaderboardSize, LeaderboardDisplayType displayType)
+        private static void CacheScoreData(string diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> blockedUserIndexes, 
+            IEnumerable<(LeaderboardDisplayType displayType, int leaderboardSize)>? sizeData)
         {
             if (scoreInfoCacher.TryGetCachedItem(diffId, out var val))
             {
@@ -206,23 +207,28 @@ namespace AccSaber.API
                 ref List<int> blocked = ref val.BlockedUserIndexes;
 
                 storedData = MergeListWithEnumerable(storedData, scoreData, token => token.Rank);
-                if (BlockedUserIndexes.Any())
-                    blocked = MergeListWithEnumerable(blocked, BlockedUserIndexes);
-                if (!val.ContainsLength(displayType) && leaderboardSize >= 0)
-                    val.GetLength(displayType) = leaderboardSize;
+                if (blockedUserIndexes.Any())
+                    blocked = MergeListWithEnumerable(blocked, blockedUserIndexes);
+
+                if (sizeData is not null)
+                    foreach (var (displayType, leaderboardSize) in sizeData)
+                        if (!val.ContainsLength(displayType) && leaderboardSize >= 0)
+                            val.GetLength(displayType) = leaderboardSize;
 
                 scoreInfoCacher.CacheItem(val, diffId);
             }
             else
-            {
-                (LeaderboardDisplayType, int)[] len = leaderboardSize >= 0 ? [(displayType, leaderboardSize)] : [];
-                scoreInfoCacher.CacheItem(new([.. scoreData], [.. scoreData.Select(data => data.PlayerId)], [.. BlockedUserIndexes], len), diffId);
-            }
+                scoreInfoCacher.CacheItem(new([.. scoreData], [.. scoreData.Select(data => data.PlayerId)], [.. blockedUserIndexes], sizeData ?? []), diffId);
 
             //ScoreCache c = scoreInfoCacher.diffId.CachedItem;
             //Plugin.Log.Info($"The cache now has {c.Data.Count} entries: {c.Data.Select(GetRank).Print()}");
             //Plugin.Log.Info($"There are the following sizes: { c.LeaderboardLengths.Values.Print()}");
 
+        }
+        private static void CacheScoreData(string diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> blockedUserIndexes,
+            int leaderboardSize, LeaderboardDisplayType displayType)
+        {
+            CacheScoreData(diffId, scoreData, blockedUserIndexes, [(displayType, leaderboardSize)]);
         }
 
         /// <summary>
@@ -522,17 +528,88 @@ namespace AccSaber.API
                     return null;
 
                 CacheScoreData(diffId, data.Content, [], data.TotalElements, relation.Convert());
-                cache = scoreInfoCacher.GetCachedItem(diffId);
-                scoreInfoCacher.CacheItem(cache, diffId);
 
                 return [.. data.Content];
 
             } catch (Exception e)
             {
-                Plugin.Log.Error("There was an error getting score data.");
-                Plugin.Log.Debug(e);
+                Plugin.Log.Error("There was an error getting score data.\n" + e);
             }
             return null;
+        }
+
+        public static async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string diffId, params IEnumerable<RelationType> relations)
+        { // page is one indexed
+            if (relations is null || !relations.Any())
+                return null;
+
+            try
+            {
+                --page;
+
+                int pageSize = PAGE_LENGTH;
+                IEnumerable<AccSaberLeaderboardEntry> outp = [];
+
+                if (scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache cache))
+                {
+                    int scoreCount = 0;
+                    HashSet<string> relationIds = [];
+
+                    foreach (RelationType type in relations)
+                    {
+                        relationIds.UnionWith(PlayerSocialLife.GetIds_Internal(type.Convert())!);
+
+                        if (cache.TryGetLength(type.Convert(), out int count))
+                            scoreCount = Math.Max(scoreCount, count);
+                    }
+
+                    if (scoreCount > 0)
+                    {
+                        IEnumerable<AccSaberLeaderboardEntry> tokens = cache.Data.Where(token => relationIds.Contains(token.PlayerId));
+
+                        int tokenCount = tokens.Count();
+                        int pageCount = page * PAGE_LENGTH;
+
+                        //Plugin.Log.Info($"token count = {tokenCount} || score count = {scoreCount} || page count = {pageCount}");
+
+                        if (scoreCount == 0)
+                            return [];
+
+                        if (tokenCount == scoreCount || tokenCount > pageCount && (scoreCount < pageCount + PAGE_LENGTH || tokenCount >= pageCount + PAGE_LENGTH))
+                            return [.. tokens.Skip(pageCount).Take(PAGE_LENGTH)];
+
+                        if (tokenCount > pageCount)
+                        {
+                            outp = tokens.Skip(pageCount);
+                            pageSize -= tokenCount - pageCount;
+                        }
+                    }
+                }
+
+                List<(LeaderboardDisplayType, int)> sizes = [];
+
+                foreach (RelationType type in relations)
+                {
+                    AccSaberPagedContent<AccSaberLeaderboardEntry>? data = await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(
+                    string.Format(APAPI_LEADERBOARD_DIFF_RELATION, diffId, type.ToString(), page, PAGE_LENGTH), throttler);
+
+                    if (data is null || data.Content is null)
+                        return null;
+
+                    sizes.Add((type.Convert(), data.TotalElements));
+
+                    outp = outp.Union(data.Content);
+                }
+
+                CacheScoreData(diffId, outp, [], sizes);
+
+                return [.. outp.Take(PAGE_LENGTH)];
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an exception getting score data.\n" + e);
+                return null;
+            }
         }
 
         /// <summary>
@@ -1249,15 +1326,15 @@ namespace AccSaber.API
             /// <summary>
             /// Returns a ref to the cached length for a given display type.
             /// </summary>
-            public ref int GetLength(LeaderboardDisplayType displayType) => ref LeaderboardLengths[BitOperations.Log2((uint)displayType)];
-            public bool ContainsLength(LeaderboardDisplayType displayType) => GetLength(displayType) > -1;
-            public bool TryGetLength(LeaderboardDisplayType displayType, out int length)
+            public readonly ref int GetLength(LeaderboardDisplayType displayType) => ref LeaderboardLengths[BitOperations.Log2((uint)displayType)];
+            public readonly bool ContainsLength(LeaderboardDisplayType displayType) => GetLength(displayType) > -1;
+            public readonly bool TryGetLength(LeaderboardDisplayType displayType, out int length)
             {
                 length = GetLength(displayType);
                 return length > -1;
             }
 
-            public ScoreCache(List<AccSaberLeaderboardEntry> data, HashSet<string> userIds, List<int> blockedUserIndexes, params (LeaderboardDisplayType displayType, int length)[] lengths)
+            public ScoreCache(List<AccSaberLeaderboardEntry> data, HashSet<string> userIds, List<int> blockedUserIndexes, params IEnumerable<(LeaderboardDisplayType displayType, int length)> lengths)
             {
                 Data = data;
                 UserIds = userIds;
