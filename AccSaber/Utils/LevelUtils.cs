@@ -15,6 +15,10 @@ using System.Threading.Tasks;
 using Zenject;
 using IPA.Loader;
 using System.Collections.Generic;
+using System.Collections;
+using UnityEngine;
+
+
 
 #if NEW_VERSION
 using System.Reflection;
@@ -196,43 +200,50 @@ namespace AccSaber.Utils
 
             StatusTextChanged?.Invoke("Loading...");
 
-            try
+            IEnumerator PresentCoroutine()
             {
+                yield return new WaitForEndOfFrame();
+
+                try
+                {
 #if NEW_VERSION
-                BeatmapLevelPack? levelPack = null;
+                    BeatmapLevelPack? levelPack = null;
 #else
                 IBeatmapLevelPack? levelPack = null;
 #endif
 
-                if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
-                    levelPack = PlaylistUtils.GetPlaylistLevelpack(filename);
+                    if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
+                        levelPack = PlaylistUtils.GetPlaylistLevelpack(filename);
 
-                //Plugin.Log.Info("levelPack null? " + (levelPack is null));
-                if (levelPack is null)
-                    return;
+                    //Plugin.Log.Info("levelPack null? " + (levelPack is null));
+                    if (levelPack is null)
+                        yield break;
 
-                closeMenu?.Invoke();
+                    closeMenu?.Invoke();
 
 #if NEW_VERSION
-                LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, default, null);
+                    LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, default, null);
 #else
                 LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, new EmptyDifficultyBeatmap());
 #endif
 
-                _soloCoordinator.Setup(flow);
+                    _soloCoordinator.Setup(flow);
 
-                _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(_soloCoordinator, immediately: true);
-            }
-            catch (Exception e)
-            {
-                Plugin.Log.Error("There was an error going to the map!\n" + e);
-            }
-            finally
-            {
-                StatusTextChanged?.Invoke(null);
+                    _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(_soloCoordinator, immediately: true);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error("There was an error going to the map!\n" + e);
+                }
+                finally
+                {
+                    StatusTextChanged?.Invoke(null);
 
-                StatusTextChanged -= statEvent;
+                    StatusTextChanged -= statEvent;
+                }
             }
+
+            _mainFlowCoordinator.StartCoroutine(PresentCoroutine());
         }
 
         // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
@@ -288,10 +299,14 @@ namespace AccSaber.Utils
                     return;
                 }
 
-                try
+                IEnumerator PresentRoutine()
                 {
+                    yield return new WaitForEndOfFrame();
 
-                    closeMenu?.Invoke();
+                    try
+                    {
+
+                        closeMenu?.Invoke();
 
 #if NEW_VERSION
                     BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);
@@ -304,20 +319,20 @@ namespace AccSaber.Utils
                         LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, diff);
 #endif
 
-                    _soloCoordinator.Setup(flow);
+                        _soloCoordinator.Setup(flow);
 
-                    _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(_soloCoordinator, immediately: true);
+                        _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(_soloCoordinator, immediately: true);
 
-                    StandardLevelDetailViewController? sldvc = UnityEngine.Object.FindObjectOfType<StandardLevelDetailViewController>();
-                    StandardLevelDetailView? sldv = sldvc?.GetField<StandardLevelDetailView, StandardLevelDetailViewController>("_standardLevelDetailView");
+                        StandardLevelDetailViewController? sldvc = UnityEngine.Object.FindObjectOfType<StandardLevelDetailViewController>();
+                        StandardLevelDetailView? sldv = sldvc?.GetField<StandardLevelDetailView, StandardLevelDetailViewController>("_standardLevelDetailView");
 
 #if NEW_VERSION
-                    if (sldv is not null && sldv.beatmapKey != key)
-                    {
-                        sldv.SetContent(level, BeatmapDifficultyMask.All, [], key.difficulty, key.beatmapCharacteristic,
-                            sldv.GetField<PlayerData, StandardLevelDetailView>("_playerData"));
-                        typeof(StandardLevelDetailView).GetMethod("TriggerEvent", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(sldv, []);
-                    }
+                        if (sldv is not null && sldv.beatmapKey != key)
+                        {
+                            sldv.SetContent(level, BeatmapDifficultyMask.All, [], key.difficulty, key.beatmapCharacteristic,
+                                sldv.GetField<PlayerData, StandardLevelDetailView>("_playerData"));
+                            typeof(StandardLevelDetailView).GetMethod("TriggerEvent", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(sldv, []);
+                        }
 #else
                         if (sldv is not null && sldv.selectedDifficultyBeatmap.difficulty != diff.difficulty)
                         {
@@ -325,14 +340,20 @@ namespace AccSaber.Utils
                             sldv.GetField<Action<StandardLevelDetailView, IDifficultyBeatmap>, StandardLevelDetailView>("didChangeDifficultyBeatmapEvent").Invoke(sldv, diff);
                         }
 #endif
-                    if (targetPlayerId is not null)
-                        AccSaberLeaderboardViewController.Instance.ShowPlayerPage(targetPlayerId);
+                        if (targetPlayerId is not null)
+                            AccSaberLeaderboardViewController.Instance.ShowPlayerPage(targetPlayerId);
+                    }
+                    catch (Exception e)
+                    {
+                        Plugin.Log.Error("There was an error going to the map!\n" + e);
+                    }
+                    finally
+                    {
+                        StatusTextChanged -= statEvent;
+                    }
                 }
-                catch (Exception e)
-                {
-                    Plugin.Log.Error("There was an error going to the map!\n" + e);
-                }
-                StatusTextChanged -= statEvent;
+
+                _mainFlowCoordinator.StartCoroutine(PresentRoutine());
             }
         }
 #if NEW_VERSION

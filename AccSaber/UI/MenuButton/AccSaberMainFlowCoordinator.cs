@@ -2,6 +2,8 @@
 using HMUI;
 using Zenject;
 using System;
+using System.Collections;
+using UnityEngine;
 
 
 #if !NEW_VERSION
@@ -46,21 +48,36 @@ namespace AccSaber.UI.MenuButton
         }
         internal void PresentFlowCoordinator()
         {
-            _parentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
-            _parentFlowCoordinator.PresentFlowCoordinator(this);
+            IEnumerator PresentRoutine()
+            {
+                _parentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
 
-            HubActivated?.Invoke();
+                yield return new WaitForEndOfFrame();
 
-            _accSaberMilestoneViewController.UpdateTabs();
+                _parentFlowCoordinator.PresentFlowCoordinator(this, () =>
+                {
+                    HubActivated?.Invoke();
+                    _accSaberMilestoneViewController.UpdateTabs();
+                });
+            }
+
+            _mainFlowCoordinator.StartCoroutine(PresentRoutine());
         }
 
 
         private void OnDismiss()
         {
+#if NEW_VERSION
             SetRightScreenViewController(null, ViewController.AnimationType.None);
             SetLeftScreenViewController(null, ViewController.AnimationType.None);
             _accSaberRelationsViewController.HideNewsModal();
             _accSaberMilestoneViewController.StopTimer();
+#else
+            _accSaberRelationsViewController.HideNewsModal();
+            _accSaberMilestoneViewController.StopTimer();
+            SetRightScreenViewController(null, ViewController.AnimationType.None);
+            SetLeftScreenViewController(null, ViewController.AnimationType.None);
+#endif
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {

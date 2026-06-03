@@ -235,6 +235,7 @@ namespace AccSaber.Models
             return Color.Lerp(Color.white, upperColor.Color(), stepOffset + percent).Color();
         }
 
+#pragma warning disable IDE0051
         [UIAction("#post-parse")]
         private void PostParse()
         {

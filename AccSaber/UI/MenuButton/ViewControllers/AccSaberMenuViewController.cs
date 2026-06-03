@@ -348,8 +348,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             System.Diagnostics.Process.Start("https://github.com/not-dexter/accsaber-reloaded-plugin");
         }
 
-		private void OnOpen()
+		private async void OnOpen()
 		{
+			if (_user is null)
+				await UpdateUserInfo();
+
             if (!_firstLoad && _user is not null)
             {
                 if (titleRoutine is not null)
@@ -412,8 +415,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			catch (Exception e)
 			{
 				Plugin.Log.Error("There was an error trying to refresh the player!\n" + e);
-				IsLoading = false;
 			}
+			finally
+			{
+                IsLoading = false;
+            }
         }
 
 		private async Task SetUserInfo(AccSaberPlayer userInfo, AccSaberPlayerStats stats)
@@ -585,10 +591,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
         }
 
-        private async void OnAccSaberPlayerUpdated(AccSaberLeaderboardEntry entry)
+        private void OnAccSaberPlayerUpdated(AccSaberLeaderboardEntry entry)
         {
             _user = null;
-            await UpdateUserInfo();
         }
 
 

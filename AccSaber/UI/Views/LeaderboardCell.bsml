@@ -15,6 +15,6 @@
     <text text='~Score' align='Right' italics='true' font-size='~FontSize'/>
   </horizontal>
   <horizontal pref-width='~timeSetWidth' child-alignment='MiddleCenter' pad-right='~containerPadding'>
-    <text text='~TimeSet' align='Right' italics='true' font-size='~FontSize'/>
+    <text text='~TimeSet' align='Right' italics='true' font-size='~FontSize' word-wrapping='false'/>
   </horizontal>
 </my-horizontal>
