@@ -4,7 +4,6 @@ using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage.Attributes;
-using BeatSaberMarkupLanguage.ViewControllers;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -14,7 +13,6 @@ using System.Linq;
 using UnityEngine;
 using static AccSaber.UI.ViewControllers.AccSaberLeaderboardViewController;
 using static AccSaber.Utils.ColorUtils;
-using static RankModel;
 
 namespace AccSaber.Models
 {
@@ -137,6 +135,9 @@ namespace AccSaber.Models
 
         public bool Equals(AccSaberLeaderboardEntry other) =>
             PlayerId.Equals(other.PlayerId) && AP == other.AP && TimeSet == other.TimeSet;
+
+        public override bool Equals(object obj) => obj is AccSaberLeaderboardEntry entry && Equals(entry);
+        public override int GetHashCode() => PlayerId.GetHashCode() ^ TimeSet.GetHashCode();
     }
 
     internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data) : ICellDataSource, INotifyPropertyChanged
