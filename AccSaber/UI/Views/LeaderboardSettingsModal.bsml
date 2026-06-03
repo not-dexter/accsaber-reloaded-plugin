@@ -1,7 +1,7 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
     <modal id='modal' show-event='open-modal' hide-event='close-modal' clickerino-offerino-closerino='true' size-delta-x='55' size-delta-y='35' move-to-center='true'>
 		<vertical horizontal-fit='PreferredSize' pref-width='65'>
-			<text text='Settings' align='Top'></text>
+			<text text='Settings' font-size='8' align='Top'></text>
 			<modifier-container pref-width='65' child-expand-width='false' horizontal-fit='PreferredSize'>
 				<toggle-setting scale='0.8' apply-on-change="true" value="CombineRelations" text="Combine Friends &amp; Rivals"/>
 				<toggle-setting scale='0.8' apply-on-change="true" value="ShowCombo" text="Show FC/Mistakes"/>

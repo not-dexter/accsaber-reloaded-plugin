@@ -207,8 +207,8 @@ namespace AccSaber.Models
         [UIValue(nameof(accWidth))] public const float accWidth = 12f;
         [UIValue(nameof(scoreWidth))] public const float scoreWidth = 8f + scorePadding;
         [UIValue(nameof(scorePadding))] public const float scorePadding = 2f;
-        [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 10f;
-        [UIValue(nameof(comboWidth))] public const float comboWidth = 3f;
+        [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 12f;
+        [UIValue(nameof(comboWidth))] public const float comboWidth = 3.5f;
 
         [UIValue(nameof(nameWidth))]
         public float nameWidth = Instance.ShowCombo ?
