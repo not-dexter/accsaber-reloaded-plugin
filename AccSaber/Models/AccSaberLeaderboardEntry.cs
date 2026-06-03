@@ -150,7 +150,7 @@ namespace AccSaber.Models
 
         [UIValue(nameof(AP))] public string AP => $"<color={ColorUtils.AP}>{ScoreData.AP:N2}ap</color>";
 
-        [UIValue(nameof(Acc))] public string Acc => $"<color=#22c55e>{(ScoreData.Accuracy * 100f).ToString($"N{Instance.AccDecimals}")}%</color>";
+        [UIValue(nameof(Acc))] public string Acc => $"<color={ACC}>{(ScoreData.Accuracy * 100f).ToString($"N{Instance.AccDecimals}")}%</color>";
 
         [UIValue(nameof(TimeSet))] public string TimeSet => $"<color={GetTimeSetColor()}><size=80%>{ScoreData.TimeSet.ToRelativeTime(1)[..^1]}</size></color>";
 

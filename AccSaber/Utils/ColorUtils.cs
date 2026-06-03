@@ -17,7 +17,7 @@ namespace AccSaber.Utils
 
         public const string RANK = "#FA0";
         public const string AP = "#A763C4";
-        public const string ACC = "#0D0";
+        public const string ACC = "#22C55E";
 
         public const string TECH = "#E65454";
         public const string STANDARD = "#53B6FF";

@@ -103,6 +103,9 @@ namespace AccSaber.Managers
                 if (outp is null)
                     return [];
 
+                // This is to make sure that the missions are always in the same order (first by pool, then alphabetically by name) since the API doesn't guarantee any order and it can be a bit jarring to have them switch around every time we fetch them.
+                outp.Sort((a, b) => a.MissionPool == b.MissionPool ? a.Name.CompareTo(b.Name) : a.MissionPool.CompareTo(b.MissionPool));
+
                 return outp;
             }
             return [];
