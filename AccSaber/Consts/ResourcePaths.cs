@@ -20,7 +20,7 @@ namespace AccSaber.Consts
         public const string INFO_ICON = RESOURCE_PATH + ".InfoIcon.png";
         public const string PIXEL = RESOURCE_PATH + ".Pixel.png";
         public const string PLAYER_ICON = RESOURCE_PATH + ".PlayerIcon.png";
-        public const string SWAP = RESOURCE_PATH + ".swap.png";
+        //public const string SWAP = RESOURCE_PATH + ".swap.png";
         public const string RIVALS = RESOURCE_PATH + ".rivals.png";
         public const string FOLLOWED = RESOURCE_PATH + ".followed.png";
         public const string RELATIONS = RESOURCE_PATH + ".relations.png";
@@ -45,7 +45,6 @@ namespace AccSaber.Consts
         public const string LEADERBOARD_CELL = MAIN_BSML_PATH + ".LeaderboardCell.bsml";
         public const string LEADERBOARD_SCORE_MODAL = MAIN_BSML_PATH + ".LeaderboardScoreModal.bsml";
         public const string LEADERBOARD_USER_MODAL = MAIN_BSML_PATH + ".LeaderboardUserModal.bsml";
-        public const string LEADERBOARD_TITLE_PANEL = MAIN_BSML_PATH + ".LeaderboardTitlePanel.bsml";
         public const string WHERE_SCORE_MODAL_VIEW = MAIN_BSML_PATH + ".WhereScoreModalView.bsml";
 
         public const string MENU_BSML_PATH = "AccSaber.UI.MenuButton.Views";

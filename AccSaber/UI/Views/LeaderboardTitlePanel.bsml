@@ -1,7 +1,0 @@
-<bg id='titleContainer' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-	
-  <vertical id='SwapSelector' anchor-pos-x='-39.5' anchor-pos-y='0' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='7' pref-width='7' bg='round-rect-panel'>
-		<clickable-image  src='~swapPic' pref-width='5' pref-height='5' on-click='ToggleCombinedIcons' hover-hint='Swap the selector buttons!'/>
-	</vertical>
-
-</bg>

@@ -140,7 +140,6 @@ namespace AccSaber.UI.ViewControllers
 
         [UIValue("topArrowPic")] private const string topArrowPic = ResourcePaths.TOP_ARROW;
         [UIValue("youPic")] private const string youPic = ResourcePaths.PLAYER_ICON;
-        [UIValue("swapPic")] private const string swapPic = ResourcePaths.SWAP;
         [UIValue("globalPic")] private const string globalPic = ResourcePaths.GLOBAL;
         [UIValue("friendsPic")] private const string friendsPic = ResourcePaths.FRIEND;
         [UIValue("followedPic")] private const string followedPic = ResourcePaths.FOLLOWED;
@@ -175,7 +174,6 @@ namespace AccSaber.UI.ViewControllers
 
         private float CellSize => OnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE;
 
-        [UIObject("titleContainer")] private GameObject titleContainer = null!;
         [UIObject("leaderboard")] private GameObject leaderboardContainer = null!;
 
         [UIComponent("GlobalSelector")] private ClickableImage globalSelector = null!;
@@ -452,8 +450,6 @@ namespace AccSaber.UI.ViewControllers
 
         private void OnEnable()
         {
-            titleContainer?.SetActive(true);
-
             if (titlePaneTitleText is not null)
             {
                 titlePanelTitle = titlePaneTitleText.text;
@@ -467,8 +463,6 @@ namespace AccSaber.UI.ViewControllers
         }
         private void OnDisable()
         {
-            titleContainer?.SetActive(false);
-
             if (titlePaneTitleText is not null)
             {
                 titlePaneTitleText.richText = titlePanelRich;
@@ -529,8 +523,6 @@ namespace AccSaber.UI.ViewControllers
 
             titlePaneTitleText = headerPane.GetComponentInChildren<TextMeshProUGUI>();
             OnEnable();
-
-            VersionUtils.Parse(ResourcePaths.LEADERBOARD_TITLE_PANEL, headerPane, this);
         }
 
         private void ChangeFilter(LeaderboardDisplayType type)
