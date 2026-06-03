@@ -37,7 +37,6 @@ namespace AccSaber.Utils
 
         [Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
         [Inject] private readonly SoloFreePlayFlowCoordinator _soloCoordinator = null!;
-        [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
 
         public event Action<string?>? StatusTextChanged;
 
@@ -60,7 +59,7 @@ namespace AccSaber.Utils
                 Monitor.PulseAll(LoadWaiterLock);
         }
 
-        public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, Action? closeMenu, Action<string?>? statEvent = null)
         {
             if (!PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
             {
@@ -72,11 +71,11 @@ namespace AccSaber.Utils
 
             if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
                 PlaylistUtils.LoadPlaylist(filename, playlistName, maps, StatusTextChanged);
-            await GoToPlaylist(filename);
+            await GoToPlaylist(filename, closeMenu);
 
             StatusTextChanged -= statEvent;
         }
-        public async Task LoadPlaylist(APCategory type, string playerId, float apThreshold, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(APCategory type, string playerId, float apThreshold, Action? closeMenu, Action<string?>? statEvent = null)
         {
             try
             {
@@ -105,7 +104,7 @@ namespace AccSaber.Utils
 
                 List<PlaylistUtils.PlaylistMapInfo> maps = PlaylistUtils.GetPlaylistData(ids);
 
-                await LoadPlaylist(filename, playlistName, maps);
+                await LoadPlaylist(filename, playlistName, maps, closeMenu);
             }
             catch (Exception e)
             {
@@ -118,7 +117,7 @@ namespace AccSaber.Utils
                 StatusTextChanged -= statEvent;
             }
         }
-        public async Task LoadPlaylist(APCategory type, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(APCategory type, Action? closeMenu, Action<string?>? statEvent = null)
         {
             try
             {
@@ -142,11 +141,10 @@ namespace AccSaber.Utils
 
                     File.WriteAllBytes(Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, filename), data);
 
-                    if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
-                        PlaylistUtils.RefreshPlaylist(filename);
+                    PlaylistUtils.RefreshPlaylist(filename);
                 }
 
-                await GoToPlaylist(filename[..filename.LastIndexOf('.')]);
+                await GoToPlaylist(filename[..filename.LastIndexOf('.')], closeMenu);
             } 
             catch (Exception e)
             {
@@ -159,8 +157,41 @@ namespace AccSaber.Utils
                 StatusTextChanged -= statEvent;
             }
         }
+        public async Task LoadPlaylist(string sniperId, string targetId, APCategory category, Action? closeMenu, Action<string?>? statEvent = null)
+        {
+            try
+            {
+                StatusTextChanged += statEvent;
 
-        public async Task GoToPlaylist(string filename, Action<string?>? statEvent = null)
+                string filename = $"accsaber-snipe-{sniperId}-{targetId}-{EnumUtils.CategoryIdToOtherReloadedCategory(category.ToString())?.Replace('_','-')}.bplist";
+
+                if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                {
+                    StatusTextChanged?.Invoke("Downloading...");
+
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_SNIPE, sniperId, targetId, 0, EnumUtils.CategoryIdToOtherReloadedCategory(category.ToString())), AccsaberAPI.throttler);
+                    filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
+
+                    StatusTextChanged?.Invoke("Saving...");
+
+                    File.WriteAllBytes(Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, filename), data);
+                    if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
+                        PlaylistUtils.RefreshPlaylist(filename);
+                }
+                await GoToPlaylist(filename[..filename.LastIndexOf('.')], closeMenu);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an issue loading the sniper playlist for sniper {sniperId} and target {targetId} in category {category}\n{e}");
+            }
+            finally
+            {
+                StatusTextChanged?.Invoke(null);
+                StatusTextChanged -= statEvent;
+            }
+        }
+
+        public async Task GoToPlaylist(string filename, Action? closeMenu, Action<string?>? statEvent = null)
         {
             StatusTextChanged += statEvent;
 
@@ -181,7 +212,7 @@ namespace AccSaber.Utils
                 if (levelPack is null)
                     return;
 
-                _parentFlowCoordinator.CloseToMainMenu();
+                closeMenu?.Invoke();
 
 #if NEW_VERSION
                 LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, default, null);
@@ -206,7 +237,7 @@ namespace AccSaber.Utils
         }
 
         // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
-        public async Task GoToSong(string diffId, string? targetPlayerId, Action<string?>? statEvent = null)
+        public async Task GoToSong(string diffId, string? targetPlayerId, Action? closeMenu, Action<string?>? statEvent = null)
         {
             AsyncLock.Releaser? locker = await OpenMapLock.TryLockAsync();
 
@@ -261,7 +292,7 @@ namespace AccSaber.Utils
                 try
                 {
 
-                    _parentFlowCoordinator.CloseToMainMenu();
+                    closeMenu?.Invoke();
 
 #if NEW_VERSION
                     BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);

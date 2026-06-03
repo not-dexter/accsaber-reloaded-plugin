@@ -103,19 +103,21 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (data is not MissionCell cell)
                 return;
 
+            void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
+
             switch (cell.Data.Type)
             {
                 case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
-                    _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, cell.UpdateStatus);
+                    _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY:
-                    _ = _levelUtils.LoadPlaylist(cell.Data.Category, cell.UpdateStatus);
+                    _ = _levelUtils.LoadPlaylist(cell.Data.Category, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.PB_ABOVE_THRESHOLD:
-                    _ = _levelUtils.LoadPlaylist(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, cell.UpdateStatus);
+                    _ = _levelUtils.LoadPlaylist(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.XP_IN_WINDOW:
-                    _ = _levelUtils.LoadPlaylist(APCategory.Standard, PlayerSocialLife.PlayerID!, 900, cell.UpdateStatus);
+                    _ = _levelUtils.LoadPlaylist(APCategory.Standard, PlayerSocialLife.PlayerID!, 900, CloseMenu, cell.UpdateStatus);
                     break;
             }
         }

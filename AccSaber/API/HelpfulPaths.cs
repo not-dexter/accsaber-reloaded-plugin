@@ -44,6 +44,8 @@
 
         public const string APAPI_PLAYLIST_THRESHOLD = APAPI + "users/{0}/maps-above-ap?apMin={1}"; // user_id, ap threshold
 
+        public const string APAPI_PLAYLIST_SNIPE = APAPI + "playlists/snipe/{0}/{1}/{2}/{3}"; // sniper_user_id, target_user_id, size (0 = unlimited), category (true_acc, standard_acc, tech_acc, overall)
+
 
         /// <summary>
         /// Retrieves paged list of maps.

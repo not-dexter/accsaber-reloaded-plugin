@@ -99,10 +99,12 @@ namespace AccSaber.UI.ViewControllers
 		private CanvasGroup? _userInfoCanvasGroup;
 
 		[Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
+		[Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
+		[Inject] private readonly LevelUtils _levelUtils = null!;
 
-		#region UI Values
+        #region UI Values
 
-		[UIValue("is-loading")]
+        [UIValue("is-loading")]
 		private bool IsLoading
 		{
 			get => _isLoading;
@@ -226,10 +228,13 @@ namespace AccSaber.UI.ViewControllers
 		private readonly Button _friendButton = null!;
 		[UIComponent("add-rival")]
 		private readonly Button _rivalButton = null!;
-        //[UIComponent("add-friend-bg")]
-        //private readonly CustomBackground _friendButtonBG = null!;
-        //[UIComponent("add-rival-bg")]
-        //private readonly CustomBackground _rivalButtonBG = null!;
+		//[UIComponent("add-friend-bg")]
+		//private readonly CustomBackground _friendButtonBG = null!;
+		//[UIComponent("add-rival-bg")]
+		//private readonly CustomBackground _rivalButtonBG = null!;
+
+		[UIComponent("generate-playlist")]
+		private readonly Button _generatePlaylist = null!;
 
         [UIValue("relation-loading")]
 		private bool RelationLoading
@@ -292,7 +297,30 @@ namespace AccSaber.UI.ViewControllers
                 _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
 			}
         }
-		private void Parse(Transform parentTransform)
+		[UIAction("generate-playlist-clicked")]
+		private async void GeneratePlaylistClicked()
+        {
+            if (_userId is null)
+                return;
+
+			await PlayerSocialLife.LoadTask;
+
+			string previousButtonText = _generatePlaylist.GetComponentInChildren<TextMeshProUGUI>().text;
+            void UpdateButtonText(string? buttonText)
+			{
+				_generatePlaylist.SetButtonText(buttonText ?? previousButtonText);
+			}
+
+			void ExitMenu()
+			{
+				OnModalClosed();
+                _modalView.Hide(false);
+                _mainFlowCoordinator.DismissFlowCoordinator(_mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf(), immediately: true);
+			}
+
+			await _levelUtils.LoadPlaylist(PlayerSocialLife.PlayerID!, _userId, _categoryValue, ExitMenu, UpdateButtonText);
+        }
+        private void Parse(Transform parentTransform)
 		{
 			if (!_parsed)
 			{

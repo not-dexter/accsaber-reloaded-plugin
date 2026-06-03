@@ -329,7 +329,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private void OnCellClicked(ICellDataSource source)
 		{
 			if (source is ScoreCell cell)
-                _ = levelUtils.GoToSong(cell.Data.DifficultyId, null, cell.UpdateStatus);
+                _ = levelUtils.GoToSong(cell.Data.DifficultyId, null, () => parentCoordinator.CloseToMainMenu(), cell.UpdateStatus);
         }
 
 		[UIAction("on-discord-clicked")]

@@ -44,7 +44,10 @@
             <button id='add-friend' text='Add Friend' font-size='3.5' on-click='friend-clicked' />
           </vertical>
           <vertical>
-            <button id='add-rival' text='Add Rival' font-size='3.5'  on-click='rival-clicked' />
+            <button id='add-rival' text='Add Rival' font-size='3.5' on-click='rival-clicked' />
+          </vertical>
+          <vertical>
+            <button id='generate-playlist' text='Generate Playlist' font-size='3.5' on-click='generate-playlist-clicked'/>
           </vertical>
           <loading-indicator active='~relation-loading' preserve-aspect='true' pref-width='7' pref-height='7' />
         </vertical>

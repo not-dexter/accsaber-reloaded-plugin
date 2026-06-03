@@ -170,7 +170,7 @@ namespace AccSaber.Models
             }
         }
 
-        [UIValue(nameof(AllowUnderline))] public bool AllowUnderline => !ScoreData.PlayerId.Equals(PlayerSocialLife.PlayerID);
+        [UIValue(nameof(AllowUnderline))] public bool AllowUnderline => LeaderboardOnPlayerPage || !ScoreData.PlayerId.Equals(PlayerSocialLife.PlayerID);
 
 
         [UIValue(nameof(Pixelimg))] private const string Pixelimg = ResourcePaths.PIXEL;
