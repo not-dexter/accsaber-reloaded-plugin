@@ -57,7 +57,8 @@ namespace AccSaber.UI.ViewControllers
         {
             get => PC.CombineRelations;
             set
-            {
+            {   
+                PC.CombineRelations = value;
                 OnCombineRelations!.Invoke();
             }
         }

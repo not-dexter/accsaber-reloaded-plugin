@@ -294,20 +294,19 @@ namespace AccSaber.UI.ViewControllers
             if (locker is null)
                 return; // Another toggle is already in progress, so we won't allow this one to execute to prevent
 
-            bool toggle = !PC.CombineRelations;
             IEnumerator UpdateUI()
             {
                 yield return new WaitForEndOfFrame();
 
                 try
                 {
-                    followedSelector.gameObject.SetActive(!toggle);
-                    rivalsSelector.gameObject.SetActive(!toggle);
-                    relationsSelector.gameObject.SetActive(toggle);
+                    followedSelector.gameObject.SetActive(!PC.CombineRelations);
+                    rivalsSelector.gameObject.SetActive(!PC.CombineRelations);
+                    relationsSelector.gameObject.SetActive(PC.CombineRelations);
 
-                    selectorContainer.preferredHeight = toggle ? globeIconSize + iconSize * 2 + 3 : globeIconSize + iconSize * 3 + 3;
+                    selectorContainer.preferredHeight = PC.CombineRelations ? globeIconSize + iconSize * 2 + 3 : globeIconSize + iconSize * 3 + 3;
 
-                    if (toggle)
+                    if (PC.CombineRelations)
                     {
                         if (DisplayType is LeaderboardDisplayType.Followed or LeaderboardDisplayType.Rivals)
                             ChangeFilter(LeaderboardDisplayType.Relations);
@@ -325,7 +324,6 @@ namespace AccSaber.UI.ViewControllers
                 }
             }
             StartCoroutine(UpdateUI());
-            PC.CombineRelations = toggle;
         }
 
         [UIAction("#post-parse")]
@@ -358,10 +356,8 @@ namespace AccSaber.UI.ViewControllers
             lsmc?.BindModal(leaderboardContainer);
 
             if (PC.CombineRelations)
-            {
-                PC.CombineRelations = false;
-                ToggleCombinedIcons();
-            }
+            ToggleCombinedIcons();
+
 
             lock (updateDiffLock)
                 Monitor.PulseAll(updateDiffLock);
