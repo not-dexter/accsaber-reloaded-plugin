@@ -370,6 +370,7 @@ namespace AccSaber.UI.ViewControllers
 				{
                     _friendButton.gameObject.SetActive(true);
                     _rivalButton.gameObject.SetActive(true);
+					_generatePlaylist.gameObject.SetActive(true);
 
                     if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId))
 						_friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
@@ -384,6 +385,7 @@ namespace AccSaber.UI.ViewControllers
 				{
 					_friendButton.gameObject.SetActive(false);
                     _rivalButton.gameObject.SetActive(false);
+					_generatePlaylist.gameObject.SetActive(false);
                 }
 
                 CategoryValue = APCategory.Overall.ToString();

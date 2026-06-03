@@ -95,6 +95,7 @@ namespace AccSaber.Utils
             Plugin.Log.Warn($"The color \"{hex}\" could not be parsed!");
             return default;
         }
+        public static string Color(this Color color) => $"#{(int)(color.r * 255):X2}{(int)(color.g * 255):X2}{(int)(color.b * 255):X2}{(int)(color.a * 255):X2}";
         public static string ToProperColor(this string hex)
         {
             if (hex.Length == 9)

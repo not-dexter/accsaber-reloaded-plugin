@@ -42,7 +42,7 @@ namespace AccSaber.Utils
             if (!single)
                 outp = outp[2..];
 
-            return formatting ? inFuture ? $"In {outp}." : $"{outp} ago." : outp[2..];
+            return formatting ? inFuture ? $"In {outp}." : $"{outp} ago." : outp;
         }
         public static (TimeSpan timeDiff, string str) GetMostSignificantTime(TimeSpan timeDiff, DateTime startTime)
         {

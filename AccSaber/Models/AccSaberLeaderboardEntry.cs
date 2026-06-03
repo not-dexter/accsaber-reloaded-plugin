@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 using static AccSaber.UI.ViewControllers.AccSaberLeaderboardViewController;
 using static AccSaber.Utils.ColorUtils;
 
@@ -151,7 +152,7 @@ namespace AccSaber.Models
 
         [UIValue(nameof(Acc))] public string Acc => $"<color=#22c55e>{(ScoreData.Accuracy * 100f).ToString($"N{Instance.AccDecimals}")}%</color>";
 
-        [UIValue(nameof(TimeSet))] public string TimeSet => $"<color={GREY_DIM}><size=80%>{ScoreData.TimeSet.ToRelativeTime(1)[..^1]}</size></color>";
+        [UIValue(nameof(TimeSet))] public string TimeSet => $"<color={GetTimeSetColor()}><size=80%>{ScoreData.TimeSet.ToRelativeTime(1)[..^1]}</size></color>";
 
         [UIValue(nameof(BGColor))]
         public string BGColor
@@ -189,5 +190,29 @@ namespace AccSaber.Models
         [UIValue(nameof(scorePadding))] public const float scorePadding = 2f;
         [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 12f;
         [UIValue(nameof(nameWidth))] public const float nameWidth = containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - elementSpacing * 5f - containerPadding * 2f;
+
+        private static readonly int[] TimeSetPointList = [MiscUtils.SECONDS_WEEK * 2, MiscUtils.SECONDS_YEAR / 2, MiscUtils.SECONDS_YEAR, MiscUtils.SECONDS_YEAR * 2];
+        private static readonly float[] TimeSetStepSizes = [0.25f, 0.35f, 0.25f, 0.15f];
+
+        private string GetTimeSetColor()
+        {
+            const string upperColor = GREY_DIM;
+
+            float seconds = (float)(DateTime.UtcNow - ScoreData.TimeSet.ToUniversalTime()).TotalSeconds;
+
+            int i = 0;
+            float stepOffset = 0f;
+
+            for (; i < TimeSetPointList.Length && seconds > TimeSetPointList[i]; ++i) 
+                stepOffset += TimeSetStepSizes[i];
+
+            if (i == TimeSetPointList.Length)
+                return upperColor;
+
+            int offset = i == 0 ? 0 : TimeSetPointList[i - 1];
+            float percent = (seconds - offset) / ((TimeSetPointList[i] - offset) * TimeSetPointList.Length);
+
+            return Color.Lerp(Color.white, upperColor.Color(), stepOffset + percent).Color();
+        }
     }
 }
