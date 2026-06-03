@@ -294,7 +294,7 @@ namespace AccSaber.UI.ViewControllers
             if (locker is null)
                 return; // Another toggle is already in progress, so we won't allow this one to execute to prevent
 
-            bool toggle = PC.CombineRelations;
+            bool toggle = !PC.CombineRelations;
             IEnumerator UpdateUI()
             {
                 yield return new WaitForEndOfFrame();
@@ -325,7 +325,7 @@ namespace AccSaber.UI.ViewControllers
                 }
             }
             StartCoroutine(UpdateUI());
-            //PC.CombineRelations = toggle;
+            PC.CombineRelations = toggle;
         }
 
         [UIAction("#post-parse")]
@@ -388,7 +388,7 @@ namespace AccSaber.UI.ViewControllers
             };
             aspvc.OnSettingsClicked += () =>
             {
-                lbsmc?.ShowModal(leaderboard.transform);
+                lbsmc?.ShowModal(leaderboardContainer.transform);
             };
 
             lbsmc.OnCombineRelations += () => ToggleCombinedIcons();
