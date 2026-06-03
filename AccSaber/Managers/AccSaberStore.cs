@@ -150,6 +150,38 @@ namespace AccSaber.Managers
             return newNewsEntries;
         }
 
+        public async Task<List<AccSaberCampaign>> GetCampaigns()
+        {
+
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(HelpfulPaths.APAPI_CAMPAIGNS_ALL, AccsaberAPI.throttler);
+
+            if (content is null)
+                return [];
+
+            List<AccSaberCampaign> newCampaignEntries = [];
+
+            foreach (AccSaberCampaign newsCampaign in content.Content!)
+            {
+                newCampaignEntries.Add(newsCampaign);
+            }
+
+            return newCampaignEntries;
+        }
+
+        public async Task<AccSaberCampaign> GetCampaign(string id)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_CAMPAIGN, id);
+            AccSaberCampaign? content = await APIHandler.CallAPI_Json<AccSaberCampaign>(call, AccsaberAPI.throttler);
+
+            if (content is null)
+            {
+                Plugin.Log.Debug("Campaign not found");
+                return new AccSaberCampaign();
+            }
+
+            return content;
+        }
+
         private async Task UpdateAccSaberInfo()
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();

@@ -218,6 +218,20 @@
         /// </remarks>
         public const string APAPI_NEWS_TYPE = APAPI + "news?type={0}"; //type
 
+
+        /// <summary>
+        /// Retrieves all news entries.
+        /// </summary>
+        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns"; //no params
+
+        /// <summary>
+        /// Retrieves specified campaign.
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: campaign_id.
+        /// </remarks>
+        public const string APAPI_CAMPAIGN = APAPI + "campaigns/{0}"; //campaign_id
+
         public const string APAPI_CURVE_AP = APAPI + "curves/acc00000-0000-0000-0000-000000000001"; // param entered already
 
         public const string APAPI_PLAYERID_ITEMS_EQUIPPED = APAPI + "users/{0}/items/equipped"; // user_id

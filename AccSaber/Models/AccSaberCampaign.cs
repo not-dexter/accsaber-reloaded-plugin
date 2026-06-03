@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using AccSaber.Models.Base;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AccSaber.Models
 {
-    internal class AccSaberCampaign
+    internal class AccSaberCampaign : Model
     {
         [JsonProperty("id")]
         public string Id { get; set; } = null!;
