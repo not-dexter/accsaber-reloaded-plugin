@@ -371,17 +371,12 @@ namespace AccSaber.UI.ViewControllers
                     return;
 
                 currentPlayerScore = token;
-                page = 1;
-                currentPage = -1;
 
-                InvalidateCache();
+                store.InvalidateCurrentMapCache();
 
-                Task.Run(async () =>
-                {
-                    if (!await ForceRefresh(false))
-                        refreshRequested = true;
-                });
+                Task.Run(RequestRefresh);
             };
+
             aspvc.OnSettingsClicked += () =>
             {
                 lbsmc?.ShowModal(leaderboardContainer.transform);
@@ -579,7 +574,7 @@ namespace AccSaber.UI.ViewControllers
             });
         }
 
-        private void ReloadLeaderboard() => Task.Run(LoadLeaderboardAsync);
+        private void ReloadLeaderboard() => Task.Run(async () => await LoadLeaderboardAsync());
 
         private void TrySubscribeToMapSelection()
         {
@@ -672,6 +667,14 @@ namespace AccSaber.UI.ViewControllers
             }
         }
 
+        public async Task RequestRefresh()
+        {
+            page = 1;
+            currentPage = -1;
+
+            if (!await ForceRefresh(false))
+                refreshRequested = true;
+        }
         private async Task<bool> ForceRefresh(bool overridePlayerScore)
         {
             if (!gameObject.activeInHierarchy)
@@ -828,9 +831,9 @@ namespace AccSaber.UI.ViewControllers
                 theLock.Dispose();
             }
         }
-        private async Task LoadLeaderboardAsync()
+        private async Task LoadLeaderboardAsync(bool force = false)
         {
-            if (page == currentPage || DifficultyId is null) return; // already on this page or no leaderboard selected, no need to reload
+            if ((page == currentPage || DifficultyId is null) && !force) return; // already on this page or no leaderboard selected, no need to reload
             AsyncLock.Releaser theLock = await loadLeaderboardLock.LockAsync();
             using (theLock)
                 await LoadLeaderboardAsyncNoLock();

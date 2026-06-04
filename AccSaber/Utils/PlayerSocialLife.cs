@@ -13,6 +13,7 @@ namespace AccSaber.Utils
         public static event Action? OnRelationChanged;
 
         private static readonly AsyncLock loadLock = new();
+        private static readonly AsyncLock changeRelationLock = new();
         private static Task? loadTask = null;
         public static Task LoadTask => LoadInfo();
 
@@ -52,50 +53,60 @@ namespace AccSaber.Utils
         };
         internal static async Task<bool> AddId(string id, LeaderboardDisplayType displayType)
         {
-            HashSet<string>? set = GetIds_Internal(displayType);
+            AsyncLock.Releaser locker = await changeRelationLock.LockAsync();
 
-            if (set is null)
-                return false;
+            using (locker)
+            {
+                HashSet<string>? set = GetIds_Internal(displayType);
 
-            set.Add(id);
-            if (displayType != LeaderboardDisplayType.Relations)
-                PlayerRelations!.Add(id);
+                if (set is null)
+                    return false;
 
-            RelationType rt = displayType.Convert();
+                set.Add(id);
+                if (displayType != LeaderboardDisplayType.Relations)
+                    PlayerRelations!.Add(id);
 
-            var (success, relationId) = await AddPlayerRelation(rt, id);
+                RelationType rt = displayType.Convert();
 
-            if (success && UserIdToRelationId.ContainsKey(rt))
-                UserIdToRelationId[rt].Add(id, relationId!);
+                var (success, relationId) = await AddPlayerRelation(rt, id);
 
-            OnRelationChanged?.Invoke();
+                if (success && UserIdToRelationId.ContainsKey(rt))
+                    UserIdToRelationId[rt].Add(id, relationId!);
 
-            return success;
+                OnRelationChanged?.Invoke();
+
+                return success;
+            }
         }
         internal static async Task<bool> RemoveId(string id, LeaderboardDisplayType displayType)
         {
-            HashSet<string>? set = GetIds_Internal(displayType);
+            AsyncLock.Releaser locker = await changeRelationLock.LockAsync();
 
-            if (set is null)
-                return false;
+            using (locker)
+            {
+                HashSet<string>? set = GetIds_Internal(displayType);
 
-            set.Remove(id);
-            if (displayType != LeaderboardDisplayType.Relations)
-                PlayerRelations!.Remove(id);
+                if (set is null)
+                    return false;
 
-            RelationType rt = displayType.Convert();
+                set.Remove(id);
+                if (displayType != LeaderboardDisplayType.Relations)
+                    PlayerRelations!.Remove(id);
 
-            if (!UserIdToRelationId[rt].TryGetValue(id, out string relationId))
-                return false;
+                RelationType rt = displayType.Convert();
 
-            bool success = await RemovePlayerRelation(relationId);
+                if (!UserIdToRelationId[rt].TryGetValue(id, out string relationId))
+                    return false;
 
-            if (success)
-                UserIdToRelationId[rt].Remove(id);
+                bool success = await RemovePlayerRelation(relationId);
 
-            OnRelationChanged?.Invoke();
+                if (success)
+                    UserIdToRelationId[rt].Remove(id);
 
-            return success;
+                OnRelationChanged?.Invoke();
+
+                return success;
+            }
         }
         public static async Task LoadInfo()
         {
@@ -120,12 +131,15 @@ namespace AccSaber.Utils
                     await SetRelations(AuthInfo.UserId);
 
                 Plugin.Log.Info("Logged into accsaber!");
-            } catch (Exception e)
+            } 
+            catch (Exception e)
             {
                 Plugin.Log.Error("There was an error loading player info!" + (retries > 0 ? " Retrying in 1 second." : ""));
                 Plugin.Log.Debug(e);
+
                 if (retries == 0)
                     return;
+
                 await Task.Delay(1000);
                 await LoadInfoTask(retries - 1);
             }
@@ -134,8 +148,8 @@ namespace AccSaber.Utils
         {
             var relations = await GetPlayerRelations();
 
-            UserIdToRelationId = new(relations.Select(toConvert =>
-                new KeyValuePair<RelationType, Dictionary<string, string>>(toConvert.Key, toConvert.Value.relations)));
+            UserIdToRelationId = [with(relations.Select(toConvert =>
+                new KeyValuePair<RelationType, Dictionary<string, string>>(toConvert.Key, toConvert.Value.relations)))];
 
             HashSet<string> followed = relations[RelationType.follower].userIds;
             HashSet<string> rivals = relations[RelationType.rival].userIds;

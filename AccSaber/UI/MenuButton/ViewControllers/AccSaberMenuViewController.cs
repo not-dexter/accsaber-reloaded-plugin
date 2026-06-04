@@ -350,11 +350,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		private async void OnOpen()
 		{
-			if (_user is null)
-				await UpdateUserInfo();
-
-            if (!_firstLoad && _user is not null)
+            if (!_firstLoad)
             {
+                if (_user is null)
+                    await UpdateUserInfo();
+
                 if (titleRoutine is not null)
                     StopCoroutine(titleRoutine);
 
@@ -362,14 +362,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 {
                     yield return new WaitUntil(_titleText.IsActive);
                     yield return new WaitForEndOfFrame();
-                    titleRoutine = _user.Items!.Set(this, _titleText);
+                    titleRoutine = _user!.Items!.Set(this, _titleText);
                 }
                 StartCoroutine(WaitThenUpdate());
 
                 if (borderRoutine is not null)
                     StopCoroutine(borderRoutine);
 
-                borderRoutine = _user.Items!.Set(this, _playerImageBorder, _progressBarImage);
+                borderRoutine = _user!.Items!.Set(this, _playerImageBorder, _progressBarImage);
             }
         }
 		private void OnClose()

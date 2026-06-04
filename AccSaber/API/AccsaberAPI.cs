@@ -516,6 +516,12 @@ namespace AccSaber.API
                     if (scoreCount == 0)
                         return [];
 
+                    if (scoreCount != relations.Count)
+                    {
+                        scoreCount = relations.Count;
+                        cache.GetLength(relation.Convert()) = scoreCount;
+                    }
+
                     if (tokenCount == scoreCount || tokenCount > pageCount && (scoreCount < pageCount + PAGE_LENGTH || tokenCount >= pageCount + PAGE_LENGTH))
                         return [.. tokens.Skip(pageCount).Take(PAGE_LENGTH)];
 
@@ -557,10 +563,20 @@ namespace AccSaber.API
 
                     foreach (RelationType type in relations)
                     {
-                        relationIds.UnionWith(PlayerSocialLife.GetIds_Internal(type.Convert()));
+                        HashSet<string> currentRelationIds = PlayerSocialLife.GetIds_Internal(type.Convert())!;
+
+                        relationIds.UnionWith(currentRelationIds);
 
                         if (cache.TryGetLength(type.Convert(), out int count))
+                        {
+                            if (count != currentRelationIds.Count)
+                            {
+                                count = currentRelationIds.Count;
+                                cache.GetLength(type.Convert()) = count;
+                            }
+
                             scoreCount = Math.Max(scoreCount, count);
+                        }
                     }
 
                     if (scoreCount > 0)

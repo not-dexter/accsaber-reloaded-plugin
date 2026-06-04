@@ -116,7 +116,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _ = _levelUtils.LoadPlaylist(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.XP_IN_WINDOW:
-                    _ = _levelUtils.LoadPlaylist(APCategory.Standard, PlayerSocialLife.PlayerID!, 900, CloseMenu, cell.UpdateStatus);
+                    _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
                     break;
             }
         }
@@ -124,6 +124,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("#post-parse")]
         private void PostParse()
         {
+            if (_parsed)
+                return;
+
             _weeklyTimeText.enableAutoSizing = true;
             _weeklyTimeText.fontSizeMin = 2.75f;
             _weeklyTimeText.fontSizeMax = 4f;

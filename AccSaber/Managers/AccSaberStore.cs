@@ -1,6 +1,7 @@
 ﻿using AccSaber.API;
 using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
+using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using Newtonsoft.Json;
 using SiraUtil.Logging;
@@ -328,7 +329,18 @@ namespace AccSaber.Managers
 			return await _platformUserModel.GetUserInfo();
 		}
 
-		public async Task<bool> HasAccSaberUpdated()
+        public void InvalidateCurrentMapCache()
+        {
+            if (CurrentRankedMap is not null)
+                AccsaberAPI.InvalidateCache(CurrentRankedMap.DifficultyId);
+        }
+        private void UpdateLeaderboardOnRelationChanged()
+        {
+            if ((AccSaberLeaderboardViewController.Instance.DisplayType & LeaderboardDisplayType.Relations) > 0)
+                _ = AccSaberLeaderboardViewController.Instance.RequestRefresh();
+        }
+
+        public async Task<bool> HasAccSaberUpdated()
 		{
 			if (DateTime.UtcNow < LastLocalUpdateTime.AddMinutes(1))
 			{
@@ -342,6 +354,7 @@ namespace AccSaber.Managers
 		public void Initialize()
 		{
 			OnScoreUpdated += UpdatePlayerScore;
+            PlayerSocialLife.OnRelationChanged += UpdateLeaderboardOnRelationChanged;
 
             //These are all independent tasks, so start each of them on their own thread
 			Task.Run(UpdateAccSaberInfo);
@@ -350,6 +363,7 @@ namespace AccSaber.Managers
         public void Dispose()
         {
             OnScoreUpdated -= UpdatePlayerScore;
+            PlayerSocialLife.OnRelationChanged -= UpdateLeaderboardOnRelationChanged;
         }
 	}
 }
