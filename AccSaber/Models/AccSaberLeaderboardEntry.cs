@@ -137,7 +137,7 @@ namespace AccSaber.Models
             PlayerId.Equals(other.PlayerId) && AP == other.AP && TimeSet == other.TimeSet;
 
         public override bool Equals(object obj) => obj is AccSaberLeaderboardEntry entry && Equals(entry);
-        public override int GetHashCode() => PlayerId.GetHashCode() ^ TimeSet.GetHashCode();
+        public override int GetHashCode() => MiscUtils.GetHashCode(PlayerId, TimeSet);
     }
 
     internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data) : ICellDataSource, INotifyPropertyChanged

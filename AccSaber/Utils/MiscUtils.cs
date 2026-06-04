@@ -157,6 +157,16 @@ namespace AccSaber.Utils
             // Return as Base64 string for HTTP headers/tags
             return Convert.ToBase64String(byteArray);
         }
+        public static int GetHashCode<T1, T2>(T1 item1, T2 item2)
+        {
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 23 + item1?.GetHashCode() ?? 0;
+                hash = hash * 23 + item2?.GetHashCode() ?? 0;
+                return hash;
+            }
+        }
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)
         {
             foreach (KeyValuePair<K, V> kvp in vals)
