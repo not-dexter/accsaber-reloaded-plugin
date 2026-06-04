@@ -34,7 +34,7 @@ namespace AccSaber.UI.ViewControllers
         #region Static Variables & Properties
 
         public const float BIG_CELL_SIZE = 5.9f;
-        public const float BIG_FONT_SIZE = 3.3f;
+        public const float BIG_FONT_SIZE = 3.2f;
 
         public const float SMALL_CELL_SIZE = 5.3f;
         public const float SMALL_FONT_SIZE = 3f;

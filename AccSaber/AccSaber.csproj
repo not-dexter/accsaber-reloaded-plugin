@@ -188,37 +188,13 @@
     <None Include="AccSaber.csproj.user" Condition="Exists('AccSaber.csproj.user')" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\*&#xD;&#xA;                      " />
-    <EmbeddedResource Include="UI\Views\*.bsml" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="manifest.json" />
-    <None Remove="Resources\friend.png" />
-    <None Remove="UI\MenuButton\Campaigns\Views\AccSaberCampaignView.bsml" />
-    <None Remove="UI\MenuButton\Views\AccSaberMenuCell.bsml" />
-    <None Remove="UI\MenuButton\Views\AccSaberMenuView.bsml" />
-    <None Remove="UI\MenuButton\Views\AccSaberMilestoneCell.bsml" />
-    <None Remove="UI\MenuButton\Views\AccSaberMilestoneView.bsml" />
-    <None Remove="UI\MenuButton\Views\AccSaberMissionCell.bsml" />
-    <None Remove="UI\MenuButton\Views\AccSaberNewsModal.bsml" />
-    <None Remove="UI\MenuButton\Views\AccSaberNewsView.bsml" />
     <EmbeddedResource Include="manifest.json" />
-    <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\AccSaberCampaignMapCell.bsml" />
-    <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\AccSaberCampaignCell.bsml" />
-    <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\AccSaberCampaignView.bsml" />
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMenuCell.bsml" />
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMilestoneCell.bsml" />
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMissionCell.bsml" />
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMissionScreen.bsml">
-      <SubType>Code</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberNewsModal.bsml" />
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberNewsView.bsml">
-      <SubType>Code</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMilestoneView.bsml">
-      <SubType>Code</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="UI\MenuButton\Views\AccSaberMenuView.bsml" />
+    <EmbeddedResource Include="Resources\*.png" />
+    <EmbeddedResource Include="UI\Views\*.bsml" />
+    <EmbeddedResource Include="UI\MenuButton\Views\*.bsml" />
+    <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\*.bsml" />
+  </ItemGroup>
+  <ItemGroup Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
+    <Compile Remove="Utils\OldVersion\*.cs" />
   </ItemGroup>
 </Project>

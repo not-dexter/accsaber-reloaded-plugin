@@ -6,6 +6,10 @@ using AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers;
 using BeatSaberMarkupLanguage;
 using Zenject;
 
+#if !NEW_VERSION
+using AccSaber.Utils.OldVersion;
+#endif
+
 namespace AccsaberLeaderboard.UI.BSML_Addons
 {
     internal class AddonAdder : IInitializable
@@ -30,6 +34,10 @@ namespace AccsaberLeaderboard.UI.BSML_Addons
             instance.RegisterTypeHandler(new CustomBackgroundHandler());
             instance.RegisterTypeHandler(new MyCustomCellListTableDataHandler());
             instance.RegisterTypeHandler(new SkewAdder());
+
+#if !NEW_VERSION
+            instance.RegisterTypeHandler(new RectTransformHandler());
+#endif
 
             AccSaber.Plugin.Log.Info("Tags Loaded.");
         }
