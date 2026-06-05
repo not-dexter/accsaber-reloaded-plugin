@@ -1,22 +1,24 @@
-﻿using AccSaber.Consts;
+﻿using AccSaber.Configuration;
+using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
+using BeatSaberMarkupLanguage.Components;
 using HMUI;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
-using TMPro;
-using System.Collections;
 
 #if !NEW_VERSION
 #endif
@@ -38,6 +40,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private readonly AsyncLock _missionLock = new();
         private static readonly WaitForEndOfFrame LoopWaitInstruction = new();
 
+        [UIComponent("container")] 
+        private readonly Backgroundable _container = null!;
+
         [UIComponent("daily-list")]
         private readonly MyCustomCellListTableData _dailyList = null!;
 
@@ -57,7 +62,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
-        [Inject] private readonly LevelUtils _levelUtils = null!;
+        [Inject] public readonly LevelUtils _levelUtils = null!;
+        [Inject] public readonly PluginConfig PC = null!;
+        [Inject] private readonly AccSaberNotificationModal asnm = null!;
 
         [UIValue("is-loading")]
         private bool IsLoading
@@ -99,25 +106,32 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("on-cell-click")]
         private void OnCellClick(ICellDataSource data)
         {
-            if (data is not MissionCell cell)
-                return;
-
-            void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
-
-            switch (cell.Data.Type)
+            if (!PC.DisablePopups)
             {
-                case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
-                    _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, CloseMenu, cell.UpdateStatus);
-                    break;
-                case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY:
-                    _ = _levelUtils.LoadPlaylist(cell.Data.Category, CloseMenu, cell.UpdateStatus);
-                    break;
-                case MissionType.PB_ABOVE_THRESHOLD:
-                    _ = _levelUtils.LoadPlaylist(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, CloseMenu, cell.UpdateStatus);
-                    break;
-                case MissionType.XP_IN_WINDOW:
-                    _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
-                    break;
+                asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator);
+            }
+            else
+            {
+                if (data is not MissionCell cell)
+                    return;
+
+                void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
+
+                switch (cell.Data.Type)
+                {
+                    case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
+                        _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, CloseMenu, cell.UpdateStatus);
+                        break;
+                    case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY:
+                        _ = _levelUtils.LoadPlaylist(cell.Data.Category, CloseMenu, cell.UpdateStatus);
+                        break;
+                    case MissionType.PB_ABOVE_THRESHOLD:
+                        _ = _levelUtils.LoadPlaylist(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, CloseMenu, cell.UpdateStatus);
+                        break;
+                    case MissionType.XP_IN_WINDOW:
+                        _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
+                        break;
+                }
             }
         }
 

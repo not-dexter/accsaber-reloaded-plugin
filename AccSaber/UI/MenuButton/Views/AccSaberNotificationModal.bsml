@@ -1,0 +1,11 @@
+﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+    <modal id='modal' show-event='open-modal' hide-event='close-modal' clickerino-offerino-closerino='true' size-delta-x='45' size-delta-y='25' move-to-center='true'>
+		<vertical horizontal-fit='PreferredSize' pref-width='40'>
+			<text align='Center' text='~TargetPrompt' word-wrapping='true'/>
+			<horizontal>
+				<button text='Yes' on-click='ClickedYes'/>
+				<button text='No' on-click='ClickedNo'/>
+			</horizontal>
+		</vertical>
+    </modal>
+</bg>

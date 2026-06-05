@@ -83,6 +83,17 @@ namespace AccSaber.UI.ViewControllers
                 OnSettingUpdated!.Invoke();
             }
         }
+
+
+        [UIValue("DisablePopups")]
+        public bool DisablePopups
+        {
+            get => PC.DisablePopups;
+            set
+            {
+                PC.DisablePopups = value;
+            }
+        }
         public void ShowModal(Transform parentTransform)
         {
             Parse(parentTransform);
