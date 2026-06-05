@@ -94,12 +94,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (_data is not MissionCell cell)
                 return;
 
-            HideModal();
-
-
             void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
 
-            await Task.Delay(100);
+            _modalView.Hide(false);
 
             switch (cell.Data.Type)
             {
