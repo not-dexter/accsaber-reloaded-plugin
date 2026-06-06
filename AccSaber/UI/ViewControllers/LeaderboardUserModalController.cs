@@ -489,14 +489,13 @@ namespace AccSaber.UI.ViewControllers
 
 			_host!.StartCoroutine(WaitThenUpdate());
 
+            if (borderRoutine is not null)
+                _host!.StopCoroutine(borderRoutine);
+
+            borderRoutine = userInfo.Items!.Set(_host!, _playerImageBorder, _progressBarImage);
 
             if (_firstLoad)
 			{
-				if (borderRoutine is not null)
-					_host!.StopCoroutine(borderRoutine);
-
-                borderRoutine = userInfo.Items!.Set(_host!, _playerImageBorder, _progressBarImage);
-
 				if (userInfo.AvatarUrl is not null)
 					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
 

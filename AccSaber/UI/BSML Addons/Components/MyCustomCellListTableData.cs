@@ -1,11 +1,14 @@
-﻿using AccSaber.Utils;
+﻿using Accsaber.Utils;
+using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,14 +20,26 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
         private readonly List<float> cellSizes = [];
         private readonly List<MyCustomCell> dataSources = [];
 
+        private readonly object templateLocker = new();
+        private readonly AsyncLock pageLocker = new();
+        private readonly object awakeLocker = new();
+
+        private readonly ObjectCacher<int, CellPageSource> pageCacher = new();
+
         private MyCustomCell? previouslySelected = null;
         private List<ICellDataSource> data = [];
         private bool clickableCells = true;
+        private bool isLastPage = false;
         private int prefNumberOfCells = 10;
+        private int page = 0;
         private float mainCellSize = 8.5f;
         private float initialAnchorY = -1f;
 
+        private IEnumerator? updateRoutine = null;
+        private readonly object updateRoutineLock = new();
+
         public event Action<int> OnCellClick, OnCellHighlighted, OnCellUnhighlighted;
+        public Func<int, int, CellPageSource>? PageUpdater = null; // page number, page length
         public List<string> CellTemplates => cellTemplates;
         public List <float> CellSizes => cellSizes;
         public List<ICellDataSource> Data
@@ -47,12 +62,36 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             get => mainCellSize;
             set => mainCellSize = value;
         }
+        public int Page
+        {
+            get => page;
+            set
+            {
+                page = value;
+                UpdatePageData();
+            }
+        }
 
         public MyCustomCellListTableData()
         {
             OnCellClick += UpdateSelected;
             OnCellHighlighted += index => { dataSources[index].highlighted = true; dataSources[index].RefreshVisuals(); };
             OnCellUnhighlighted += index => { dataSources[index].highlighted = false; dataSources[index].RefreshVisuals(); };
+        }
+
+        public void Awake()
+        {
+            if (PageUpdater is not null && page == 0)
+                _ = Task.Run(UpdatePageData);
+        }
+        public void OnEnable()
+        {
+            lock (updateRoutineLock)
+                if (updateRoutine is not null)
+                {
+                    StartCoroutine(updateRoutine);
+                    updateRoutine = null;
+                }
         }
 
         public int NumberOfCells() => Math.Min(prefNumberOfCells, data.Count);
@@ -86,59 +125,62 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             return cell;
         }
         
-        private void ReloadTemplates()
+        public void ReloadTemplates()
         {
-            if (initialAnchorY < 0)
-                initialAnchorY = gameObject.GetComponent<RectTransform>().anchoredPosition.y;
-
-            cellTemplates.Clear();
-            cellSizes.Clear();
-
-            foreach (MyCustomCell cell in dataSources)
-                Destroy(cell.gameObject);
-
-            dataSources.Clear();
-
-            Dictionary<string, int> paths = [];
-            Assembly current = Assembly.GetExecutingAssembly();
-            int cellId = 0;
-            float cellHeight = 0f;
-
-            data = [.. data.Where(cell => cell is not null).Take(prefNumberOfCells)];
-
-            foreach (ICellDataSource cell in data)
+            lock (templateLocker)
             {
-                if (paths.TryGetValue(cell.TemplatePath, out int id))
-                    cell.TemplateId = id;
-                else
+                if (initialAnchorY < 0)
+                    initialAnchorY = gameObject.GetComponent<RectTransform>().anchoredPosition.y;
+
+                cellTemplates.Clear();
+                cellSizes.Clear();
+
+                foreach (MyCustomCell cell in dataSources)
+                    Destroy(cell.gameObject);
+
+                dataSources.Clear();
+
+                Dictionary<string, int> paths = [];
+                Assembly current = Assembly.GetExecutingAssembly();
+                int cellId = 0;
+                float cellHeight = 0f;
+
+                data = [.. data.Where(cell => cell is not null).Take(prefNumberOfCells)];
+
+                foreach (ICellDataSource cell in data)
                 {
-                    id = paths.Count;
-                    paths.Add(cell.TemplatePath, id);
-                    cellTemplates.Add(cell.TemplatePath.First() == '<' ? cell.TemplatePath : Utilities.GetResourceContent(current, cell.TemplatePath));
-                    cellSizes.Add(cell.CellSize);
-                    cell.TemplateId = id;
+                    if (paths.TryGetValue(cell.TemplatePath, out int id))
+                        cell.TemplateId = id;
+                    else
+                    {
+                        id = paths.Count;
+                        paths.Add(cell.TemplatePath, id);
+                        cellTemplates.Add(cell.TemplatePath.First() == '<' ? cell.TemplatePath : Utilities.GetResourceContent(current, cell.TemplatePath));
+                        cellSizes.Add(cell.CellSize);
+                        cell.TemplateId = id;
+                    }
+
+                    MyCustomCell customCell = CellForIdx(cellId++);
+                    customCell.transform.SetParent(transform, false);
+
+                    cellHeight += cellSizes[id];
+
+                    dataSources.Add(customCell);
                 }
 
-                MyCustomCell customCell = CellForIdx(cellId++);
-                customCell.transform.SetParent(transform, false);
+                LayoutElement le = gameObject.GetComponent<LayoutElement>();
+                le.preferredHeight = cellHeight;
+                le.minHeight = cellHeight;
 
-                cellHeight += cellSizes[id];
+                RectTransform rt = gameObject.GetComponent<RectTransform>();
+                Vector2 anchorPos = rt.anchoredPosition;
+                anchorPos.y = initialAnchorY;
+                if (data.Count < PrefNumberOfCells)
+                    anchorPos.y += mainCellSize / 2f * (PrefNumberOfCells - data.Count);
+                rt.anchoredPosition = anchorPos;
 
-                dataSources.Add(customCell);
+                Canvas.ForceUpdateCanvases();
             }
-
-            LayoutElement le = gameObject.GetComponent<LayoutElement>();
-            le.preferredHeight = cellHeight;
-            le.minHeight = cellHeight;
-            
-            RectTransform rt = gameObject.GetComponent<RectTransform>();
-            Vector2 anchorPos = rt.anchoredPosition;
-            anchorPos.y = initialAnchorY;
-            if (data.Count < PrefNumberOfCells)
-                anchorPos.y += mainCellSize / 2f * (PrefNumberOfCells - data.Count);
-            rt.anchoredPosition = anchorPos;
-
-            Canvas.ForceUpdateCanvases();
         }
         private void UpdateSelected(int index)
         {
@@ -149,7 +191,61 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
 
             previouslySelected.RefreshVisuals();
         }
+        public void UpdatePageData()
+        {
+            if (PageUpdater is null)
+                return;
 
+            pageCacher.TryGetCachedItem(page, out CellPageSource pageInfo);
+
+            if (pageInfo == default)
+            {
+                pageInfo = PageUpdater(page, prefNumberOfCells);
+                pageCacher.CacheItem(pageInfo, page);
+            }
+
+            if (pageInfo == default)
+                return;
+
+            isLastPage = pageInfo.IsLastPage;
+
+            Data.Clear();
+            Data.AddRange(pageInfo.Content);
+
+            IEnumerator Update()
+            {
+                yield return new WaitForEndOfFrame();
+
+                ReloadTemplates();
+            }
+
+            lock (updateRoutineLock)
+            {
+                if (isActiveAndEnabled)
+                    StartCoroutine(Update());
+                else
+                    updateRoutine = Update();
+            }
+        }
+
+        public async void PageUp()
+        {
+            AsyncLock.Releaser locker = await pageLocker.LockAsync();
+
+            if (Page > 0)
+                _ = Task.Run(() => { using (locker) --Page; });
+            else
+                locker.Dispose();
+        }
+        public async void PageDown()
+        {
+            AsyncLock.Releaser locker = await pageLocker.LockAsync();
+
+            if (!isLastPage)
+                _ = Task.Run(() => { using (locker) ++Page; });
+            else
+                locker.Dispose();
+        }
 
     }
 
@@ -223,4 +319,5 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
         public abstract float CellSize { get; }
         public int TemplateId { get; set; }
     }
+    public record struct CellPageSource(IEnumerable<ICellDataSource> Content, bool IsLastPage); 
 }

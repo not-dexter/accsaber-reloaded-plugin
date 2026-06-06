@@ -1,0 +1,40 @@
+<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+  <modal id='modal' show-event='openMainModal' hide-event='closeMainModal' clickerino-offerino-closerino='true' size-delta-x='120' size-delta-y='80' move-to-center='true'>
+    <horizontal pref-width='120' pref-height='80' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' child-expand-width='false' child-expand-height='false'>
+      <vertical pref-width='50' pref-height='70'>
+        <button text='Get Categorical Playlists' align='Center' on-click='onCategoricalClicked'/>
+        <button text='Get Missing Playlists' align='Center' on-click='onMissingClicked'/>
+        <vertical pad-left='10' pad-right='10' pref-width='40' pref-height='15' vertical-fit='PreferredSize'>
+          <text text='Go To Playlist' align='Center'/>
+          <checkbox-setting text='' hover-hint='When a playlist is downloaded, go to it in the menu automagically' apply-on-change='true' value='goToPlaylist'/>
+        </vertical>
+      </vertical>
+      <vertical pref-width='70' pref-height='80' pad='3'>
+        <my-custom-list id='batchList' clickable-cells='true' select-cell='batchSelected' visible-cells='4' pager='getBatchCells' pref-width='64' pref-height='40' active='~cellsNotLoading'/>
+        <loading preserve-aspect='true' active='~cellsLoading'/>
+        <horizontal>
+          <button text='Page Up' click-event='batchList#PageUp' align='Left'/>
+          <button text='Page Down' click-event='batchList#PageDown' align='Right'/>
+        </horizontal>
+      </vertical>
+    </horizontal>
+
+    <modal id='categoryModal' show-event='openCategoryModal' hide-event='openCategoryModal' clickerino-offerino-closerino='true' size-delta-x='40' size-delta-y='40' move-to-center='true'>
+      <vertical pref-width='40' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+        <horizontal bg='round-rect-panel'>
+          <text text='Downloads' font-size='7' align='Center'/>
+        </horizontal>
+        <horizontal>
+          <vertical>
+            <button id='overallButton' text='Overall' align='Center' on-click='overallClicked'/>
+            <button id='standardButton' text='Standard' align='Center' on-click='standardClicked'/>
+          </vertical>
+          <vertical>
+            <button id='trueButton' text='True' align='Center' on-click='trueClicked'/>
+            <button id='techButton' text='Tech' align='Center' on-click='techClicked'/>
+          </vertical>
+        </horizontal>
+      </vertical>
+    </modal>
+  </modal>
+</bg>

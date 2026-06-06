@@ -76,4 +76,8 @@
 	<clickable-image src='~githubImg' on-click='on-github-clicked' preserve-aspect='true' preferred-height='12'/>
 	<clickable-image src='~kofiImg' on-click='on-kofi-clicked' preserve-aspect='true' preferred-height='11'/>
   </vertical>
+
+  <vertical bg='round-rect-panel' anchor-pos-x='70' anchor-pos-y='35' pref-width='30' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+    <button text='View Playlists' align='Center' on-click='show-playlist-modal'/>
+  </vertical>
 </bg>

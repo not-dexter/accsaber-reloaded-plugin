@@ -13,7 +13,7 @@ namespace AccSaber.Utils
         public const string PlaylistAuthor = "Accsaber Reloaded";
 
         // Reflection taken from: https://github.com/BeatLeader/beatleader-mod/blob/master/Source/7_Utils/Interop/Interops/PlaylistsLibInterop.cs#L10
-        public static void LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistMapInfo> maps, Action<string?>? statusUpdater = null)
+        public static void LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistMapInfo> maps, string? syncUrl, Action<string?>? statusUpdater = null, bool endEvent = true)
         {
             try
             {
@@ -50,6 +50,9 @@ namespace AccSaber.Utils
                         addDifficulty.Invoke(playlistSong, [characteristic, diff.ToString()]);
                 }
 
+                if (syncUrl is not null)
+                    playlistType.GetMethod("SetCustomData", BindingFlags.Public | BindingFlags.Instance).Invoke(playlist, ["syncURL", syncUrl]);
+
                 statusUpdater?.Invoke("Refreshing...");
 
                 playlistLibManagerType.GetMethod("StorePlaylist", BindingFlags.Public | BindingFlags.Instance, null, [playlistType, typeof(bool)], null).Invoke(managerInstance, [playlist, true]);
@@ -62,7 +65,8 @@ namespace AccSaber.Utils
             }
             finally
             {
-                statusUpdater?.Invoke(null);
+                if (endEvent)
+                    statusUpdater?.Invoke(null);
             }
         }
         public static void RefreshPlaylist(string filename)

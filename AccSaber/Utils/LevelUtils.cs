@@ -62,23 +62,19 @@ namespace AccSaber.Utils
                 Monitor.PulseAll(LoadWaiterLock);
         }
 
-        public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, Action? closeMenu, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, string? syncUrl, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
-            if (!PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
-            {
-                Plugin.Log.Warn("PlaylistManager is not enabled, cannot load playlists!");
-                return;
-            }
-
             StatusTextChanged += statEvent;
 
             if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
-                PlaylistUtils.LoadPlaylist(filename, playlistName, maps, StatusTextChanged);
-            await GoToPlaylist(filename, closeMenu);
+                PlaylistUtils.LoadPlaylist(filename, playlistName, maps, syncUrl, StatusTextChanged, endEvent);
 
+            if (closeMenu is not null)
+                await GoToPlaylist(filename, closeMenu);
+            
             StatusTextChanged -= statEvent;
         }
-        public async Task LoadPlaylist(APCategory type, string playerId, float apThreshold, Action? closeMenu, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(APCategory type, string playerId, float apThreshold, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             try
             {
@@ -99,15 +95,13 @@ namespace AccSaber.Utils
                 int scoreSize = scores.Count();
                 string song = scoreSize == 1 ? "map" : "maps";
 
-                Plugin.Log.Info($"Found {scoreSize} {song}.");
-
                 StatusTextChanged?.Invoke($"Found {scoreSize} {song}.");
 
                 IEnumerable<string> ids = scores.Select(entry => entry.DifficultyId);
 
                 List<PlaylistUtils.PlaylistMapInfo> maps = PlaylistUtils.GetPlaylistData(ids);
 
-                await LoadPlaylist(filename, playlistName, maps, closeMenu);
+                await LoadPlaylist(filename, playlistName, maps, null, closeMenu);
             }
             catch (Exception e)
             {
@@ -115,12 +109,57 @@ namespace AccSaber.Utils
             }
             finally
             {
-                StatusTextChanged?.Invoke(null);
+                if (endEvent)
+                    StatusTextChanged?.Invoke(null);
 
                 StatusTextChanged -= statEvent;
             }
         }
-        public async Task LoadPlaylist(APCategory type, Action? closeMenu, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(APCategory type, string userId, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        {
+            try
+            {
+                StatusTextChanged += statEvent;
+
+                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!;
+
+                string filename = $"accsaber-reloaded-missing-{userId}-{categoryName.Replace('_', '-')}.bplist";
+
+                if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                {
+
+                    StatusTextChanged?.Invoke("Downloading...");
+
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_MISSING, userId, categoryName), AccsaberAPI.throttler);
+
+                    filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
+
+                    StatusTextChanged?.Invoke("Saving...");
+
+                    File.WriteAllBytes(Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, filename), data);
+
+                    PlaylistUtils.RefreshPlaylist(filename);
+                }
+
+                if (closeMenu is not null)
+                    await GoToPlaylist(filename[..filename.LastIndexOf('.')], closeMenu);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an error loading the missing playlist for userid {userId}!\n{e}");
+            }
+            finally
+            {
+                if (closeMenu is null)
+                {
+                    if (endEvent)
+                        StatusTextChanged?.Invoke(null);
+
+                    StatusTextChanged -= statEvent;
+                }
+            }
+        }
+        public async Task LoadPlaylist(APCategory type, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             try
             {
@@ -147,7 +186,8 @@ namespace AccSaber.Utils
                     PlaylistUtils.RefreshPlaylist(filename);
                 }
 
-                await GoToPlaylist(filename[..filename.LastIndexOf('.')], closeMenu);
+                if (closeMenu is not null)
+                    await GoToPlaylist(filename[..filename.LastIndexOf('.')], closeMenu);
             } 
             catch (Exception e)
             {
@@ -155,12 +195,16 @@ namespace AccSaber.Utils
             } 
             finally
             {
-                StatusTextChanged?.Invoke(null);
+                if (closeMenu is null)
+                {
+                    if (endEvent)
+                        StatusTextChanged?.Invoke(null);
 
-                StatusTextChanged -= statEvent;
+                    StatusTextChanged -= statEvent;
+                }
             }
         }
-        public async Task LoadPlaylist(string sniperId, string targetId, APCategory category, Action? closeMenu, Action<string?>? statEvent = null)
+        public async Task LoadPlaylist(string sniperId, string targetId, APCategory category, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             try
             {
@@ -181,7 +225,9 @@ namespace AccSaber.Utils
                     if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
                         PlaylistUtils.RefreshPlaylist(filename);
                 }
-                await GoToPlaylist(filename[..filename.LastIndexOf('.')], closeMenu);
+
+                if (closeMenu is not null)
+                    await GoToPlaylist(filename[..filename.LastIndexOf('.')], closeMenu);
             }
             catch (Exception e)
             {
@@ -189,12 +235,17 @@ namespace AccSaber.Utils
             }
             finally
             {
-                StatusTextChanged?.Invoke(null);
-                StatusTextChanged -= statEvent;
+                if (closeMenu is null)
+                {
+                    if (endEvent)
+                        StatusTextChanged?.Invoke(null);
+
+                    StatusTextChanged -= statEvent;
+                }
             }
         }
 
-        public async Task GoToPlaylist(string filename, Action? closeMenu, Action<string?>? statEvent = null)
+        public async Task GoToPlaylist(string filename, Action closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             StatusTextChanged += statEvent;
 
@@ -209,7 +260,7 @@ namespace AccSaber.Utils
 #if NEW_VERSION
                     BeatmapLevelPack? levelPack = null;
 #else
-                IBeatmapLevelPack? levelPack = null;
+                    IBeatmapLevelPack? levelPack = null;
 #endif
 
                     if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
@@ -219,12 +270,12 @@ namespace AccSaber.Utils
                     if (levelPack is null)
                         yield break;
 
-                    closeMenu?.Invoke();
+                    closeMenu();
 
 #if NEW_VERSION
                     LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, default, null);
 #else
-                LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, new EmptyDifficultyBeatmap());
+                    LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.CustomSongs, levelPack, new EmptyDifficultyBeatmap());
 #endif
 
                     _soloCoordinator.Setup(flow);
@@ -237,7 +288,8 @@ namespace AccSaber.Utils
                 }
                 finally
                 {
-                    StatusTextChanged?.Invoke(null);
+                    if (endEvent)
+                        StatusTextChanged?.Invoke(null);
 
                     StatusTextChanged -= statEvent;
                 }
@@ -247,7 +299,7 @@ namespace AccSaber.Utils
         }
 
         // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
-        public async Task GoToSong(string diffId, string? targetPlayerId, Action? closeMenu, Action<string?>? statEvent = null)
+        public async Task GoToSong(string diffId, string? targetPlayerId, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             AsyncLock.Releaser? locker = await OpenMapLock.TryLockAsync();
 
@@ -279,7 +331,8 @@ namespace AccSaber.Utils
                 if (hash is null || cachedDiff is null)
                 {
                     Plugin.Log.Critical("Somehow you have a mission for a level that isn't cached!! Please report this on Discord.");
-                    StatusTextChanged?.Invoke(null);
+                    if (endEvent)
+                        StatusTextChanged?.Invoke(null);
                     StatusTextChanged -= statEvent;
                     return;
                 }
@@ -289,8 +342,8 @@ namespace AccSaber.Utils
 #else
                     IBeatmapLevel? level = (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + hash.ToUpper(), CancellationToken.None)).beatmapLevel ?? await DownloadSong(map);
 #endif
-
-                StatusTextChanged?.Invoke(null);
+                if (endEvent)
+                    StatusTextChanged?.Invoke(null);
 
                 if (level is null)
                 {

@@ -58,6 +58,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private readonly AsyncLock refreshLock = new();
 
 		[Inject] private readonly AccSaberCampaignFlow campaignFlow = null!;
+		[Inject] private readonly AccSaberPlaylistModalController playlistModal = null!;
 		[Inject] private readonly LevelUtils levelUtils = null!;
 		[Inject] private readonly AccSaberMainFlowCoordinator parentCoordinator = null!;
         [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
@@ -294,6 +295,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_playerImageBackground.material = ResourcePaths.BORDER_MATERIAL;
 				_playerImageBorder.material = ResourcePaths.BORDER_MATERIAL;
 
+				VersionUtils.Parse(ResourcePaths.ACC_SABER_PLAYLIST_MODAL, gameObject, playlistModal);
+
                 _parsed = true;
 			}
 			IsLoading = true;
@@ -323,6 +326,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private void ShowCampaign()
         {
             campaignFlow.PresentFlowCoordinator();
+        }
+
+        [UIAction("show-playlist-modal")]
+        private void ShowPlaylistModal()
+        {
+			playlistModal.Show();
         }
 
 		[UIAction("on-cell-clicked")]
@@ -600,15 +609,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         public void Initialize()
         {
             AccSaberStore.OnPlayerScoreUpdated += OnAccSaberPlayerUpdated;
-            parentCoordinator.HubActivated += OnOpen;
-            parentCoordinator.HubDeactivated += OnClose;
+            parentCoordinator.OnHubActivated += OnOpen;
+            parentCoordinator.OnHubDeactivated += OnClose;
         }
 
         public void Dispose()
         {
             AccSaberStore.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
-            parentCoordinator.HubActivated -= OnOpen;
-            parentCoordinator.HubDeactivated -= OnClose;
+            parentCoordinator.OnHubActivated -= OnOpen;
+            parentCoordinator.OnHubDeactivated -= OnClose;
         }
 
         internal class ScoreCell(AccSaberPlayerScore data) : ICellDataSource, INotifyPropertyChanged

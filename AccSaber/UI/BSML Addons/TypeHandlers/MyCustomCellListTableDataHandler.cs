@@ -1,4 +1,5 @@
-﻿using AccsaberLeaderboard.UI.BSML_Addons.Components;
+﻿using AccSaber.Utils;
+using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.TypeHandlers;
@@ -6,6 +7,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
@@ -15,27 +17,23 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
     {
         public override Dictionary<string, string[]> Props => new()
         {
+            { "id", [ "id" ] },
             { "selectCell", [ "select-cell" ] },
             { "highlightCell", [ "highlight-cell" ] },
             { "data", [ "contents", "data" ] },
             { "cellClickable", [ "clickable-cells" ] },
             { "cellNumber", [ "pref-number-cells", "cells", "number-of-cells", "visible-cells" ] },
-            { "cellSize", [ "main-cell-size", "cell-size" ] }
+            { "cellSize", [ "main-cell-size", "cell-size" ] },
+            { "pager", [ "pager", "page-data", "page-data-provider" ]  },
+            { "page", [ "page" ] }
         };
 
         public override void HandleType(BSMLParser.ComponentTypeWithData componentType, BSMLParserParams parserParams)
         {
-#if NEW_VERSION
-            ref Component component = ref componentType.Component;
-            ref Dictionary<string, string> data = ref componentType.Data;
-            Dictionary<string, BSMLValue> values = parserParams.Values;
-            Dictionary<string, BSMLAction> actions = parserParams.Actions;
-#else
-            ref Component component = ref componentType.component;
-            ref Dictionary<string, string> data = ref componentType.data;
-            Dictionary<string, BSMLValue> values = parserParams.values;
-            Dictionary<string, BSMLAction> actions = parserParams.actions;
-#endif
+            Component component = componentType.Component();
+            Dictionary<string, string> data = componentType.Data();
+            Dictionary<string, BSMLValue> values = parserParams.Values();
+            Dictionary<string, BSMLAction> actions = parserParams.Actions();
 
             MyCustomCellListTableData componentData = (component as MyCustomCellListTableData)!;
 
@@ -105,6 +103,40 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
                     throw new Exception($"the cell size \"{cellSize}\" cannot be parsed into a float.");
 
                 componentData.MainCellSize = value;
+            }
+
+            if (data.TryGetValue("pager", out string pager))
+            {
+                componentData.PageUpdater = (page, size) =>
+                {
+                    if (!actions.TryGetValue(pager, out BSMLAction action))
+                    {
+                        throw new Exception("pager action '" + pager + "' not found");
+                    }
+
+                    object outp = action.Invoke(page, size);
+
+                    if (outp is Task<CellPageSource> task)
+                        return task.GetAwaiter().GetResult();
+                    else if (outp is CellPageSource source)
+                        return source;
+                    else
+                        throw new Exception("The output type must be CellPageSource!");
+                };
+
+                if (data.TryGetValue("id", out string id))
+                {
+                    parserParams.AddEvent(id + "#PageUp", componentData.PageUp);
+                    parserParams.AddEvent(id + "#PageDown", componentData.PageDown);
+                }
+            }
+
+            if (data.TryGetValue("page", out string page))
+            {
+                if (!int.TryParse(page, out int value))
+                    throw new Exception($"the cell number \"{page}\" cannot be parsed into an int.");
+
+                Task.Run(() => componentData.Page = value);
             }
         }
 

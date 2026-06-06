@@ -19,6 +19,10 @@ namespace AccSaber.Utils
     {
         Queue, Qualified, Ranked
     }
+    public enum BatchStatus
+    {
+        DRAFT, RELEASE_READY, RELEASED
+    }
 
     // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/mission/MissionPool.java
     // (not exactly the same since "event" cannot be made an enum)

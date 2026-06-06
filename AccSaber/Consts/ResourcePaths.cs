@@ -51,6 +51,8 @@ namespace AccSaber.Consts
         public const string MENU_BSML_PATH = "AccSaber.UI.MenuButton.Views";
         public const string ACC_SABER_MENU_VIEW = MENU_BSML_PATH + ".AccSaberMenuView.bsml";
         public const string ACC_SABER_MENU_CELL = MENU_BSML_PATH + ".AccSaberMenuCell.bsml";
+        public const string ACC_SABER_PLAYLIST_MODAL = MENU_BSML_PATH + ".AccSaberPlaylistModal.bsml";
+        public const string ACC_SABER_PLAYLIST_CELL = MENU_BSML_PATH + ".AccSaberPlaylistCell.bsml";
         public const string ACC_SABER_MISSION_SCREEN = MENU_BSML_PATH + ".AccSaberMissionScreen.bsml";
         public const string ACC_SABER_MISSION_CELL = MENU_BSML_PATH + ".AccSaberMissionCell.bsml";
         public const string ACC_SABER_MILESTONE_VIEW = MENU_BSML_PATH + ".AccSaberMilestoneView.bsml";

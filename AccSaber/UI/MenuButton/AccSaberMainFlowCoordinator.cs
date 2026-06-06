@@ -20,8 +20,8 @@ namespace AccSaber.UI.MenuButton
         private AccSaberMenuViewController _accSaberMenuViewController = null!;
         private AccSaberMilestoneViewController _accSaberMilestoneViewController = null!;
 
-        public event Action? HubActivated;
-        public event Action? HubDeactivated;
+        public event Action? OnHubActivated;
+        public event Action? OnHubDeactivated;
 
         // Called immediately when the flow coordinator is activated
 
@@ -43,7 +43,7 @@ namespace AccSaber.UI.MenuButton
                 SetTitle("Accsaber Reloaded");
                 showBackButton = true;
                 ProvideInitialViewControllers(_accSaberMenuViewController, _accSaberRelationsViewController, _accSaberMilestoneViewController);
-                HubDeactivated += OnDismiss;
+                OnHubDeactivated += OnDismiss;
             }
         }
         internal void PresentFlowCoordinator()
@@ -56,7 +56,7 @@ namespace AccSaber.UI.MenuButton
 
                 _parentFlowCoordinator.PresentFlowCoordinator(this, () =>
                 {
-                    HubActivated?.Invoke();
+                    OnHubActivated?.Invoke();
                     _accSaberMilestoneViewController.UpdateTabs();
                 });
             }
@@ -81,18 +81,18 @@ namespace AccSaber.UI.MenuButton
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
-            HubDeactivated?.Invoke();
+            OnHubDeactivated?.Invoke();
             _parentFlowCoordinator?.DismissFlowCoordinator(this);
         }
 
         internal void Close(bool instant = false)
         {
-            HubDeactivated?.Invoke();
+            OnHubDeactivated?.Invoke();
             _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: instant);
         }
         internal void CloseToMainMenu()
         {
-            HubDeactivated?.Invoke();
+            OnHubDeactivated?.Invoke();
 
             _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: true);
 

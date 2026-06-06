@@ -32,11 +32,16 @@ namespace AccSaber.Utils
         public static GameObject Handle(this FloatingScreen screen) => screen.Handle;
         public static Component Component(this BSMLParser.ComponentTypeWithData ctwd) => ctwd.Component;
         public static Dictionary<string, string> Data(this BSMLParser.ComponentTypeWithData ctwd) => ctwd.Data;
+        public static Dictionary<string, BSMLValue> Values(this BSMLParserParams _params) => _params.Values;
+        public static Dictionary<string, BSMLAction> Actions(this BSMLParserParams _params) => _params.Actions;
+        public static bool IsShown(this ModalView view) => view.isShown;
         public static BSMLParser BSMLParser_Instance => BSMLParser.Instance;
         public static MenuButtons MenuButtons_Instance => MenuButtons.Instance;
 #else
         #region Lower Version Only
+#pragma warning disable IDE0060
         public static async Task SetImageAsync(this Image image, string location, bool animated = true) => image.SetImage(location);
+#pragma warning restore IDE0060
         #endregion
         public static Task<Sprite> LoadSpriteAsync(string path) =>
             Task.Run(() => Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), path)));
@@ -47,6 +52,9 @@ namespace AccSaber.Utils
         public static ref GameObject Handle(this FloatingScreen screen) => ref screen.handle;
         public static Component Component(this BSMLParser.ComponentTypeWithData ctwd) => ctwd.component;
         public static Dictionary<string, string> Data(this BSMLParser.ComponentTypeWithData ctwd) => ctwd.data;
+        public static Dictionary<string, BSMLValue> Values(this BSMLParserParams _params) => _params.values;
+        public static Dictionary<string, BSMLAction> Actions(this BSMLParserParams _params) => _params.actions;
+        public static bool IsShown(this ModalView view) => (bool)typeof(ModalView).GetField("_isShown", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).GetValue(view);
         public static BSMLParser BSMLParser_Instance => BSMLParser.instance;
         public static MenuButtons MenuButtons_Instance => MenuButtons.instance;
 #endif

@@ -1,0 +1,13 @@
+<vertical pref-width='64' pref-height='12' bg='round-rect-panel'>
+  <horizontal active='~notShowStatus'>
+    <text text='~title' align='Left'/>
+    <text text='~status' align='Right'/>
+  </horizontal>
+  <horizontal active='~notShowStatus'>
+    <text text='~description' font-color='~grey' align='Left'/>
+    <text text='~releaseTime' font-color='~darkGrey' align='Right'/>
+  </horizontal>
+  <horizontal active='~showStatus'>
+    <text id='statusText' text='' align='Center' font-size='5'/>
+  </horizontal>
+</vertical>

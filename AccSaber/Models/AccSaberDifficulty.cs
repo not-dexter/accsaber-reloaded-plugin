@@ -32,7 +32,7 @@ namespace AccSaber.Models
         public string CriteriaStatus { get; set; } = null!;
 
         [JsonIgnore]
-        public MapStatus? Status => EnumUtils.RankedStatusToEnum(RankedStatus);
+        public MapStatus? Status { get; set; } = null;
 
         [JsonIgnore]
         public new AccSaberRankedMap? ParentInfo { get; set; }
@@ -41,6 +41,7 @@ namespace AccSaber.Models
         private void OnDeserialized(StreamingContext context)
         {
             Category ??= EnumUtils.ReloadedCategoryToEnum(CategoryId);
+            Status = EnumUtils.RankedStatusToEnum(RankedStatus);
         }
     }
 
