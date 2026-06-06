@@ -1,4 +1,4 @@
-﻿<bg>
+﻿<bg id='container'>
   <horizontal pad='2' spacing='1.5' child-expand-width='false' active='~is-not-loading'>
     <vertical pref-width='65' child-expand-height='false' bg='panel-top' skew='0'>
       <horizontal child-expand-width='false' pref-height='10'>
