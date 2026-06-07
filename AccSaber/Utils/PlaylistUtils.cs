@@ -85,9 +85,11 @@ namespace AccSaber.Utils
             try
             {
                 Type eventType = playlistManager.GetType("PlaylistManager.Utilities.Events");
-#pragma warning disable CS8974
-                eventType.GetRuntimeEvent("playlistSelected").AddMethod.Invoke(null, [OnPlaylistSelected]);
-#pragma warning restore CS8974
+                EventInfo eventInfo = eventType.GetEvent("playlistSelected");
+                MethodInfo methodInfo = typeof(PlaylistUtils).GetMethod("OnPlaylistSelected", BindingFlags.NonPublic | BindingFlags.Instance);
+
+                Delegate handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, this, methodInfo);
+                eventInfo.AddEventHandler(null, handler);
             }
             catch (Exception e)
             {
@@ -165,7 +167,6 @@ namespace AccSaber.Utils
                 playlistType.GetMethod("RaisePlaylistChanged", BindingFlags.Public | BindingFlags.Instance).Invoke(currentPlaylist, null);
                 playlistType.GetMethod("RaiseCoverImageChanged", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(currentPlaylist, null);
                 playlistLibManagerType.GetMethod("StorePlaylist", BindingFlags.Public | BindingFlags.Instance, null, [playlistType, typeof(bool)], null).Invoke(currentManagerInstance, [currentPlaylist, true]);
-                playlistManager!.GetType("PlaylistManager.Utilities.Events").GetMethod("RaisePlaylistSelected", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, [currentPlaylist, currentManagerInstance]);
 
                 Type pluginConfig = playlistManager!.GetType("PlaylistManager.Configuration.PluginConfig");
                 object pcInstance = pluginConfig.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetValue(null);
