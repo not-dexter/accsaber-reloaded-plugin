@@ -22,6 +22,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     {
         [Inject] private readonly AccSaberMainFlowCoordinator mainFlowCoordinator = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
+        [Inject] private readonly PlaylistUtils playlistUtils = null!;
 
         private ButtonType buttonType;
         private bool _cellsLoading, parsed = false;
@@ -106,7 +107,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             string filename = $"accsaber-reloaded-{FilenameEscapeRegex.Replace(cell.Data.Name, "-")}";
             string playlistName = $"Accsaber {cell.Data.Name}";
 
-            FinishLoadPlaylist(levelUtils.LoadPlaylist(filename, playlistName, PlaylistUtils.GetPlaylistData(cell.Data.Difficulties.Select(diff => diff.DifficultyId)), null, CloseMenu, cell.UpdateStatus), cell.UpdateStatus);
+            FinishLoadPlaylist(levelUtils.LoadPlaylist(filename, playlistName, playlistUtils.GetPlaylistData(cell.Data.Difficulties.Select(diff => diff.DifficultyId)), null, CloseMenu, cell.UpdateStatus), cell.UpdateStatus);
         }
 
         [UIAction("onCategoricalClicked")]

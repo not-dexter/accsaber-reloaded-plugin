@@ -34,7 +34,6 @@ namespace AccSaber.Utils
         public static Dictionary<string, string> Data(this BSMLParser.ComponentTypeWithData ctwd) => ctwd.Data;
         public static Dictionary<string, BSMLValue> Values(this BSMLParserParams _params) => _params.Values;
         public static Dictionary<string, BSMLAction> Actions(this BSMLParserParams _params) => _params.Actions;
-        public static bool IsShown(this ModalView view) => view.isShown;
         public static BSMLParser BSMLParser_Instance => BSMLParser.Instance;
         public static MenuButtons MenuButtons_Instance => MenuButtons.Instance;
 #else
@@ -54,9 +53,13 @@ namespace AccSaber.Utils
         public static Dictionary<string, string> Data(this BSMLParser.ComponentTypeWithData ctwd) => ctwd.data;
         public static Dictionary<string, BSMLValue> Values(this BSMLParserParams _params) => _params.values;
         public static Dictionary<string, BSMLAction> Actions(this BSMLParserParams _params) => _params.actions;
-        public static bool IsShown(this ModalView view) => (bool)typeof(ModalView).GetField("_isShown", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).GetValue(view);
         public static BSMLParser BSMLParser_Instance => BSMLParser.instance;
         public static MenuButtons MenuButtons_Instance => MenuButtons.instance;
+#endif
+#if V40
+        public static bool IsShown(this ModalView view) => view.isShown;
+#else
+        public static bool IsShown(this ModalView view) => (bool)typeof(ModalView).GetField("_isShown", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).GetValue(view);
 #endif
 
         public static BSMLParserParams Parse(string resourcePath, Component parent, object controller) => Parse(resourcePath, parent.gameObject, controller);

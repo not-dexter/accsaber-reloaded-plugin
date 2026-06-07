@@ -4,7 +4,8 @@ using Zenject;
 
 namespace AccSaber.Installers
 {
-    internal class AccSaberAppInstaller : Installer
+#pragma warning disable IDE0290
+    internal sealed class AccSaberAppInstaller : Installer
     {
         public override void InstallBindings()
         {

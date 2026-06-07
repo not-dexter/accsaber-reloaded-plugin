@@ -1,31 +1,208 @@
 ﻿using AccSaber.Models;
 using AccSaber.Models.CacheModels;
-using IPA.Loader;
+using HarmonyLib;
+using IPA.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Zenject;
 
 namespace AccSaber.Utils
 {
-    internal static class PlaylistUtils
+    internal class PlaylistUtils : IInitializable
     {
         public const string PlaylistAuthor = "Accsaber Reloaded";
+        public const string CustomDataKey = "customSync";
+
+        [Inject] private readonly LevelPackDetailViewController lpdvc = null!;
+        [Inject] private readonly LevelUtils levelUtils = null!;
+        [BeatSaberMarkupLanguage.Attributes.UIComponent("customSyncButton")] private readonly UnityEngine.UI.Button customSyncButton = null!;
+
+        private bool _init = false;
+
+        private Assembly? playlistManager = null, playlistLib = null;
+        private static object? pdvbcInstance = null;
+
+        private object? currentManagerInstance;
+        private object? currentPlaylist;
+        private string? currentCustomData;
+
+        public void Initialize()
+        {
+            if (_init)
+                return;
+
+            _init = true;
+
+            bool playlistManagerExists = false;
+            bool playlistLibExists = false;
+
+            foreach (Assembly assemb in AppDomain.CurrentDomain.GetAssemblies()) 
+            {
+                string assembName = assemb.GetName().Name;
+
+                if (!playlistManagerExists && assembName.Equals("PlaylistManager"))
+                {
+                    playlistManagerExists = true;
+                    playlistManager = assemb;
+                }
+                else if (!playlistLibExists && assembName.Equals("BeatSaberPlaylistsLib"))
+                {
+                    playlistLibExists = true;
+                    playlistLib = assemb;
+                }
+                else continue;
+
+                if (playlistManagerExists && playlistLibExists)
+                    break;
+            }
+
+            if (playlistManager is null)
+                return;
+
+            try
+            {
+                const string bsmlContent = "<icon-button id='customSyncButton' icon='PlaylistManager.Icons.Sync.png' anchor-pos-x='51' anchor-pos-y='-3' hover-hint='Sync Playlist' on-click='syncPlaylist' scale='0.6' active='false'/>";
+                VersionUtils.BSMLParser_Instance.Parse(bsmlContent, lpdvc.GetField<UnityEngine.GameObject, LevelPackDetailViewController>("_detailWrapper"), this);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an exception parsing the custom sync button!\n" + e);
+            }
+
+            try
+            {
+                Type pdvbc = playlistManager.GetType("PlaylistManager.UI.PlaylistDetailViewButtonsController");
+                MethodInfo meth = AccessTools.Method(pdvbc, "Initialize");
+                Plugin.harmony.Patch(meth, new(typeof(PlaylistUtils).GetMethod("SetPdvbc", BindingFlags.NonPublic | BindingFlags.Static)));
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error getting PlaylistManager class instances\n" + e);
+            }
+
+            try
+            {
+                Type eventType = playlistManager.GetType("PlaylistManager.Utilities.Events");
+#pragma warning disable CS8974
+                eventType.GetRuntimeEvent("playlistSelected").AddMethod.Invoke(null, [OnPlaylistSelected]);
+#pragma warning restore CS8974
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an issue with binding OnPlaylistSelected!\n" + e);
+            }
+        }
+        private static void SetPdvbc(object __instance) => pdvbcInstance = __instance;
+        private void OnPlaylistSelected(object playlist, object playlistManager)
+        {
+            //Plugin.Log.Info("This worked: " + playlist.ToString());
+            currentPlaylist = playlist;
+            currentManagerInstance = playlistManager;
+            try
+            {
+                Type playlistType = playlistLib!.GetType("BeatSaberPlaylistsLib.Types.IPlaylist");
+                object?[] customDataParams = [CustomDataKey, null];
+
+                if ((bool)playlistType.GetMethod("TryGetCustomData").Invoke(playlist, customDataParams) && customDataParams[1] is string str)
+                    currentCustomData = str;
+                else
+                    currentCustomData = null;
+
+                customSyncButton.gameObject.SetActive(currentCustomData is not null);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error trying to handle the playlist event.\n" + e);
+            }
+        }
+
+        [BeatSaberMarkupLanguage.Attributes.UIAction("syncPlaylist")]
+        private async void SyncPlaylist()
+        {
+            if (currentCustomData is null)
+                throw new Exception("This button shouldn't be able to be pressed if there is not custom data.");
+
+            customSyncButton.interactable = false;
+
+            try
+            {
+                string[] args = currentCustomData.Split(',');
+                string comp = args[0];
+                float threshold = float.Parse(args[1]);
+                string playerId = args[2];
+                APCategory category = (APCategory)Enum.Parse(typeof(APCategory), args[3]);
+                string type = args[4];
+
+                IEnumerable<PlaylistMapInfo>? maps = null;
+                switch (type)
+                {
+                    case "ap":
+                        maps = await levelUtils.GetMapsAp(category, playerId, threshold, comp);
+                        break;
+                }
+
+                if (maps is null)
+                    return;
+
+                Type playlistLibManagerType = playlistLib!.GetType("BeatSaberPlaylistsLib.PlaylistManager");
+                Type playlistType = playlistLib.GetType("BeatSaberPlaylistsLib.Types.Playlist");
+                Type playlistSongType = playlistLib.GetType("BeatSaberPlaylistsLib.Types.PlaylistSong");
+
+                playlistType.GetMethod("Clear").Invoke(currentPlaylist, null);
+
+                MethodInfo addMap = playlistType.GetMethod("Add", BindingFlags.Public | BindingFlags.Instance, null, [typeof(string), typeof(string), typeof(string), typeof(string)], null);
+                MethodInfo addDifficulty = playlistSongType.GetMethod("AddDifficulty", BindingFlags.Public | BindingFlags.Instance, null, [typeof(string), typeof(string)], null);
+
+                foreach (var (hash, diffInfo) in maps)
+                {
+                    object playlistSong = addMap.Invoke(currentPlaylist, [hash, null, null, null]);
+                    foreach (var (characteristic, diff) in diffInfo)
+                        addDifficulty.Invoke(playlistSong, [characteristic, diff.ToString()]);
+                }
+
+                playlistType.GetMethod("RaisePlaylistChanged", BindingFlags.Public | BindingFlags.Instance).Invoke(currentPlaylist, null);
+                playlistType.GetMethod("RaiseCoverImageChanged", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(currentPlaylist, null);
+                playlistLibManagerType.GetMethod("StorePlaylist", BindingFlags.Public | BindingFlags.Instance, null, [playlistType, typeof(bool)], null).Invoke(currentManagerInstance, [currentPlaylist, true]);
+                playlistManager!.GetType("PlaylistManager.Utilities.Events").GetMethod("RaisePlaylistSelected", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, [currentPlaylist, currentManagerInstance]);
+
+                Type pluginConfig = playlistManager!.GetType("PlaylistManager.Configuration.PluginConfig");
+                object pcInstance = pluginConfig.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetValue(null);
+
+                if (pdvbcInstance is null)
+                    return;
+
+                Type pdvbc = playlistManager.GetType("PlaylistManager.UI.PlaylistDetailViewButtonsController");
+                int syncOption = (int)pluginConfig.GetProperty("SyncOption", BindingFlags.Public | BindingFlags.Instance).GetValue(pcInstance);
+
+                if (syncOption == 1)
+                    pdvbc.GetMethod("DownloadAccepted", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(pdvbcInstance, null);
+                else
+                    pdvbc.GetMethod("DownloadRejected", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(pdvbcInstance, null);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error syncing the playlist.\n" + e);
+            }
+            finally
+            {
+                customSyncButton.interactable = true;
+            }
+        }
 
         // Reflection taken from: https://github.com/BeatLeader/beatleader-mod/blob/master/Source/7_Utils/Interop/Interops/PlaylistsLibInterop.cs#L10
-        public static void LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistMapInfo> maps, string? syncUrl, Action<string?>? statusUpdater = null, bool endEvent = true)
+        public void LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistMapInfo> maps, string? customSyncData, Action<string?>? statusUpdater = null, bool endEvent = true)
         {
             try
             {
-                if (!PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
+                if (playlistLib is null)
                 {
                     Plugin.Log.Warn("BeatSaberPlaylistsLib is not installed, cannot create playlist.");
                     return;
                 }
 
                 statusUpdater?.Invoke("Creating...");
-
-                Assembly playlistLib = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name.Equals("BeatSaberPlaylistsLib"));
 
                 Type playlistLibManagerType = playlistLib.GetType("BeatSaberPlaylistsLib.PlaylistManager");
                 Type playlistType = playlistLib.GetType("BeatSaberPlaylistsLib.Types.IPlaylist");
@@ -50,8 +227,8 @@ namespace AccSaber.Utils
                         addDifficulty.Invoke(playlistSong, [characteristic, diff.ToString()]);
                 }
 
-                if (syncUrl is not null)
-                    playlistType.GetMethod("SetCustomData", BindingFlags.Public | BindingFlags.Instance).Invoke(playlist, ["syncURL", syncUrl]);
+                if (customSyncData is not null)
+                    playlistType.GetMethod("SetCustomData", BindingFlags.Public | BindingFlags.Instance).Invoke(playlist, [CustomDataKey, customSyncData]);
 
                 statusUpdater?.Invoke("Refreshing...");
 
@@ -69,9 +246,9 @@ namespace AccSaber.Utils
                     statusUpdater?.Invoke(null);
             }
         }
-        public static void RefreshPlaylist(string filename)
+        public void RefreshPlaylist(string filename)
         {
-            if (!PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
+            if (playlistLib is null)
             {
                 Plugin.Log.Warn("BeatSaberPlaylistsLib is not installed, cannot refresh playlist.");
                 return;
@@ -79,8 +256,6 @@ namespace AccSaber.Utils
 
             try
             {
-                Assembly playlistLib = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name.Equals("BeatSaberPlaylistsLib"));
-
                 Type playlistLibManagerType = playlistLib.GetType("BeatSaberPlaylistsLib.PlaylistManager");
                 Type playlistType = playlistLib.GetType("BeatSaberPlaylistsLib.Types.IPlaylist");
 
@@ -104,12 +279,12 @@ namespace AccSaber.Utils
             }
         }
 #if NEW_VERSION
-        public static BeatmapLevelPack? GetPlaylistLevelpack(string filename)
+        public BeatmapLevelPack? GetPlaylistLevelpack(string filename)
 #else
-        public static IBeatmapLevelPack? GetPlaylistLevelpack(string filename)
+        public IBeatmapLevelPack? GetPlaylistLevelpack(string filename)
 #endif
         {
-            if (!PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
+            if (playlistLib is null)
             {
                 Plugin.Log.Warn("BeatSaberPlaylistsLib is not installed, cannot get playlist levelpack.");
                 return null;
@@ -117,8 +292,6 @@ namespace AccSaber.Utils
 
             try
             {
-                Assembly playlistLib = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name.Equals("BeatSaberPlaylistsLib"));
-
                 Type playlistLibManagerType = playlistLib.GetType("BeatSaberPlaylistsLib.PlaylistManager");
                 Type playlistType = playlistLib.GetType("BeatSaberPlaylistsLib.Types.IPlaylist");
 
@@ -147,7 +320,7 @@ namespace AccSaber.Utils
             }
         }
 
-        public static List<PlaylistMapInfo> GetPlaylistData(IEnumerable<string> mapDiffIds)
+        public List<PlaylistMapInfo> GetPlaylistData(IEnumerable<string> mapDiffIds)
         {
             HashSet<string> idSet = [.. mapDiffIds];
             List<PlaylistMapInfo> maps = [];

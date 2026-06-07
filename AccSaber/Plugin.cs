@@ -15,6 +15,7 @@ namespace AccSaber
 	{
 		internal static DiContainer Container = null!;
 		internal static IPALogger Log = null!;
+		internal static Harmony harmony = null!;
 
         [Init]
 		public void Init(Zenjector zenjector, IPALogger logger, IPA.Config.Config config)
@@ -22,13 +23,13 @@ namespace AccSaber
 			zenjector.UseLogger(logger);
 			Log = logger;
 
-			//APCalc calc = new();
+            //APCalc calc = new();
 
-			zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
+            zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
 			zenjector.Install<AccSaberAppInstaller>(Location.App);
 			zenjector.Install<AccSaberGameInstaller>(Location.StandardPlayer);
 
-			Harmony harmony = new("AccSaber.Leaderboard");
+			harmony = new("AccSaber.Leaderboard");
 
 			SubmissionPatch.ApplyKnownPatches(harmony);
 		}

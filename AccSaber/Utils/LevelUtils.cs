@@ -13,12 +13,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
-using IPA.Loader;
 using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
-
-
 
 #if NEW_VERSION
 using System.Reflection;
@@ -40,6 +37,7 @@ namespace AccSaber.Utils
 
         [Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
         [Inject] private readonly SoloFreePlayFlowCoordinator _soloCoordinator = null!;
+        [Inject] private readonly PlaylistUtils _playlistUtils = null!;
 
         public event Action<string?>? StatusTextChanged;
 
@@ -62,19 +60,43 @@ namespace AccSaber.Utils
                 Monitor.PulseAll(LoadWaiterLock);
         }
 
-        public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, string? syncUrl, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAp(APCategory type, string playerId, float apThreshold, string comp)
+        {
+            IEnumerable<AccSaberBasicDifficulty>? scores = (await AccsaberAPI.GetMapsAboveThreshold(playerId, apThreshold, type))?.Cast<AccSaberBasicDifficulty>();
+
+            if (scores is null)
+                return null;
+
+            int scoreSize = scores.Count();
+
+            StatusTextChanged?.Invoke($"Found {scoreSize} {(scoreSize == 1 ? "map" : "maps")}.");
+
+            IEnumerable<string> ids = scores.Select(entry => entry.DifficultyId);
+
+            if (comp.Contains('<'))
+            {
+                HashSet<string> idSet = [.. ids];
+                ids = SerializerHandler.CachedMaps.Values.SelectMany(map => map.Difficulties.Where(diff => !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId));
+            }
+
+            List<PlaylistUtils.PlaylistMapInfo> maps = _playlistUtils.GetPlaylistData(ids);
+
+            return maps;
+        }
+
+        public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, string? customSyncData, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             StatusTextChanged += statEvent;
 
             if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
-                PlaylistUtils.LoadPlaylist(filename, playlistName, maps, syncUrl, StatusTextChanged, endEvent);
+                _playlistUtils.LoadPlaylist(filename, playlistName, maps, customSyncData, StatusTextChanged, endEvent);
 
             if (closeMenu is not null)
                 await GoToPlaylist(filename, closeMenu);
             
             StatusTextChanged -= statEvent;
         }
-        public async Task LoadPlaylist(APCategory type, string playerId, float apThreshold, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        public async Task LoadPlaylistAp(APCategory type, string playerId, float apThreshold, string comp, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             try
             {
@@ -87,21 +109,12 @@ namespace AccSaber.Utils
                 string filename = $"accsaber-reloaded-{categoryName}-{apThreshold}ap";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} Above {apThreshold}ap";
 
-                IEnumerable<AccSaberDifficulty>? scores = await AccsaberAPI.GetMapsAboveThreshold(playerId, apThreshold, type);
+                IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = await GetMapsAp(type, playerId, apThreshold, comp);
 
-                if (scores is null)
+                if (maps is null)
                     return;
 
-                int scoreSize = scores.Count();
-                string song = scoreSize == 1 ? "map" : "maps";
-
-                StatusTextChanged?.Invoke($"Found {scoreSize} {song}.");
-
-                IEnumerable<string> ids = scores.Select(entry => entry.DifficultyId);
-
-                List<PlaylistUtils.PlaylistMapInfo> maps = PlaylistUtils.GetPlaylistData(ids);
-
-                await LoadPlaylist(filename, playlistName, maps, null, closeMenu);
+                await LoadPlaylist(filename, playlistName, maps, $"{comp},{apThreshold},{playerId},{type},ap", closeMenu);
             }
             catch (Exception e)
             {
@@ -138,7 +151,7 @@ namespace AccSaber.Utils
 
                     File.WriteAllBytes(Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, filename), data);
 
-                    PlaylistUtils.RefreshPlaylist(filename);
+                    _playlistUtils.RefreshPlaylist(filename);
                 }
 
                 if (closeMenu is not null)
@@ -183,7 +196,7 @@ namespace AccSaber.Utils
 
                     File.WriteAllBytes(Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, filename), data);
 
-                    PlaylistUtils.RefreshPlaylist(filename);
+                    _playlistUtils.RefreshPlaylist(filename);
                 }
 
                 if (closeMenu is not null)
@@ -222,8 +235,8 @@ namespace AccSaber.Utils
                     StatusTextChanged?.Invoke("Saving...");
 
                     File.WriteAllBytes(Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, filename), data);
-                    if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
-                        PlaylistUtils.RefreshPlaylist(filename);
+                        
+                    _playlistUtils.RefreshPlaylist(filename);
                 }
 
                 if (closeMenu is not null)
@@ -263,8 +276,7 @@ namespace AccSaber.Utils
                     IBeatmapLevelPack? levelPack = null;
 #endif
 
-                    if (PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatSaberPlaylistsLib")))
-                        levelPack = PlaylistUtils.GetPlaylistLevelpack(filename);
+                    levelPack = _playlistUtils.GetPlaylistLevelpack(filename);
 
                     //Plugin.Log.Info("levelPack null? " + (levelPack is null));
                     if (levelPack is null)

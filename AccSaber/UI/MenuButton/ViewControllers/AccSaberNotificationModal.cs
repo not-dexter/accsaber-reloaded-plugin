@@ -89,26 +89,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (_data is not MissionCell cell)
                 return;
 
-            void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
-
             _modalView.Hide(false);
 
-            switch (cell.Data.Type)
-            {
-                case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
-                    _ = _missionScreen._levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, CloseMenu, cell.UpdateStatus);
-                    break;
-                case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY:
-                    _ = _missionScreen._levelUtils.LoadPlaylist(cell.Data.Category, CloseMenu, cell.UpdateStatus);
-                    break;
-                case MissionType.PB_ABOVE_THRESHOLD:
-                    _ = _missionScreen._levelUtils.LoadPlaylist(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, CloseMenu, cell.UpdateStatus);
-                    break;
-                case MissionType.XP_IN_WINDOW:
-                    _ = _missionScreen._levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
-                    break;
-            }
-
+            _missionScreen.GoToMission(cell);
         }
 
         [UIAction("ClickedNo")]

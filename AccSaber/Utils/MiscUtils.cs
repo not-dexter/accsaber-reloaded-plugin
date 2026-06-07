@@ -147,6 +147,23 @@ namespace AccSaber.Utils
 
             return mult;
         }
+
+        public static bool Compare<T>(this T x, T y, string comp) where T : IComparable
+        {
+            int compVal = x.CompareTo(y);
+
+            if (compVal == 0 && comp.Contains('='))
+                return true;
+
+            if (compVal > 0 && comp.Contains('>'))
+                return true;
+
+            if (compVal < 0 && comp.Contains('<'))
+                return true;
+
+            return false;
+        }
+
         public static string GenerateNonce(int byteLength = 32)
         {
             byte[] byteArray = new byte[byteLength];

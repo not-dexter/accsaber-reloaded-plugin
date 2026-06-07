@@ -12,7 +12,8 @@ using Zenject;
 
 namespace AccSaber.Installers
 {
-	internal sealed class AccSaberMenuInstaller : Installer
+#pragma warning disable IDE0290
+    internal sealed class AccSaberMenuInstaller : Installer
 	{
 		private readonly PluginConfig _pluginConfig;
 		//private readonly APCalc _calc;
@@ -29,6 +30,9 @@ namespace AccSaber.Installers
 
 			Container.BindInstance(_pluginConfig).AsSingle();
 			//Container.BindInstance(_calc).AsSingle();
+
+			Container.BindInterfacesAndSelfTo<PlaylistUtils>().AsSingle();
+			Container.BindExecutionOrder<PlaylistUtils>(-100);
 
 			Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
             Container.Bind<AccSaberMissionScreen>().AsSingle();
