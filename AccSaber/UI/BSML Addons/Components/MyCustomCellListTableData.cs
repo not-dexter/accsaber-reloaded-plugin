@@ -1,5 +1,4 @@
-﻿using Accsaber.Utils;
-using AccSaber.Utils;
+﻿using AccSaber.Utils;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;

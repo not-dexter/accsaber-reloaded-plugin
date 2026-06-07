@@ -1,5 +1,4 @@
-﻿using Accsaber.Utils;
-using AccSaber.Managers;
+﻿using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Models.CacheModels;
 using AccSaber.Utils;
@@ -22,7 +21,6 @@ using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Patches;
-using static AlphabetScrollInfo;
 
 namespace AccSaber.API
 {

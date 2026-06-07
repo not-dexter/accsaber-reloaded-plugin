@@ -1,18 +1,13 @@
-﻿using AccSaber.Configuration;
-using AccSaber.Consts;
+﻿using AccSaber.Consts;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
-using BeatSaberMarkupLanguage.Components.Settings;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
-using System;
 using System.ComponentModel;
 using System.Reflection;
-using System.Threading.Tasks;
 using UnityEngine;
-using Zenject;
 using static AccSaber.UI.MenuButton.ViewControllers.AccSaberMissionScreen;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
