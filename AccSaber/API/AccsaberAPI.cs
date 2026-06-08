@@ -1213,6 +1213,9 @@ namespace AccSaber.API
                 _ => ""
             };
 
+            if (loginState != LoginState.InProgress)
+                Plugin.Log.Info(content);
+
             OnLoginUpdated!.Invoke(loginState, content);
         }
 

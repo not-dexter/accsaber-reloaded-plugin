@@ -129,8 +129,6 @@ namespace AccSaber.Utils
 
                 if (AuthInfo is not null)
                     await SetRelations(AuthInfo.UserId);
-
-                Plugin.Log.Info("Logged into accsaber!");
             } 
             catch (Exception e)
             {
