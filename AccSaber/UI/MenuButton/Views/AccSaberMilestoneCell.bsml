@@ -1,23 +1,26 @@
-<my-vertical id='cellContainer' pref-height='~cellSize' pref-width='~listWidth' horizontal-fit='PreferredSize' child-expand-width='false' spacing='0' child-alignment='MiddleCenter' bg='~bgPath' pad-left='2' pad-right='2' pad-down='2'>
+<my-vertical id='cellContainer' pref-height='~cellSize' pref-width='~listWidth' horizontal-fit='PreferredSize' bg='~bgPath'>
+  <vertical active='~NotShowStatus' pref-height='~cellSize' pref-width='~listWidth' horizontal-fit='PreferredSize' child-expand-width='false' spacing='0' child-alignment='MiddleCenter' pad-left='2' pad-right='2' pad-down='2'>
     <horizontal>
-        <text text='~Title' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
-        <text text='~Tier' align='Right' font-size='~FontSize' word-wrapping='false'/>
+      <text text='~Title' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis' />
+      <text text='~Tier' align='Right' font-size='~FontSize' word-wrapping='false' />
     </horizontal>
-	    <horizontal pref-width='100' vertical-fit='PreferredSize'>
-	    <text text='~Description' align='Left' font-size='2.7' word-wrapping='true' overflow-mode='Ellipsis'/>
-        <text text='Completed!' align='Right' font-size='~FontSize' face-color='~greenColor'  active='~completed'/>
-	    </horizontal>
+    <horizontal pref-width='100' vertical-fit='PreferredSize'>
+      <text text='~Description' align='Left' font-size='2.7' word-wrapping='true' overflow-mode='Ellipsis' />
+      <text text='Completed!' align='Right' font-size='~FontSize' face-color='~greenColor'  active='~completed' />
+    </horizontal>
     <horizontal active='~notCompleted'>
-        <horizontal pref-width='~barLen' child-expand-width='false' child-control-width='false'>
-        <image id='PercentBarTop' src='~oneXonePic' pref-height='1'/>
-        <image id='PercentBarBottom' src='~oneXonePic' pref-height='1'/>
-        </horizontal>
-        <horizontal pref-width='~barSpacer'/>
-        <horizontal pref-width='~progLen' child-alignment='MiddleCenter'>
-        <text text='~Progress' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
-        </horizontal>
-        <horizontal pref-width='~exactProgLen'>
-        <text text='~ExactProgress' align='Right' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis'/>
-        </horizontal>
+      <horizontal pref-width='~barLen' child-expand-width='false' child-control-width='false'>
+        <image id='PercentBarTop' src='~oneXonePic' pref-height='1' />
+        <image id='PercentBarBottom' src='~oneXonePic' pref-height='1' />
+      </horizontal>
+      <horizontal pref-width='~barSpacer' />
+      <horizontal pref-width='~progLen' child-alignment='MiddleCenter'>
+        <text text='~Progress' align='Left' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis' />
+      </horizontal>
+      <horizontal pref-width='~exactProgLen'>
+        <text text='~ExactProgress' align='Right' font-size='~FontSize' word-wrapping='false' overflow-mode='Ellipsis' />
+      </horizontal>
     </horizontal>
+  </vertical>
+  <text id='StatusText' align='Center' font-size='6' active='~ShowStatus'/>
 </my-vertical>

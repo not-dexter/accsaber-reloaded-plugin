@@ -28,7 +28,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
-    internal class AccSaberMissionScreen : INotifyPropertyChanged
+    internal class AccSaberMissionScreen : INotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
 #pragma warning disable IDE0051
         private bool _isLoading, _parsed = false;
@@ -108,15 +108,26 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
             if (!PC.DisablePopups)
             {
-                asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator);
-            }
-            else
-            {
                 if (data is not MissionCell cell)
                     return;
 
-                GoToMission(cell);
+                string prompt;
+
+                switch (cell.Data.Type)
+                {
+                    case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
+                        prompt = "Would you like to go to this map?";
+                        break;
+                    case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY or MissionType.PB_ABOVE_THRESHOLD or MissionType.XP_IN_WINDOW:
+                        prompt = "Would you like to go to this Playlist?";
+                        break;
+                    default: return;
+                }
+
+                _ = asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator, prompt);
             }
+            else
+                PopupSuccess(data);
         }
 
         [UIAction("#post-parse")]
@@ -174,6 +185,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             TimeUpdaterCanceller.Cancel();
             TimeUpdaterCanceller.Dispose();
             TimeUpdaterCanceller = null;
+        }
+
+        public void PopupSuccess(object cell)
+        {
+            if (cell is MissionCell missionCell)
+                GoToMission(missionCell);
         }
 
         internal void GoToMission(MissionCell cell)

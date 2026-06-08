@@ -1,5 +1,5 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-  <vertical pref-width='~container-width' anchor-pos-x='~container-offset' child-expand-height='false' child-control-height='false'>
+  <vertical id='container' pref-width='~container-width' anchor-pos-x='~container-offset' child-expand-height='false' child-control-height='false'>
     <horizontal bg='panel-top' vertical-fit='PreferredSize' pref-height='12'>
       <text text='Objectives' align='Center' font-size='10'/>
     </horizontal>
@@ -20,7 +20,7 @@
     
     <horizontal pref-width='120' pref-height='55' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' child-expand-width='false' active='~is-milestone-tab'>
       <vertical bg='panel-top' skew='0' pref-width='105' pad='2'>
-        <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' cell-size='15' stick-scrolling='true' _children='~milestone-cell' active='~is-not-loading'/>
+        <custom-list id='milestone-list' contents='milestone-cells' visible-cells='4' cell-size='15' stick-scrolling='true' _children='~milestone-cell' clickable-cells='true' select-cell='milestone-selected' active='~is-not-loading'/>
       </vertical>
       <vertical pref-width='4'>
         <page-button event-click='milestone-list#PageUp' direction='Up' pref-height='3' pref-width='4'/>

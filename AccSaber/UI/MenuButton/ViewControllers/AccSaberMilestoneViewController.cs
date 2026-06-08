@@ -1,4 +1,5 @@
-﻿using AccSaber.Consts;
+﻿using AccSaber.Configuration;
+using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
@@ -12,6 +13,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
 using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -20,7 +22,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMilestoneView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMilestoneView.bsml")]
-    internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged
+    internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
 #pragma warning disable IDE0051
 		public new event PropertyChangedEventHandler? PropertyChanged;
@@ -46,9 +48,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private readonly AsyncLock milestoneLock = new();
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
+        [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
         [Inject] private readonly AccSaberMissionScreen mc = null!;
+        [Inject] private readonly AccSaberNotificationModal asnm = null!;
+        [Inject] private readonly LevelUtils _levelUtils = null!;
+        [Inject] private readonly PluginConfig PC = null!;
 
 		private List<AccSaberMilestone> _milestones = null!;
+
+        [UIObject("container")]
+        private readonly GameObject _container = null!;
 
         [UIObject("content-container")]
         private readonly GameObject _contentContainer = null!;
@@ -137,7 +146,50 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             _ = SetMilestones(_currentMilestoneTab);
         }
+
+        [UIAction("milestone-selected")]
+        private void MilestoneSelected(TableView table, object cellObj)
+        {
+            if (PC.DisablePopups)
+                PopupSuccess(cellObj);
+            else
+                _ = asnm.ShowModal(_container.transform, this, cellObj, _parentFlowCoordinator, "Would you like to go to this Playlist?");
+        }
 #pragma warning restore IDE0060
+
+        public void PopupSuccess(object cellObj)
+        {
+            if (cellObj is not MilestoneCell cell)
+                return;
+
+            void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
+
+            if (cell.data.TargetValue < 1f) // This should handle all accuracy milestones
+                _ = _levelUtils.LoadPlaylistAcc(cell.data.Category, PlayerSocialLife.PlayerID!, cell.data.TargetValue, "<", CloseMenu, cell.UpdateStatus);
+            else
+            _ = cell.data.MilestoneId switch // TODO: Find a better way to do this, this sucks.
+            {
+                // x ap on every map in category
+                "a0000006-0000-0000-0000-000000000022" or
+                "a0000006-0000-0000-0000-000000000024" or
+                "a0000007-0000-0000-0000-000000000021" or
+                "a0000007-0000-0000-0000-000000000022" or
+                "a0000007-0000-0000-0000-000000000023" or
+                "a0000007-0000-0000-0000-000000000024" or
+                "a0000007-0000-0000-0000-000000000026" or
+                "a0000007-0000-0000-0000-000000000027" or
+                "a0000007-0000-0000-0000-000000000028" or
+                "a0000007-0000-0000-0000-000000000030" or
+                "a0000007-0000-0000-0000-000000000031" or
+                "a0000007-0000-0000-0000-000000000032" or
+                "a0000007-0000-0000-0000-000000000034" or
+                "a0000007-0000-0000-0000-000000000035" or
+                "a0000007-0000-0000-0000-000000000036" => _levelUtils.LoadPlaylistAp(cell.data.Category, PlayerSocialLife.PlayerID!, cell.data.TargetValue, "<", CloseMenu, cell.UpdateStatus),
+
+                _ => _levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus)
+            };
+        }
+
 
         public void UpdateTabs()
         {
@@ -182,9 +234,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 IsLoading = false;
             }
         }
-		internal class MilestoneCell
+        internal class MilestoneCell : INotifyPropertyChanged
 		{
-            private readonly AccSaberMilestone data;
+            public readonly AccSaberMilestone data;
+            public event PropertyChangedEventHandler? PropertyChanged;
 
             private readonly bool flip;
             private readonly float progressPercent;
@@ -192,6 +245,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             private readonly Color bgColor, rankColor;
             private float DisplayableProgress => progressPercent * 100f;
             private readonly float Prog, Targ;
+            private bool _showStatus;
 
             public MilestoneCell(AccSaberMilestone milestoneData)
             {
@@ -199,6 +253,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 completed = data.Completed;
                 notCompleted = !completed;
+                _showStatus = false;
 
                 flip = milestoneData.Completed ^ milestoneData.Progress > milestoneData.TargetValue;
                 Prog = flip ? data.TargetValue : data.Progress;
@@ -247,6 +302,21 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIValue(nameof(Title))] public string Title => $"{data.Title}";
             [UIValue(nameof(Description))] public string Description => $"<color={ColorUtils.GREY}>{data.Description}</color>";
 
+            [UIValue(nameof(ShowStatus))] public bool ShowStatus
+            {
+                get => _showStatus;
+                set
+                {
+                    if (_showStatus == value)
+                        return;
+
+                    _showStatus = value;
+                    PropertyChanged?.Invoke(this, new(nameof(ShowStatus)));
+                    PropertyChanged?.Invoke(this, new(nameof(NotShowStatus)));
+                }
+            }
+            [UIValue(nameof(NotShowStatus))] public bool NotShowStatus => !ShowStatus;
+
 
             [UIComponent(nameof(PercentBarTop))] private readonly LayoutElement PercentBarTop = null!;
             [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
@@ -254,6 +324,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!;
 
             [UIComponent(nameof(cellContainer))] private readonly CustomBackground cellContainer = null!;
+
+            [UIComponent(nameof(StatusText))] private readonly TextMeshProUGUI StatusText = null!;
 
 
             [UIValue(nameof(oneXonePic))] public const string oneXonePic = ResourcePaths.PIXEL;
@@ -279,6 +351,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PercentBarBottom_image.color = ColorUtils.TECH.Color();
 
                 cellContainer.Background?.color = bgColor;
+            }
+
+            internal void UpdateStatus(string? text)
+            {
+                ShowStatus = text is not null;
+
+                if (ShowStatus)
+                    StatusText.SetText(text!);
             }
         }
 	}

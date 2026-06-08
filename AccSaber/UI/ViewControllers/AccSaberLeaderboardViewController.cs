@@ -367,10 +367,8 @@ namespace AccSaber.UI.ViewControllers
             {
                 Plugin.Log.Info("Player score recieved");
 
-                if (currentPlayerScore is not null && currentPlayerScore.Accuracy > token.Accuracy)
-                    return;
-
-                currentPlayerScore = token;
+                if (currentPlayerScore is null || currentPlayerScore.Accuracy <= token.Accuracy)
+                    currentPlayerScore = token;
 
                 store.InvalidateCurrentMapCache();
 

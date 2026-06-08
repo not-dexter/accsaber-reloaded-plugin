@@ -76,12 +76,26 @@ namespace AccSaber.Utils
             if (comp.Contains('<'))
             {
                 HashSet<string> idSet = [.. ids];
-                ids = SerializerHandler.CachedMaps.Values.SelectMany(map => map.Difficulties.Where(diff => !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId));
+                ids = SerializerHandler.CachedMaps.Values.SelectMany(map => map.Difficulties.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId));
             }
 
-            List<PlaylistUtils.PlaylistMapInfo> maps = _playlistUtils.GetPlaylistData(ids);
+            return _playlistUtils.GetPlaylistData(ids);
+        }
+        internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, string comp)
+        {
+            string sort = comp.Contains('<') ? "&sort=accuracy,desc" : "&sort=accuracy,asc";
+            AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.EnumToReloadedCategory(type), 0, 50) + sort, AccsaberAPI.throttler);
 
-            return maps;
+            if (scores is null || scores.Content is null)
+                return null;
+
+            int scoreSize = scores.Content.Count;
+
+            StatusTextChanged?.Invoke($"Found {scoreSize} {(scoreSize == 1 ? "map" : "maps")}.");
+
+            IEnumerable<string> ids = scores.Content.Where(entry => entry.Accuracy.Compare(accThreshold, comp)).Select(entry => entry.DifficultyId);
+
+            return _playlistUtils.GetPlaylistData(ids);
         }
 
         public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, string? customSyncData, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
@@ -105,9 +119,10 @@ namespace AccSaber.Utils
                 StatusTextChanged?.Invoke("Loading...");
 
                 string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!.Replace('_','-');
+                string thresholdDirection = comp.Contains('>') ? "above" : "below";
 
-                string filename = $"accsaber-reloaded-{categoryName}-{apThreshold}ap";
-                string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} Above {apThreshold}ap";
+                string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{apThreshold:0.##}ap";
+                string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {apThreshold:0.##}ap";
 
                 IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = await GetMapsAp(type, playerId, apThreshold, comp);
 
@@ -115,6 +130,39 @@ namespace AccSaber.Utils
                     return;
 
                 await LoadPlaylist(filename, playlistName, maps, $"{comp},{apThreshold},{playerId},{type},ap", closeMenu);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an exception loading the threshold playlist.\n" + e);
+            }
+            finally
+            {
+                if (endEvent)
+                    StatusTextChanged?.Invoke(null);
+
+                StatusTextChanged -= statEvent;
+            }
+        }
+        public async Task LoadPlaylistAcc(APCategory type, string playerId, float accThreshold, string comp, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        {
+            try
+            {
+                StatusTextChanged += statEvent;
+
+                StatusTextChanged?.Invoke("Loading...");
+
+                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!.Replace('_','-');
+                string thresholdDirection = comp.Contains('>') ? "above" : "below";
+
+                string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{accThreshold * 100f:0.##}%";
+                string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {accThreshold * 100f:0.##}%";
+
+                IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = await GetMapsAcc(type, playerId, accThreshold, comp);
+
+                if (maps is null)
+                    return;
+
+                await LoadPlaylist(filename, playlistName, maps, $"{comp},{accThreshold},{playerId},{type},accuracy", closeMenu);
             }
             catch (Exception e)
             {

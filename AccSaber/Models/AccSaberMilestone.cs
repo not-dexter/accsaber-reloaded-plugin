@@ -1,7 +1,9 @@
 ﻿using AccSaber.Models.Base;
+using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
+using System.Runtime.Serialization;
 using UnityEngine;
 
 namespace AccSaber.Models
@@ -37,6 +39,12 @@ namespace AccSaber.Models
         [JsonProperty("setId")]
         public string SetId { get; set; } = null!;
 
+        [JsonProperty("categoryId")]
+        public string? CategoryId { get; set; }
+
+        [JsonIgnore]
+        public APCategory Category { get; set; }
+
         [JsonProperty("targetValue")]
         public float TargetValue { get; set; }
 
@@ -51,7 +59,13 @@ namespace AccSaber.Models
 
         [JsonProperty("xp")]
         public float XP { get; set; }
-        
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            Category = CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(CategoryId)!.Value;
+        }
+
         public static float CalcProgress(float target, float progress, bool swap)
         {
             const float shiftAmount = 0.97f; // Shift both values down to make it more meaningful to go from 97 to 98

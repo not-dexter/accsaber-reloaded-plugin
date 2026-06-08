@@ -33,7 +33,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMenuView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMenuView.bsml")]
-    internal class AccSaberMenuViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable, IDisposable
+    internal class AccSaberMenuViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable, IDisposable, AccSaberNotificationModal.IPopup
 	{
 #pragma warning disable IDE0051
 		private AccSaberPlayer? _user;
@@ -60,7 +60,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		[Inject] private readonly AccSaberCampaignFlow campaignFlow = null!;
 		[Inject] private readonly AccSaberPlaylistModalController playlistModal = null!;
-		[Inject] public readonly LevelUtils levelUtils = null!;
+		[Inject] private readonly LevelUtils levelUtils = null!;
 		[Inject] private readonly AccSaberMainFlowCoordinator parentCoordinator = null!;
         [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
@@ -341,12 +341,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private void OnCellClicked(ICellDataSource source)
 		{
 			if (!PC.DisablePopups)
-				asnm.ShowModal(_topScoresList.transform, this, source, parentCoordinator);
+				_ = asnm.ShowModal(_topScoresList.transform, this, source, parentCoordinator, "Would you like to go to this map?");
 			else
-			{
-				if (source is ScoreCell cell)
-				_ = levelUtils.GoToSong(cell.Data.DifficultyId, null, () => parentCoordinator.CloseToMainMenu(), cell.UpdateStatus);
-			}
+				PopupSuccess(source);
         }
 
 		[UIAction("on-discord-clicked")]
@@ -365,6 +362,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             System.Diagnostics.Process.Start("https://github.com/not-dexter/accsaber-reloaded-plugin");
         }
 
+		public void PopupSuccess(object source)
+		{
+            if (source is ScoreCell cell)
+                _ = levelUtils.GoToSong(cell.Data.DifficultyId, null, () => parentCoordinator.CloseToMainMenu(), cell.UpdateStatus);
+        }
 		private async void OnOpen()
 		{
             if (!_firstLoad)

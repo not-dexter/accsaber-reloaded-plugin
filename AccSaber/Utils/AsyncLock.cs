@@ -26,6 +26,8 @@ namespace AccSaber.Utils
             return new Releaser(_semaphore);
         }
 
+        public bool IsLocked => _semaphore.CurrentCount == 0;
+
         public readonly struct Releaser : IDisposable
         {
             private readonly SemaphoreSlim _semaphore;

@@ -1,6 +1,5 @@
 ﻿using AccSaber.Consts;
 using AccSaber.Utils;
-using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
@@ -8,20 +7,22 @@ using HMUI;
 using System;
 using System.ComponentModel;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
-using static AccSaber.UI.MenuButton.ViewControllers.AccSaberMissionScreen;
-using static AccSaber.UI.MenuButton.ViewControllers.AccSaberMenuViewController;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
     internal sealed class AccSaberNotificationModal : INotifyPropertyChanged, IDisposable, IInitializable
     {
         private bool _parsed;
-        private object _parentObject = null!;
-        private ICellDataSource _data = null!;
+        private IPopup _currentInstance = null!;
+        private object _data = null!;
         private AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
         private string _targetPrompt = null!;
+        private readonly AsyncLock _mainLocker = new();
+        private AsyncLock.Releaser _currentLocker = default;
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         [UIComponent("modal")]
@@ -48,6 +49,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_NOTIF_MODAL), parentTransform.gameObject, this);
                 _modalView.name = "AccSaberNotificationModal";
 
+                _modalView.blockerClickedEvent += () => _currentLocker.Dispose();
+
                 _parsed = true;
             }
 
@@ -60,29 +63,31 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _modalView.blockerClickedEvent += HideModal;
         }
 
-        public void ShowModal(Transform parentTransform, object instance, ICellDataSource data, AccSaberMainFlowCoordinator parentFlowCoordinator)
+        public async Task ShowModal(Transform parentTransform, IPopup instance, object data, AccSaberMainFlowCoordinator parentFlowCoordinator, string prompt)
         {
+            if (_mainLocker.IsLocked)
+            {
+                _modalView.Hide(true, () =>
+                {
+                    try
+                    {
+                        _currentLocker.Dispose();
+                    }
+                    catch (ObjectDisposedException e)
+                    {
+                        Plugin.Log.Error("Stop hitting the button so fast.\n" + e);
+                    }
+                });
+            }
+
+            _currentLocker = await _mainLocker.LockAsync();
+
             Parse(parentTransform);
 
-            _parentObject = instance;
+            _currentInstance = instance;
             _data = data;
             _parentFlowCoordinator = parentFlowCoordinator;
-
-            if (_data is MissionCell mission && _parentObject is AccSaberMissionScreen)
-            {
-                switch (mission.Data.Type)
-                {
-                    case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
-                        TargetPrompt = "Would you like to go to this map?";
-                        break;
-                    case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY or MissionType.PB_ABOVE_THRESHOLD or MissionType.XP_IN_WINDOW:
-                        TargetPrompt = "Would you like to go to this Playlist?";
-                        break;
-                    default: return;
-                }
-            }
-            else if(_data is ScoreCell && _parentObject is AccSaberMenuViewController)
-                TargetPrompt = "Would you like to go to this map?";
+            TargetPrompt = string.IsNullOrEmpty(prompt) ? "N/A" : prompt;
 
             _parserParams.EmitEvent("close-modal");
             _parserParams.EmitEvent("open-modal");
@@ -91,30 +96,20 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("ClickedYes")]
         public void ClickedYes()
         {
-            if (_parentObject == null || _data == null || _parentFlowCoordinator == null)
+            if (_data is null || _parentFlowCoordinator is null)
                 return;
 
             _modalView.Hide(false);
-            if (_parentObject is AccSaberMissionScreen _missionScreen)
-            {
-                if (_data is not MissionCell mission)
-                    return;
 
-                _missionScreen.GoToMission(mission);
-            }
-            else if(_parentObject is AccSaberMenuViewController _menuViewController)
-            {
-                if (_data is not ScoreCell cell)
-                    return;
-
-                _ = _menuViewController.levelUtils.GoToSong(cell.Data.DifficultyId, null, () => _parentFlowCoordinator.CloseToMainMenu(), cell.UpdateStatus);
-            }
+            _currentInstance.PopupSuccess(_data);
+            _currentLocker.Dispose();
         }
 
         [UIAction("ClickedNo")]
         public void ClickedNo()
         {
             HideModal();
+            _currentLocker.Dispose();
         }
 
 
@@ -130,6 +125,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         public void Dispose()
         {
             _modalView.blockerClickedEvent -= HideModal;
+        }
+
+        public interface IPopup
+        {
+            void PopupSuccess(object data);
         }
     }
 }

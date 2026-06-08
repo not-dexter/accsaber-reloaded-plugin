@@ -63,8 +63,9 @@ namespace AccSaber.Utils
 
             try
             {
-                const string bsmlContent = "<icon-button id='customSyncButton' icon='PlaylistManager.Icons.Sync.png' anchor-pos-x='51' anchor-pos-y='-3' hover-hint='Sync Playlist' on-click='syncPlaylist' scale='0.6' active='false'/>";
+                const string bsmlContent = "<icon-button id='customSyncButton' icon='PlaylistManager.Icons.Sync.png' anchor-pos-x='51' anchor-pos-y='-3' hover-hint='Sync Playlist' on-click='syncPlaylist' active='false'/>";
                 VersionUtils.BSMLParser_Instance.Parse(bsmlContent, lpdvc.GetField<UnityEngine.GameObject, LevelPackDetailViewController>("_detailWrapper"), this);
+                customSyncButton.transform.localScale *= 0.6f;
             }
             catch (Exception e)
             {
@@ -133,15 +134,27 @@ namespace AccSaber.Utils
                 string[] args = currentCustomData.Split(',');
                 string comp = args[0];
                 float threshold = float.Parse(args[1]);
-                string playerId = args[2];
-                APCategory category = (APCategory)Enum.Parse(typeof(APCategory), args[3]);
-                string type = args[4];
+
+                // Just in case localization using commas as decimals
+                int offset = 0;
+                if (args.Length > 5)
+                {
+                    threshold = float.Parse(args[1] + ',' + args[2]);
+                    offset = 1;
+                }
+
+                string playerId = args[2 + offset];
+                APCategory category = (APCategory)Enum.Parse(typeof(APCategory), args[3 + offset]);
+                string type = args[4 + offset];
 
                 IEnumerable<PlaylistMapInfo>? maps = null;
                 switch (type)
                 {
                     case "ap":
                         maps = await levelUtils.GetMapsAp(category, playerId, threshold, comp);
+                        break;
+                    case "accuracy":
+                        maps = await levelUtils.GetMapsAcc(category, playerId, threshold, comp);
                         break;
                 }
 
