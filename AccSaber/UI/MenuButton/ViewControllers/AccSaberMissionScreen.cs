@@ -63,7 +63,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
         [Inject] public readonly LevelUtils _levelUtils = null!;
-        [Inject] public readonly PluginConfig PC = null!;
+        [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
 
         [UIValue("is-loading")]
@@ -382,7 +382,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue(nameof(completed))] private readonly bool completed = data.Completed;
 
-            [UIValue(nameof(targetExists))] private readonly bool targetExists = data.TargetCount is not null || data.TargetXp is not null;
+            [UIValue(nameof(targetExists))] private readonly bool targetExists = (data.TargetCount is not null || data.TargetXp is not null) && !data.Completed;
 
             [UIValue(nameof(oneXonePic))] public const string oneXonePic = ResourcePaths.PIXEL;
 

@@ -21,6 +21,7 @@ using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+using AccSaber.Configuration;
 
 
 #if NEW_VERSION
@@ -59,9 +60,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		[Inject] private readonly AccSaberCampaignFlow campaignFlow = null!;
 		[Inject] private readonly AccSaberPlaylistModalController playlistModal = null!;
-		[Inject] private readonly LevelUtils levelUtils = null!;
+		[Inject] public readonly LevelUtils levelUtils = null!;
 		[Inject] private readonly AccSaberMainFlowCoordinator parentCoordinator = null!;
         [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
+        [Inject] private readonly AccSaberNotificationModal asnm = null!;
+        [Inject] private readonly PluginConfig PC = null!;
+
 
         [UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
@@ -91,7 +95,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private readonly TextMeshProUGUI _titleText = null!;
 
 		private CanvasGroup? _userInfoCanvasGroup;
-
         private int PageNumber
 		{
 			get => _pageNumber;
@@ -337,8 +340,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIAction("on-cell-clicked")]
 		private void OnCellClicked(ICellDataSource source)
 		{
-			if (source is ScoreCell cell)
-                _ = levelUtils.GoToSong(cell.Data.DifficultyId, null, () => parentCoordinator.CloseToMainMenu(), cell.UpdateStatus);
+			if (!PC.DisablePopups)
+				asnm.ShowModal(_topScoresList.transform, this, source, parentCoordinator);
+			else
+			{
+				if (source is ScoreCell cell)
+				_ = levelUtils.GoToSong(cell.Data.DifficultyId, null, () => parentCoordinator.CloseToMainMenu(), cell.UpdateStatus);
+			}
         }
 
 		[UIAction("on-discord-clicked")]
