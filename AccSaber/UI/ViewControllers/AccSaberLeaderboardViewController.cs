@@ -54,11 +54,11 @@ namespace AccSaber.UI.ViewControllers
         private int page, nextPage, currentPage = -1, currentPlayerPage;
         private AccSaberLeaderboardEntry? currentPlayerScore;
         private AsyncLock loadLeaderboardLock = new(), forceRefreshLock = new(), swapCategoriesLock = new();
-        private object updateDiffLock = new();
         private Color selectorDefaultColor, defaultPageTopColor, defaultPageUpColor, defaultPageYouColor, defaultPageDownColor;
         private Color highlightPageTopColor, highlightPageYouColor;
         private AccSaberBasicDifficulty? difficultyInfo;
         private bool refreshRequested = false, loadRequested = false, loaded = false;
+        private int refreshVersion, playerScoreVersion;
 
         private string? titlePanelTitle;
         private bool titlePanelRich;
@@ -89,8 +89,8 @@ namespace AccSaber.UI.ViewControllers
                 return DisplayType switch
                 {
                     LeaderboardDisplayType.Global => null,
-                    LeaderboardDisplayType.Country => api.CountryFilterMaker(currentPlayerScore!.Country),
-                    _ => token => playerInfo.GetIds_Internal(DisplayType)!.Contains(token.PlayerId)
+                    LeaderboardDisplayType.Country => currentPlayerScore is null ? null : api.CountryFilterMaker(currentPlayerScore.Country),
+                    _ => token => playerInfo.GetIds_Internal(DisplayType)!.Contains(token.PlayerId) //GetIds Internal only returns null if input isn't a valid enum.
                 };
             }
         }
@@ -131,9 +131,10 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
         [Inject] private readonly StandardLevelDetailViewController sldvc = null!;
         [Inject] private readonly AccSaberStore store = null!;
-        [Inject] private readonly AccSaberPanelViewController aspvc = null!; //psmvc
-        [Inject] private readonly LeaderboardScoreModalController lsmc = null!; //psmvc
-        [Inject] private readonly LeaderboardSettingsModalController lbsmc = null!; //psmvc
+        [Inject] private readonly AccSaberPanelViewController aspvc = null!;
+        [Inject] private readonly LeaderboardScoreModalController lsmc = null!;
+        [Inject] private readonly LeaderboardSettingsModalController lbsmc = null!;
+        [Inject] private readonly MainThreadDispatcher mainThreadDispatcher = null!;
 
         #endregion Injects
 
@@ -160,7 +161,6 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("iconSize")] public const float iconSize = 7f;
         [UIValue("globeIconSize")] public const float globeIconSize = iconSize - 2f;
 
-        //[UIParams] private BSMLParserParams parserParams = null!; // Currently unused.
         [UIComponent("leaderboard")] private MyCustomCellListTableData leaderboard = null!;
 
         [UIValue("leaderboard-infos")]
@@ -281,10 +281,10 @@ namespace AccSaber.UI.ViewControllers
             const string underlineHighlightedColor = "#FFFA";
 
             if (dataInfo.AllowUnderline)
-                StartCoroutine(highlighted ? FadeToColorUnderline(underlineHighlightedColor.Color()) : FadeToColorUnderline(LeaderboardEntryDisplay.DefaultUnderlineColor.Color()));
+                mainThreadDispatcher.EnqueueRoutine(highlighted ? FadeToColorUnderline(underlineHighlightedColor.Color()) : FadeToColorUnderline(LeaderboardEntryDisplay.DefaultUnderlineColor.Color()));
             
             if (!dataInfo.BGColor.Equals(DIMMER))
-                StartCoroutine(highlighted ? FadeToColorBackground(dataInfo.BGColor.DimColor(-4).Color()) : FadeToColorBackground(dataInfo.BGColor.Color()));
+                mainThreadDispatcher.EnqueueRoutine(highlighted ? FadeToColorBackground(dataInfo.BGColor.DimColor(-4).Color()) : FadeToColorBackground(dataInfo.BGColor.Color()));
         }
 
         [UIAction("ToggleCombinedIcons")]
@@ -293,7 +293,7 @@ namespace AccSaber.UI.ViewControllers
             AsyncLock.Releaser? locker = await swapCategoriesLock.TryLockAsync();
 
             if (locker is null)
-                return; // Another toggle is already in progress, so we won't allow this one to execute to prevent
+                return; // Another toggle is already in progress, so we won't allow this one to execute to prevent issues.
 
             IEnumerator UpdateUI()
             {
@@ -324,7 +324,7 @@ namespace AccSaber.UI.ViewControllers
                     locker.Value.Dispose();
                 }
             }
-            StartCoroutine(UpdateUI());
+            mainThreadDispatcher.EnqueueRoutine(UpdateUI());
         }
 
         [UIAction("#post-parse")]
@@ -357,34 +357,8 @@ namespace AccSaber.UI.ViewControllers
             lsmc?.BindModal(leaderboardContainer);
 
             if (PC.CombineRelations)
-            ToggleCombinedIcons();
+                ToggleCombinedIcons();
 
-
-            lock (updateDiffLock)
-                Monitor.PulseAll(updateDiffLock);
-
-            // Subscribe to the websocket
-            store.OnPlayerScoreUpdated += token =>
-            {
-                Plugin.Log.Info("Player score recieved");
-
-                if (currentPlayerScore is null || currentPlayerScore.Accuracy <= token.Accuracy)
-                    currentPlayerScore = token;
-
-                store.InvalidateCurrentMapCache();
-
-                Task.Run(RequestRefresh);
-            };
-
-            aspvc.OnSettingsClicked += () =>
-            {
-                lbsmc?.ShowModal(leaderboardContainer.transform);
-            };
-
-            lbsmc.OnCombineRelations += () => ToggleCombinedIcons();
-
-            // Subscribe to map selection event
-            TrySubscribeToMapSelection();
             // Optionally, load leaderboard for the current map if available
             TryUpdateCurrentMap();
         }
@@ -393,6 +367,9 @@ namespace AccSaber.UI.ViewControllers
         private void OnPageTop()
         {
             if (page == 1 || CurrentHash is null) return; // Already on the first page
+
+            Interlocked.Increment(ref refreshVersion);
+
             page = 1;
             ReloadLeaderboard();
         }
@@ -401,6 +378,9 @@ namespace AccSaber.UI.ViewControllers
         private void OnPageUp()
         {
             if (page == 1 || CurrentHash is null) return; // Can't go back from the first page
+
+            Interlocked.Increment(ref refreshVersion);
+
             --page;
             ReloadLeaderboard();
         }
@@ -409,6 +389,9 @@ namespace AccSaber.UI.ViewControllers
         private void OnYouClicked()
         {
             if (currentPlayerPage < 1 || page == currentPlayerPage || CurrentHash is null) return;
+
+            Interlocked.Increment(ref refreshVersion);
+
             page = currentPlayerPage;
             ReloadLeaderboard();
         }
@@ -418,6 +401,9 @@ namespace AccSaber.UI.ViewControllers
         {
             if (scoreDatas.Count < PAGE_LENGTH || CurrentHash is null)
                 return;
+
+            Interlocked.Increment(ref refreshVersion);
+
             page = nextPage;
             ReloadLeaderboard();
         }
@@ -443,58 +429,94 @@ namespace AccSaber.UI.ViewControllers
 
         private void OnEnable()
         {
-            if (titlePaneTitleText is not null)
-            {
-                titlePanelTitle = titlePaneTitleText.text;
-                titlePanelRich = titlePaneTitleText.richText;
-
-                titlePaneTitleText.richText = true;
-                titlePaneTitleText.SetText(RankedHeader);
-            }
-
-            Task.Run(DoEnableUpdate);
+            UpdateHeaderTitle();
+            DoEnableUpdate();
         }
         private void OnDisable()
         {
             if (titlePaneTitleText is not null)
             {
-                titlePaneTitleText.richText = titlePanelRich;
-                titlePaneTitleText.SetText(titlePanelTitle);
+                TextMeshProUGUI text = titlePaneTitleText;
+
+                text.richText = titlePanelRich;
+                text.SetText(titlePanelTitle);
 
                 titlePanelTitle = null;
             }
         }
+        private void Awake()
+        {
+            sldvc?.didChangeDifficultyBeatmapEvent += Handler1;
+            sldvc?.didChangeContentEvent += Handler2;
+            aspvc?.OnSettingsClicked += OnSettingsClicked;
+            store?.OnPlayerScoreUpdated += OnPlayerScoreUpdated;
+            lbsmc?.OnCombineRelations += ToggleCombinedIcons;
+        }
+        private new void OnDestroy()
+        {
+            base.OnDestroy();
+
+            sldvc?.didChangeDifficultyBeatmapEvent -= Handler1;
+            sldvc?.didChangeContentEvent -= Handler2;
+            aspvc?.OnSettingsClicked -= OnSettingsClicked;
+            store?.OnPlayerScoreUpdated -= OnPlayerScoreUpdated;
+            lbsmc?.OnCombineRelations -= ToggleCombinedIcons;
+        }
         internal void OnGameRefresh()
         {
             api.InvalidateCache();
+
+            Interlocked.Increment(ref refreshVersion);
 
             page = 1;
             currentPage = -1;
             refreshRequested = true;
         }
 
-        private async void DoEnableUpdate()
+        private void DoEnableUpdate()
         {
             IEnumerator WaitUntilValidUpdate()
             {
                 yield return new WaitUntil(() => gameObject.activeInHierarchy);
+                yield return new WaitForEndOfFrame();
+
                 if (loadRequested)
                 {
                     ShowLoading(true);
                     loadRequested = false;
                 }
-                Task.Run(() => ForceRefresh(false));
+                ForceRefresh(false);
             }
 
             if (loadRequested)
-                loadRequested = !ShowLoading(true);
+                mainThreadDispatcher.EnqueueAction(() => loadRequested = !ShowLoading(true));
 
             if (!TryUpdateCurrentMap() && refreshRequested)
             {
-                StartCoroutine(WaitUntilValidUpdate());
+                mainThreadDispatcher.EnqueueRoutine(WaitUntilValidUpdate());
                 refreshRequested = false;
             }
         }
+
+        private void OnSettingsClicked() => lbsmc?.ShowModal(leaderboardContainer.transform);
+        private void OnPlayerScoreUpdated(AccSaberLeaderboardEntry token)
+        {
+            Plugin.Log.Info("Player score recieved");
+
+            mainThreadDispatcher.EnqueueAction(() =>
+            {
+                if (currentPlayerScore is null || currentPlayerScore.Accuracy <= token.Accuracy)
+                {
+                    currentPlayerScore = token;
+                    playerScoreVersion = refreshVersion;
+                }
+
+                store.InvalidateCurrentMapCache();
+
+                _ = RequestRefresh();
+            });
+        }
+
         private GameObject? GetHeaderPane()
         {
             // Code for finding this header taken from: https://github.com/BeatLeader/beatleader-mod/blob/1.29.4/Source/2_Core/Managers/Leaderboard/LeaderboardHeaderManager.cs
@@ -506,7 +528,7 @@ namespace AccSaber.UI.ViewControllers
             if (leaderboardVC is null) return null;
 
             //GameObject header = leaderboardVC.transform.FindChildRecursive("HeaderPanel").gameObject;
-            return leaderboardVC.transform.Find("HeaderPanel").gameObject;
+            return leaderboardVC.transform.Find("HeaderPanel")?.gameObject;
         }
 
         private void HandleHeaderPane()
@@ -515,17 +537,32 @@ namespace AccSaber.UI.ViewControllers
             if (headerPane is null) return;
 
             titlePaneTitleText = headerPane.GetComponentInChildren<TextMeshProUGUI>();
-            OnEnable();
+            UpdateHeaderTitle();
+        }
+
+        private void UpdateHeaderTitle()
+        {
+            if (titlePaneTitleText is not null)
+            {
+                titlePanelTitle = titlePaneTitleText.text;
+                titlePanelRich = titlePaneTitleText.richText;
+
+                titlePaneTitleText.richText = true;
+                titlePaneTitleText.SetText(RankedHeader);
+            }
         }
 
         private void ChangeFilter(LeaderboardDisplayType type)
         {
             if (DisplayType == type || CurrentHash is null)
                 return;
+
+            Interlocked.Increment(ref refreshVersion);
+
             page = 1;
             currentPage = 0;
             UpdateSelectors(type);
-            FullyReloadLeaderboard();
+            _ = FullyReloadLeaderboard();
         }
 
         private ClickableImage? GetSelector(LeaderboardDisplayType displayType) => displayType switch
@@ -558,45 +595,30 @@ namespace AccSaber.UI.ViewControllers
             DisplayType = newDisplayType;
         }
 
-        private void FullyReloadLeaderboard()
+        private async Task FullyReloadLeaderboard()
         {
-            Task.Run(async () =>
-            {
-                currentPlayerPage = await GetPlayerPage(false);
-                await LoadLeaderboardAsync();
-            });
+            currentPlayerPage = await GetPlayerPage(false);
+            await LoadLeaderboardAsync();
         }
 
-        private void ReloadLeaderboard() => Task.Run(async () => await LoadLeaderboardAsync());
+        private void ReloadLeaderboard() => _ = LoadLeaderboardAsync();
 
-        private void TrySubscribeToMapSelection()
-        {
-            if (sldvc is not null)
-            {
 #if NEW_VERSION
-                void Handler1(StandardLevelDetailViewController controller)
-                {
-                    TryUpdateCurrentMap();
-                }
+        private void Handler1(StandardLevelDetailViewController controller)
+        {
+            TryUpdateCurrentMap();
+        }
 #else
-                void Handler1(StandardLevelDetailViewController controller, IDifficultyBeatmap beatmap)
-                {
-                    if (beatmap is not null)
-                        UpdateDiff(beatmap);
-                }
+        private void Handler1(StandardLevelDetailViewController controller, IDifficultyBeatmap beatmap)
+        {
+            if (beatmap is not null)
+                UpdateDiff(beatmap);
+        }
 #endif
-                void Handler2(StandardLevelDetailViewController controller, StandardLevelDetailViewController.ContentType contentType)
-                {
-                    if (contentType is > StandardLevelDetailViewController.ContentType.Loading and < StandardLevelDetailViewController.ContentType.Error)
-                        TryUpdateCurrentMap();
-                }
-
-                sldvc.didChangeDifficultyBeatmapEvent -= Handler1;
-                sldvc.didChangeContentEvent -= Handler2;
-
-                sldvc.didChangeDifficultyBeatmapEvent += Handler1;
-                sldvc.didChangeContentEvent += Handler2;
-            }
+        private void Handler2(StandardLevelDetailViewController controller, StandardLevelDetailViewController.ContentType contentType)
+        {
+            if (contentType is > StandardLevelDetailViewController.ContentType.Loading and < StandardLevelDetailViewController.ContentType.Error)
+                TryUpdateCurrentMap();
         }
 
         private bool TryUpdateCurrentMap()
@@ -619,12 +641,9 @@ namespace AccSaber.UI.ViewControllers
         private bool UpdateDiff(IDifficultyBeatmap beatmap)
         {
 #endif
-            lock (updateDiffLock)
+            try
             {
-                if (!loaded)
-                    Monitor.Wait(updateDiffLock);
-
-                if (!gameObject.activeInHierarchy)
+                if (!loaded || !gameObject.activeInHierarchy)
                     return false;
 
                 // Get hash from the level (custom levels use levelID format: "custom_level_HASH")
@@ -634,7 +653,9 @@ namespace AccSaber.UI.ViewControllers
                 string levelId = beatmap.level.levelID;
 #endif
                 string hash;
-                if (levelId.Contains('_'))
+                string[] parts = levelId.Split('_');
+
+                if (parts.Length >= 3 && parts[0].Equals("custom") && parts[1].Equals("level"))
                     hash = levelId.Split('_')[2];
                 else
                     hash = levelId; // fallback for official levels
@@ -653,34 +674,80 @@ namespace AccSaber.UI.ViewControllers
                 page = 1; // reset to first page on map change
                 currentPage = 0;
                 currentPlayerPage = 0;
+                currentPlayerScore = null;
 
                 // reload leaderboard for the new map
-                Task.Run(() => ForceRefresh(true));
+                int version = Interlocked.Increment(ref refreshVersion);
+                ForceRefresh(true, version);
+
                 return true;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+                return false;
             }
         }
 
-        public async Task RequestRefresh()
+        public async Task RequestRefresh() // Only call from main thread.
         {
             page = 1;
             currentPage = -1;
 
-            if (!await ForceRefresh(false))
+            if (!gameObject.activeInHierarchy || !await DoRefresh(false))
                 refreshRequested = true;
         }
-        private async Task<bool> ForceRefresh(bool overridePlayerScore)
+        private void ForceRefresh(bool overridePlayerScore, int version = -1)
         {
             if (!gameObject.activeInHierarchy)
-                return false;
-            AsyncLock.Releaser? theLock = await forceRefreshLock.TryLockAsync();
+                return;
+
+            _ = ForceRefresh_Internal(overridePlayerScore, version);
+        }
+        private async Task ForceRefresh_Internal(bool overridePlayerScore, int version)
+        {
+            try
+            {
+                _ = DoRefresh(overridePlayerScore, version); // if the return value is needed, use DoRefresh
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
+        }
+        private async Task<bool> DoRefresh(bool overridePlayerScore, int version = -1)
+        {
+            AsyncLock.Releaser? theLock = await forceRefreshLock.LockAsync();
+
             if (theLock is null) 
                 return false;
+
             using (theLock.Value)
             {
                 try
                 {
-                    difficultyInfo = api.GetLeaderboard(CurrentHash!, CurrentDiff);
-                    bool ranked = difficultyInfo is not null;
+                    if (!IPA.Utilities.UnityGame.OnMainThread)
+                    {
+                        Plugin.Log.Critical($"{nameof(DoRefresh)} is not on the main thread!!!");
+                        return false;
+                    }
+
+                    if (version < 0)
+                        version = Interlocked.Increment(ref refreshVersion);
+
+                    string? hash = CurrentHash;
+                    BeatmapDifficulty diff = CurrentDiff;
+
+                    if (hash is null)
+                        return false;
+
+                    AccSaberBasicDifficulty? newDifficultyInfo = api.GetLeaderboard(hash, diff); // just a dictionary lookup
+                    bool ranked = newDifficultyInfo is not null;
+
+                    if (version != refreshVersion)
+                        return false;
+
+                    difficultyInfo = newDifficultyInfo;
 
                     //Plugin.Log.Info($"ranked = {ranked}, diffId = {difficultyInfo?.DifficultyId}");
 
@@ -698,16 +765,20 @@ namespace AccSaber.UI.ViewControllers
 
                             Unranked = true;
                         }
-                        StartCoroutine(ShowBad());
+                        mainThreadDispatcher.EnqueueRoutine(ShowBad());
                         return true;
                     }
 
-                    ShowLoading();
+                    mainThreadDispatcher.EnqueueAction(() => ShowLoading());
 
-                    currentPlayerPage = await GetPlayerPage(overridePlayerScore);
+                    currentPlayerPage = await GetPlayerPage(overridePlayerScore, hash, diff, version);
+
+                    if (version != refreshVersion)
+                        return false;
 
                     await LoadLeaderboardAsync();
-                } catch (Exception e)
+                } 
+                catch (Exception e)
                 {
                     Plugin.Log.Error(e);
                     return false;
@@ -732,96 +803,132 @@ namespace AccSaber.UI.ViewControllers
                 return false;
 
             if (Loading || DifficultyId is null)
-                return true; // Return true because load is already happening, or it isn't valid to want to load on an unranked map.
+                return true;
 
             if (forceLoad)
             {
                 Loading = true;
-
                 return true;
             }
 
-            //int relationLen = PlayerSocialLife.GetIds_Internal(DisplayType)?.Count ?? -1;
+            int version = refreshVersion;
+            string difficultyId = DifficultyId;
+            int requestedPage = page;
+            LeaderboardDisplayType displayType = DisplayType;
+            Func<AccSaberLeaderboardEntry, bool>? filter = CurrentFilter;
+            int relationLen = playerInfo.GetIds_Internal(displayType)?.Count ?? -1;
 
-            //bool gotCachedData = DisplayType != LeaderboardDisplayType.Country ?
-            //    ScoreDataCached(DifficultyId, page, CurrentFilter, relationLen) : ScoreDataCached(DifficultyId, page, store.GetCurrentUserAsync().GetAwaiter().GetResult().Country);
-            bool gotCachedData = false;
-
-            IEnumerator WaitThenUpdate()
-            {
-                yield return new WaitForEndOfFrame();
-
-                if (!gotCachedData)
-                {
-                    Loading = true;
-                } 
-                else
-                {
-                    Unranked = false;
-                }
-            }
-            StartCoroutine(WaitThenUpdate());
+            _ = UpdateLoadingStateFromCache(
+                version,
+                difficultyId,
+                requestedPage,
+                displayType,
+                filter,
+                relationLen
+            );
 
             return true;
         }
 
+        private async Task UpdateLoadingStateFromCache(
+    int version,
+    string difficultyId,
+    int requestedPage,
+    LeaderboardDisplayType displayType,
+    Func<AccSaberLeaderboardEntry, bool>? filter,
+    int relationLen
+)
+        {
+            try
+            {
+                bool gotCachedData;
+
+                if (displayType == LeaderboardDisplayType.Country)
+                {
+                    string country = (await store.GetCurrentUserAsync()).Country;
+                    gotCachedData = api.ScoreDataCached(difficultyId, requestedPage, country);
+                }
+                else
+                {
+                    gotCachedData = api.ScoreDataCached(difficultyId, requestedPage, filter, relationLen);
+                }
+
+                mainThreadDispatcher.EnqueueAction(() =>
+                {
+                    if (version != refreshVersion)
+                        return;
+
+                    if (difficultyId != DifficultyId)
+                        return;
+
+                    if (requestedPage != page)
+                        return;
+
+                    if (displayType != DisplayType)
+                        return;
+
+                    if (!gotCachedData)
+                        Loading = true;
+                    else
+                        Unranked = false;
+                });
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("Error checking leaderboard cache:\n" + e);
+
+                mainThreadDispatcher.EnqueueAction(() =>
+                {
+                    if (version == refreshVersion)
+                        Loading = true;
+                });
+            }
+        }
+
         public void ForceShowLeaderboard()
         {
-            Unranked = false;
+            mainThreadDispatcher.EnqueueAction(() => Unranked = false);
         }
         public async void ShowPlayerPage(string playerId)
         {
-            AsyncLock.Releaser theLock = await loadLeaderboardLock.LockAsync();
-
             try
             {
-                if (CurrentHash is null)
+                string? hash = CurrentHash;
+                BeatmapDifficulty diff = CurrentDiff;
+                int version = refreshVersion;
+
+                if (hash is null)
                 {
-                    object PageLocker = new();
-
-                    void ReleaseFunc(bool ranked)
-                    {
-                        if (ranked)
-                            lock (PageLocker)
-                                Monitor.PulseAll(PageLocker);
-                    }
-
-                    OnMapChanged += ReleaseFunc;
-
-                    await Task.Run(() =>
-                    {
-                        lock (PageLocker)
-                            Monitor.Wait(PageLocker);
-                    });
-
-                    OnMapChanged -= ReleaseFunc;
+                    Plugin.Log.Warn("Cannot show player page, no ranked map is currently selected.");
+                    return;
                 }
+
+                using AsyncLock.Releaser theLock = await loadLeaderboardLock.LockAsync();
 
                 ShowLoading();
 
-                AccSaberLeaderboardEntry? playerScore = await api.GetScoreData(playerId, CurrentHash!, CurrentDiff);
+                AccSaberLeaderboardEntry? playerScore = await api.GetScoreData(playerId, hash, diff);
+
+                if (version != refreshVersion || CurrentHash != hash || !CurrentDiff.Equals(diff))
+                    return;
+
+                Interlocked.Increment(ref refreshVersion);
 
                 if (DisplayType != LeaderboardDisplayType.Global)
                 {
                     currentPage = 0;
                     UpdateSelectors(LeaderboardDisplayType.Global);
-                    currentPlayerPage = await GetPlayerPage(false);
+                    currentPlayerPage = await GetPlayerPage(false, hash, diff, refreshVersion);
                 }
 
                 if (playerScore is not null)
-                {
                     page = (int)Math.Ceiling(playerScore.Rank / (float)PAGE_LENGTH);
-                }
 
                 await LoadLeaderboardAsyncNoLock();
-            } 
+            }
             catch (Exception e)
             {
                 Plugin.Log.Error("There was an error setting the leaderboard page to target!\n" + e);
-            }
-            finally
-            {
-                theLock.Dispose();
             }
         }
         private async Task LoadLeaderboardAsync(bool force = false)
@@ -831,64 +938,77 @@ namespace AccSaber.UI.ViewControllers
             using (theLock)
                 await LoadLeaderboardAsyncNoLock();
         }
+
         private async Task LoadLeaderboardAsyncNoLock()
         {
             try
             {
-                if (DifficultyId is null)
-                    return;
+                int version = refreshVersion;
+                string? difficultyId = DifficultyId;
+                int requestedPage = page;
+                LeaderboardDisplayType requestedDisplayType = DisplayType;
 
-                currentPage = page;
+                if (difficultyId is null)
+                    return;
 
                 ShowLoading();
 
                 await playerInfo.LoadTask;
 
-                scoreDatas.Clear();
-
                 AccSaberLeaderboardEntry[]? scores;
 
-                switch (DisplayType)
+                switch (requestedDisplayType)
                 {
                     case LeaderboardDisplayType.Global:
-                        scores = await api.GetScoreData(page, DifficultyId);
-                        nextPage = page + 1;
+                        scores = await api.GetScoreData(requestedPage, difficultyId);
                         break;
 
                     case LeaderboardDisplayType.Relations:
-                        scores = await api.GetScoreData(page, DifficultyId, RelationType.follower, RelationType.rival);
-                        nextPage = page + 1;
+                        scores = await api.GetScoreData(requestedPage, difficultyId, RelationType.follower, RelationType.rival);
                         break;
 
                     case LeaderboardDisplayType.Followed:
                     case LeaderboardDisplayType.Rivals:
-                        scores = await api.GetScoreData(page, DifficultyId, DisplayType.Convert());
-                        nextPage = page + 1;
+                        scores = await api.GetScoreData(requestedPage, difficultyId, requestedDisplayType.Convert());
                         break;
 
                     case LeaderboardDisplayType.Country:
                         string country = (await store.GetCurrentUserAsync()).Country;
-
-                        scores = await api.GetScoreData(page, DifficultyId, country);
-                        nextPage = page + 1;
-
+                        scores = await api.GetScoreData(requestedPage, difficultyId, country);
                         break;
 
                     default:
                         scores = null;
                         break;
                 }
-                if (scores is not null)
-                    scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score, this, playerInfo, lbsmc)));
 
-                bool knowCurrentPlayerPage = currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage();
+                mainThreadDispatcher.EnqueueRoutine(ReloadData());
 
                 IEnumerator ReloadData()
                 {
-                    yield return null;
                     yield return new WaitForEndOfFrame();
 
-                    SetSelectorButtonSelectability(knowCurrentPlayerPage);
+                    if (version != refreshVersion)
+                        yield break;
+
+                    if (difficultyId != DifficultyId)
+                        yield break;
+
+                    if (requestedPage != page)
+                        yield break;
+
+                    if (requestedDisplayType != DisplayType)
+                        yield break;
+
+                    currentPage = requestedPage;
+                    nextPage = requestedPage + 1;
+
+                    scoreDatas.Clear();
+
+                    if (scores is not null)
+                        scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score, this, playerInfo, lbsmc)));
+
+                    SetSelectorButtonSelectability(currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage());
 
                     leaderboard.PrefNumberOfCells = OnPlayerPage ? PAGE_LENGTH : PAGE_LENGTH + 2;
                     leaderboard.MainCellSize = CellSize;
@@ -898,8 +1018,6 @@ namespace AccSaber.UI.ViewControllers
 
                     Unranked = false;
                 }
-
-                StartCoroutine(ReloadData());
             }
             catch (Exception ex)
             {
@@ -952,20 +1070,32 @@ namespace AccSaber.UI.ViewControllers
             return true;
         }
 
-        private async Task<int> GetPlayerPage(bool overrideLastScore)
+        private async Task<int> GetPlayerPage(bool overrideLastScore) => CurrentHash is not null ? await GetPlayerPage(overrideLastScore, CurrentHash, CurrentDiff, refreshVersion) : 0;
+        private async Task<int> GetPlayerPage(bool overrideLastScore, string hash, BeatmapDifficulty diff, int version)
         {
             await playerInfo.LoadTask;
 
-            if (overrideLastScore || currentPlayerScore is null)
-                currentPlayerScore = await api.GetScoreData(playerInfo.PlayerID!, CurrentHash!, CurrentDiff);
-            if (currentPlayerScore is null) return -1; // Player has no score on this map
+            AccSaberLeaderboardEntry? score = currentPlayerScore;
+
+            if (overrideLastScore || score is null || playerScoreVersion != version)
+                score = await api.GetScoreData(playerInfo.PlayerID!, hash, diff);
+
+            if (version != refreshVersion)
+                return -1;
+
+            currentPlayerScore = score;
+            playerScoreVersion = version;
+
+            if (currentPlayerScore is null)
+                return -1; // Player has no score on this map
+
             return DisplayType switch
             {
                 LeaderboardDisplayType.Global => (int)Math.Ceiling(currentPlayerScore.Rank / (float)PAGE_LENGTH),
                 _ => 0 // At this point, we do not have the information needed to get the rank of any other display type.
             };
         }
-        #endregion Private Methods
+        #endregion
 
         private class TextSpacer : ICellDataSource
         {

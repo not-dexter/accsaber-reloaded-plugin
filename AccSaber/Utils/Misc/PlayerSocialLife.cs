@@ -172,7 +172,6 @@ namespace AccSaber.Utils.Misc
 
         public void Initialize()
         {
-            Plugin.Log.Info("init");
             if (loadTask is not null)
                 return;
             loadTask = LoadInfoTask();

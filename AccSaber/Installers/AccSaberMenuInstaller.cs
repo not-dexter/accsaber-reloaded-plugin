@@ -22,21 +22,25 @@ namespace AccSaber.Installers
 		public AccSaberMenuInstaller(PluginConfig pluginConfig)
 		{
 			_pluginConfig = pluginConfig;
-			//_calc = calc;
-		}
+            //_calc = calc;
+
+        }
 		
 		public override void InstallBindings()
 		{
 			Plugin.Container = Container;
 
 			Container.BindInstance(_pluginConfig).AsSingle();
-            //Container.BindInstance(_calc).AsSingle();
+			//Container.BindInstance(_calc).AsSingle();
+
             Container.BindInterfacesTo<PlayerSocialLife>().FromResolve();
 
             Container.BindInterfacesAndSelfTo<PlaylistUtils>().AsSingle();
 			Container.BindExecutionOrder<PlaylistUtils>(-100);
 
-			Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
+            Container.Bind<MainThreadDispatcher>().FromNewComponentOnNewGameObject().AsSingle();
+
+            Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
             Container.Bind<AccSaberMissionScreen>().AsSingle();
 
 			Container.BindInterfacesAndSelfTo<LevelUtils>().AsSingle();

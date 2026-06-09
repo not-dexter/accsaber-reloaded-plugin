@@ -108,7 +108,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void Dispose()
         {
-            _modalView.blockerClickedEvent -= KillLock;
+            _modalView?.blockerClickedEvent -= KillLock;
         }
 
         public interface IPopup
