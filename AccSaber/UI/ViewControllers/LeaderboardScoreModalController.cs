@@ -1,4 +1,5 @@
-﻿using AccSaber.Configuration;
+﻿using AccSaber.API;
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
@@ -11,7 +12,6 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using Zenject;
-using static AccSaber.API.AccsaberAPI;
 using static AccSaber.Utils.ColorUtils;
 
 #if NEW_VERSION
@@ -69,6 +69,7 @@ namespace AccSaber.UI.ViewControllers
 
         [Inject] private readonly LeaderboardUserModalController lumc = null!;
         [Inject] private readonly PluginConfig PC = null!;
+        [Inject] private readonly AccsaberAPI api = null!;
 
         private AccSaberPlayer lastUser = null!;
         private MonoBehaviour currentHost = null!;
@@ -103,7 +104,7 @@ namespace AccSaber.UI.ViewControllers
         }
         private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo)
         {
-            AccSaberPlayer? playerInfo = await GetPlayerInfo(scoreInfo.PlayerId, true, false);
+            AccSaberPlayer? playerInfo = await api.GetPlayerInfo(scoreInfo.PlayerId, true, false);
             if (playerInfo is not null)
                 await ShowTextsAsync(host, scoreInfo, playerInfo);
             else

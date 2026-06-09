@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace AccSaber.Models.PlayerModels
 {
     [UsedImplicitly]
-    internal class AccSaberPlayerStats : Model
+    internal class AccSaberPlayerStats : IModel
     {
         [JsonProperty("ap")]
         public float AP { get; set; }
@@ -61,7 +61,7 @@ namespace AccSaber.Models.PlayerModels
             if (Category != APCategory.Overall)
                 category_id += "_acc";
 
-            StatDiffs = await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.throttler);
+            StatDiffs = await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.Throttler);
 
             return StatDiffs is not null;
         }

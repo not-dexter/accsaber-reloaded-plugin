@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace AccSaber.Utils
+namespace AccSaber.Utils.Misc
 {
     /// <summary>
     /// A simple thread-safe in-memory cache that associates keys of type <typeparamref name="K"/>

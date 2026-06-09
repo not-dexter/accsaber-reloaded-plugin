@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
-    internal class AccSaberItemGlisten : Model
+    internal class AccSaberItemGlisten : IModel
     {
         [JsonProperty("enabled")]
         public bool Enabled { get; set; }

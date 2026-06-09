@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace AccSaber.Models
 {
-    internal class AccSaberCampaign : Model
+    internal class AccSaberCampaign : IModel
     {
         [JsonProperty("id")]
         public string Id { get; set; } = null!;

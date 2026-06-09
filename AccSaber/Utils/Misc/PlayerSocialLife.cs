@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AccSaber.API;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -6,44 +7,46 @@ using System.Threading.Tasks;
 using Zenject;
 using static AccSaber.API.AccsaberAPI;
 
-namespace AccSaber.Utils
+namespace AccSaber.Utils.Misc
 {
     public sealed class PlayerSocialLife : IInitializable//, IDisposable
     {
-        public static event Action? OnRelationChanged;
+        [Inject] private readonly AccsaberAPI api = null!;
 
-        private static readonly AsyncLock loadLock = new();
-        private static readonly AsyncLock changeRelationLock = new();
-        private static Task? loadTask = null;
-        public static Task LoadTask => LoadInfo();
+        public event Action? OnRelationChanged;
 
-        private static HashSet<string>? PlayerFollowed = null;
-        private static HashSet<string>? PlayerRivals = null;
-        private static HashSet<string>? PlayerRelations = null;
+        private readonly AsyncLock loadLock = new();
+        private readonly AsyncLock changeRelationLock = new();
+        private Task? loadTask = null;
+        public Task LoadTask => LoadInfo();
 
-        internal static HashSet<string>? PlayerBlocked = null; // never expose this above internal
+        private HashSet<string>? PlayerFollowed = null;
+        private HashSet<string>? PlayerRivals = null;
+        private HashSet<string>? PlayerRelations = null;
 
-        private static Dictionary<RelationType, Dictionary<string, string>> UserIdToRelationId = [];
+        internal HashSet<string>? PlayerBlocked = null; // never expose this above internal
 
-        private static bool exposeFollowed = false, exposeRivals = false;
-        internal static AuthInfo? AuthInfo { get; private set; }
+        private Dictionary<RelationType, Dictionary<string, string>> UserIdToRelationId = [];
 
-        public static string? PlayerID { get; private set; } = null;
-        public static IReadOnlyCollection<string>? PlayerRivalIDs => exposeRivals ? PlayerRivals : null;
-        internal static IReadOnlyCollection<string>? PlayerRivalIDs_Internal => PlayerRivals;
-        public static IReadOnlyCollection<string>? PlayerFollowedIDs => exposeFollowed ? PlayerFollowed : null;
-        internal static IReadOnlyCollection<string>? PlayerFollowedIDs_Internal => PlayerFollowed;
-        public static IReadOnlyCollection<string>? PlayerRelationIDs => PlayerRelations;
+        private bool exposeFollowed = false, exposeRivals = false;
+        internal AuthInfo? AuthInfo { get; private set; }
 
-        public static IReadOnlyCollection<string>? GetIds(LeaderboardDisplayType displayType) => displayType switch
+        public string? PlayerID { get; private set; } = null;
+        public IReadOnlyCollection<string>? PlayerRivalIDs => exposeRivals ? PlayerRivals : null;
+        internal IReadOnlyCollection<string>? PlayerRivalIDs_Internal => PlayerRivals;
+        public IReadOnlyCollection<string>? PlayerFollowedIDs => exposeFollowed ? PlayerFollowed : null;
+        internal IReadOnlyCollection<string>? PlayerFollowedIDs_Internal => PlayerFollowed;
+        public IReadOnlyCollection<string>? PlayerRelationIDs => PlayerRelations;
+
+        public IReadOnlyCollection<string>? GetIds(LeaderboardDisplayType displayType) => displayType switch
         {
             LeaderboardDisplayType.Rivals => PlayerRivalIDs,
             LeaderboardDisplayType.Followed => PlayerFollowedIDs,
             LeaderboardDisplayType.Relations => PlayerRelationIDs,
             _ => null
         };
-        public static IReadOnlyCollection<string>? GetIds(RelationType relationType) => GetIds(relationType.Convert());
-        internal static HashSet<string>? GetIds_Internal(LeaderboardDisplayType displayType) => displayType switch
+        public IReadOnlyCollection<string>? GetIds(RelationType relationType) => GetIds(relationType.Convert());
+        internal HashSet<string>? GetIds_Internal(LeaderboardDisplayType displayType) => displayType switch
         {
             LeaderboardDisplayType.Rivals => PlayerRivals,
             LeaderboardDisplayType.Followed => PlayerFollowed,
@@ -51,7 +54,7 @@ namespace AccSaber.Utils
             LeaderboardDisplayType.Blocked => PlayerBlocked,
             _ => null
         };
-        internal static async Task<bool> AddId(string id, LeaderboardDisplayType displayType)
+        internal async Task<bool> AddId(string id, LeaderboardDisplayType displayType)
         {
             AsyncLock.Releaser locker = await changeRelationLock.LockAsync();
 
@@ -68,7 +71,7 @@ namespace AccSaber.Utils
 
                 RelationType rt = displayType.Convert();
 
-                var (success, relationId) = await AddPlayerRelation(rt, id);
+                var (success, relationId) = await api.AddPlayerRelation(rt, id);
 
                 if (success && UserIdToRelationId.ContainsKey(rt))
                     UserIdToRelationId[rt].Add(id, relationId!);
@@ -78,7 +81,7 @@ namespace AccSaber.Utils
                 return success;
             }
         }
-        internal static async Task<bool> RemoveId(string id, LeaderboardDisplayType displayType)
+        internal async Task<bool> RemoveId(string id, LeaderboardDisplayType displayType)
         {
             AsyncLock.Releaser locker = await changeRelationLock.LockAsync();
 
@@ -98,7 +101,7 @@ namespace AccSaber.Utils
                 if (!UserIdToRelationId[rt].TryGetValue(id, out string relationId))
                     return false;
 
-                bool success = await RemovePlayerRelation(relationId);
+                bool success = await api.RemovePlayerRelation(relationId);
 
                 if (success)
                     UserIdToRelationId[rt].Remove(id);
@@ -108,7 +111,7 @@ namespace AccSaber.Utils
                 return success;
             }
         }
-        public static async Task LoadInfo()
+        public async Task LoadInfo()
         {
             if (loadTask is not null)
             {
@@ -119,13 +122,13 @@ namespace AccSaber.Utils
                 Monitor.Wait(loadLock);
             await loadTask!;
         }
-        private static async Task LoadInfoTask(int retries = 3)
+        private async Task LoadInfoTask(int retries = 3)
         {
             try
             {
-                AuthInfo = await Authenticate();
+                AuthInfo = await api.Authenticate();
 
-                (exposeFollowed, exposeRivals) = await ExposeRelations();
+                (exposeFollowed, exposeRivals) = await api.ExposeRelations();
 
                 if (AuthInfo is not null)
                     await SetRelations(AuthInfo.UserId);
@@ -142,9 +145,9 @@ namespace AccSaber.Utils
                 await LoadInfoTask(retries - 1);
             }
         }
-        private static async Task SetRelations(string mainUserId)
+        private async Task SetRelations(string mainUserId)
         {
-            var relations = await GetPlayerRelations();
+            var relations = await api.GetPlayerRelations();
 
             UserIdToRelationId = [with(relations.Select(toConvert =>
                 new KeyValuePair<RelationType, Dictionary<string, string>>(toConvert.Key, toConvert.Value.relations)))];
@@ -169,6 +172,7 @@ namespace AccSaber.Utils
 
         public void Initialize()
         {
+            Plugin.Log.Info("init");
             if (loadTask is not null)
                 return;
             loadTask = LoadInfoTask();

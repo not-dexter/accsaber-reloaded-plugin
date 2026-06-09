@@ -46,7 +46,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberBasicDifficulty : Model
+    internal class AccSaberBasicDifficulty : IModel
     {
         [JsonProperty("id")]
         public string DifficultyId { get; set; } = null!;
@@ -82,6 +82,12 @@ namespace AccSaber.Models
                 string temp = CategoryCode.Split('_')[0];
                 Category = (APCategory?)Enum.Parse(typeof(APCategory), temp.Capitialize());
             }
+        }
+
+        [OnSerializing]
+        private void OnSerializing(StreamingContext context)
+        {
+            Hash = null!;
         }
     }
 }

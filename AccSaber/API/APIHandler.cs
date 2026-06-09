@@ -1,4 +1,4 @@
-﻿using AccSaber.Utils;
+﻿using AccSaber.Utils.Misc;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
@@ -247,7 +247,7 @@ namespace AccSaber.API
                 (string url, Throttler? throttler)? testData = null;
                 if (domain.Equals(HelpfulPaths.APAPI_DOMAIN, StringComparison.OrdinalIgnoreCase))
                 {
-                    testData = (HelpfulPaths.APAPI_TEST, AccsaberAPI.throttler);
+                    testData = (HelpfulPaths.APAPI_TEST, AccsaberAPI.Throttler);
                 }
 
                 if (testData is null)

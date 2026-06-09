@@ -4,6 +4,7 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -62,9 +63,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
-        [Inject] public readonly LevelUtils _levelUtils = null!;
+        [Inject] private readonly LevelUtils _levelUtils = null!;
         [Inject] private readonly PluginConfig PC = null!;
-        [Inject] private readonly AccSaberNotificationModal asnm = null!;
+        [Inject] private readonly AccSaberNotificationModal _asnm = null!;
+        [Inject] private readonly PlayerSocialLife _playerData = null!;
+        [Inject] private readonly SerializationHandler _serialHandler = null!;
+        [Inject] private readonly AccSaberLeaderboardViewController _leaderboardViewController = null!;
 
         [UIValue("is-loading")]
         private bool IsLoading
@@ -124,7 +128,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     default: return;
                 }
 
-                _ = asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator, prompt);
+                _ = _asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator, prompt);
             }
             else
                 PopupSuccess(data);
@@ -206,7 +210,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _ = _levelUtils.LoadPlaylist(cell.Data.Category, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.PB_ABOVE_THRESHOLD:
-                    _ = _levelUtils.LoadPlaylistAp(cell.Data.Category, PlayerSocialLife.PlayerID!, cell.Data.TargetThresholdAp!.Value, ">=", CloseMenu, cell.UpdateStatus);
+                    _ = _levelUtils.LoadPlaylistAp(cell.Data.Category, _playerData.PlayerID!, cell.Data.TargetThresholdAp!.Value, ">=", CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.XP_IN_WINDOW:
                     _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
@@ -235,9 +239,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 _dailyCells.Clear();
                 _weeklyCells.Clear();
 
-                AccSaberLeaderboardViewController.Instance.MissionTargets.Clear();
+                _leaderboardViewController.MissionTargets.Clear();
 
-                await PlayerSocialLife.LoadTask;
+                await _playerData.LoadTask;
 
                 try
                 {
@@ -254,11 +258,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     foreach (AccSaberMission post in missions)
                     {
                         if (_parsed)
+                        {
+                            AccSaberBasicDifficulty? targetDiff = post.TargetMapDifficultyId is null ?
+                                null : _serialHandler.CachedDifficulties[post.TargetMapDifficultyId];
+
                             switch (post.MissionPool)
                             {
-                                case MissionPool.Daily: _dailyCells.Add(new MissionCell(post)); break;
-                                case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post)); break;
+                                case MissionPool.Daily: _dailyCells.Add(new MissionCell(post, targetDiff)); break;
+                                case MissionPool.Weekly: _weeklyCells.Add(new MissionCell(post, targetDiff)); break;
                             }
+                        }
 
                         if (!setDailyTime && post.MissionPool == MissionPool.Daily)
                         {
@@ -272,7 +281,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         }
 
                         if (post.TargetPlayerId is not null && post.TargetMapDifficultyId is not null)
-                            AccSaberLeaderboardViewController.Instance.MissionTargets.Add((post.TargetPlayerId, post.TargetMapDifficultyId));
+                            _leaderboardViewController.MissionTargets.Add((post.TargetPlayerId, post.TargetMapDifficultyId));
                     }
 
                     UpdateTimer();
@@ -294,7 +303,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
-        internal class MissionCell(AccSaberMission data) : ICellDataSource, INotifyPropertyChanged
+        internal class MissionCell(AccSaberMission data, AccSaberBasicDifficulty? targetDiff) : ICellDataSource, INotifyPropertyChanged
         {
             public string TemplatePath => ResourcePaths.ACC_SABER_MISSION_CELL;
 
@@ -303,6 +312,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             public int TemplateId { get; set; }
 
             public readonly AccSaberMission Data = data;
+            public readonly AccSaberBasicDifficulty? TargetDiff = targetDiff;
 
             private bool _showStatus = false;
             private string _statusText = null!;
@@ -367,20 +377,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             private string DescriptionParser()
             {
-                if (Data.TargetMapDifficultyId is null)
+                if (TargetDiff is null)
                     return Data.Description;
-
-                AccSaberBasicDifficulty cachedDiff;
-
-                foreach (string currentHash in SerializerHandler.CachedMaps.Keys)
-                {
-                    cachedDiff = SerializerHandler.CachedMaps[currentHash].Difficulties.FirstOrDefault(diff => diff.DifficultyId.Equals(Data.TargetMapDifficultyId));
-
-                    if (cachedDiff is not null)
-                        return Data.Description.Replace(EnumUtils.DiffToReloadedDiff(cachedDiff.Difficulty), cachedDiff.Difficulty.ToString());
-                }
-
-                return Data.Description;
+                else
+                    return Data.Description.Replace(EnumUtils.DiffToReloadedDiff(TargetDiff.Difficulty), TargetDiff.Difficulty.ToString());
             }
 
             [UIValue("extraText")]

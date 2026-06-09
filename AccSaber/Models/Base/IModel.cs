@@ -1,6 +1,6 @@
 ﻿namespace AccSaber.Models.Base
 {
-    public interface Model
+    public interface IModel
     {
         
     }

@@ -16,6 +16,8 @@ using Zenject;
 using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
+using AccSaber.Utils.Misc;
+
 
 #if NEW_VERSION
 using System.Reflection;
@@ -38,6 +40,9 @@ namespace AccSaber.Utils
         [Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
         [Inject] private readonly SoloFreePlayFlowCoordinator _soloCoordinator = null!;
         [Inject] private readonly PlaylistUtils _playlistUtils = null!;
+        [Inject] private readonly AccsaberAPI _api = null!;
+        [Inject] private readonly SerializationHandler _serialHandler = null!;
+        [Inject] private readonly AccSaberLeaderboardViewController _leaderboardVC = null!;
 
         public event Action<string?>? StatusTextChanged;
 
@@ -62,7 +67,7 @@ namespace AccSaber.Utils
 
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAp(APCategory type, string playerId, float apThreshold, string comp)
         {
-            IEnumerable<AccSaberBasicDifficulty>? scores = (await AccsaberAPI.GetMapsAboveThreshold(playerId, apThreshold, type))?.Cast<AccSaberBasicDifficulty>();
+            IEnumerable<AccSaberBasicDifficulty>? scores = (await _api.GetMapsAboveThreshold(playerId, apThreshold, type))?.Cast<AccSaberBasicDifficulty>();
 
             if (scores is null)
                 return null;
@@ -76,7 +81,7 @@ namespace AccSaber.Utils
             if (comp.Contains('<'))
             {
                 HashSet<string> idSet = [.. ids];
-                ids = SerializerHandler.CachedMaps.Values.SelectMany(map => map.Difficulties.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId));
+                ids = _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId);
             }
 
             return _playlistUtils.GetPlaylistData(ids);
@@ -84,7 +89,7 @@ namespace AccSaber.Utils
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, string comp)
         {
             string sort = comp.Contains('<') ? "&sort=accuracy,desc" : "&sort=accuracy,asc";
-            AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.EnumToReloadedCategory(type), 0, 50) + sort, AccsaberAPI.throttler);
+            AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.EnumToReloadedCategory(type), 0, 50) + sort, AccsaberAPI.Throttler);
 
             if (scores is null || scores.Content is null)
                 return null;
@@ -205,7 +210,7 @@ namespace AccSaber.Utils
 
                     StatusTextChanged?.Invoke("Downloading...");
 
-                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_MISSING, userId, categoryName), AccsaberAPI.throttler);
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_MISSING, userId, categoryName), AccsaberAPI.Throttler);
 
                     filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
 
@@ -250,7 +255,7 @@ namespace AccSaber.Utils
 
                     StatusTextChanged?.Invoke("Downloading...");
 
-                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST, categoryName), AccsaberAPI.throttler);
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST, categoryName), AccsaberAPI.Throttler);
 
                     filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
 
@@ -291,7 +296,7 @@ namespace AccSaber.Utils
                 {
                     StatusTextChanged?.Invoke("Downloading...");
 
-                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_SNIPE, sniperId, targetId, 0, EnumUtils.CategoryIdToOtherReloadedCategory(category.ToString())), AccsaberAPI.throttler);
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_SNIPE, sniperId, targetId, 0, EnumUtils.CategoryIdToOtherReloadedCategory(category.ToString())), AccsaberAPI.Throttler);
                     filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
 
                     StatusTextChanged?.Invoke("Saving...");
@@ -390,25 +395,21 @@ namespace AccSaber.Utils
                 AccSaberBasicDifficulty? cachedDiff = null;
                 string? hash = null;
 
-                foreach (string currentHash in SerializerHandler.CachedMaps.Keys)
-                {
-                    map = SerializerHandler.CachedMaps[currentHash];
-                    cachedDiff = map.Difficulties.FirstOrDefault(diff => diff.DifficultyId.Equals(diffId));
+                var mapData = _serialHandler.GetMapWithDifficulty(diffId);
 
-                    if (cachedDiff is not null)
-                    {
-                        hash = currentHash;
-                        break;
-                    }
-                }
-
-                if (hash is null || cachedDiff is null)
+                if (mapData is null)
                 {
                     Plugin.Log.Critical("Somehow you have a mission for a level that isn't cached!! Please report this on Discord.");
                     if (endEvent)
                         StatusTextChanged?.Invoke(null);
                     StatusTextChanged -= statEvent;
                     return;
+                }
+                else
+                {
+                    map = mapData.Value.map;
+                    cachedDiff = mapData.Value.diff;
+                    hash = map.Hash;
                 }
 
 #if NEW_VERSION
@@ -468,7 +469,7 @@ namespace AccSaber.Utils
                         }
 #endif
                         if (targetPlayerId is not null)
-                            AccSaberLeaderboardViewController.Instance.ShowPlayerPage(targetPlayerId);
+                            _leaderboardVC.ShowPlayerPage(targetPlayerId);
                     }
                     catch (Exception e)
                     {

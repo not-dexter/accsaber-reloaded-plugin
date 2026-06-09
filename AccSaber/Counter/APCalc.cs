@@ -18,7 +18,7 @@ namespace AccSaber.Counter
         }
         private async Task Load()
         {
-            AccSaberCurve? curve = await APIHandler.CallAPI_Json<AccSaberCurve>(HelpfulPaths.APAPI_CURVE_AP, AccsaberAPI.throttler);
+            AccSaberCurve? curve = await APIHandler.CallAPI_Json<AccSaberCurve>(HelpfulPaths.APAPI_CURVE_AP, AccsaberAPI.Throttler);
 
             if (curve is null)
             {

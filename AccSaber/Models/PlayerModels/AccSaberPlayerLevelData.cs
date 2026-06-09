@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 namespace AccSaber.Models.PlayerModels
 {
     [UsedImplicitly]
-    internal class AccSaberPlayerLevelData : Model
+    internal class AccSaberPlayerLevelData : IModel
     {
         [JsonProperty("level")]
         public string PlayerLevel { get; set; } = null!;

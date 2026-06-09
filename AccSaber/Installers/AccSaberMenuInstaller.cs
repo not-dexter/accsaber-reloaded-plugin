@@ -7,6 +7,7 @@ using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.UI.MenuButton.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.BSML_Addons;
 using Zenject;
 
@@ -29,9 +30,10 @@ namespace AccSaber.Installers
 			Plugin.Container = Container;
 
 			Container.BindInstance(_pluginConfig).AsSingle();
-			//Container.BindInstance(_calc).AsSingle();
+            //Container.BindInstance(_calc).AsSingle();
+            Container.BindInterfacesTo<PlayerSocialLife>().FromResolve();
 
-			Container.BindInterfacesAndSelfTo<PlaylistUtils>().AsSingle();
+            Container.BindInterfacesAndSelfTo<PlaylistUtils>().AsSingle();
 			Container.BindExecutionOrder<PlaylistUtils>(-100);
 
 			Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
@@ -62,8 +64,7 @@ namespace AccSaber.Installers
 			Container.Bind<LeaderboardUserModalController>().AsSingle();
             Container.Bind<LeaderboardSettingsModalController>().AsSingle();
             Container.Bind<WhereScoreModalController>().AsSingle();
-			Container.Bind(typeof(IInitializable)).To<AddonAdder>().AsSingle();
-			Container.Bind(typeof(IInitializable)).To<PlayerSocialLife>().AsSingle();
+			Container.BindInterfacesAndSelfTo<AddonAdder>().AsSingle();
 		}
 	}
 }

@@ -1,8 +1,10 @@
-﻿using AccSaber.Configuration;
+﻿using AccSaber.API;
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -27,7 +29,7 @@ namespace AccSaber.UI.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.Views.AccSaberLeaderboardView.bsml")]
     [HotReload(RelativePathToLayout = @"..\UI\Views\AccSaberLeaderboardView.bsml")]
-    internal sealed class AccSaberLeaderboardViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable
+    internal sealed class AccSaberLeaderboardViewController : BSMLAutomaticViewController, INotifyPropertyChanged
     {
 #pragma warning disable IDE0044, IDE0051
 
@@ -42,11 +44,6 @@ namespace AccSaber.UI.ViewControllers
         public const string RANKED_HEADER = "Accsaber";
         public const string UNRANKED_HEADER = "Not Accsaber";
 
-        public static bool LeaderboardOnPlayerPage => Instance.OnPlayerPage;
-
-        public static event Action<bool>? OnMapChanged; // bool == is map ranked or not.
-
-        public static AccSaberLeaderboardViewController Instance { get; private set; } = null!;
         private static TextSpacer Spacer = new();
 
         #endregion Static Variables & Properties
@@ -69,6 +66,8 @@ namespace AccSaber.UI.ViewControllers
 
         internal HashSet<(string playerId, string diffId)> MissionTargets = [];
 
+        public event Action<bool>? OnMapChanged; // bool == is map ranked or not.
+
         public new event PropertyChangedEventHandler? PropertyChanged;
         public string RankedHeader => $"{RANKED_HEADER} | <color={GetColor(CurrentCategory)}>{CurrentCategory}</color>";
         public LeaderboardDisplayType DisplayType { get; private set; }
@@ -90,8 +89,8 @@ namespace AccSaber.UI.ViewControllers
                 return DisplayType switch
                 {
                     LeaderboardDisplayType.Global => null,
-                    LeaderboardDisplayType.Country => CountryFilterMaker(currentPlayerScore!.Country),
-                    _ => token => PlayerSocialLife.GetIds_Internal(DisplayType)!.Contains(token.PlayerId)
+                    LeaderboardDisplayType.Country => api.CountryFilterMaker(currentPlayerScore!.Country),
+                    _ => token => playerInfo.GetIds_Internal(DisplayType)!.Contains(token.PlayerId)
                 };
             }
         }
@@ -128,11 +127,13 @@ namespace AccSaber.UI.ViewControllers
         #region Injects
 
         [Inject] private readonly PluginConfig PC = null!;
+        [Inject] private readonly AccsaberAPI api = null!;
+        [Inject] private readonly PlayerSocialLife playerInfo = null!;
         [Inject] private readonly StandardLevelDetailViewController sldvc = null!;
         [Inject] private readonly AccSaberStore store = null!;
         [Inject] private readonly AccSaberPanelViewController aspvc = null!; //psmvc
         [Inject] private readonly LeaderboardScoreModalController lsmc = null!; //psmvc
-        [Inject] public readonly LeaderboardSettingsModalController lbsmc = null!; //psmvc
+        [Inject] private readonly LeaderboardSettingsModalController lbsmc = null!; //psmvc
 
         #endregion Injects
 
@@ -169,8 +170,8 @@ namespace AccSaber.UI.ViewControllers
             {
                 IEnumerable<ICellDataSource> outp = scoreDatas;
                 if (currentPlayerScore is not null && !OnPlayerPage)
-                    return BelowPlayerPage ? [.. outp.Prepend(Spacer).Prepend(new LeaderboardEntryDisplay(currentPlayerScore))] :
-                        [.. outp.Append(Spacer).Append(new LeaderboardEntryDisplay(currentPlayerScore))];
+                    return BelowPlayerPage ? [.. outp.Prepend(Spacer).Prepend(new LeaderboardEntryDisplay(currentPlayerScore, this, playerInfo, lbsmc))] :
+                        [.. outp.Append(Spacer).Append(new LeaderboardEntryDisplay(currentPlayerScore, this, playerInfo, lbsmc))];
                 return [.. outp];
             }
         }
@@ -363,7 +364,7 @@ namespace AccSaber.UI.ViewControllers
                 Monitor.PulseAll(updateDiffLock);
 
             // Subscribe to the websocket
-            AccSaberStore.OnPlayerScoreUpdated += token =>
+            store.OnPlayerScoreUpdated += token =>
             {
                 Plugin.Log.Info("Player score recieved");
 
@@ -440,12 +441,6 @@ namespace AccSaber.UI.ViewControllers
 
         #region Methods
 
-        public void Initialize()
-        {
-            Plugin.Log.Debug("LeaderboardViewController Init");
-            Instance = this;
-        }
-
         private void OnEnable()
         {
             if (titlePaneTitleText is not null)
@@ -471,7 +466,7 @@ namespace AccSaber.UI.ViewControllers
         }
         internal void OnGameRefresh()
         {
-            InvalidateCache();
+            api.InvalidateCache();
 
             page = 1;
             currentPage = -1;
@@ -684,7 +679,7 @@ namespace AccSaber.UI.ViewControllers
             {
                 try
                 {
-                    difficultyInfo = GetLeaderboard(CurrentHash!, CurrentDiff);
+                    difficultyInfo = api.GetLeaderboard(CurrentHash!, CurrentDiff);
                     bool ranked = difficultyInfo is not null;
 
                     //Plugin.Log.Info($"ranked = {ranked}, diffId = {difficultyInfo?.DifficultyId}");
@@ -804,7 +799,7 @@ namespace AccSaber.UI.ViewControllers
 
                 ShowLoading();
 
-                AccSaberLeaderboardEntry? playerScore = await GetScoreData(playerId, CurrentHash!, CurrentDiff);
+                AccSaberLeaderboardEntry? playerScore = await api.GetScoreData(playerId, CurrentHash!, CurrentDiff);
 
                 if (DisplayType != LeaderboardDisplayType.Global)
                 {
@@ -847,7 +842,7 @@ namespace AccSaber.UI.ViewControllers
 
                 ShowLoading();
 
-                await PlayerSocialLife.LoadTask;
+                await playerInfo.LoadTask;
 
                 scoreDatas.Clear();
 
@@ -856,25 +851,25 @@ namespace AccSaber.UI.ViewControllers
                 switch (DisplayType)
                 {
                     case LeaderboardDisplayType.Global:
-                        scores = await GetScoreData(page, DifficultyId);
+                        scores = await api.GetScoreData(page, DifficultyId);
                         nextPage = page + 1;
                         break;
 
                     case LeaderboardDisplayType.Relations:
-                        scores = await GetScoreData(page, DifficultyId, RelationType.follower, RelationType.rival);
+                        scores = await api.GetScoreData(page, DifficultyId, RelationType.follower, RelationType.rival);
                         nextPage = page + 1;
                         break;
 
                     case LeaderboardDisplayType.Followed:
                     case LeaderboardDisplayType.Rivals:
-                        scores = await GetScoreData(page, DifficultyId, DisplayType.Convert());
+                        scores = await api.GetScoreData(page, DifficultyId, DisplayType.Convert());
                         nextPage = page + 1;
                         break;
 
                     case LeaderboardDisplayType.Country:
                         string country = (await store.GetCurrentUserAsync()).Country;
 
-                        scores = await GetScoreData(page, DifficultyId, country);
+                        scores = await api.GetScoreData(page, DifficultyId, country);
                         nextPage = page + 1;
 
                         break;
@@ -884,7 +879,7 @@ namespace AccSaber.UI.ViewControllers
                         break;
                 }
                 if (scores is not null)
-                    scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score)));
+                    scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score, this, playerInfo, lbsmc)));
 
                 bool knowCurrentPlayerPage = currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage();
 
@@ -951,7 +946,7 @@ namespace AccSaber.UI.ViewControllers
         {
             if (OnPlayerPage)
                 currentPlayerPage = page;
-            else if (TryGetRankWithFilter(DifficultyId!, PlayerSocialLife.PlayerID!, CurrentFilter, out int rank))
+            else if (api.TryGetRankWithFilter(DifficultyId!, playerInfo.PlayerID!, CurrentFilter, out int rank))
                 currentPlayerPage = (int)Math.Ceiling(rank / (float)PAGE_LENGTH);
             else return false;
             return true;
@@ -959,10 +954,10 @@ namespace AccSaber.UI.ViewControllers
 
         private async Task<int> GetPlayerPage(bool overrideLastScore)
         {
-            await PlayerSocialLife.LoadTask;
+            await playerInfo.LoadTask;
 
             if (overrideLastScore || currentPlayerScore is null)
-                currentPlayerScore = await GetScoreData(PlayerSocialLife.PlayerID!, CurrentHash!, CurrentDiff);
+                currentPlayerScore = await api.GetScoreData(playerInfo.PlayerID!, CurrentHash!, CurrentDiff);
             if (currentPlayerScore is null) return -1; // Player has no score on this map
             return DisplayType switch
             {

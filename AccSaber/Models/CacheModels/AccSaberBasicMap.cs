@@ -7,7 +7,7 @@ using System.Runtime.Serialization;
 namespace AccSaber.Models.CacheModels
 {
     [UsedImplicitly]
-    internal class AccSaberBasicMap : Model
+    internal class AccSaberBasicMap : IModel
     {
         [JsonProperty("songHash")]
         public string Hash { get; set; } = null!;

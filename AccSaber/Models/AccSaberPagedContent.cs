@@ -6,13 +6,13 @@ using System.Collections.Generic;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal sealed class AccSaberPagedContent<T> : AccSaberPagedContent where T : Model
+    internal sealed class AccSaberPagedContent<T> : AccSaberPagedContent where T : IModel
     {
         [JsonProperty("content")]
         public List<T>? Content { get; set; }
     }
     [UsedImplicitly]
-    internal class AccSaberPagedContent : Model
+    internal class AccSaberPagedContent : IModel
     {
         [JsonProperty("empty")]
         public bool Empty { get; set; }
@@ -46,7 +46,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal sealed class Pageable : Model
+    internal sealed class Pageable : IModel
     {
         [JsonProperty("offset")]
         public int Offset { get; set; }
@@ -68,7 +68,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal sealed class Sort : Model
+    internal sealed class Sort : IModel
     {
         [JsonProperty("empty")]
         public bool Empty { get; set; }

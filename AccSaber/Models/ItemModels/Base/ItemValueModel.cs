@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace AccSaber.Models.ItemModels.Base
 {
-    internal abstract class ItemValueModel : Model
+    internal abstract class ItemValueModel : IModel
     {
         [JsonIgnore]
         public string ItemId { get; set; } = null!;

@@ -14,12 +14,14 @@ namespace AccsaberLeaderboard.UI.BSML_Addons
 {
     internal class AddonAdder : IInitializable
     {
+        [Inject] private readonly AccSaberLeaderboardViewController _leaderboardVC = null!;
+
 #if !NEW_VERSION
         private static bool inited = false;
 #endif
         public void Initialize()
         {
-            AccSaberLeaderboardViewController.Instance?.OnGameRefresh();
+            _leaderboardVC.OnGameRefresh();
 
 #if !NEW_VERSION
             if (inited) return;

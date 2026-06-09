@@ -7,7 +7,7 @@ using System;
 namespace AccSaber.Models.CacheModels
 {
     [UsedImplicitly]
-    public class AccSaberPlayerScore : Model
+    public class AccSaberPlayerScore : IModel
     {
         [JsonProperty("rank")]
         public int Rank { get; set; }

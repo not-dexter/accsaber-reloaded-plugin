@@ -8,7 +8,7 @@ using System.Runtime.Serialization;
 namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
-    internal class AccSaberItem<T> : Model where T : ItemValueModel
+    internal class AccSaberItem<T> : IModel where T : ItemValueModel
     {
         [JsonProperty("id")]
         public string Id { get; set; } = null!;

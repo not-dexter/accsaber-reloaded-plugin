@@ -1,7 +1,7 @@
 ﻿using HMUI;
 using IPA.Utilities;
 
-namespace AccSaber.Utils
+namespace AccSaber.Utils.Misc
 {
 	internal sealed class Accessors
 	{

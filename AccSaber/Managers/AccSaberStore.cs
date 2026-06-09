@@ -3,6 +3,7 @@ using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using Newtonsoft.Json;
 using SiraUtil.Logging;
 using System;
@@ -21,10 +22,13 @@ namespace AccSaber.Managers
 	{
 		private readonly SiraLog _log;
 		private readonly IPlatformUserModel _platformUserModel;
+        private readonly PlayerSocialLife _playerInfo;
+        private readonly AccsaberAPI _api;
+        private readonly AccSaberLeaderboardViewController _leaderboardVC;
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
-        public static event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
-        public static event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
+        public event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
+        public event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
         public event Action? OnUpdatingFromAccSaberAPI;
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
@@ -40,11 +44,15 @@ namespace AccSaber.Managers
         private AccSaberBasicDifficulty? _currentRankedMap;
 
 #pragma warning disable IDE0290
-		public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel)
+		public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel, PlayerSocialLife playerInfo, AccsaberAPI api, AccSaberLeaderboardViewController leaderboardVC)
 		{
 			_log = log;
 			_platformUserModel = platformUserModel;
-		}
+            _playerInfo = playerInfo;
+            _api = api;
+            _leaderboardVC = leaderboardVC;
+
+        }
 
 		public AccSaberBasicDifficulty? CurrentRankedMap
 		{
@@ -59,12 +67,12 @@ namespace AccSaber.Managers
 
 		public async Task<List<AccSaberMilestone>> GetUserMilestones(bool completed)
 		{
-            await PlayerSocialLife.LoadTask;
+            await _playerInfo.LoadTask;
 
-			if (PlayerSocialLife.PlayerID is not null)
+			if (_playerInfo.PlayerID is not null)
 			{
-				string call = string.Format(completed ? HelpfulPaths.APAPI_MILESTONE_COMPLETE : HelpfulPaths.APAPI_MILESTONE_INCOMPLETE, PlayerSocialLife.PlayerID);
-                string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.throttler);
+				string call = string.Format(completed ? HelpfulPaths.APAPI_MILESTONE_COMPLETE : HelpfulPaths.APAPI_MILESTONE_INCOMPLETE, _playerInfo.PlayerID);
+                string? response = await APIHandler.CallAPI_String(call, AccsaberAPI.Throttler);
 
 				if (response is not null)
 				{
@@ -93,13 +101,13 @@ namespace AccSaber.Managers
 		}
         public async Task<List<AccSaberMission>> GetMissions(MissionPool pool = MissionPool.Daily, bool allPools = true)
         {
-            await PlayerSocialLife.LoadTask;
+            await _playerInfo.LoadTask;
 
-            if (PlayerSocialLife.PlayerID is not null)
+            if (_playerInfo.PlayerID is not null)
             {
                 string call = allPools ? HelpfulPaths.APAPI_MISSIONS : string.Format(HelpfulPaths.APAPI_MISSIONS_POOL, pool);
 
-                List<AccSaberMission>? outp = await APIHandler.CallAPI_Json<List<AccSaberMission>>(call, AccsaberAPI.throttler);
+                List<AccSaberMission>? outp = await APIHandler.CallAPI_Json<List<AccSaberMission>>(call, AccsaberAPI.Throttler);
 
                 if (outp is null)
                     return [];
@@ -136,7 +144,7 @@ namespace AccSaber.Managers
 
             string call = string.Format(type == NewsType.All ? HelpfulPaths.APAPI_NEWS : HelpfulPaths.APAPI_NEWS_TYPE, typeString);
 
-            AccSaberPagedContent<AccSaberNewsEntry>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberNewsEntry>>(call, AccsaberAPI.throttler);
+            AccSaberPagedContent<AccSaberNewsEntry>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberNewsEntry>>(call, AccsaberAPI.Throttler);
 
             if (content is null)
                 return [];
@@ -154,7 +162,7 @@ namespace AccSaber.Managers
         public async Task<List<AccSaberCampaign>> GetCampaigns()
         {
 
-            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(HelpfulPaths.APAPI_CAMPAIGNS_ALL, AccsaberAPI.throttler);
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(HelpfulPaths.APAPI_CAMPAIGNS_ALL, AccsaberAPI.Throttler);
 
             if (content is null)
                 return [];
@@ -172,7 +180,7 @@ namespace AccSaber.Managers
         public async Task<AccSaberCampaign> GetCampaign(string id)
         {
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGN, id);
-            AccSaberCampaign? content = await APIHandler.CallAPI_Json<AccSaberCampaign>(call, AccsaberAPI.throttler);
+            AccSaberCampaign? content = await APIHandler.CallAPI_Json<AccSaberCampaign>(call, AccsaberAPI.Throttler);
 
             if (content is null)
             {
@@ -187,15 +195,15 @@ namespace AccSaber.Managers
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();
 
-            await PlayerSocialLife.LoadTask;
+            await _playerInfo.LoadTask;
 
-            if (PlayerSocialLife.PlayerID is null)
+            if (_playerInfo.PlayerID is null)
 			{
 				_log.Error("PlayerID not found.");
                 return;
 			}
 
-			AccSaberPlayer? newOverall = await AccsaberAPI.GetPlayerInfo(PlayerSocialLife.PlayerID, true, false);
+			AccSaberPlayer? newOverall = await _api.GetPlayerInfo(_playerInfo.PlayerID, true, false);
 
 			// Check if the data fetched is the same as what we already have cached
 			// Saves us from calling the API three more times for the True, Standard and Tech user categories.
@@ -220,7 +228,7 @@ namespace AccSaber.Managers
 		}
 		public void SetMapFromBasicInfo(string hash, BeatmapDifficulty difficulty)
 		{
-            CurrentRankedMap = AccsaberAPI.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
+            CurrentRankedMap = _api.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
         }
 
         public async Task StartWebsocket(CancellationToken ct = default)
@@ -317,7 +325,7 @@ namespace AccSaber.Managers
         private void UpdatePlayerScore(AccSaberLeaderboardEntry score)
         {
             //Plugin.Log.Debug($"score name = {score.PlayerName}, score id = {score.PlayerId}, player id = {PlayerSocialLife.PlayerID}");
-            if (score.PlayerId.Equals(PlayerSocialLife.PlayerID)) { 
+            if (score.PlayerId.Equals(_playerInfo.PlayerID)) { 
                 OnPlayerScoreUpdated?.Invoke(score);
                 _ = UpdateAccSaberInfo();
             }
@@ -332,12 +340,12 @@ namespace AccSaber.Managers
         public void InvalidateCurrentMapCache()
         {
             if (CurrentRankedMap is not null)
-                AccsaberAPI.InvalidateCache(CurrentRankedMap.DifficultyId);
+                _api.InvalidateCache(CurrentRankedMap.DifficultyId);
         }
         private void UpdateLeaderboardOnRelationChanged()
         {
-            if ((AccSaberLeaderboardViewController.Instance.DisplayType & LeaderboardDisplayType.Relations) > 0)
-                _ = AccSaberLeaderboardViewController.Instance.RequestRefresh();
+            if ((_leaderboardVC.DisplayType & LeaderboardDisplayType.Relations) > 0)
+                _ = _leaderboardVC.RequestRefresh();
         }
 
         public async Task<bool> HasAccSaberUpdated()
@@ -354,7 +362,8 @@ namespace AccSaber.Managers
 		public void Initialize()
 		{
 			OnScoreUpdated += UpdatePlayerScore;
-            PlayerSocialLife.OnRelationChanged += UpdateLeaderboardOnRelationChanged;
+            OnScoreUpdated += _api.OnScoreUpdated;
+            _playerInfo.OnRelationChanged += UpdateLeaderboardOnRelationChanged;
 
             //These are all independent tasks, so start each of them on their own thread
 			Task.Run(UpdateAccSaberInfo);
@@ -363,7 +372,8 @@ namespace AccSaber.Managers
         public void Dispose()
         {
             OnScoreUpdated -= UpdatePlayerScore;
-            PlayerSocialLife.OnRelationChanged -= UpdateLeaderboardOnRelationChanged;
+            OnScoreUpdated -= _api.OnScoreUpdated;
+            _playerInfo.OnRelationChanged -= UpdateLeaderboardOnRelationChanged;
         }
 	}
 }

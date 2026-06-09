@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AccSaber.Utils
+namespace AccSaber.Utils.Misc
 {     
     public class AsyncLock
     {

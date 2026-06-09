@@ -3,6 +3,7 @@ using AccSaber.Models.ItemModels.Base;
 using AccSaber.Models.ItemModels.ValueTypes;
 using AccSaber.Models.ItemModels.ValueTypes.States;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -16,7 +17,7 @@ using UnityEngine.UI;
 namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
-    internal class AccSaberEquippedItems : Model
+    internal class AccSaberEquippedItems : IModel
     {
         [JsonProperty("title")]
         public AccSaberItemType<AccSaberItemTitleValue> Title { get; set; } = null!;

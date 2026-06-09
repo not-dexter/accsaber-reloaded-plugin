@@ -1,5 +1,6 @@
 ﻿using AccSaber.Models;
 using AccSaber.Models.CacheModels;
+using AccSaber.Utils.Misc;
 using HarmonyLib;
 using IPA.Utilities;
 using System;
@@ -17,6 +18,8 @@ namespace AccSaber.Utils
 
         [Inject] private readonly LevelPackDetailViewController lpdvc = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
+        [Inject] private readonly SerializationHandler serialHandler = null!;
+
         [BeatSaberMarkupLanguage.Attributes.UIComponent("customSyncButton")] private readonly UnityEngine.UI.Button customSyncButton = null!;
 
         private bool _init = false;
@@ -339,7 +342,7 @@ namespace AccSaber.Utils
             HashSet<string> idSet = [.. mapDiffIds];
             List<PlaylistMapInfo> maps = [];
 
-            foreach (AccSaberBasicMap map in SerializerHandler.CachedMaps.Values)
+            foreach (AccSaberBasicMap map in serialHandler.CachedMaps.Values)
             {
                 AccSaberBasicDifficulty? basicDiff = map.Difficulties.FirstOrDefault(diff => idSet.Contains(diff.DifficultyId));
 

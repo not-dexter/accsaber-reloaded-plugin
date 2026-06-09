@@ -10,7 +10,7 @@ namespace AccSaber.Models
 {
 	[UsedImplicitly]
 
-	internal class AccSaberMilestone : Model
+	internal class AccSaberMilestone : IModel
 	{
         [JsonProperty("milestoneId")]
 		public string MilestoneId { get; set; } = null!;

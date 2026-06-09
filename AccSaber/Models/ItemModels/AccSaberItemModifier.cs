@@ -6,7 +6,7 @@ using Newtonsoft.Json.Linq;
 namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
-    internal class AccSaberItemModifier : Model
+    internal class AccSaberItemModifier : IModel
     {
         [JsonProperty("id")]
         public string Id { get; set; } = null!;

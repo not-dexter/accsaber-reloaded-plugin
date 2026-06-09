@@ -3,6 +3,7 @@ using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
@@ -26,6 +27,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly PlaylistUtils playlistUtils = null!;
         [Inject] private readonly PluginConfig PC = null!;
+        [Inject] private readonly PlayerSocialLife playerInfo = null!;
 
         private ButtonType buttonType;
         private bool _cellsLoading, parsed = false;
@@ -84,7 +86,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             SetLoading(true);
             try
             {
-                AccSaberPagedContent<AccSaberBatch>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberBatch>>(string.Format(HelpfulPaths.APAPI_BATCHES, page, size), AccsaberAPI.throttler);
+                AccSaberPagedContent<AccSaberBatch>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberBatch>>(string.Format(HelpfulPaths.APAPI_BATCHES, page, size), AccsaberAPI.Throttler);
 
                 if (content is null || content.Content is null)
                     return default;
@@ -216,7 +218,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     FinishLoadPlaylist(levelUtils.LoadPlaylist(category, CloseMenu, setter, GoToPlaylist), setter);
                     break;
                 case ButtonType.Missing:
-                    FinishLoadPlaylist(levelUtils.LoadPlaylist(category, PlayerSocialLife.PlayerID!, CloseMenu, setter, GoToPlaylist), setter);
+                    FinishLoadPlaylist(levelUtils.LoadPlaylist(category, playerInfo.PlayerID!, CloseMenu, setter, GoToPlaylist), setter);
                     break;
             }
         }

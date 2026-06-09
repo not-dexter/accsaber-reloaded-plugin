@@ -30,6 +30,8 @@ namespace AccSaber.ScoreTracking
         private static readonly HashSet<string> AllowedModes = [ "Solo", "Multiplayer" ];
 
         private AccSaberScore score = null!;
+        private AccsaberAPI api = null!;
+        private AccSaberLeaderboardViewController aslvc = null!;
 
         private int current115Streak, combo, notes, totalNotes;
         private readonly object submitLock = new();
@@ -48,6 +50,8 @@ namespace AccSaber.ScoreTracking
 
             transition = Resources.FindObjectsOfTypeAll<StandardLevelScenesTransitionSetupDataSO>().FirstOrDefault();
             store ??= Plugin.Container.TryResolve<AccSaberStore>();
+            api ??= Plugin.Container.TryResolve<AccsaberAPI>();
+            aslvc ??= Plugin.Container.TryResolve<AccSaberLeaderboardViewController>();
 
             if (mods.noFailOn0Energy)
                 energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
@@ -231,12 +235,12 @@ namespace AccSaber.ScoreTracking
             }
 
             if (!score.UncompletedMap!.Value)
-                AccSaberLeaderboardViewController.Instance.LoadUntilNextRefreshIfScoreBeaten((int)score.Score);
+                aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score);
 
-            bool submitted = await AccsaberAPI.SubmitScore(score);
+            bool submitted = await api.SubmitScore(score);
 
             if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
-                AccSaberLeaderboardViewController.Instance.ForceShowLeaderboard();
+                aslvc.ForceShowLeaderboard();
         }
     }
 }

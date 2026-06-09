@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
-    internal class AccSaberItemType<T> : Model where T : ItemValueModel
+    internal class AccSaberItemType<T> : IModel where T : ItemValueModel
     {
         [JsonProperty("linkId")]
         public string LinkId { get; set; } = null!;

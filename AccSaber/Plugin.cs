@@ -23,7 +23,7 @@ namespace AccSaber
 			zenjector.UseLogger(logger);
 			Log = logger;
 
-            //APCalc calc = new();
+			//APCalc calc = new();
 
             zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
 			zenjector.Install<AccSaberAppInstaller>(Location.App);

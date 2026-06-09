@@ -8,6 +8,7 @@ using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
 using AccSaber.UI.MenuButton;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -40,21 +41,23 @@ namespace AccSaber.UI.ViewControllers
 		private AccSaberStore _accSaberStore = null!;
 		private TimeTweeningManager _timeTweeningManager = null!;
 		private AccSaberMainFlowCoordinator _mainFlowCoordinator = null!;
+		private AccsaberAPI _api = null!;
 		public event Action? OnSettingsClicked;
 
 		[Inject]
-		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, AccSaberMainFlowCoordinator accSaberMainFlowCoordinator)
+		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, AccSaberMainFlowCoordinator accSaberMainFlowCoordinator, AccsaberAPI api)
 		{
 			_log = siraLog;
 			_pluginConfig = pluginConfig;
 			_accSaberStore = accSaberStore;
 			_timeTweeningManager = timeTweeningManager;
 			_mainFlowCoordinator =	accSaberMainFlowCoordinator;
+			_api = api;
 		}
         
 		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberBasicDifficulty? mapInfo)
 		{
-			if (AccsaberAPI.CurrentLoginState == AccsaberAPI.LoginState.Success && !_firstMap)
+			if (_api.CurrentLoginState == AccsaberAPI.LoginState.Success && !_firstMap)
 				PromptText = "";
 
 			_firstMap = false;
@@ -119,7 +122,7 @@ namespace AccSaber.UI.ViewControllers
 			_accSaberStore.OnAccSaberRankedMapUpdated += AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnUpdatingFromAccSaberAPI += AccSaberStoreOnOnUpdatingFromAccSaberAPI;
 			_accSaberStore.OnUpdatedFromAccSaberAPI += AccSaberStoreOnOnUpdatedFromAccSaberAPI;
-            AccsaberAPI.OnLoginUpdated += AccSaberAPIOnOnLoginUpdated;
+            _api.OnLoginUpdated += AccSaberAPIOnOnLoginUpdated;
         }
 
 		public void Dispose()
@@ -127,7 +130,7 @@ namespace AccSaber.UI.ViewControllers
 			_accSaberStore.OnAccSaberRankedMapUpdated -= AccSaberStoreOnOnAccSaberRankedMapUpdated;
 			_accSaberStore.OnUpdatingFromAccSaberAPI -= AccSaberStoreOnOnUpdatingFromAccSaberAPI;
 			_accSaberStore.OnUpdatedFromAccSaberAPI -= AccSaberStoreOnOnUpdatedFromAccSaberAPI;
-            AccsaberAPI.OnLoginUpdated -= AccSaberAPIOnOnLoginUpdated;
+            _api.OnLoginUpdated -= AccSaberAPIOnOnLoginUpdated;
         }
 
 		protected override async void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)

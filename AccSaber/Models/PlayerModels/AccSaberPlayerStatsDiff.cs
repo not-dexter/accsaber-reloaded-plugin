@@ -6,7 +6,7 @@ using System;
 namespace AccSaber.Models.PlayerModels
 {
     [UsedImplicitly]
-    internal class AccSaberPlayerStatsDiff : Model
+    internal class AccSaberPlayerStatsDiff : IModel
     {
         //[JsonProperty("categoryId")]
         //public string CategoryId { get; set; } = null!;

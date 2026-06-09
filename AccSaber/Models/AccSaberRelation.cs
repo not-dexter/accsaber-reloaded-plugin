@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal sealed class AccSaberRelation : Model
+    internal sealed class AccSaberRelation : IModel
     {
         [JsonProperty("id")]
         public string Id { get; set; } = null!;

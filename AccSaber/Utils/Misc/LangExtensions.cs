@@ -1,6 +1,8 @@
 ﻿//This file is to add attributes/small classes from later .NET into this project.
 #pragma warning disable IDE0130, IDE0290
-namespace System.Diagnostics.CodeAnalysis
+using System;
+
+namespace AccSaber.Utils.Misc
 {
     [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue, AllowMultiple = true, Inherited = false)]
     public sealed class NotNullIfNotNullAttribute : Attribute

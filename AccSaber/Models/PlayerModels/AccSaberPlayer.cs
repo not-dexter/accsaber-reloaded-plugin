@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace AccSaber.Models.PlayerModels
 {
     [UsedImplicitly]
-    internal sealed class AccSaberPlayer : Model
+    internal sealed class AccSaberPlayer : IModel
     {
         [JsonIgnore]
         public Task LoadStatDiffs
@@ -106,7 +106,7 @@ namespace AccSaber.Models.PlayerModels
                     category_id += "_acc";
 
                 AccSaberPlayerStatsDiff? diff = 
-                    await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.throttler);
+                    await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.Throttler);
 
                 if (diff is not null)
                     stat.StatDiffs = diff;
@@ -114,7 +114,7 @@ namespace AccSaber.Models.PlayerModels
         }
         private async Task LoadPlayerItems()
         {
-            Items = await APIHandler.CallAPI_Json<AccSaberEquippedItems>(string.Format(HelpfulPaths.APAPI_PLAYERID_ITEMS_EQUIPPED, PlayerId), AccsaberAPI.throttler);
+            Items = await APIHandler.CallAPI_Json<AccSaberEquippedItems>(string.Format(HelpfulPaths.APAPI_PLAYERID_ITEMS_EQUIPPED, PlayerId), AccsaberAPI.Throttler);
         }
     }
 }

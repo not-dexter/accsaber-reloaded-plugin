@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal sealed class AccSaberNewsEntry : Model
+    internal sealed class AccSaberNewsEntry : IModel
     {
         [JsonProperty("id")]
         public string NewsId { get; set; } = null!;

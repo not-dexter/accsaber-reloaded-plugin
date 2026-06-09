@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal class AccSaberScore : Model
+    internal class AccSaberScore : IModel
     {
         [JsonProperty("nonce", Required = Required.DisallowNull)]
         internal string Nonce { get; set; } = MiscUtils.GenerateNonce(64);

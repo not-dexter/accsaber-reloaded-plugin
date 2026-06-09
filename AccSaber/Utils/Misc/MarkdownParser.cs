@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace AccSaber.Utils
+namespace AccSaber.Utils.Misc
 {
     internal static class MarkdownParser
     {

@@ -1,6 +1,8 @@
 ﻿using AccSaber.Consts;
 using AccSaber.Models.Base;
+using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage.Attributes;
@@ -17,7 +19,7 @@ using static AccSaber.Utils.ColorUtils;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal class AccSaberLeaderboardEntry : Model, IEquatable<AccSaberLeaderboardEntry>
+    internal class AccSaberLeaderboardEntry : IModel, IEquatable<AccSaberLeaderboardEntry>
     {
         [JsonProperty("accuracy")]
         public float Accuracy { get; set; }
@@ -140,10 +142,10 @@ namespace AccSaber.Models
         public override int GetHashCode() => MiscUtils.GetHashCode(PlayerId, TimeSet);
     }
 
-    internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data) : ICellDataSource, INotifyPropertyChanged
+    internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data, AccSaberLeaderboardViewController parent, PlayerSocialLife playerInfo, LeaderboardSettingsModalController lsmc) : ICellDataSource, INotifyPropertyChanged
     {
         public string TemplatePath => ResourcePaths.LEADERBOARD_CELL;
-        public float CellSize => LeaderboardOnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE;
+        public float CellSize => Parent.OnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE;
         public int TemplateId { get; set; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -152,6 +154,9 @@ namespace AccSaber.Models
         public Coroutine? BackgroundFadeRoutine { get; set; }
 
         public readonly AccSaberLeaderboardEntry ScoreData = data;
+        private readonly AccSaberLeaderboardViewController Parent = parent;
+        private readonly PlayerSocialLife PlayerInfo = playerInfo;
+        private readonly LeaderboardSettingsModalController Lsmc = lsmc;
 
         [UIComponent(nameof(Container))] public readonly CustomBackground Container = null!;
 
@@ -163,7 +168,7 @@ namespace AccSaber.Models
 
         [UIValue(nameof(AP))] public string AP => $"<color={ColorUtils.AP}>{ScoreData.AP:N2}ap</color>";
 
-        [UIValue(nameof(Acc))] public string Acc => $"<color={ACC}>{(ScoreData.Accuracy * 100f).ToString($"N{Instance.AccDecimals}")}%</color>";
+        [UIValue(nameof(Acc))] public string Acc => $"<color={ACC}>{(ScoreData.Accuracy * 100f).ToString($"N{Parent.AccDecimals}")}%</color>";
 
         [UIValue(nameof(TimeSet))] public string TimeSet => $"<color={GetTimeSetColor()}><size=80%>{ScoreData.TimeSet.ToRelativeTime(1)[..^1]}</size></color>";
 
@@ -172,32 +177,32 @@ namespace AccSaber.Models
         {
             get
             {
-                if (ScoreData.PlayerId.Equals(PlayerSocialLife.PlayerID))
+                if (ScoreData.PlayerId.Equals(PlayerInfo.PlayerID))
                     return HIGHLIGHT;
 
-                if (Instance.DisplayType != LeaderboardDisplayType.Relations)
-                    return Instance.MissionTargets.Contains((ScoreData.PlayerId, ScoreData.DifficultyId)) ? RELATIONS_TARGETED : DIMMER;
+                if (Parent.DisplayType != LeaderboardDisplayType.Relations)
+                    return Parent.MissionTargets.Contains((ScoreData.PlayerId, ScoreData.DifficultyId)) ? RELATIONS_TARGETED : DIMMER;
 
-                if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(ScoreData.PlayerId))
+                if (PlayerInfo.PlayerRivalIDs_Internal.Contains(ScoreData.PlayerId))
                     return RELATIONS_TARGETED;
                 return RELATIONS_ACC;
             }
         }
 
-        [UIValue(nameof(AllowUnderline))] public bool AllowUnderline => LeaderboardOnPlayerPage || !ScoreData.PlayerId.Equals(PlayerSocialLife.PlayerID);
+        [UIValue(nameof(AllowUnderline))] public bool AllowUnderline => Parent.OnPlayerPage || !ScoreData.PlayerId.Equals(PlayerInfo.PlayerID);
 
         [UIValue(nameof(Mistakes))] public string Mistakes => $"<color=#ef4444>{ScoreData.Misses + (ScoreData.BombHits ?? 0) + ScoreData.BadCuts + (ScoreData.WallHits ?? 0)}x</color>";
 
         [UIValue(nameof(FullCombo))] public bool FullCombo => ScoreData.FC;
         [UIValue(nameof(NotFullCombo))] public bool NotFullCombo => !FullCombo;
-        [UIValue(nameof(ShowCombo))] public bool ShowCombo => Instance.ShowCombo;
+        [UIValue(nameof(ShowCombo))] public bool ShowCombo => Parent.ShowCombo;
 
 
 
         [UIValue(nameof(Pixelimg))] private const string Pixelimg = ResourcePaths.PIXEL;
-        [UIValue(nameof(FontSize))] public float FontSize => LeaderboardOnPlayerPage ? BIG_FONT_SIZE : SMALL_FONT_SIZE;
-        [UIValue(nameof(TimeSize))] public float TimeSize => LeaderboardOnPlayerPage ? 2.8f : 2.5f;
-        [UIValue(nameof(ContainerHeight))] public float ContainerHeight => (LeaderboardOnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE) - 0.1f;
+        [UIValue(nameof(FontSize))] public float FontSize => Parent.OnPlayerPage ? BIG_FONT_SIZE : SMALL_FONT_SIZE;
+        [UIValue(nameof(TimeSize))] public float TimeSize => Parent.OnPlayerPage ? 2.8f : 2.5f;
+        [UIValue(nameof(ContainerHeight))] public float ContainerHeight => (Parent.OnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE) - 0.1f;
 
         [UIValue(nameof(parentContainerWidth))] public const float parentContainerWidth = containerWidth;
         [UIValue(nameof(containerPadding))] public const float containerPadding = 1f;
@@ -213,7 +218,7 @@ namespace AccSaber.Models
         [UIValue(nameof(comboWidth))] public const float comboWidth = 3.5f;
 
         [UIValue(nameof(nameWidth))]
-        public float nameWidth = Instance.ShowCombo ?
+        public float nameWidth = parent.ShowCombo ?
             containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - comboWidth - elementSpacing * 6f - containerPadding * 2f :
             containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - elementSpacing * 5f - containerPadding * 2f;
 
@@ -260,7 +265,7 @@ namespace AccSaber.Models
         {
             Container.Underline?.color = DefaultUnderlineColor.Color();
 
-            Instance.lbsmc.OnSettingUpdated += () =>
+            Lsmc.OnSettingUpdated += () =>
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowCombo)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Acc)));

@@ -3,6 +3,7 @@ using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
@@ -57,6 +58,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
         [Inject] private readonly LevelUtils _levelUtils = null!;
         [Inject] private readonly PluginConfig PC = null!;
+        [Inject] private readonly PlayerSocialLife _playerInfo = null!;
 
 		private List<AccSaberMilestone> _milestones = null!;
 
@@ -169,14 +171,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
 
             if (cell.data.TargetValue < 1f) // This should handle all accuracy milestones
-                _ = _levelUtils.LoadPlaylistAcc(cell.data.Category, PlayerSocialLife.PlayerID!, cell.data.TargetValue, "<", CloseMenu, cell.UpdateStatus);
+                _ = _levelUtils.LoadPlaylistAcc(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, "<", CloseMenu, cell.UpdateStatus);
             else if (ApRegex.Match(cell.data.Description).Success)
             {
                 async Task ApTask()
                 {
                     if (!MilestoneCache.TryGetValue(cell.data.MilestoneId, out AccSaberFullMilestone? milestone))
                     {
-                        milestone = await API.APIHandler.CallAPI_Json<AccSaberFullMilestone>(string.Format(API.HelpfulPaths.APAPI_MILESTONE_ID, cell.data.MilestoneId), API.AccsaberAPI.throttler);
+                        milestone = await API.APIHandler.CallAPI_Json<AccSaberFullMilestone>(string.Format(API.HelpfulPaths.APAPI_MILESTONE_ID, cell.data.MilestoneId), API.AccsaberAPI.Throttler);
                         if (milestone is not null)
                             MilestoneCache.Add(cell.data.MilestoneId, milestone);
                     }
@@ -187,7 +189,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         return;
                     }
 
-                    await _levelUtils.LoadPlaylistAp(cell.data.Category, PlayerSocialLife.PlayerID!, cell.data.TargetValue, milestone.Comparison.Flip().ToComparisonString(), CloseMenu, cell.UpdateStatus);
+                    await _levelUtils.LoadPlaylistAp(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, milestone.Comparison.Flip().ToComparisonString(), CloseMenu, cell.UpdateStatus);
                 }
 
                 _ = ApTask();
@@ -222,9 +224,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 _milestoneCells.Clear();
                 _milestonesList.Data().Clear();
-                await PlayerSocialLife.LoadTask;
+                await _playerInfo.LoadTask;
 
-                if (PlayerSocialLife.PlayerID is null)
+                if (_playerInfo.PlayerID is null)
                 {
                     return;
                 }

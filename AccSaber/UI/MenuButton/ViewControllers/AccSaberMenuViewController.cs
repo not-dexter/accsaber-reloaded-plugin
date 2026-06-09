@@ -22,6 +22,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 using AccSaber.Configuration;
+using AccSaber.Utils.Misc;
+
 
 
 #if NEW_VERSION
@@ -65,6 +67,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
         [Inject] private readonly PluginConfig PC = null!;
+		[Inject] private readonly AccSaberStore store = null!;
+		[Inject] private readonly PlayerSocialLife playerInfo = null!;
+		[Inject] private readonly AccsaberAPI api = null!;
+		[Inject] private readonly SerializationHandler serialHandler = null!;
 
 
         [UIValue("score-cells")]
@@ -420,14 +426,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			{
 				IsLoading = true;
 
-				await PlayerSocialLife.LoadTask;
+				await playerInfo.LoadTask;
 
-				string? user = PlayerSocialLife.PlayerID;
+				string? user = playerInfo.PlayerID;
 
 				if (user is null)
 					return;
 
-				_user = await AccsaberAPI.GetPlayerInfo(user, true, true);
+				_user = await api.GetPlayerInfo(user, true, true);
 
 				await SetUserInfo(_user!, _user!.Statistics!.First(stat => stat.Category == _categoryValue));
 			}
@@ -564,7 +570,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					AccSaberPagedContent<AccSaberLeaderboardEntry>? content = JsonConvert.DeserializeObject<AccSaberPagedContent<AccSaberLeaderboardEntry>>(response);*/
 
 					// Or instead of the above stuff, just use an AccsaberAPI call (or make one if it doesn't exist)
-					IEnumerable<AccSaberPlayerScore>? content = await AccsaberAPI.GetPlayerScores(PageNumber, 5, _categoryValue);
+					IEnumerable<AccSaberPlayerScore>? content = await api.GetPlayerScores(PageNumber, 5, _categoryValue);
 
 					// This is probably never null, but check just in case.
 					if (content is null)
@@ -574,7 +580,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					//_maxPage = content.TotalPages;
 
 					// Otherwise, AccsaberAPI will save it to cache (well, it'll save the number of elements, gotta divide by page length).
-					_maxPage = (int)Math.Ceiling((_categoryValue == APCategory.Overall ? SerializerHandler.CachedPlayerScoreLength : SerializerHandler.CategoryPlayerScoreLength[(int)_categoryValue]) / 5f);
+					_maxPage = (int)Math.Ceiling((_categoryValue == APCategory.Overall ? serialHandler.PlayerScoreLength : serialHandler.CategoryPlayerScoreLength[(int)_categoryValue]) / 5f);
 
 					Pagnation = $"{_pageNumber + 1}/{_maxPage}";
 
@@ -618,14 +624,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void Initialize()
         {
-            AccSaberStore.OnPlayerScoreUpdated += OnAccSaberPlayerUpdated;
+            store.OnPlayerScoreUpdated += OnAccSaberPlayerUpdated;
             parentCoordinator.OnHubActivated += OnOpen;
             parentCoordinator.OnHubDeactivated += OnClose;
         }
 
         public void Dispose()
         {
-            AccSaberStore.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
+            store.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
             parentCoordinator.OnHubActivated -= OnOpen;
             parentCoordinator.OnHubDeactivated -= OnClose;
         }

@@ -11,6 +11,7 @@ using AccSaber.API;
 using AccSaber.Consts;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
@@ -101,6 +102,8 @@ namespace AccSaber.UI.ViewControllers
 		[Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
 		[Inject] private readonly MainFlowCoordinator _mainFlowCoordinator = null!;
 		[Inject] private readonly LevelUtils _levelUtils = null!;
+		[Inject] private readonly PlayerSocialLife _playerData = null!;
+		[Inject] private readonly AccsaberAPI _api = null!;
 
         #region UI Values
 
@@ -264,16 +267,16 @@ namespace AccSaber.UI.ViewControllers
 			if (_userId is null)
 				return;
 
-			await PlayerSocialLife.LoadTask;
+			await _playerData.LoadTask;
 
-			if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(_userId))
+			if (_playerData.PlayerFollowedIDs_Internal.Contains(_userId))
 			{
-                await PlayerSocialLife.RemoveId(_userId, LeaderboardDisplayType.Followed);
+                await _playerData.RemoveId(_userId, LeaderboardDisplayType.Followed);
 				_friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
             }
 			else
             {
-                await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Followed);
+                await _playerData.AddId(_userId, LeaderboardDisplayType.Followed);
                 _friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
             }
         }
@@ -284,16 +287,16 @@ namespace AccSaber.UI.ViewControllers
 			if (_userId is null)
 				return;
 
-			await PlayerSocialLife.LoadTask;
+			await _playerData.LoadTask;
 
-			if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(_userId))
+			if (_playerData.PlayerRivalIDs_Internal.Contains(_userId))
 			{
-                await PlayerSocialLife.RemoveId(_userId, LeaderboardDisplayType.Rivals);
+                await _playerData.RemoveId(_userId, LeaderboardDisplayType.Rivals);
                 _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
 			}
 			else
 			{
-                await PlayerSocialLife.AddId(_userId, LeaderboardDisplayType.Rivals);
+                await _playerData.AddId(_userId, LeaderboardDisplayType.Rivals);
                 _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
 			}
         }
@@ -303,7 +306,7 @@ namespace AccSaber.UI.ViewControllers
             if (_userId is null)
                 return;
 
-			await PlayerSocialLife.LoadTask;
+			await _playerData.LoadTask;
 
 			string previousButtonText = _generatePlaylist.GetComponentInChildren<TextMeshProUGUI>().text;
             void UpdateButtonText(string? buttonText)
@@ -318,7 +321,7 @@ namespace AccSaber.UI.ViewControllers
                 _mainFlowCoordinator.DismissFlowCoordinator(_mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf(), immediately: true);
 			}
 
-			await _levelUtils.LoadPlaylist(PlayerSocialLife.PlayerID!, _userId, _categoryValue, ExitMenu, UpdateButtonText);
+			await _levelUtils.LoadPlaylist(_playerData.PlayerID!, _userId, _categoryValue, ExitMenu, UpdateButtonText);
         }
         private void Parse(Transform parentTransform)
 		{
@@ -366,18 +369,18 @@ namespace AccSaber.UI.ViewControllers
 			{
 				yield return new WaitForEndOfFrame();
 
-				if (PlayerSocialLife.PlayerID != userId)
+				if (_playerData.PlayerID != userId)
 				{
                     _friendButton.gameObject.SetActive(true);
                     _rivalButton.gameObject.SetActive(true);
 					_generatePlaylist.gameObject.SetActive(true);
 
-                    if (PlayerSocialLife.PlayerFollowedIDs_Internal.Contains(userId))
+                    if (_playerData.PlayerFollowedIDs_Internal.Contains(userId))
 						_friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
                     else
                         _friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
 
-                    if (PlayerSocialLife.PlayerRivalIDs_Internal.Contains(userId))
+                    if (_playerData.PlayerRivalIDs_Internal.Contains(userId))
                         _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
                     else
                         _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
@@ -420,7 +423,7 @@ namespace AccSaber.UI.ViewControllers
             if (_user is null)
             {
                 IsLoading = true;
-				_user = await AccsaberAPI.GetPlayerInfo(_userId, true, false);
+				_user = await _api.GetPlayerInfo(_userId, true, false);
             }
 
 			if (_user is not null)
