@@ -697,7 +697,7 @@ namespace AccSaber.API
             if (serialHandler.CachedMaps.TryGetValue(hash.ToLower(), out AccSaberBasicMap? map))
                 return map;
 
-            // Note: This function will no longer fetch the map of a given hash. It was assume any map not loaded in the cache is unranked.
+            // Note: This function will no longer fetch the map of a given hash. It will assume any map not loaded in the cache is unranked.
             /*try
             {
                 map = await CallAPI_Json<AccSaberRankedMap>(string.Format(APAPI_HASH, hash), Throttler, true, ct: ct);

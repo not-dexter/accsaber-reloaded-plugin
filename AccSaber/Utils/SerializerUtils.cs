@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Zenject;
 
@@ -57,7 +58,7 @@ namespace AccSaber.Utils
 
                 JsonSerializer serializer = new();
 
-                string[] files = Directory.GetFiles(ResourcePaths.ACC_SABER_DATA_FOLDER);
+                IEnumerable<string> files = handler.CacheInfos.Keys.Select(key => Path.Combine(ResourcePaths.ACC_SABER_DATA_FOLDER, key + ".json"));
 
                 foreach (string filepath in files)
                 {
@@ -71,10 +72,11 @@ namespace AccSaber.Utils
                             if (cacheInfo.Load is not null)
                                 cache = await cacheInfo.Load();
                             else
-                                cache = new()
-                                {
-                                    LastUpdated = DateTime.UtcNow
-                                };
+                            {
+                                cache = (AccSaberSerializedCache)cacheInfo.CacheType.GetConstructor([]).Invoke([]);
+                                cache.LastUpdated = DateTime.UtcNow;
+                            }
+                                
                         }
 
                         cache.Name = filename;

@@ -42,21 +42,28 @@ namespace AccSaber.Utils.Misc
 
         internal async void SetCacheData(SerializerUtils serializerUtils)
         {
-            while (serializerUtils.LoadTask is null)
-                await Task.Delay(1000);
+            try
+            {
+                while (serializerUtils.LoadTask is null)
+                    await Task.Delay(1000);
 
-            await serializerUtils.LoadTask;
+                await serializerUtils.LoadTask;
 
-            if (serializerUtils.Caches.First(cache => cache.Name.Equals(ResourcePaths.MAP_CACHE_NAME))
-                is not AccSaberSerializedCache<AccSaberBasicMap> mapCache)
-                return;
+                if (serializerUtils.Caches.First(cache => cache.Name.Equals(ResourcePaths.MAP_CACHE_NAME))
+                    is not AccSaberSerializedCache<AccSaberBasicMap> mapCache)
+                    return;
 
-            CachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
-            CachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
+                CachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
+                CachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
                 .Select(diff => new KeyValuePair<string, AccSaberBasicDifficulty>(diff.DifficultyId, diff)))];
 
 
-            _playerCache = (AccSaberSerializedCache<AccSaberPlayerScore>)serializerUtils.Caches.First(cache => cache.Name.Equals(ResourcePaths.PLAYER_SCORE_CACHE_NAME));
+                _playerCache = (AccSaberSerializedCache<AccSaberPlayerScore>)serializerUtils.Caches.First(cache => cache.Name.Equals(ResourcePaths.PLAYER_SCORE_CACHE_NAME));
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 
         public (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(string difficultyId)

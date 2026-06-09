@@ -19,7 +19,7 @@ namespace AccSaber.Models.CacheModels
         [JsonProperty("extraData")]
         public List<object>? ExtraData = null;
 
-        [JsonProperty("content")]
+        [JsonProperty("content", Required = Required.DisallowNull)]
         public IEnumerable Content { get; set; } = null!;
 
         [JsonIgnore]
