@@ -16,20 +16,83 @@ namespace AccSaber.Models
         [JsonProperty("creatorName")]
         public string CreatorName { get; set; } = null!;
 
+        [JsonProperty("creatorAlias")]
+        public string CreatorAlias { get; set; } = null!;
+
+        [JsonProperty("name")]
+        public string Name { get; set; } = null!;
+
+        [JsonProperty("summary")]
+        public string Summary { get; set; } = null!;
+
+        [JsonProperty("status")]
+        public string Status { get; set; } = null!;
+
+        [JsonProperty("seekingCuration")]
+        public bool SeekingCuration { get; set; }
+
+        [JsonProperty("progressionAgnostic")]
+        public bool ProgressionAgnostic { get; set; }
+
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
+
+        [JsonProperty("legacy")]
+        public bool Legacy { get; set; }
 
         [JsonProperty("verified")]
         public bool Verified { get; set; }
 
-        [JsonProperty("mapCount")]
-        public int MapCount { get; set; }
+        [JsonProperty("difficultyCount")]
+        public int? DifficultyCount { get; set; }
+
+        [JsonProperty("completionMode")]
+        public string CompletionMode { get; set; } = null!;
+
+        [JsonProperty("completionXp")]
+        public int CompletionXp { get; set; }
+
+        [JsonProperty("curatorNotes")]
+        public string CuratorNotes { get; set; } = null!;
+
+        [JsonProperty("backgroundUrl")]
+        public string BackgroundUrl { get; set; } = null!;
+
+        [JsonProperty("submittedAt")]
+        public DateTime SubmittedAt { get; set; }
+
+        [JsonProperty("playlistExportEnabled")]
+        public bool PlaylistExportEnabled { get; set; }
+
+        [JsonProperty("curatedAt")]
+        public DateTime CuratedAt { get; set; }
 
         [JsonProperty("createdAt")]
         public DateTime CreatedAt { get; set; }
 
-        [JsonProperty("maps")]
-        public List<AccSaberCampaignMap>? Maps { get; set; }
+        [JsonProperty("tags")]
+        public List<CampaignTags>? Tags { get; set; }
+
+        [JsonProperty("difficulties")]
+        public List<AccSaberCampaignMap>? Difficulties { get; set; }
+    }
+
+    internal class CampaignTags
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = null!;
+
+        [JsonProperty("kind")]
+        public string Kind { get; set; } = null!;
+
+        [JsonProperty("categoryId")]
+        public string CategoryId { get; set; } = null!;
+
+        [JsonProperty("name")]
+        public string Name { get; set; } = null!;
+
+        [JsonProperty("system")]
+        public bool System { get; set; }
     }
 
     internal class AccSaberCampaignMap
@@ -55,8 +118,18 @@ namespace AccSaber.Models
         [JsonProperty("characteristic")]
         public string Characteristic { get; set; } = null!;
 
-        [JsonProperty("accuracyRequirement")]
-        public float AccuracyRequirement { get; set; }
+        [JsonProperty("requirementType")]
+        public string RequirementType { get; set; } = null!;
+
+        [JsonProperty("requirementValue")]
+        public float RequirementValue { get; set; }
+
+        [JsonProperty("prerequisiteMode")]
+        public string PrerequisiteMode { get; set; } = null!;
+
+        [JsonProperty("description")]
+        public string Description { get; set; } = null!;
+
 
         [JsonProperty("xp")]
         public int XP { get; set; }

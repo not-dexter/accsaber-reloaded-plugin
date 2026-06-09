@@ -176,6 +176,43 @@ namespace AccSaber.Managers
 
             return newCampaignEntries;
         }
+        public async Task<List<AccSaberCampaign>> GetCampaigns(string status, int page = 0, int size = 999)
+        {
+
+            string call = string.Format(HelpfulPaths.APAPI_CAMPAIGNS_STATUS, status, page, size);
+
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(call, AccsaberAPI.Throttler);
+
+            if (content is null)
+                return [];
+
+            List<AccSaberCampaign> newCampaignEntries = [];
+
+            foreach (AccSaberCampaign newsCampaign in content.Content!)
+            {
+                newCampaignEntries.Add(newsCampaign);
+            }
+
+            return newCampaignEntries;
+        }
+
+        public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 999)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_CAMPAIGNS_ACTIVE, page, size);
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(call, AccsaberAPI.Throttler);
+
+            if (content is null)
+                return [];
+
+            List<AccSaberCampaign> newCampaignEntries = [];
+
+            foreach (AccSaberCampaign newsCampaign in content.Content!)
+            {
+                newCampaignEntries.Add(newsCampaign);
+            }
+
+            return newCampaignEntries;
+        }
 
         public async Task<AccSaberCampaign> GetCampaign(string id)
         {

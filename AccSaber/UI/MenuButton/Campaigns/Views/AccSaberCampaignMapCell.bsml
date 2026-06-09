@@ -1,8 +1,0 @@
-<vertical bg='panel-top' skew='0' pref-width='50' pref-height='70' pad='2'>
-	<horizontal bg='round-rect-panel' pad ='2'>
-		<vertical>
-			<text text='~SongName' font-size='3'/>
-			<text text='~SongAuthor' font-size='2.5'/>
-		</vertical>
-	</horizontal>
-</vertical>

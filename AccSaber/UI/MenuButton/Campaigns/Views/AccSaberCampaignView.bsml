@@ -1,39 +1,57 @@
 <bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
 	<vertical pref-width='120'>
-		<vertical vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' >
+		<vertical vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' active='~NotInCampaign'>
 			<tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected'/>
 		</vertical>
-		<tab tags='tabs' tab-name='Active' on-click='completed-clicked' />
-		<tab tags='tabs' tab-name='All' on-click='progress-clicked'/>
+		<tab tags='tabs' tab-name='Active'/>
+		<tab tags='tabs' tab-name='Curated'/>
+		<tab tags='tabs' tab-name='All'/>
 		<horizontal pref-width='160' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
-			<vertical bg='panel-top' skew='0' pref-width='50' pref-height='70' pad='2'>
-				<horizontal bg='round-rect-panel' pad ='2'>
-					<text text='Campaign Name'></text>
-					<text text='-Author' align='Right'></text>
-				</horizontal>
-				<horizontal bg='round-rect-panel' pad ='2'>
-					<text text='Campaign Name'></text>
-					<text text='-Author' align='Right'></text>
-				</horizontal>
-				<horizontal bg='round-rect-panel' pad ='2'>
-					<text text='Campaign Name'></text>
-					<text text='-Author' align='Right'></text>
-				</horizontal>
-				<horizontal bg='round-rect-panel' pad ='2'>
-					<text text='Campaign Name'></text>
-					<text text='-Author' align='Right'></text>
-				</horizontal>
-				<horizontal bg='round-rect-panel' pad ='2'>
-					<text text='Campaign Name'></text>
-					<text text='-Author' align='Right'></text>
-				</horizontal>
-				<horizontal bg='round-rect-panel' pad ='2'>
-					<text text='Campaign Name'></text>
-					<text text='-Author' align='Right'></text>
-				</horizontal>
+			<horizontal>
+			<vertical pref-width='50' pref-height='70' pad='2'>
+				<button text='Go Back' on-click='BackPressed' active='~InCampaign'/>
+				<custom-list id='campaign-list' contents='campaign-cells' cell-size='12'  clickable-cells='true' select-cell='campaign-selected' visible-cells='4' stick-scrolling='true' active='~NotInCampaign'>
+					<horizontal bg='round-rect-panel' pad ='2'>
+						<vertical>
+							<text text='~Name' font-size='3'/>
+							<text text='~Author' font-size='2.5'/>
+						</vertical>
+						<text text='~MapCount'></text>
+					</horizontal>
+				</custom-list>
+				<custom-list id='diff-list' contents='diff-cells' cell-size='12'  clickable-cells='true' select-cell='diff-selected' visible-cells='4' stick-scrolling='true' active='~InCampaign'>
+					<horizontal bg='round-rect-panel' pad ='2'>
+						<vertical>
+							<text text='~Name' font-size='3'/>
+							<text text='~Author' font-size='2.5'/>
+						</vertical>
+						<text text='~MapCount'></text>
+					</horizontal>
+				</custom-list>
 			</vertical>
-			<vertical bg='panel-top' skew='0' pref-width='100' pref-height='70' pad='2'>
+				<vertical pref-width='4' active='~NotInCampaign'>
+					<page-button event-click='campaign-list#PageUp' direction='Up' pref-height='3' pref-width='4'/>
+					<page-button event-click='campaign-list#PageDown' direction='Down' pref-height='3' pref-width='4'/>
+				</vertical>
+				<vertical pref-width='4' active='~InCampaign'>
+					<page-button event-click='diff-list#PageUp' direction='Up' pref-height='3' pref-width='4'/>
+					<page-button event-click='diff-list#PageDown' direction='Down' pref-height='3' pref-width='4'/>
+				</vertical>
+			</horizontal>
+			<vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~NotInCampaign'>
+				<horizontal preferred-width='100' horizontal-fit='PreferredSize'>
+					<img preserve-aspect='true' src='AccSaber.Resources.AccSaber.png' preferred-width='25' preferred-height='25'/>
+					<vertical preferred-width='60' preferred-height='10' vertical-fit='PreferredSize'>
+						<text text='~CampaignTitle' align='Left' font-size='6'/>
+						<text text='~CampaignCreator' align='Left' font-size='3.5'/>
+					</vertical>
+				</horizontal>
+				<text text='campaign description' align='Center' font-size='3.5'/>
+				<button text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'/>
+			</vertical>
+			<vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~InCampaign'>
 			</vertical>
 		</horizontal>
- </vertical>
+
+ </vertical>		
 </bg>
