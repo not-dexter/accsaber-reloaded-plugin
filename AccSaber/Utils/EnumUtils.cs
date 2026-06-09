@@ -60,6 +60,12 @@ namespace AccSaber.Utils
         expired,
         voided
     }
+
+    public enum ComparisonType
+    {
+        NOT = 1, EQ = 2, NE = NOT | EQ, LT = 4, GT = 8, LTE = LT | EQ, GTE = GT | EQ, FLIP = EQ | LT | GT, ALL = NOT | EQ | LT | GT
+    }
+
     public static class EnumUtils
     {
         public const string OverallReloadedCategory = "b0000000-0000-0000-0000-000000000005";
@@ -146,5 +152,39 @@ namespace AccSaber.Utils
 
             return outp;
         }
+
+        public static Func<T, T, bool>? ToComparison<T>(this ComparisonType compType) where T : IComparable<T>
+        {
+            return compType switch
+            {
+                ComparisonType.EQ => (a, b) => a.CompareTo(b) == 0,
+                ComparisonType.NE => (a, b) => a.CompareTo(b) != 0,
+                ComparisonType.GT => (a, b) => a.CompareTo(b) > 0,
+                ComparisonType.LT => (a, b) => a.CompareTo(b) < 0,
+                ComparisonType.GTE => (a, b) => a.CompareTo(b) >= 0,
+                ComparisonType.LTE => (a, b) => a.CompareTo(b) <= 0,
+                _ => null
+            };
+        }
+        public static string ToComparisonString(this ComparisonType compType)
+        {
+            string outp = "";
+
+            if (compType >= ComparisonType.LT && (compType & ComparisonType.NOT) > 0)
+                compType = compType.Invert();
+
+            if ((compType & ComparisonType.NOT) > 0)
+                outp += '!';
+            if ((compType & ComparisonType.GT) > 0)
+                outp += '>';
+            if ((compType & ComparisonType.LT) > 0)
+                outp += '<';
+            if ((compType & ComparisonType.EQ) > 0)
+                outp += '=';
+
+            return outp;
+        }
+        public static ComparisonType Invert(this ComparisonType compType) => compType >= ComparisonType.LT ? compType ^ ComparisonType.ALL : compType;
+        public static ComparisonType Flip(this ComparisonType compType) => compType >= ComparisonType.LT ? compType ^ ComparisonType.FLIP : compType ^ ComparisonType.NE;
     }
 }

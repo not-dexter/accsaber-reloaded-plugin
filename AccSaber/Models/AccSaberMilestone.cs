@@ -12,6 +12,36 @@ namespace AccSaber.Models
 
 	internal class AccSaberMilestone : Model
 	{
+        [JsonProperty("milestoneId")]
+		public string MilestoneId { get; set; } = null!;
+
+        [JsonProperty("title")]
+        public string Title { get; set; } = null!;
+
+        [JsonProperty("description")]
+        public string Description { get; set; } = null!;
+
+        [JsonProperty("type")]
+        public string Type { get; set; } = null!;
+
+        [JsonProperty("tier")]
+        public string Tier { get; set; } = null!;
+
+        [JsonProperty("xp")]
+        public float XP { get; set; }
+
+        [JsonProperty("targetValue")]
+        public float TargetValue { get; set; }
+
+        [JsonProperty("progress")]
+        public float Progress { get; set; }
+
+        [JsonProperty("normalizedProgress")]
+        public float NormalizedProgress { get; set; }
+
+        [JsonIgnore]
+        public float CalculatedProgress => CalcProgress(TargetValue, Progress, Progress > TargetValue);
+
         [JsonProperty("completed")]
         public bool Completed { get; set; }
 
@@ -20,21 +50,6 @@ namespace AccSaber.Models
 
         [JsonProperty("completionPercentage")]
         public float CompletionPercentage { get; set; }
-
-        [JsonProperty("description")]
-        public string Description { get; set; } = null!;
-
-        [JsonProperty("milestoneId")]
-		public string MilestoneId { get; set; } = null!;
-
-        [JsonProperty("normalizedProgress")]
-        public float NormalizedProgress { get; set; }
-
-        [JsonProperty("progress")]
-        public float Progress { get; set; }
-
-        [JsonIgnore]
-        public float CalculatedProgress => CalcProgress(TargetValue, Progress, Progress > TargetValue);
 
         [JsonProperty("setId")]
         public string SetId { get; set; } = null!;
@@ -45,20 +60,6 @@ namespace AccSaber.Models
         [JsonIgnore]
         public APCategory Category { get; set; }
 
-        [JsonProperty("targetValue")]
-        public float TargetValue { get; set; }
-
-        [JsonProperty("tier")]
-        public string Tier { get; set; } = null!;
-
-        [JsonProperty("title")]
-        public string Title { get; set; } = null!;
-
-        [JsonProperty("type")]
-        public string Type { get; set; } = null!;
-
-        [JsonProperty("xp")]
-        public float XP { get; set; }
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -89,5 +90,21 @@ namespace AccSaber.Models
             }
             else return progress / target;
         }
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberFullMilestone : AccSaberMilestone
+    {
+        [JsonProperty("blExclusive")]
+        public bool BlExclusive { get; set; }
+
+        [JsonProperty("comparison")]
+        public ComparisonType Comparison { get; set; }
+
+        [JsonProperty("id")]
+        public string Id { get => MilestoneId; set => MilestoneId = value; }
+
+        [JsonProperty("querySpec")]
+        public AccSaberQuery QuerySpec { get; set; } = null!;
     }
 }

@@ -170,10 +170,8 @@
         /// </remarks>
         public const string APAPI_MILESTONE = APAPI + "users/{0}/milestones?page={1}&size={2}"; //user_id, page, size
 
-        /// <summary>
-        /// Retrieves milestone levels (no parameters).
-        /// </summary>
-        public const string APAPI_MILESTONES = APAPI + "levels"; //no params
+        public const string APAPI_MILESTONE_ID = APAPI + "milestones/{0}"; // milestone_id
+
 
         /// <summary>
         /// Retrieves milestones a user has completed.

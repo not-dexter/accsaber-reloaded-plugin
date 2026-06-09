@@ -124,6 +124,13 @@ namespace AccSaber.Utils
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{apThreshold:0.##}ap";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {apThreshold:0.##}ap";
 
+                if (Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                {
+                    if (closeMenu is not null)
+                        await GoToPlaylist(filename, closeMenu);
+                    return;
+                }
+
                 IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = await GetMapsAp(type, playerId, apThreshold, comp);
 
                 if (maps is null)
@@ -156,6 +163,13 @@ namespace AccSaber.Utils
 
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{accThreshold * 100f:0.##}%";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {accThreshold * 100f:0.##}%";
+
+                if (Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                {
+                    if (closeMenu is not null)
+                        await GoToPlaylist(filename, closeMenu);
+                    return;
+                }
 
                 IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = await GetMapsAcc(type, playerId, accThreshold, comp);
 

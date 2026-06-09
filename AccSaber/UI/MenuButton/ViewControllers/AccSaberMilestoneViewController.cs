@@ -9,9 +9,11 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
+using IPA.Utilities;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -25,6 +27,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
 #pragma warning disable IDE0051
+        private static readonly Dictionary<string, AccSaberFullMilestone> MilestoneCache = [];
+
 		public new event PropertyChangedEventHandler? PropertyChanged;
 
 		private bool _parsed;
@@ -80,11 +84,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 		}
 
-        protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
-        {
-            base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
-        }
-
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !_isLoading;
 
@@ -104,13 +103,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private float ContainerWidth => CurrentTab == CategoryTab.Missions ? 135f : 120f;
 
 
-        private enum CategoryTab {
-            Missions = 0,
+        private enum CategoryTab 
+        {
+            Missions,
 			Milestones
 		}
         private enum MilestoneTab
         {
-            Progress = 0,
+            Progress,
             Completed
         }
 
@@ -150,6 +150,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("milestone-selected")]
         private void MilestoneSelected(TableView table, object cellObj)
         {
+            if (!table.canSelectSelectedCell)
+                table.SetField("_canSelectSelectedCell", true);
+
             if (PC.DisablePopups)
                 PopupSuccess(cellObj);
             else
@@ -157,6 +160,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         }
 #pragma warning restore IDE0060
 
+        private static readonly Regex ApRegex = new(@"(?<=\W|^)[Aa][Pp](?=\W|$)");
         public void PopupSuccess(object cellObj)
         {
             if (cellObj is not MilestoneCell cell)
@@ -166,28 +170,30 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             if (cell.data.TargetValue < 1f) // This should handle all accuracy milestones
                 _ = _levelUtils.LoadPlaylistAcc(cell.data.Category, PlayerSocialLife.PlayerID!, cell.data.TargetValue, "<", CloseMenu, cell.UpdateStatus);
-            else
-            _ = cell.data.MilestoneId switch // TODO: Find a better way to do this, this sucks.
+            else if (ApRegex.Match(cell.data.Description).Success)
             {
-                // x ap on every map in category
-                "a0000006-0000-0000-0000-000000000022" or
-                "a0000006-0000-0000-0000-000000000024" or
-                "a0000007-0000-0000-0000-000000000021" or
-                "a0000007-0000-0000-0000-000000000022" or
-                "a0000007-0000-0000-0000-000000000023" or
-                "a0000007-0000-0000-0000-000000000024" or
-                "a0000007-0000-0000-0000-000000000026" or
-                "a0000007-0000-0000-0000-000000000027" or
-                "a0000007-0000-0000-0000-000000000028" or
-                "a0000007-0000-0000-0000-000000000030" or
-                "a0000007-0000-0000-0000-000000000031" or
-                "a0000007-0000-0000-0000-000000000032" or
-                "a0000007-0000-0000-0000-000000000034" or
-                "a0000007-0000-0000-0000-000000000035" or
-                "a0000007-0000-0000-0000-000000000036" => _levelUtils.LoadPlaylistAp(cell.data.Category, PlayerSocialLife.PlayerID!, cell.data.TargetValue, "<", CloseMenu, cell.UpdateStatus),
+                async Task ApTask()
+                {
+                    if (!MilestoneCache.TryGetValue(cell.data.MilestoneId, out AccSaberFullMilestone? milestone))
+                    {
+                        milestone = await API.APIHandler.CallAPI_Json<AccSaberFullMilestone>(string.Format(API.HelpfulPaths.APAPI_MILESTONE_ID, cell.data.MilestoneId), API.AccsaberAPI.throttler);
+                        if (milestone is not null)
+                            MilestoneCache.Add(cell.data.MilestoneId, milestone);
+                    }
 
-                _ => _levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus)
-            };
+                    if (milestone is null || !milestone.QuerySpec.From.Equals("scores", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
+                        return;
+                    }
+
+                    await _levelUtils.LoadPlaylistAp(cell.data.Category, PlayerSocialLife.PlayerID!, cell.data.TargetValue, milestone.Comparison.Flip().ToComparisonString(), CloseMenu, cell.UpdateStatus);
+                }
+
+                _ = ApTask();
+            }
+            else
+                _ = _levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
         }
 
 
