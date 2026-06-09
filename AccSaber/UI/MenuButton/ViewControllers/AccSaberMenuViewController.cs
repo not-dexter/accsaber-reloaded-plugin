@@ -511,11 +511,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             borderRoutine = userInfo.Items!.Set(this, _playerImageBorder, _progressBarImage);
 
             const float barLen = 20f;
+            _progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
+            _progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
 
-			if (_firstLoad)
+            if (_firstLoad)
 			{
-				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
-				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
 				if (userInfo.AvatarUrl is not null)
 					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
 

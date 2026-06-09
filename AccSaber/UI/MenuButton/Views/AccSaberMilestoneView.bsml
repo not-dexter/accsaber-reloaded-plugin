@@ -1,6 +1,6 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical id='container' pref-width='~container-width' anchor-pos-x='~container-offset' child-expand-height='false' child-control-height='false'>
-    <horizontal bg='panel-top' vertical-fit='PreferredSize' pref-height='12'>
+    <horizontal bg='panel-top' skew='0' vertical-fit='PreferredSize' pref-height='12'>
       <text text='Objectives' align='Center' font-size='10'/>
     </horizontal>
     <vertical vertical-fit='PreferredSize' pref-height='8' pad='1'>

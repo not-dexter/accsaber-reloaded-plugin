@@ -125,6 +125,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, _contentContainer, mc);
 
+            if (!_milestonesList.TableView().canSelectSelectedCell)
+                _milestonesList.TableView().SetField("_canSelectSelectedCell", true);
+
             CurrentTab = 0;
 
 			_ = SetMilestones(0);
@@ -150,9 +153,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("milestone-selected")]
         private void MilestoneSelected(TableView table, object cellObj)
         {
-            if (!table.canSelectSelectedCell)
-                table.SetField("_canSelectSelectedCell", true);
-
             if (PC.DisablePopups)
                 PopupSuccess(cellObj);
             else

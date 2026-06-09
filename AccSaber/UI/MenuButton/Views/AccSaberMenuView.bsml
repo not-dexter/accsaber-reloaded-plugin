@@ -1,6 +1,6 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical pref-width='120'>
-    <horizontal bg='panel-top' horizontal-fit='PreferredSize' pref-width='120'>
+    <horizontal bg='panel-top' skew='0' horizontal-fit='PreferredSize' pref-width='120'>
       <text text='Profile' align='Center' font-size='7' />
    </horizontal>
     <horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
@@ -69,15 +69,12 @@
   </vertical>
   
   <button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign' active='false'/>
+  <button text='View Playlists' align='Left' anchor-pos-x='38' on-click='show-playlist-modal'/>
 
-  <vertical bg='round-rect-panel' anchor-pos-x='70' anchor-pos-y='-5' pref-width='15' pref-height='45' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
+  <vertical bg='round-rect-panel' skew='0' anchor-pos-x='70' anchor-pos-y='-5' pref-width='15' pref-height='45' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
     <text text='Socials' align='Center' font-size='5'/>
     <clickable-image src='~discordImg' on-click='on-discord-clicked' preserve-aspect='true' preferred-height='12'/>
 	<clickable-image src='~githubImg' on-click='on-github-clicked' preserve-aspect='true' preferred-height='12'/>
 	<clickable-image src='~kofiImg' on-click='on-kofi-clicked' preserve-aspect='true' preferred-height='11'/>
-  </vertical>
-
-  <vertical bg='round-rect-panel' anchor-pos-x='70' anchor-pos-y='35' pref-width='30' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
-    <button text='View Playlists' align='Center' on-click='show-playlist-modal'/>
   </vertical>
 </bg>

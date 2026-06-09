@@ -1,4 +1,5 @@
 ﻿using AccSaber.API;
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Utils;
@@ -20,9 +21,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     internal class AccSaberPlaylistModalController : INotifyPropertyChanged, IInitializable, IDisposable
     {
+#pragma warning disable IDE0051
         [Inject] private readonly AccSaberMainFlowCoordinator mainFlowCoordinator = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly PlaylistUtils playlistUtils = null!;
+        [Inject] private readonly PluginConfig PC = null!;
 
         private ButtonType buttonType;
         private bool _cellsLoading, parsed = false;
@@ -70,7 +73,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool CellsNotLoading => !CellsLoading;
 
         [UIValue("goToPlaylist")]
-        private bool GoToPlaylist { get; set; } = true;
+        private bool GoToPlaylist { get; set; }
 
         private Action? CloseMenu => GoToPlaylist ? mainFlowCoordinator.CloseToMainMenu : null;
 
@@ -143,6 +146,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 return;
 
             typeof(ModalView).GetMethod("SetupView", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(categoryModal, [modal.transform]);
+
+            if (GoToPlaylist != PC.GoToPlaylist)
+            {
+                GoToPlaylist = PC.GoToPlaylist;
+                PropertyChanged?.Invoke(this, new(nameof(GoToPlaylist)));
+            }
 
             parsed = true;
         }
