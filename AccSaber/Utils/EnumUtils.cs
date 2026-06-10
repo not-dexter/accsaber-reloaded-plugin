@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Numerics;
 
 namespace AccSaber.Utils
@@ -63,7 +64,7 @@ namespace AccSaber.Utils
 
     public enum ComparisonType
     {
-        NOT = 1, EQ = 2, NE = NOT | EQ, LT = 4, GT = 8, LTE = LT | EQ, GTE = GT | EQ, FLIP = EQ | LT | GT, ALL = NOT | EQ | LT | GT
+        NONE = 0, NOT = 1, EQ = 2, NE = NOT | EQ, LT = 4, GT = 8, LTE = LT | EQ, GTE = GT | EQ, FLIP = EQ | LT | GT, ALL = NOT | EQ | LT | GT
     }
 
     public static class EnumUtils
@@ -181,6 +182,21 @@ namespace AccSaber.Utils
                 outp += '<';
             if ((compType & ComparisonType.EQ) > 0)
                 outp += '=';
+
+            return outp;
+        }
+        public static ComparisonType FromComparisonString(this string str)
+        {
+            ComparisonType outp = ComparisonType.NONE;
+
+            if (str.IndexOf('!') != -1)
+                outp |= ComparisonType.NOT;
+            if (str.IndexOf('>') != -1)
+                outp |= ComparisonType.GT;
+            if (str.IndexOf('<') != -1)
+                outp |= ComparisonType.LT;
+            if (str.IndexOf('=') != -1)
+                outp |= ComparisonType.EQ;
 
             return outp;
         }

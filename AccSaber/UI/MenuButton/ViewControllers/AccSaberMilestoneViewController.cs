@@ -183,13 +183,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                             MilestoneCache.Add(cell.data.MilestoneId, milestone);
                     }
 
-                    if (milestone is null || !milestone.QuerySpec.From.Equals("scores", System.StringComparison.OrdinalIgnoreCase))
+                    if (milestone is null || milestone.QuerySpec.Having is null || milestone.QuerySpec.Having.Operator is null || !milestone.QuerySpec.From.Equals("scores", System.StringComparison.OrdinalIgnoreCase))
                     {
                         await _levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
                         return;
                     }
 
-                    await _levelUtils.LoadPlaylistAp(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, milestone.Comparison.Flip().ToComparisonString(), CloseMenu, cell.UpdateStatus);
+                    await _levelUtils.LoadPlaylistAp(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, milestone.QuerySpec.Having.Operator.FromComparisonString().Flip().ToComparisonString(), CloseMenu, cell.UpdateStatus);
                 }
 
                 _ = ApTask();
