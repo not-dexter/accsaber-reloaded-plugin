@@ -94,12 +94,19 @@ namespace AccSaber.Utils
         }
         private AccSaberSerializedCache? Load(string file, JsonSerializer serializer, Type serializedType)
         {
-            if (File.Exists(file))
+            try
             {
-                using StreamReader sr = new(file);
-                using JsonReader reader = new JsonTextReader(sr);
+                if (File.Exists(file))
+                {
+                    using StreamReader sr = new(file);
+                    using JsonReader reader = new JsonTextReader(sr);
 
-                return (AccSaberSerializedCache?)serializer.Deserialize(reader, serializedType);
+                    return (AccSaberSerializedCache?)serializer.Deserialize(reader, serializedType);
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
             }
 
             return null;
