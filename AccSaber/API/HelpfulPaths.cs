@@ -121,6 +121,9 @@
         /// </remarks>
         public const string APAPI_CATEGORY_SCORES = APAPI + "users/{0}/scores?categoryId={1}&page={2}&size={3}"; // user_id, category_id, page (zero indexed), count
 
+        public const string APAPI_SCORES_ALL = APAPI + "users/{0}/scores/all"; // user_id
+
+
         /// <summary>
         /// Retrieves map data by full hash.
         /// </summary>

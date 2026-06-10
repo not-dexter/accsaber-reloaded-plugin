@@ -154,10 +154,10 @@ namespace AccSaber.Utils
                 switch (type)
                 {
                     case "ap":
-                        maps = await levelUtils.GetMapsAp(category, playerId, threshold, comp);
+                        maps = await levelUtils.GetMapsAp(category, playerId, threshold, comp.FromComparisonString());
                         break;
                     case "accuracy":
-                        maps = await levelUtils.GetMapsAcc(category, playerId, threshold, comp);
+                        maps = await levelUtils.GetMapsAcc(category, playerId, threshold, comp.FromComparisonString());
                         break;
                 }
 

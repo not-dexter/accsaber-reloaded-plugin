@@ -280,9 +280,15 @@ namespace AccSaber.Managers
 
             try
             {
+                const int maxRetries = 3;
+
+
                 AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
                 if (theLock is null)
                     return;
+
+                int retries = 0;
+
                 using (theLock.Value)
                     while (true)
                     {
@@ -300,6 +306,12 @@ namespace AccSaber.Managers
                         Plugin.Log.Info("Websocket starting.");
                         await ListenForScores(ct);
                         await Task.Delay(1000, ct);
+                        if (++retries >= maxRetries)
+                        {
+                            retries = 0;
+                            Plugin.Log.Warn("Too many retries, waiting 2 minutes before retry.");
+                            await Task.Delay(120000, ct);
+                        }
                     }
             }
             catch (OperationCanceledException)

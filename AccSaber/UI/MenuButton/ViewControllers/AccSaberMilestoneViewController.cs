@@ -171,7 +171,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
 
             if (cell.data.TargetValue < 1f) // This should handle all accuracy milestones
-                _ = _levelUtils.LoadPlaylistAcc(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, "<", CloseMenu, cell.UpdateStatus);
+                _ = _levelUtils.LoadPlaylistAcc(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, ComparisonType.LT, CloseMenu, cell.UpdateStatus);
             else if (ApRegex.Match(cell.data.Description).Success)
             {
                 async Task ApTask()
@@ -189,7 +189,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         return;
                     }
 
-                    await _levelUtils.LoadPlaylistAp(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, milestone.QuerySpec.Having.Operator.FromComparisonString().Flip().ToComparisonString(), CloseMenu, cell.UpdateStatus);
+                    await _levelUtils.LoadPlaylistAp(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, milestone.QuerySpec.Having.Operator.FromComparisonString().Flip(), CloseMenu, cell.UpdateStatus);
                 }
 
                 _ = ApTask();

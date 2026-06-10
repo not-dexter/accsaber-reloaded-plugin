@@ -1,6 +1,10 @@
-﻿using System;
+﻿using AccSaber.Models;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using static AccSaber.Utils.MiscUtils;
 
 namespace AccSaber.Utils
 {
@@ -65,6 +69,11 @@ namespace AccSaber.Utils
     public enum ComparisonType
     {
         NONE = 0, NOT = 1, EQ = 2, NE = NOT | EQ, LT = 4, GT = 8, LTE = LT | EQ, GTE = GT | EQ, FLIP = EQ | LT | GT, ALL = NOT | EQ | LT | GT
+    }
+
+    public enum FunctionType
+    {
+        MIN, MAX, COUNT, COUNT_DISTINCT
     }
 
     public static class EnumUtils
@@ -154,7 +163,7 @@ namespace AccSaber.Utils
             return outp;
         }
 
-        public static Func<T, T, bool>? ToComparison<T>(this ComparisonType compType) where T : IComparable<T>
+        public static SpecifiedComparer<T> ToComparison<T>(this ComparisonType compType) where T : IComparable<T>
         {
             return compType switch
             {
@@ -164,9 +173,24 @@ namespace AccSaber.Utils
                 ComparisonType.LT => (a, b) => a.CompareTo(b) < 0,
                 ComparisonType.GTE => (a, b) => a.CompareTo(b) >= 0,
                 ComparisonType.LTE => (a, b) => a.CompareTo(b) <= 0,
-                _ => null
+                _ => throw new ArgumentException($"The given ComparisonType must be a valid type (comType = {compType}).")
             };
         }
+        public static SpecifiedComparer ToComparison(this ComparisonType compType)
+        {
+            return compType switch
+            {
+                ComparisonType.EQ => (a, b) => a.CompareTo(b) == 0,
+                ComparisonType.NE => (a, b) => a.CompareTo(b) != 0,
+                ComparisonType.GT => (a, b) => a.CompareTo(b) > 0,
+                ComparisonType.LT => (a, b) => a.CompareTo(b) < 0,
+                ComparisonType.GTE => (a, b) => a.CompareTo(b) >= 0,
+                ComparisonType.LTE => (a, b) => a.CompareTo(b) <= 0,
+                _ => throw new ArgumentException($"The given ComparisonType must be a valid type (comType = {compType}).")
+            };
+        }
+        public static bool Compare<T>(this ComparisonType compType, T x, T y) where T : IComparable<T> => compType.ToComparison<T>()(x, y);
+        public static bool Compare<T1, T2>(this ComparisonType compType, T1 x, T2 y) where T1 : IComparable where T2 : IComparable => compType.ToComparison()(x, y);
         public static string ToComparisonString(this ComparisonType compType)
         {
             string outp = "";
@@ -176,12 +200,12 @@ namespace AccSaber.Utils
 
             if ((compType & ComparisonType.NOT) > 0)
                 outp += '!';
-            if ((compType & ComparisonType.GT) > 0)
-                outp += '>';
-            if ((compType & ComparisonType.LT) > 0)
-                outp += '<';
             if ((compType & ComparisonType.EQ) > 0)
                 outp += '=';
+            if ((compType & ComparisonType.LT) > 0)
+                outp += '<';
+            if ((compType & ComparisonType.GT) > 0)
+                outp += '>';
 
             return outp;
         }
@@ -191,16 +215,40 @@ namespace AccSaber.Utils
 
             if (str.IndexOf('!') != -1)
                 outp |= ComparisonType.NOT;
-            if (str.IndexOf('>') != -1)
-                outp |= ComparisonType.GT;
-            if (str.IndexOf('<') != -1)
-                outp |= ComparisonType.LT;
             if (str.IndexOf('=') != -1)
                 outp |= ComparisonType.EQ;
+            if (str.IndexOf('<') != -1)
+                outp |= ComparisonType.LT;
+            if (str.IndexOf('>') != -1)
+                outp |= ComparisonType.GT;
 
             return outp;
         }
         public static ComparisonType Invert(this ComparisonType compType) => compType >= ComparisonType.LT ? compType ^ ComparisonType.ALL : compType;
-        public static ComparisonType Flip(this ComparisonType compType) => compType >= ComparisonType.LT ? compType ^ ComparisonType.FLIP : compType ^ ComparisonType.NE;
+        public static ComparisonType Flip(this ComparisonType compType) => compType >= ComparisonType.LT ? compType ^ ComparisonType.FLIP : compType ^ ComparisonType.NOT;
+
+
+        public static bool Execute(this FunctionType funcType, string column, float targetValue, JObject score)
+        {
+            return funcType switch
+            {
+                FunctionType.MIN => score[column] is IComparable comp && comp.CompareTo(targetValue) >= 0,
+                FunctionType.MAX => score[column] is IComparable comp && comp.CompareTo(targetValue) <= 0,
+                _ => false
+            };
+        }
+        public static IEnumerable<IComparable> Execute<T>(this FunctionType funcType, string column, IEnumerable<T> input, float targetValue = default) where T : notnull
+        {
+            IEnumerable<IComparable> arr = input.Select(item => (JObject.FromObject(item)[column] as IComparable)!).Where(item => item is not null);
+
+            return funcType switch
+            {
+                FunctionType.MIN => arr.Where(comp => comp.CompareTo(targetValue) >= 0),
+                FunctionType.MAX => arr.Where(comp => comp.CompareTo(targetValue) <= 0),
+                FunctionType.COUNT => [arr.Count()],
+                FunctionType.COUNT_DISTINCT => [arr.Distinct().Count()],
+                _ => throw new ArgumentException("The given function type cannot be executed with the given arguments")
+            };
+        }
     }
 }

@@ -28,8 +28,15 @@ namespace AccSaber.Utils.Misc
             get => _playerCache.MaxLength;
             set => _playerCache.MaxLength = value;
         }
-        public int[] CategoryPlayerScoreLength = [-1, -1, -1]; // A bit hardcoded, but whatever
+        public int[] CategoryPlayerScoreLength
+        {
+            get
+            {
+                _playerCache.ExtraData ??= [new int[3] { -1, -1, -1 }];
 
+                return (int[])_playerCache.ExtraData[0];
+            }
+        }
 
         public SerializationHandler()
         {
@@ -39,26 +46,44 @@ namespace AccSaber.Utils.Misc
                 { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, null) }
             };
         }
+        /*And btw, if you would prefer not to do the maps, I do have an idea for a compromise. If instead you add 2 properties to the score json object that is returned in normal endpoints, it help speed up the leaderboard loading the score menu.  
+
+The properties are playerScoreRank and playerCategoryScoreRank. playerScoreRank is what index the score is on the list of all player scores (sorted by ap, not weighted), playerCategoryScoreRank is the same thing but for the given category.  */
 
         internal async void SetCacheData(SerializerUtils serializerUtils)
         {
             try
             {
-                while (serializerUtils.LoadTask is null)
-                    await Task.Delay(1000);
+                void HandleMapCache(AccSaberSerializedCache cache)
+                {
+                    if (cache is not AccSaberSerializedCache<AccSaberBasicMap> mapCache)
+                        return;
 
-                await serializerUtils.LoadTask;
+                    CachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
+                    CachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
+                        .Select(diff => new KeyValuePair<string, AccSaberBasicDifficulty>(diff.DifficultyId, diff)))];
+                }
 
-                if (serializerUtils.Caches.First(cache => cache.Name.Equals(ResourcePaths.MAP_CACHE_NAME))
-                    is not AccSaberSerializedCache<AccSaberBasicMap> mapCache)
-                    return;
+                void HandlePlayerScoreCache(AccSaberSerializedCache cache)
+                {
+                    if (cache is not AccSaberSerializedCache<AccSaberPlayerScore> playerCache)
+                        return;
 
-                CachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
-                CachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
-                .Select(diff => new KeyValuePair<string, AccSaberBasicDifficulty>(diff.DifficultyId, diff)))];
+                    _playerCache = playerCache;
+                }
 
-
-                _playerCache = (AccSaberSerializedCache<AccSaberPlayerScore>)serializerUtils.Caches.First(cache => cache.Name.Equals(ResourcePaths.PLAYER_SCORE_CACHE_NAME));
+                foreach (AccSaberSerializedCache cache in serializerUtils.Caches)
+                {
+                    switch (cache.Name)
+                    {
+                        case ResourcePaths.MAP_CACHE_NAME:
+                            HandleMapCache(cache);
+                            break;
+                        case ResourcePaths.PLAYER_SCORE_CACHE_NAME:
+                            HandlePlayerScoreCache(cache);
+                            break;
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -97,6 +122,18 @@ namespace AccSaber.Utils.Misc
             {
                 MaxLength = TotalMaps == -1 ? maps.Sum(map => map.Difficulties.Count) : TotalMaps,
                 Content = maps
+            };
+        }
+        private async Task<AccSaberSerializedCache> LoadPlayerScoreCache()
+        {
+            List<AccSaberPlayerScore> scores = [.. (await api.LoadAllPlayerScores()).Select(score => new AccSaberPlayerScore(score))];
+
+            return new AccSaberSerializedCache<AccSaberPlayerScore>()
+            {
+                LastUpdated = DateTime.UtcNow,
+                MaxLength = TotalMaps,
+                ExtraData = [new int[3] { -1, -1, -1 }],
+                Content = scores
             };
         }
 

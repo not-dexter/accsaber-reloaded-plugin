@@ -8,7 +8,7 @@ using System.Text;
 
 namespace AccSaber.Utils
 {
-    internal static class MiscUtils
+    public static class MiscUtils
     {
         public const char STAR = (char)9733;
 
@@ -21,6 +21,7 @@ namespace AccSaber.Utils
         public const int SECONDS_DAY = SECONDS_HOUR * 24; // 86,400
         public const int SECONDS_WEEK = SECONDS_DAY * 7; // 604,800
         public const int SECONDS_YEAR = (int)(SECONDS_DAY * DAYS_YEAR); // 31,556,926
+
 
         public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
         {
@@ -152,16 +153,12 @@ namespace AccSaber.Utils
         {
             int compVal = x.CompareTo(y);
 
-            if (compVal == 0 && comp.Contains('='))
-                return true;
-
-            if (compVal > 0 && comp.Contains('>'))
-                return true;
-
-            if (compVal < 0 && comp.Contains('<'))
-                return true;
-
-            return false;
+            return compVal switch
+            {
+                > 0 => comp.IndexOf('>') != -1,
+                < 0 => comp.IndexOf('<') != -1,
+                0 => comp.IndexOf('=') != -1
+            };
         }
 
         public static string GenerateNonce(int byteLength = 32)
@@ -217,4 +214,7 @@ namespace AccSaber.Utils
         }
         #endregion
     }
+
+    public delegate bool SpecifiedComparer<T>(T x, T y);
+    public delegate bool SpecifiedComparer(IComparable x, IComparable y);
 }

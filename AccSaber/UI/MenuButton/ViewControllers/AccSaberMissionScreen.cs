@@ -210,7 +210,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _ = _levelUtils.LoadPlaylist(cell.Data.Category, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.PB_ABOVE_THRESHOLD:
-                    _ = _levelUtils.LoadPlaylistAp(cell.Data.Category, _playerData.PlayerID!, cell.Data.TargetThresholdAp!.Value, ">=", CloseMenu, cell.UpdateStatus);
+                    _ = _levelUtils.LoadPlaylistAp(cell.Data.Category, _playerData.PlayerID!, cell.Data.TargetThresholdAp!.Value, ComparisonType.GTE, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.XP_IN_WINDOW:
                     _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);

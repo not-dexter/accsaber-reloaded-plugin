@@ -769,30 +769,11 @@ namespace AccSaber.API
             return [.. rankedMaps.Values];
         }
 
-        public async Task LoadAllMaps(CancellationToken ct = default)
+        public async Task<List<AccSaberLeaderboardEntry>> LoadAllPlayerScores(CancellationToken ct = default)
         {
-            int totalMaps = serialHandler.TotalMaps;
+            await playerInfo.LoadTask;
 
-            if (totalMaps == serialHandler.CachedMaps.Count)
-                return;
-
-            if (totalMaps < 0)
-            {
-                AccSaberPagedContent? pageInfo = await CallAPI_Json<AccSaberPagedContent>(string.Format(APAPI_MAPS, 0, 1), Throttler, ct: ct);
-
-                if (pageInfo is null)
-                    return;
-
-                totalMaps = pageInfo.TotalElements;
-            }
-
-            AccSaberPagedContent<AccSaberRankedMap>? maps = await CallAPI_Json<AccSaberPagedContent<AccSaberRankedMap>>(string.Format(APAPI_MAPS, 0, totalMaps), Throttler, ct: ct);
-
-            if (maps is null || maps.Content is null)
-                return;
-
-            foreach (AccSaberRankedMap map in maps.Content)
-                serialHandler.CachedMaps.TryAdd(map.Hash, map);
+            return (await CallAPI_Json<List<AccSaberLeaderboardEntry>>(string.Format(APAPI_SCORES_ALL, playerInfo.PlayerID!), Throttler, ct: ct)) ?? [];
         }
 
         public async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(string difficulty_id, int page = 0, int count = 10, CancellationToken ct = default)

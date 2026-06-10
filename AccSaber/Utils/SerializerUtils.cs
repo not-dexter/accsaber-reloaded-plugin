@@ -29,11 +29,9 @@ namespace AccSaber.Utils
 
         private readonly List<AccSaberSerializedCache> caches = [];
         public IReadOnlyList<AccSaberSerializedCache> Caches => caches;
-        public Task? LoadTask { get; private set; } = null;
-
         public void Initialize()
         {
-            LoadTask = Task.Run(Load);
+            Task.Run(Load);
         }
         public void Dispose()
         {

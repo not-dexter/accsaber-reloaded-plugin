@@ -65,7 +65,7 @@ namespace AccSaber.Utils
                 Monitor.PulseAll(LoadWaiterLock);
         }
 
-        internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAp(APCategory type, string playerId, float apThreshold, string comp)
+        internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAp(APCategory type, string playerId, float apThreshold, ComparisonType comp)
         {
             IEnumerable<AccSaberBasicDifficulty>? scores = (await _api.GetMapsAboveThreshold(playerId, apThreshold, type))?.Cast<AccSaberBasicDifficulty>();
 
@@ -78,7 +78,7 @@ namespace AccSaber.Utils
 
             IEnumerable<string> ids = scores.Select(entry => entry.DifficultyId);
 
-            if (comp.Contains('<'))
+            if ((comp & ComparisonType.LT) != 0)
             {
                 HashSet<string> idSet = [.. ids];
                 ids = _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId);
@@ -86,9 +86,9 @@ namespace AccSaber.Utils
 
             return _playlistUtils.GetPlaylistData(ids);
         }
-        internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, string comp)
+        internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, ComparisonType comp)
         {
-            string sort = comp.Contains('<') ? "&sort=accuracy,desc" : "&sort=accuracy,asc";
+            string sort = (comp & ComparisonType.LT) != 0 ? "&sort=accuracy,desc" : "&sort=accuracy,asc";
             AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.EnumToReloadedCategory(type), 0, 50) + sort, AccsaberAPI.Throttler);
 
             if (scores is null || scores.Content is null)
@@ -98,7 +98,9 @@ namespace AccSaber.Utils
 
             StatusTextChanged?.Invoke($"Found {scoreSize} {(scoreSize == 1 ? "map" : "maps")}.");
 
-            IEnumerable<string> ids = scores.Content.Where(entry => entry.Accuracy.Compare(accThreshold, comp)).Select(entry => entry.DifficultyId);
+            SpecifiedComparer<float> comparer = comp.ToComparison<float>();
+
+            IEnumerable<string> ids = scores.Content.Where(entry => comparer(entry.Accuracy, accThreshold)).Select(entry => entry.DifficultyId);
 
             return _playlistUtils.GetPlaylistData(ids);
         }
@@ -115,7 +117,7 @@ namespace AccSaber.Utils
             
             StatusTextChanged -= statEvent;
         }
-        public async Task LoadPlaylistAp(APCategory type, string playerId, float apThreshold, string comp, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        public async Task LoadPlaylistAp(APCategory type, string playerId, float apThreshold, ComparisonType comp, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             try
             {
@@ -124,7 +126,7 @@ namespace AccSaber.Utils
                 StatusTextChanged?.Invoke("Loading...");
 
                 string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!.Replace('_','-');
-                string thresholdDirection = comp.Contains('>') ? "above" : "below";
+                string thresholdDirection = (comp & ComparisonType.GT) != 0 ? "above" : "below";
 
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{apThreshold:0.##}ap";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {apThreshold:0.##}ap";
@@ -155,7 +157,7 @@ namespace AccSaber.Utils
                 StatusTextChanged -= statEvent;
             }
         }
-        public async Task LoadPlaylistAcc(APCategory type, string playerId, float accThreshold, string comp, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        public async Task LoadPlaylistAcc(APCategory type, string playerId, float accThreshold, ComparisonType comp, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             try
             {
@@ -164,7 +166,7 @@ namespace AccSaber.Utils
                 StatusTextChanged?.Invoke("Loading...");
 
                 string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!.Replace('_','-');
-                string thresholdDirection = comp.Contains('>') ? "above" : "below";
+                string thresholdDirection = (comp & ComparisonType.GT) != 0 ? "above" : "below";
 
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{accThreshold * 100f:0.##}%";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {accThreshold * 100f:0.##}%";
@@ -195,7 +197,7 @@ namespace AccSaber.Utils
                 StatusTextChanged -= statEvent;
             }
         }
-        public async Task LoadPlaylist(APCategory type, string userId, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        public async Task LoadPlaylist(APCategory type, string playerId, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             try
             {
@@ -203,14 +205,14 @@ namespace AccSaber.Utils
 
                 string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!;
 
-                string filename = $"accsaber-reloaded-missing-{userId}-{categoryName.Replace('_', '-')}.bplist";
+                string filename = $"accsaber-reloaded-missing-{playerId}-{categoryName.Replace('_', '-')}.bplist";
 
                 if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
                 {
 
                     StatusTextChanged?.Invoke("Downloading...");
 
-                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_MISSING, userId, categoryName), AccsaberAPI.Throttler);
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_MISSING, playerId, categoryName), AccsaberAPI.Throttler);
 
                     filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
 
@@ -226,7 +228,7 @@ namespace AccSaber.Utils
             }
             catch (Exception e)
             {
-                Plugin.Log.Error($"There was an error loading the missing playlist for userid {userId}!\n{e}");
+                Plugin.Log.Error($"There was an error loading the missing playlist for player id {playerId}!\n{e}");
             }
             finally
             {
