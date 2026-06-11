@@ -1,6 +1,10 @@
 ﻿using HMUI;
 using Zenject;
 
+#if !NEW_VERSION
+using BeatSaberMarkupLanguage;
+#endif
+
 namespace AccSaber.Utils.Safety
 {
     internal abstract class SafeFlowCoordinator : FlowCoordinator
