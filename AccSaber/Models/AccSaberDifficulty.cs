@@ -18,7 +18,7 @@ namespace AccSaber.Models
         public string? BlLeaderboardId { get; set; }
 
         [JsonProperty("categoryId")]
-        public string CategoryId { get; set; } = null!;
+        public Guid CategoryId { get; set; }
 
         [JsonProperty("characteristic")]
         public string Characteristic { get; set; } = null!;
@@ -40,7 +40,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Category ??= EnumUtils.ReloadedCategoryIdToEnum(CategoryId);
+            Category ??= EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
             Status = EnumUtils.RankedStatusToEnum(RankedStatus);
         }
     }
@@ -49,7 +49,7 @@ namespace AccSaber.Models
     internal class AccSaberBasicDifficulty : IModel
     {
         [JsonProperty("id")]
-        public string DifficultyId { get; set; } = null!;
+        public Guid DifficultyId { get; set; }
 
         [JsonProperty("songHash")]
         public string Hash { get; set; } = null!;

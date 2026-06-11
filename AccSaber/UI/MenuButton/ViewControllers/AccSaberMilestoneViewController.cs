@@ -11,6 +11,7 @@ using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using IPA.Utilities;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
@@ -28,7 +29,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
 #pragma warning disable IDE0051
-        private static readonly Dictionary<string, AccSaberFullMilestone> MilestoneCache = [];
+        private static readonly Dictionary<Guid, AccSaberFullMilestone> MilestoneCache = [];
 
 		public new event PropertyChangedEventHandler? PropertyChanged;
 

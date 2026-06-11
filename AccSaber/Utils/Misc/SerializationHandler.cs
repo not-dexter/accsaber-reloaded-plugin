@@ -20,7 +20,7 @@ namespace AccSaber.Utils.Misc
 
         public int TotalMaps { get; private set; } = -1;
         public Dictionary<string, AccSaberBasicMap> CachedMaps = null!;
-        public Dictionary<string, AccSaberBasicDifficulty> CachedDifficulties = null!;
+        public Dictionary<Guid, AccSaberBasicDifficulty> CachedDifficulties = null!;
 
         private AccSaberSerializedCache<AccSaberPlayerScore> _playerCache = null!;
         public List<AccSaberPlayerScore> PlayerScores => _playerCache.Content;
@@ -44,7 +44,7 @@ namespace AccSaber.Utils.Misc
 
         public async Task RevalidateMissions(bool forceRefresh = false)
         {
-            if (!forceRefresh && await ValidateMissionCache(_missions))
+            if (_missions is null || (!forceRefresh && await ValidateMissionCache(_missions)))
                 return;
 
             AccSaberSerializedCache<AccSaberMission> newCache = ((await LoadMissionCache()) as AccSaberSerializedCache<AccSaberMission>)!;
@@ -76,7 +76,7 @@ namespace AccSaber.Utils.Misc
 
                     CachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
                     CachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
-                        .Select(diff => new KeyValuePair<string, AccSaberBasicDifficulty>(diff.DifficultyId, diff)))];
+                        .Select(diff => new KeyValuePair<Guid, AccSaberBasicDifficulty>(diff.DifficultyId, diff)))];
                 }
 
                 void HandlePlayerScoreCache(AccSaberSerializedCache cache)
@@ -123,7 +123,7 @@ namespace AccSaber.Utils.Misc
             InvalidateMissionCache();
         }
 #pragma warning restore IDE0060
-        public (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(string difficultyId)
+        public (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(Guid difficultyId)
         {
             AccSaberBasicDifficulty diff = CachedDifficulties[difficultyId];
 

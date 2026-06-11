@@ -1,5 +1,6 @@
 ﻿using JetBrains.Annotations;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,7 +10,7 @@ namespace AccSaber.Models
     internal class AccSaberCurve
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; } = null!;

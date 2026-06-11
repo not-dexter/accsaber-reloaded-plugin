@@ -76,11 +76,11 @@ namespace AccSaber.Utils
 
             StatusTextChanged?.Invoke($"Found {scoreSize} {(scoreSize == 1 ? "map" : "maps")}.");
 
-            IEnumerable<string> ids = scores.Select(entry => entry.DifficultyId);
+            IEnumerable<Guid> ids = scores.Select(entry => entry.DifficultyId);
 
             if ((comp & ComparisonType.LT) != 0)
             {
-                HashSet<string> idSet = [.. ids];
+                HashSet<Guid> idSet = [.. ids];
                 ids = _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId);
             }
 
@@ -89,7 +89,7 @@ namespace AccSaber.Utils
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, ComparisonType comp)
         {
             string sort = (comp & ComparisonType.LT) != 0 ? "&sort=accuracy,desc" : "&sort=accuracy,asc";
-            AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.EnumToReloadedCategory(type), 0, 50) + sort, AccsaberAPI.Throttler);
+            AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.CategoryToReloadedCategoryId(type), 0, 50) + sort, AccsaberAPI.Throttler);
 
             if (scores is null || scores.Content is null)
                 return null;
@@ -100,7 +100,7 @@ namespace AccSaber.Utils
 
             SpecifiedComparer<float> comparer = comp.ToComparison<float>();
 
-            IEnumerable<string> ids = scores.Content.Where(entry => comparer(entry.Accuracy, accThreshold)).Select(entry => entry.DifficultyId);
+            IEnumerable<Guid> ids = scores.Content.Where(entry => comparer(entry.Accuracy, accThreshold)).Select(entry => entry.DifficultyId);
 
             return _playlistUtils.GetPlaylistData(ids);
         }
@@ -380,7 +380,7 @@ namespace AccSaber.Utils
         }
 
         // Interpreted from: https://github.com/kinsi55/BeatSaber_BetterSongSearch/blob/master/UI/SelectedSongView.cs#L186
-        public async Task GoToSong(string diffId, string? targetPlayerId, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
+        public async Task GoToSong(Guid diffId, string? targetPlayerId, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             AsyncLock.Releaser? locker = await OpenMapLock.TryLockAsync();
 

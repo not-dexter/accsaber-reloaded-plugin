@@ -345,6 +345,6 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("map-complexity-text")]
 		private string MapComplexityText => _accSaberStore.CurrentRankedMap is not AccSaberDifficulty diff || diff.Status == MapStatus.Ranked ?
 			$"<color=#EDFF55>Map Complexity:</color> {_accSaberStore.CurrentRankedMap?.Complexity ?? -1f:0.##}" :
-			$"<color=#EDFF55>Category:</color> {GetCategoryName(diff.CategoryId ?? "")}";
+			$"<color=#EDFF55>Category:</color> {EnumUtils.ReloadedCategoryIdToCategory(diff.CategoryId)}";
 	}
 }

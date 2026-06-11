@@ -147,7 +147,7 @@ namespace AccSaber.Utils
             APCategory.True => TRUE,
             APCategory.Standard => STANDARD,
             APCategory.Tech => TECH,
-            APCategory.Overall => OVERALL,
+            APCategory.Overall or null => OVERALL,
             _ => "#FFF"
         };
     }

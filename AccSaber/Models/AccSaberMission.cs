@@ -11,7 +11,7 @@ namespace AccSaber.Models
     internal class AccSaberMission : IModel
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; } = null!;
@@ -35,7 +35,7 @@ namespace AccSaber.Models
         public MissionBand Band { get; set; }
 
         [JsonProperty("categoryId")]
-        public string CategoryId { get; set; } = EnumUtils.OverallReloadedCategory;
+        public Guid? CategoryId { get; set; }
 
         [JsonIgnore]
         public APCategory Category { get; set; }
@@ -44,7 +44,7 @@ namespace AccSaber.Models
         public ReloadedAPCategory? CategoryCode { get; set; }
 
         [JsonProperty("targetMapDifficultyId")]
-        public string? TargetMapDifficultyId { get; set; }
+        public Guid? TargetMapDifficultyId { get; set; }
 
         [JsonProperty("targetMapSongName")]
         public string? TargetMapSongName { get; set; } 
@@ -104,7 +104,7 @@ namespace AccSaber.Models
         private void OnDeserialized(StreamingContext context)
         {
             MissionPool = (MissionPool)Enum.Parse(typeof(MissionPool), Pool.Capitialize());
-            Category = EnumUtils.ReloadedCategoryIdToEnum(CategoryId);
+            Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
         }
     }
 

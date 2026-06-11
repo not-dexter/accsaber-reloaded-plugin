@@ -358,9 +358,9 @@ namespace AccSaber.Utils
             }
         }
 
-        public List<PlaylistMapInfo> GetPlaylistData(IEnumerable<string> mapDiffIds)
+        public List<PlaylistMapInfo> GetPlaylistData(IEnumerable<Guid> mapDiffIds)
         {
-            HashSet<string> idSet = [.. mapDiffIds];
+            HashSet<Guid> idSet = [.. mapDiffIds];
             List<PlaylistMapInfo> maps = [];
 
             foreach (AccSaberBasicMap map in serialHandler.CachedMaps.Values)

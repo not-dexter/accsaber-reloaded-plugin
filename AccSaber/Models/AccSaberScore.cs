@@ -14,7 +14,7 @@ namespace AccSaber.Models
         internal string Nonce { get; set; } = MiscUtils.GenerateNonce(64);
 
         [JsonProperty("mapDifficultyId", Required = Required.DisallowNull)]
-        public string MapDifficultyId { get; set; } = null!;
+        public Guid MapDifficultyId { get; set; }
 
         [JsonProperty("score", Required = Required.DisallowNull)]
         public uint Score { get; set; } = 0;

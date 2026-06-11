@@ -1,6 +1,7 @@
 ﻿using AccSaber.Models.Base;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
+using System;
 
 namespace AccSaber.Models
 {
@@ -11,7 +12,7 @@ namespace AccSaber.Models
         public string Code { get; set; } = null!;
 
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("multiplier")]
         public float Multiplier { get; set; }

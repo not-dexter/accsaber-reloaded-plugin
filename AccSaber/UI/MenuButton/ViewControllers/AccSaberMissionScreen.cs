@@ -227,7 +227,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             switch (cell.Data.Type)
             {
                 case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
-                    _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!, cell.Data.TargetPlayerId, CloseMenu, cell.UpdateStatus);
+                    _ = _levelUtils.GoToSong(cell.Data.TargetMapDifficultyId!.Value, cell.Data.TargetPlayerId, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY:
                     _ = _levelUtils.LoadPlaylist(cell.Data.Category, CloseMenu, cell.UpdateStatus);
@@ -283,7 +283,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         if (_parsed)
                         {
                             AccSaberBasicDifficulty? targetDiff = post.TargetMapDifficultyId is null ?
-                                null : _serialHandler.CachedDifficulties[post.TargetMapDifficultyId];
+                                null : _serialHandler.CachedDifficulties[post.TargetMapDifficultyId.Value];
 
                             switch (post.MissionPool)
                             {
@@ -304,7 +304,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         }
 
                         if (post.TargetPlayerId is not null && post.TargetMapDifficultyId is not null)
-                            _leaderboardViewController.MissionTargets.Add((post.TargetPlayerId, post.TargetMapDifficultyId));
+                            _leaderboardViewController.MissionTargets.Add((post.TargetPlayerId, post.TargetMapDifficultyId.Value));
                     }
 
                     UpdateTimer();
@@ -445,7 +445,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PercentBarTop?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * progress);
                 PercentBarBottom?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - progress));
 
-                PercentBarTop_image?.color = ColorUtils.GetColor(Data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryIdToEnum(Data.CategoryId)).Color();
+                PercentBarTop_image?.color = ColorUtils.GetColor(Data.CategoryId == default ? APCategory.Overall : EnumUtils.ReloadedCategoryIdToCategory(Data.CategoryId)).Color();
                 PercentBarBottom_image?.color = ColorUtils.GREY.Color().ColorWithAlpha(0.15f);
 
                 DescriptionText.enableAutoSizing = true;

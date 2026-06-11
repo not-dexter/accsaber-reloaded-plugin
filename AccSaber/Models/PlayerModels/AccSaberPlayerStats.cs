@@ -3,6 +3,7 @@ using AccSaber.Models.Base;
 using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
+using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
@@ -21,7 +22,7 @@ namespace AccSaber.Models.PlayerModels
         public float AverageAp { get; set; }
 
         [JsonProperty("categoryId")]
-        public string CategoryId { get; set; } = null!;
+        public Guid CategoryId { get; set; }
 
         [JsonIgnore]
         public APCategory? Category { get; set; }
@@ -32,7 +33,7 @@ namespace AccSaber.Models.PlayerModels
         //createdAt
 
         [JsonProperty("id")]
-        public string StatId { get; set; } = null!;
+        public Guid StatId { get; set; }
 
         [JsonProperty("rankedPlays")]
         public int Plays { get; set; }
@@ -69,7 +70,7 @@ namespace AccSaber.Models.PlayerModels
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Category = EnumUtils.ReloadedCategoryIdToEnum(CategoryId);
+            Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
         }
     }
 }

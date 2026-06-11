@@ -49,7 +49,7 @@ namespace AccSaber.Models
         public float BonusXp { get; set; }
 
         [JsonProperty("categoryId")]
-        public string CategoryId { get; set; } = null!;
+        public Guid CategoryId { get; set; }
 
         [JsonProperty("country")]
         public string Country { get; set; } = null!;
@@ -67,16 +67,16 @@ namespace AccSaber.Models
         public string Hmd { get; set; } = null!;
 
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("mapAuthor")]
         public string MapAuthor { get; set; } = null!;
 
         [JsonProperty("mapDifficultyId")]
-        public string DifficultyId { get; set; } = null!;
+        public Guid DifficultyId { get; set; }
 
         [JsonProperty("mapId")]
-        public string MapId { get; set; } = null!;
+        public Guid MapId { get; set; }
 
         [JsonProperty("misses")]
         public int Misses { get; set; }

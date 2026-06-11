@@ -64,14 +64,14 @@ namespace AccSaber.UI.ViewControllers
         private bool titlePanelRich;
         private TextMeshProUGUI? titlePaneTitleText = null;
 
-        internal HashSet<(string playerId, string diffId)> MissionTargets = [];
+        internal HashSet<(string playerId, Guid diffId)> MissionTargets = [];
 
         public event Action<bool>? OnMapChanged; // bool == is map ranked or not.
 
         public new event PropertyChangedEventHandler? PropertyChanged;
         public string RankedHeader => $"{RANKED_HEADER} | <color={GetColor(CurrentCategory)}>{CurrentCategory}</color>";
         public LeaderboardDisplayType DisplayType { get; private set; }
-        public string? DifficultyId => difficultyInfo?.DifficultyId;
+        public Guid? DifficultyId => difficultyInfo?.DifficultyId;
         public bool ValidMapSelected => !string.IsNullOrEmpty(CurrentHash) && CurrentDiff != default;
         public string? CurrentHash { get; private set; }
         public BeatmapDifficulty CurrentDiff { get; private set; }
@@ -826,7 +826,7 @@ namespace AccSaber.UI.ViewControllers
             }
 
             int version = refreshVersion;
-            string difficultyId = DifficultyId;
+            Guid difficultyId = DifficultyId.Value;
             int requestedPage = page;
             LeaderboardDisplayType displayType = DisplayType;
             Func<AccSaberLeaderboardEntry, bool>? filter = CurrentFilter;
@@ -845,13 +845,13 @@ namespace AccSaber.UI.ViewControllers
         }
 
         private async Task UpdateLoadingStateFromCache(
-    int version,
-    string difficultyId,
-    int requestedPage,
-    LeaderboardDisplayType displayType,
-    Func<AccSaberLeaderboardEntry, bool>? filter,
-    int relationLen
-)
+            int version,
+            Guid difficultyId,
+            int requestedPage,
+            LeaderboardDisplayType displayType,
+            Func<AccSaberLeaderboardEntry, bool>? filter,
+            int relationLen
+        )
         {
             try
             {
@@ -958,7 +958,7 @@ namespace AccSaber.UI.ViewControllers
             try
             {
                 int version = refreshVersion;
-                string? difficultyId = DifficultyId;
+                Guid? difficultyId = DifficultyId;
                 int requestedPage = page;
                 LeaderboardDisplayType requestedDisplayType = DisplayType;
 
@@ -974,21 +974,21 @@ namespace AccSaber.UI.ViewControllers
                 switch (requestedDisplayType)
                 {
                     case LeaderboardDisplayType.Global:
-                        scores = await api.GetScoreData(requestedPage, difficultyId);
+                        scores = await api.GetScoreData(requestedPage, difficultyId.Value);
                         break;
 
                     case LeaderboardDisplayType.Relations:
-                        scores = await api.GetScoreData(requestedPage, difficultyId, RelationType.follower, RelationType.rival);
+                        scores = await api.GetScoreData(requestedPage, difficultyId.Value, RelationType.follower, RelationType.rival);
                         break;
 
                     case LeaderboardDisplayType.Followed:
                     case LeaderboardDisplayType.Rivals:
-                        scores = await api.GetScoreData(requestedPage, difficultyId, requestedDisplayType.Convert());
+                        scores = await api.GetScoreData(requestedPage, difficultyId.Value, requestedDisplayType.Convert());
                         break;
 
                     case LeaderboardDisplayType.Country:
                         string country = (await store.GetCurrentUserAsync()).Country;
-                        scores = await api.GetScoreData(requestedPage, difficultyId, country);
+                        scores = await api.GetScoreData(requestedPage, difficultyId.Value, country);
                         break;
 
                     default:
@@ -1085,7 +1085,7 @@ namespace AccSaber.UI.ViewControllers
         {
             if (OnPlayerPage)
                 currentPlayerPage = page;
-            else if (api.TryGetRankWithFilter(DifficultyId!, playerInfo.PlayerID!, CurrentFilter, out int rank))
+            else if (api.TryGetRankWithFilter(DifficultyId!.Value, playerInfo.PlayerID!, CurrentFilter, out int rank))
                 currentPlayerPage = (int)Math.Ceiling(rank / (float)PAGE_LENGTH);
             else return false;
             return true;

@@ -1,8 +1,9 @@
-﻿using System.Linq;
-using System.Runtime.Serialization;
-using AccSaber.Models.CacheModels;
+﻿using AccSaber.Models.CacheModels;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
+using System;
+using System.Linq;
+using System.Runtime.Serialization;
 
 namespace AccSaber.Models
 {
@@ -18,7 +19,7 @@ namespace AccSaber.Models
         //createdAt
 
         [JsonProperty("id")]
-        public string MapId { get; set; } = null!;
+        public Guid MapId { get; set; }
 
         [JsonProperty("mapAuthor")]
         public string LevelAuthorName { get; set; } = null!;

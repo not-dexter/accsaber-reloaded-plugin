@@ -9,7 +9,7 @@ namespace AccSaber.Models
     internal sealed class AccSaberNewsEntry : IModel
     {
         [JsonProperty("id")]
-        public string NewsId { get; set; } = null!;
+        public Guid NewsId { get; set; }
 
         [JsonProperty("authorName")]
         public string AuthorName { get; set; } = null!;
@@ -36,16 +36,16 @@ namespace AccSaber.Models
         public bool Pinned { get; set; }
 
         [JsonProperty("batchId")]
-        public string BatchId { get; set; } = null!;
+        public Guid BatchId { get; set; }
 
         [JsonProperty("campaignId")]
-        public string CampaignId { get; set; } = null!;
+        public Guid CampaignId { get; set; }
 
         [JsonProperty("milestoneSetId")]
-        public string MilestoneSetId { get; set; } = null!;
+        public Guid MilestoneSetId { get; set; }
 
         [JsonProperty("curveId")]
-        public string CurveId { get; set; } = null!;
+        public Guid CurveId { get; set; }
 
         [JsonProperty("publishedAt")]
         public DateTime PublishedAt { get; set; }

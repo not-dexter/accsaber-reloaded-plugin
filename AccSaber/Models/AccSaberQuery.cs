@@ -26,7 +26,7 @@ namespace AccSaber.Models
         public AccSaberQueryHaving? Having { get; set; }
 
 
-        public IEnumerable<string>? GetUnfulfilledMaps(IEnumerable<AccSaberLeaderboardEntry> scores, float targetValue = default)
+        public IEnumerable<Guid>? GetUnfulfilledMaps(IEnumerable<AccSaberLeaderboardEntry> scores, float targetValue = default)
         {
             if (!From.Equals("scores"))
                 return null;
@@ -40,7 +40,7 @@ namespace AccSaber.Models
             IEnumerable<IComparable> scoreVals = Select.Select(scores, targetValue);
 
             List<(AccSaberLeaderboardEntry entry, IComparable val)> scoreList = [.. scores.Select(entry => (entry, (JObject.FromObject(entry)[Select.Column] as IComparable)!))];
-            List<string> diffIds = [];
+            List<Guid> diffIds = [];
 
             foreach (IComparable val in scoreVals)
             {

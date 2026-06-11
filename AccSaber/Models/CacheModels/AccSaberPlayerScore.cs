@@ -22,7 +22,7 @@ namespace AccSaber.Models.CacheModels
         public string SongAuthor { get; set; } = null!;
 
         [JsonProperty("difficultyId")]
-        public string DifficultyId { get; set; } = null!;
+        public Guid DifficultyId { get; set; }
 
         [JsonProperty("accuracy")]
         public float Accuracy { get; set; }
@@ -55,7 +55,7 @@ namespace AccSaber.Models.CacheModels
             WeightedAp = score.WeightedAp;
             TimeSet = score.TimeSet;
             Difficulty = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(score.Difficulty));
-            Category = EnumUtils.ReloadedCategoryIdToEnum(score.CategoryId);
+            Category = EnumUtils.ReloadedCategoryIdToCategory(score.CategoryId);
         }
     }
 }

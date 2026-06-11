@@ -84,11 +84,11 @@ namespace AccSaber.Utils
 
     public static class EnumUtils
     {
-        public const string OverallReloadedCategory = "b0000000-0000-0000-0000-000000000005";
+        //public static readonly Guid OverallReloadedCategory = Guid.Parse("b0000000-0000-0000-0000-000000000005");
 
         public static ReloadedDifficulty DiffToReloadedDiff(BeatmapDifficulty diff) => (ReloadedDifficulty)FromDiff(diff);
         public static BeatmapDifficulty ReloadedDiffToDiff(ReloadedDifficulty diff) => ToDiff((int)diff);
-        public static APCategory ReloadedCategoryIdToEnum(string? categoryId) => categoryId switch
+        private static APCategory ReloadedCategoryIdToCategory(string? categoryId) => categoryId switch
         {
             "b0000000-0000-0000-0000-000000000001" => APCategory.True,
             "b0000000-0000-0000-0000-000000000002" => APCategory.Standard,
@@ -96,15 +96,16 @@ namespace AccSaber.Utils
             "b0000000-0000-0000-0000-000000000005" or null => APCategory.Overall,
             _ => throw new ArgumentException($"The given category id \"{categoryId}\" cannot be converted to an {nameof(APCategory)} enum.")
         };
-        public static string CategoryIdToReloadedCategoryId(string? category) => category switch
+        public static APCategory ReloadedCategoryIdToCategory(Guid? categoryId) => ReloadedCategoryIdToCategory(categoryId?.ToString());
+        public static Guid CategoryIdToReloadedCategoryId(string? category) => Guid.Parse(category switch
         {
             nameof(APCategory.True) => "b0000000-0000-0000-0000-000000000001",
             nameof(APCategory.Standard) => "b0000000-0000-0000-0000-000000000002",
             nameof(APCategory.Tech) => "b0000000-0000-0000-0000-000000000003",
             nameof(APCategory.Overall) or null => "b0000000-0000-0000-0000-000000000005",
             _ => throw new ArgumentException($"The given category \"{category}\" cannot be converted to a reloaded UUID.")
-        };
-        public static string CategoryIdToReloadedCategoryId(APCategory category) => CategoryIdToReloadedCategoryId(category.ToString());
+        });
+        public static Guid CategoryToReloadedCategoryId(APCategory category) => CategoryIdToReloadedCategoryId(category.ToString());
         public static ReloadedAPCategory CategoryToReloadedCategory(string? category) => category switch
         {
             nameof(APCategory.True) => ReloadedAPCategory.true_acc,
@@ -115,7 +116,6 @@ namespace AccSaber.Utils
         };
         public static ReloadedAPCategory CategoryToReloadedCategory(APCategory category) => (ReloadedAPCategory)(int)category;
         public static APCategory ReloadedCategoryToCategory(ReloadedAPCategory category) => (APCategory)(int)category;
-        public static string EnumToReloadedCategory(APCategory category) => CategoryIdToReloadedCategoryId(category.ToString());
         public static string? EnumToRankedStatus(MapStatus status) => status switch
         {
             MapStatus.Qualified => "QUALIFIED",

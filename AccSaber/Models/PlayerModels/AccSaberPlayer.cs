@@ -100,10 +100,7 @@ namespace AccSaber.Models.PlayerModels
                 if (stat.Category is null)
                     continue;
 
-                string category_id = stat.Category.ToString().ToLower();
-
-                if (stat.Category != APCategory.Overall)
-                    category_id += "_acc";
+                ReloadedAPCategory category_id = EnumUtils.CategoryToReloadedCategory(stat.Category.Value);
 
                 AccSaberPlayerStatsDiff? diff = 
                     await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.Throttler);

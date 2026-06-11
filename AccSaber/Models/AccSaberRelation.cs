@@ -11,7 +11,7 @@ namespace AccSaber.Models
     internal sealed class AccSaberRelation : IModel
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("userId")]
         public string PlayerId { get; set; } = null!;

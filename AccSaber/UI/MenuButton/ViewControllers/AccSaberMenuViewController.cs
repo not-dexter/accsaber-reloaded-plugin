@@ -496,8 +496,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			Plays = $"{stats.Plays} ranked plays";
 			Headset = userInfo.Headset ?? "";
 
-			userInfo.LevelData.ProgressPercent /= 100f;
-
 			if (titleRoutine is not null)
 				StopCoroutine(titleRoutine);
 
@@ -517,8 +515,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             borderRoutine = userInfo.Items!.Set(this, _playerImageBorder, _progressBarImage);
 
             const float barLen = 20f;
-            _progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent);
-            _progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent));
+            _progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent / 100f);
+            _progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent / 100f));
 
             if (_firstLoad)
 			{
@@ -672,7 +670,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             private readonly string _scoreWeighted = $"<color={ColorUtils.GREY}>({data.WeightedAp:F2} AP)</color>";
 
             [UIValue("map-category")]
-			private string _mapCategory => CategoryName(EnumUtils.EnumToReloadedCategory(Data.Category)!);
+			private string _mapCategory => CategoryName(EnumUtils.CategoryToReloadedCategoryId(Data.Category)!);
 
 			[UIValue("map-cover")]
 			private readonly string _mapCover = data.CoverUrl;
@@ -720,9 +718,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 
 
-			private string CategoryName(string CategoryId)
+			private string CategoryName(Guid CategoryId)
 			{
-				var returnString = CategoryId switch
+				var returnString = CategoryId.ToString() switch
 				{
 					"b0000000-0000-0000-0000-000000000001" => "<color=#22c55e>True</color>",
 					"b0000000-0000-0000-0000-000000000003" => "<color=#ef4444>Tech</color>",

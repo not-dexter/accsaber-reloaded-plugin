@@ -11,7 +11,7 @@ namespace AccSaber.Models
     internal class AccSaberBatch : IModel
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; } = null!;

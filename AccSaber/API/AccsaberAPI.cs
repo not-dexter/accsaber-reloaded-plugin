@@ -36,7 +36,7 @@ namespace AccSaber.API
 
         private readonly ObjectCacher<AccSaberPlayer> playerInfoCacher = new();
 
-        private readonly ObjectCacher<ScoreCache> scoreInfoCacher = new();
+        private readonly ObjectCacher<Guid, ScoreCache> scoreInfoCacher = new();
 
         public const int PAGE_LENGTH = 10;
 
@@ -64,17 +64,17 @@ namespace AccSaber.API
 
         public void OnScoreUpdated(AccSaberLeaderboardEntry token)
         {
-            string playerId = token.PlayerId, diffId = token.DifficultyId;
+            string playerId = token.PlayerId;
 
             playerInfoCacher.RemoveItem(playerId);
 
-            if (scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache item) && item.UserIds.Contains(playerId))
+            if (scoreInfoCacher.TryGetCachedItem(token.DifficultyId, out ScoreCache item) && item.UserIds.Contains(playerId))
             {
-                Plugin.Log.Notice($"Difficulty id {diffId} was removed from cache.");
-                scoreInfoCacher.RemoveItem(diffId);
+                Plugin.Log.Notice($"Difficulty id {token.DifficultyId} was removed from cache.");
+                scoreInfoCacher.RemoveItem(token.DifficultyId);
             }
         }
-        public int GetLength(string diffId, LeaderboardDisplayType displayType)
+        public int GetLength(Guid diffId, LeaderboardDisplayType displayType)
         {
             if (scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache info) && info.TryGetLength(displayType, out int len))
                 return len;
@@ -82,7 +82,7 @@ namespace AccSaber.API
             return -1;
         }
 
-        public bool ScoreDataCached(string diffId, int page, Func<AccSaberLeaderboardEntry, bool>? filter = null, int setCount = -1)
+        public bool ScoreDataCached(Guid diffId, int page, Func<AccSaberLeaderboardEntry, bool>? filter = null, int setCount = -1)
         { // page is one indexed.
             if (!scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache info))
                 return false;
@@ -110,7 +110,7 @@ namespace AccSaber.API
             return count == setCount || count - ((page - 1) * PAGE_LENGTH) >= PAGE_LENGTH;
         }
 
-        public bool ScoreDataCached(string diffId, int page, string country)
+        public bool ScoreDataCached(Guid diffId, int page, string country)
         { // page is one indexed
             if (!scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache info))
                 return false;
@@ -120,7 +120,7 @@ namespace AccSaber.API
             return count >= page * PAGE_LENGTH || (info.TryGetLength(LeaderboardDisplayType.Country, out int len) && count == len - info.BlockedUserIndexes.Count);
         }
 
-        public bool TryGetRankWithFilter(string diffId, string userId, Func<AccSaberLeaderboardEntry, bool>? filter, out int rank)
+        public bool TryGetRankWithFilter(Guid diffId, string userId, Func<AccSaberLeaderboardEntry, bool>? filter, out int rank)
         {
             // init rank to -1 in case a check fails
             rank = -1;
@@ -145,7 +145,7 @@ namespace AccSaber.API
             return true;
         }
 
-        private void CacheScoreData(string diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> blockedUserIndexes, 
+        private void CacheScoreData(Guid diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> blockedUserIndexes, 
             IEnumerable<(LeaderboardDisplayType displayType, int leaderboardSize)>? sizeData)
         {
             if (scoreInfoCacher.TryGetCachedItem(diffId, out var val))
@@ -174,7 +174,7 @@ namespace AccSaber.API
             //Plugin.Log.Info($"There are the following sizes: { c.LeaderboardLengths.Values.Print()}");
 
         }
-        private void CacheScoreData(string diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> blockedUserIndexes,
+        private void CacheScoreData(Guid diffId, IEnumerable<AccSaberLeaderboardEntry> scoreData, IEnumerable<int> blockedUserIndexes,
             int leaderboardSize, LeaderboardDisplayType displayType)
         {
             CacheScoreData(diffId, scoreData, blockedUserIndexes, [(displayType, leaderboardSize)]);
@@ -228,11 +228,11 @@ namespace AccSaber.API
 
         public void InvalidateCache() => scoreInfoCacher.ClearCache();
 
-        public void InvalidateCache(string diffId) => scoreInfoCacher.RemoveItem(diffId);
+        public void InvalidateCache(Guid diffId) => scoreInfoCacher.RemoveItem(diffId);
 
         public void RemovePlayerFromCache(string playerId)
         {
-            foreach (KeyValuePair<string, ScoreCache> diff in scoreInfoCacher)
+            foreach (KeyValuePair<Guid, ScoreCache> diff in scoreInfoCacher)
             {
                 if (!diff.Value.UserIds.Contains(playerId))
                     continue;
@@ -282,12 +282,12 @@ namespace AccSaber.API
 
         public int GetLength(string hash, BeatmapDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global)
         {
-            string? diffId = GetLeaderboardDifficultyId(hash, diff);
+            Guid? diffId = GetLeaderboardDifficultyId(hash, diff);
 
             if (diffId is null)
                 return -1;
 
-            return GetLength(diffId, displayType);
+            return GetLength(diffId.Value, displayType);
         }
 
         public int GetLength(AccSaberBasicDifficulty diff, LeaderboardDisplayType displayType = LeaderboardDisplayType.Global) =>
@@ -295,12 +295,12 @@ namespace AccSaber.API
 
         public async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string hash, BeatmapDifficulty diff, string? country = null)
         { // page is zero indexed.
-            string? diffId = GetLeaderboardDifficultyId(hash, diff);
+            Guid? diffId = GetLeaderboardDifficultyId(hash, diff);
             if (diffId is null) return null;
-            return await GetScoreData(page, diffId, country);
+            return await GetScoreData(page, diffId.Value, country);
         }
 
-        public async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string diffId, string? country = null)
+        public async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, Guid diffId, string? country = null)
         { // page is one indexed.
             try
             {
@@ -321,7 +321,7 @@ namespace AccSaber.API
             }
         }
 
-        public async Task<(AccSaberLeaderboardEntry[] scores, int truePage)> GetScoreData(int page, string diffId, 
+        public async Task<(AccSaberLeaderboardEntry[] scores, int truePage)> GetScoreData(int page, Guid diffId, 
             Func<AccSaberLeaderboardEntry, bool> filter, LeaderboardDisplayType displayType, int scoresNeeded = PAGE_LENGTH,
             int pageMult = FILTER_PAGE_MULT, int maxCalls = 10, bool cacheBatch = true)
         { // page is one indexed.
@@ -333,13 +333,13 @@ namespace AccSaber.API
                 int truePage = page, pageLength = PAGE_LENGTH * pageMult;
                 page = (page - 1) / pageMult;
 
-                List<AccSaberLeaderboardEntry> outp = new(PAGE_LENGTH);
+                List<AccSaberLeaderboardEntry> outp = [with(PAGE_LENGTH)];
 
                 List<AccSaberLeaderboardEntry>? toCache = null;
                 ScoreCache currentCacheData = scoreInfoCacher.GetCachedItem(diffId);
                 if (cacheBatch)
                 {
-                    toCache = new(pageLength);
+                    toCache = [with(pageLength)];
                     var (scores, success) = SearchInCache(currentCacheData, ref page, filter, pageLength, scoresNeeded, pageMult);
                     if (success)
                         return (scores, currentCacheData.Data.Count / PAGE_LENGTH);
@@ -402,7 +402,7 @@ namespace AccSaber.API
             }
         }
 
-        public async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string diffId, RelationType relation)
+        public async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, Guid diffId, RelationType relation)
         { // page is one indexed
             try
             {
@@ -448,7 +448,7 @@ namespace AccSaber.API
             return null;
         }
 
-        public async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, string diffId, params IEnumerable<RelationType> relations)
+        public async Task<AccSaberLeaderboardEntry[]?> GetScoreData(int page, Guid diffId, params IEnumerable<RelationType> relations)
         { // page is one indexed
             if (relations is null || !relations.Any())
                 return null;
@@ -583,11 +583,11 @@ namespace AccSaber.API
             return data;
         }
 
-        public async Task<Dictionary<RelationType, (HashSet<string> userIds, Dictionary<string, string> relations)>> GetPlayerRelations()
+        public async Task<Dictionary<RelationType, (HashSet<string> userIds, Dictionary<string, Guid> relations)>> GetPlayerRelations()
         {
             const int pageLength = PAGE_LENGTH * 10;
             int page = 0, callsLeft = -1;
-            Dictionary<RelationType, (HashSet<string> userIds, Dictionary<string, string> relations)> outp = [];
+            Dictionary<RelationType, (HashSet<string> userIds, Dictionary<string, Guid> relations)> outp = [];
 
             foreach (RelationType rt in Enum.GetValues(typeof(RelationType)))
                 outp[rt] = ([], []);
@@ -605,7 +605,8 @@ namespace AccSaber.API
                 foreach (AccSaberRelation token in response.Content)
                 {
                     RelationType rt = token.Relation;
-                    string userId = token.TargetPlayerId, relationId = token.Id;
+                    string userId = token.TargetPlayerId;
+                    Guid relationId = token.Id;
 
                     outp[rt].userIds.Add(userId);
                     outp[rt].relations.Add(userId, relationId);
@@ -644,7 +645,7 @@ namespace AccSaber.API
         //    return (userIds, relations);
         //} // Note: Commented out as it is not used currently.
 
-        public async Task<(bool success, string? relationId)> AddPlayerRelation(RelationType relation, string targetId)
+        public async Task<(bool success, Guid? relationId)> AddPlayerRelation(RelationType relation, string targetId)
         {
             if (!long.TryParse(targetId, out long id))
             {
@@ -662,10 +663,10 @@ namespace AccSaber.API
             if (!Success)
                 return (false, null);
 
-            return (true, JToken.Parse(await Content!.ReadAsStringAsync())["id"]!.ToString());
+            return (true, Guid.Parse(JToken.Parse(await Content!.ReadAsStringAsync())["id"]!.ToString()));
         }
 
-        public async Task<bool> RemovePlayerRelation(string relationId)
+        public async Task<bool> RemovePlayerRelation(Guid relationId)
         {
             HttpRequestMessage request = new(HttpMethod.Delete, string.Format(APAPI_AUTH_DELETE_RELATION, relationId));
 
@@ -729,10 +730,10 @@ namespace AccSaber.API
             return map.Difficulties.FirstOrDefault(difficulty => difficulty.Difficulty == diff);
         }
 
-        public string? GetLeaderboardDifficultyId(string hash, BeatmapDifficulty diff, CancellationToken ct = default) =>
+        public Guid? GetLeaderboardDifficultyId(string hash, BeatmapDifficulty diff, CancellationToken ct = default) =>
             GetLeaderboard(hash, diff, ct)?.DifficultyId;
 
-        public string? GetLeaderboardDifficultyId(AccSaberBasicDifficulty diff, CancellationToken ct = default) =>
+        public Guid? GetLeaderboardDifficultyId(AccSaberBasicDifficulty diff, CancellationToken ct = default) =>
             GetLeaderboardDifficultyId(diff.Hash, diff.Difficulty, ct);
 
         public async Task<List<AccSaberBasicMap>> LoadAllBasicDiffs(CancellationToken ct = default)
@@ -777,7 +778,7 @@ namespace AccSaber.API
             return (await CallAPI_Json<List<AccSaberLeaderboardEntry>>(string.Format(APAPI_SCORES_ALL, playerInfo.PlayerID!), Throttler, ct: ct)) ?? [];
         }
 
-        public async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(string difficulty_id, int page = 0, int count = 10, CancellationToken ct = default)
+        public async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(Guid difficulty_id, int page = 0, int count = 10, CancellationToken ct = default)
         {
             if (scoreInfoCacher.TryGetCachedItem(difficulty_id, out var data))
             {
@@ -826,7 +827,7 @@ namespace AccSaber.API
             return outp.Take(count);
         }
 
-        public async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(string difficulty_id, string country, int page = 0, int count = 10, CancellationToken ct = default)
+        public async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(Guid difficulty_id, string country, int page = 0, int count = 10, CancellationToken ct = default)
         {
             if (scoreInfoCacher.TryGetCachedItem(difficulty_id, out ScoreCache data)) 
             {
@@ -957,7 +958,7 @@ namespace AccSaber.API
 
             string url = string.Format(APAPI_SCORES, playerInfo.PlayerID, page, pageLength) + "&sort=weightedAp,desc";
             if (category != APCategory.Overall)
-                url += "&categoryId=" + EnumUtils.EnumToReloadedCategory(category);
+                url += "&categoryId=" + EnumUtils.CategoryToReloadedCategoryId(category);
 
             AccSaberPagedContent<AccSaberLeaderboardEntry>? response = await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(url, Throttler, ct: ct);
 
@@ -985,7 +986,7 @@ namespace AccSaber.API
             string url = string.Format(APAPI_PLAYLIST_THRESHOLD, playerId, apThreshold);
 
             if (category != APCategory.Overall)
-                url += "&categoryId=" + EnumUtils.EnumToReloadedCategory(category);
+                url += "&categoryId=" + EnumUtils.CategoryToReloadedCategoryId(category);
 
             return await CallAPI_Json<List<AccSaberDifficulty>>(url, Throttler, ct: ct);
         }

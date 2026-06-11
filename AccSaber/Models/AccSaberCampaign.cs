@@ -8,7 +8,7 @@ namespace AccSaber.Models
     internal class AccSaberCampaign : IModel
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("creatorId")]
         public string CreatorId { get; set; } = null!;
@@ -80,13 +80,13 @@ namespace AccSaber.Models
     internal class CampaignTags
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("kind")]
         public string Kind { get; set; } = null!;
 
         [JsonProperty("categoryId")]
-        public string CategoryId { get; set; } = null!;
+        public Guid CategoryId { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; } = null!;
@@ -98,10 +98,10 @@ namespace AccSaber.Models
     internal class AccSaberCampaignMap
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("mapDifficultyId")]
-        public string MapDifficultyId { get; set; } = null!;
+        public Guid MapDifficultyId { get; set; }
 
         [JsonProperty("songName")]
         public string SongName { get; set; } = null!;
@@ -135,6 +135,6 @@ namespace AccSaber.Models
         public int XP { get; set; }
 
         [JsonProperty("prerequisiteMapIds")]
-        public virtual List<string> PrerequisiteMapIds { get; set; } = [];
+        public virtual List<Guid> PrerequisiteMapIds { get; set; } = [];
     }
 }

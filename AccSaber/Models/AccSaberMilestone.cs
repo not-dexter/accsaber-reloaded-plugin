@@ -13,7 +13,7 @@ namespace AccSaber.Models
 	internal class AccSaberMilestone : IModel
 	{
         [JsonProperty("milestoneId")]
-		public string MilestoneId { get; set; } = null!;
+		public Guid MilestoneId { get; set; }
 
         [JsonProperty("title")]
         public string Title { get; set; } = null!;
@@ -52,10 +52,10 @@ namespace AccSaber.Models
         public float CompletionPercentage { get; set; }
 
         [JsonProperty("setId")]
-        public string SetId { get; set; } = null!;
+        public Guid SetId { get; set; }
 
         [JsonProperty("categoryId")]
-        public string? CategoryId { get; set; }
+        public Guid? CategoryId { get; set; }
 
         [JsonIgnore]
         public APCategory Category { get; set; }
@@ -64,7 +64,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Category = EnumUtils.ReloadedCategoryIdToEnum(CategoryId);
+            Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
         }
 
         public static float CalcProgress(float target, float progress, bool swap)
@@ -102,7 +102,7 @@ namespace AccSaber.Models
         public ComparisonType Comparison { get; set; }
 
         [JsonProperty("id")]
-        public string Id { get => MilestoneId; set => MilestoneId = value; }
+        public Guid Id { get => MilestoneId; set => MilestoneId = value; }
 
         [JsonProperty("querySpec")]
         public AccSaberQuery QuerySpec { get; set; } = null!;

@@ -26,7 +26,7 @@ namespace AccSaber.Utils.Misc
 
         internal HashSet<string>? PlayerBlocked = null; // never expose this above internal
 
-        private Dictionary<RelationType, Dictionary<string, string>> UserIdToRelationId = [];
+        private Dictionary<RelationType, Dictionary<string, Guid>> UserIdToRelationId = [];
 
         private bool exposeFollowed = false, exposeRivals = false;
         internal AuthInfo? AuthInfo { get; private set; }
@@ -74,7 +74,7 @@ namespace AccSaber.Utils.Misc
                 var (success, relationId) = await api.AddPlayerRelation(rt, id);
 
                 if (success && UserIdToRelationId.ContainsKey(rt))
-                    UserIdToRelationId[rt].Add(id, relationId!);
+                    UserIdToRelationId[rt].Add(id, relationId!.Value);
 
                 OnRelationChanged?.Invoke();
 
@@ -98,7 +98,7 @@ namespace AccSaber.Utils.Misc
 
                 RelationType rt = displayType.Convert();
 
-                if (!UserIdToRelationId[rt].TryGetValue(id, out string relationId))
+                if (!UserIdToRelationId[rt].TryGetValue(id, out Guid relationId))
                     return false;
 
                 bool success = await api.RemovePlayerRelation(relationId);
@@ -150,7 +150,7 @@ namespace AccSaber.Utils.Misc
             var relations = await api.GetPlayerRelations();
 
             UserIdToRelationId = [with(relations.Select(toConvert =>
-                new KeyValuePair<RelationType, Dictionary<string, string>>(toConvert.Key, toConvert.Value.relations)))];
+                new KeyValuePair<RelationType, Dictionary<string, Guid>>(toConvert.Key, toConvert.Value.relations)))];
 
             HashSet<string> followed = relations[RelationType.follower].userIds;
             HashSet<string> rivals = relations[RelationType.rival].userIds;
