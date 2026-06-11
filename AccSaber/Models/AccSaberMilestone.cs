@@ -64,7 +64,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Category = CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(CategoryId)!.Value;
+            Category = EnumUtils.ReloadedCategoryIdToEnum(CategoryId);
         }
 
         public static float CalcProgress(float target, float progress, bool swap)

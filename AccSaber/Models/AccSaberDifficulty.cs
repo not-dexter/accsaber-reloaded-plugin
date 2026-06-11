@@ -40,7 +40,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Category ??= EnumUtils.ReloadedCategoryToEnum(CategoryId);
+            Category ??= EnumUtils.ReloadedCategoryIdToEnum(CategoryId);
             Status = EnumUtils.RankedStatusToEnum(RankedStatus);
         }
     }
@@ -55,7 +55,7 @@ namespace AccSaber.Models
         public string Hash { get; set; } = null!;
 
         [JsonProperty("difficulty")]
-        public string DifficultyString { get; set; } = null!;
+        public ReloadedDifficulty ReloadedDifficulty { get; set; }
 
         [JsonIgnore]
         public BeatmapDifficulty Difficulty;
@@ -64,10 +64,16 @@ namespace AccSaber.Models
         public float Complexity { get; set; }
 
         [JsonProperty("categoryCode")]
-        public string? CategoryCode { get; set; }
+        public ReloadedAPCategory? CategoryCode { get; set; }
 
         [JsonIgnore]
         public APCategory? Category { get; set; }
+
+        //[JsonProperty("ssLeaderboardId")]
+        //public string? SsLeaderboardId { get; set; }
+
+        //[JsonProperty("blLeaderboardId")]
+        //public string? BlLeaderboardId { get; set; }
 
         [JsonIgnore]
         public AccSaberBasicMap? ParentInfo { get; set; }
@@ -75,13 +81,10 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Difficulty = EnumUtils.ReloadedDiffToDiff(DifficultyString);
+            Difficulty = EnumUtils.ReloadedDiffToDiff(ReloadedDifficulty);
 
             if (CategoryCode is not null)
-            {
-                string temp = CategoryCode.Split('_')[0];
-                Category = (APCategory?)Enum.Parse(typeof(APCategory), temp.Capitialize());
-            }
+                Category = EnumUtils.ReloadedCategoryToCategory(CategoryCode.Value);
         }
 
         [OnSerializing]

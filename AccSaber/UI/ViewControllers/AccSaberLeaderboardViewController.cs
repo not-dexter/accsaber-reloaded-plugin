@@ -480,12 +480,19 @@ namespace AccSaber.UI.ViewControllers
                 yield return new WaitUntil(() => gameObject.activeInHierarchy);
                 yield return new WaitForEndOfFrame();
 
-                if (loadRequested)
+                try
                 {
-                    ShowLoading(true);
-                    loadRequested = false;
+                    if (loadRequested)
+                    {
+                        ShowLoading(true);
+                        loadRequested = false;
+                    }
+                    ForceRefresh(false);
                 }
-                ForceRefresh(false);
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
             }
 
             if (loadRequested)
@@ -761,9 +768,16 @@ namespace AccSaber.UI.ViewControllers
                         {
                             yield return new WaitForEndOfFrame();
 
-                            titlePaneTitleText?.SetText(UNRANKED_HEADER);
+                            try
+                            {
+                                titlePaneTitleText?.SetText(UNRANKED_HEADER);
 
-                            Unranked = true;
+                                Unranked = true;
+                            }
+                            catch (Exception e)
+                            {
+                                Plugin.Log.Error(e);
+                            }
                         }
                         mainThreadDispatcher.EnqueueRoutine(ShowBad());
                         return true;
@@ -988,35 +1002,42 @@ namespace AccSaber.UI.ViewControllers
                 {
                     yield return new WaitForEndOfFrame();
 
-                    if (version != refreshVersion)
-                        yield break;
+                    try
+                    {
+                        if (version != refreshVersion)
+                            yield break;
 
-                    if (difficultyId != DifficultyId)
-                        yield break;
+                        if (difficultyId != DifficultyId)
+                            yield break;
 
-                    if (requestedPage != page)
-                        yield break;
+                        if (requestedPage != page)
+                            yield break;
 
-                    if (requestedDisplayType != DisplayType)
-                        yield break;
+                        if (requestedDisplayType != DisplayType)
+                            yield break;
 
-                    currentPage = requestedPage;
-                    nextPage = requestedPage + 1;
+                        currentPage = requestedPage;
+                        nextPage = requestedPage + 1;
 
-                    scoreDatas.Clear();
+                        scoreDatas.Clear();
 
-                    if (scores is not null)
-                        scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score, this, playerInfo, lbsmc)));
+                        if (scores is not null)
+                            scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score, this, playerInfo, lbsmc)));
 
-                    SetSelectorButtonSelectability(currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage());
+                        SetSelectorButtonSelectability(currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage());
 
-                    leaderboard.PrefNumberOfCells = OnPlayerPage ? PAGE_LENGTH : PAGE_LENGTH + 2;
-                    leaderboard.MainCellSize = CellSize;
-                    leaderboard.Data = LeaderboardInfos;
+                        leaderboard.PrefNumberOfCells = OnPlayerPage ? PAGE_LENGTH : PAGE_LENGTH + 2;
+                        leaderboard.MainCellSize = CellSize;
+                        leaderboard.Data = LeaderboardInfos;
 
-                    titlePaneTitleText?.SetText(RankedHeader);
+                        titlePaneTitleText?.SetText(RankedHeader);
 
-                    Unranked = false;
+                        Unranked = false;
+                    }
+                    catch (Exception e)
+                    {
+                        Plugin.Log.Error(e);
+                    }
                 }
             }
             catch (Exception ex)

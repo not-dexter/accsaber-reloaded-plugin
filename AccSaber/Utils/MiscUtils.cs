@@ -23,27 +23,104 @@ namespace AccSaber.Utils
         public const int SECONDS_YEAR = (int)(SECONDS_DAY * DAYS_YEAR); // 31,556,926
 
 
+        /*public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
+        {
+            try
+            {
+                if (layersDeep <= 0)
+                    throw new ArgumentException("Cannot convert dateTime with zero or less layers.");
+
+                DateTime now = DateTime.UtcNow;
+
+                dateTime = dateTime.ToUniversalTime();
+
+                bool inFuture = now < dateTime;
+
+                TimeSpan timeSpan = inFuture ? dateTime - now : now - dateTime;
+
+                if (timeSpan <= TimeSpan.Zero)
+                    return formatting ? "Now." : "Now";
+
+                bool single = layersDeep == 1;
+                DateTime current = inFuture ? now : dateTime;
+                List<string> outpParts = [with(layersDeep * 2 - 1)];
+
+                while (timeSpan.Ticks > 0 && layersDeep-- > 0)
+                {
+                    var (timeDiff, str) = GetMostSignificantTime(timeSpan, current);
+                    timeSpan -= timeDiff;
+                    current = current.AddTicks(timeDiff.Ticks);
+
+                    outpParts.Add(layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ");
+                    outpParts.Add(str);
+                }
+
+                string outp = outpParts.Skip(1).Aggregate("", (total, current) => total + current);
+
+                return formatting ? inFuture ? $"In {outp}." : $"{outp} ago." : outp;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an error converting the dateTime given ({dateTime}) to relative time!\n{e}");
+                return "";
+            }
+        }*/
         public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
         {
-            bool inFuture = DateTime.UtcNow < dateTime;
-
-            TimeSpan timeSpan = inFuture ? dateTime.ToUniversalTime() - DateTime.UtcNow : DateTime.UtcNow - dateTime.ToUniversalTime();
-
-            string outp = "";
-            bool single = layersDeep == 1;
-
-            while (timeSpan.Ticks > 0 && layersDeep-- > 0)
+            try
             {
-                var (timeDiff, str) = GetMostSignificantTime(timeSpan, dateTime);
-                timeSpan -= timeDiff;
-                dateTime = dateTime.AddTicks(timeDiff.Ticks);
-                outp += single ? str : (layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ") + str;
+                if (layersDeep < 1)
+                    throw new ArgumentOutOfRangeException(nameof(layersDeep), "layersDeep must be at least 1.");
+
+                DateTime now = DateTime.UtcNow;
+                DateTime target = dateTime.ToUniversalTime();
+
+                bool inFuture = target > now;
+
+                TimeSpan remaining = inFuture ? target - now : now - target;
+
+                if (remaining <= TimeSpan.Zero)
+                    return formatting ? "Now." : "now";
+
+                // For calendar calculations, count forward from the earlier date.
+                DateTime cursor = inFuture ? now : target;
+
+                List<string> parts = new();
+
+                while (remaining.Ticks > 0 && parts.Count < layersDeep)
+                {
+                    var (timeDiff, str) = GetMostSignificantTime(remaining, cursor);
+
+                    if (timeDiff <= TimeSpan.Zero)
+                        break;
+
+                    parts.Add(str);
+
+                    remaining -= timeDiff;
+                    cursor = cursor.Add(timeDiff);
+                }
+
+                string output = parts.Count switch
+                {
+                    0 => "now",
+                    1 => parts[0],
+                    2 => $"{parts[0]} and {parts[1]}",
+                    _ => string.Join(", ", parts.Take(parts.Count - 1)) + $" and {parts[^1]}"
+                };
+
+                if (!formatting)
+                    return output;
+
+                if (output == "now")
+                    return "Now.";
+
+                return inFuture ? $"In {output}." : $"{output} ago.";
             }
-
-            if (!single)
-                outp = outp[2..];
-
-            return formatting ? inFuture ? $"In {outp}." : $"{outp} ago." : outp;
+            catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an error converting the dateTime given ({dateTime}) to relative time!\n{e}");
+                return "";
+            }
         }
         public static (TimeSpan timeDiff, string str) GetMostSignificantTime(TimeSpan timeDiff, DateTime startTime)
         {
@@ -76,7 +153,7 @@ namespace AccSaber.Utils
             {
                 int months = 0;
                 int totalSecondsInMonths = 0, toAdd = SECONDS_DAY * DateTime.DaysInMonth(startTime.Year, startTime.Month);
-                while (totalSecondsInMonths + toAdd < totalSeconds)
+                while (totalSecondsInMonths + toAdd <= totalSeconds)
                 {
                     months++;
                     startTime = startTime.AddMonths(1);
@@ -184,6 +261,8 @@ namespace AccSaber.Utils
                 return hash;
             }
         }
+
+        public static T? ParseEnum<T>(string value) where T : Enum => (T?)Enum.Parse(typeof(T), value);
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)
         {
             foreach (KeyValuePair<K, V> kvp in vals)

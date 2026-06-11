@@ -191,7 +191,13 @@ namespace AccSaber.Utils.Misc
         {
             await playerInfo.LoadTask;
 
-            List<AccSaberMission> missions = (await APIHandler.CallAPI_Json<List<AccSaberMission>>(HelpfulPaths.APAPI_MISSIONS, AccsaberAPI.Throttler)) ?? [];
+            List<AccSaberMission>? missions = await APIHandler.CallAPI_Json<List<AccSaberMission>>(HelpfulPaths.APAPI_MISSIONS, AccsaberAPI.Throttler);
+
+            if (missions is null)
+                return new AccSaberSerializedCache<AccSaberMission>()
+                {
+                    LastUpdated = DateTime.MinValue
+                };
 
             return new AccSaberSerializedCache<AccSaberMission>()
             {

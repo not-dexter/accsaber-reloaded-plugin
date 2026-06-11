@@ -125,7 +125,7 @@ namespace AccSaber.Utils
 
                 StatusTextChanged?.Invoke("Loading...");
 
-                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!.Replace('_','-');
+                string categoryName = EnumUtils.CategoryToReloadedCategory(type).ToString().Replace('_','-');
                 string thresholdDirection = (comp & ComparisonType.GT) != 0 ? "above" : "below";
 
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{apThreshold:0.##}ap";
@@ -165,7 +165,7 @@ namespace AccSaber.Utils
 
                 StatusTextChanged?.Invoke("Loading...");
 
-                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!.Replace('_','-');
+                string categoryName = EnumUtils.CategoryToReloadedCategory(type).ToString().Replace('_','-');
                 string thresholdDirection = (comp & ComparisonType.GT) != 0 ? "above" : "below";
 
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{accThreshold * 100f:0.##}%";
@@ -203,7 +203,7 @@ namespace AccSaber.Utils
             {
                 StatusTextChanged += statEvent;
 
-                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!;
+                string categoryName = EnumUtils.CategoryToReloadedCategory(type).ToString();
 
                 string filename = $"accsaber-reloaded-missing-{playerId}-{categoryName.Replace('_', '-')}.bplist";
 
@@ -247,7 +247,7 @@ namespace AccSaber.Utils
             {
                 StatusTextChanged += statEvent;
 
-                string categoryName = EnumUtils.CategoryIdToOtherReloadedCategory(type.ToString())!;
+                string categoryName = EnumUtils.CategoryToReloadedCategory(type).ToString();
 
                 string filename = $"accsaber-reloaded-{categoryName.Replace('_', '-')}.bplist";
 
@@ -292,13 +292,13 @@ namespace AccSaber.Utils
             {
                 StatusTextChanged += statEvent;
 
-                string filename = $"accsaber-snipe-{sniperId}-{targetId}-{EnumUtils.CategoryIdToOtherReloadedCategory(category.ToString())?.Replace('_','-')}.bplist";
+                string filename = $"accsaber-snipe-{sniperId}-{targetId}-{EnumUtils.CategoryToReloadedCategory(category).ToString().Replace('_','-')}.bplist";
 
                 if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
                 {
                     StatusTextChanged?.Invoke("Downloading...");
 
-                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_SNIPE, sniperId, targetId, 0, EnumUtils.CategoryIdToOtherReloadedCategory(category.ToString())), AccsaberAPI.Throttler);
+                    var (data, headers) = await APIHandler.CallAPI_Bytes(string.Format(HelpfulPaths.APAPI_PLAYLIST_SNIPE, sniperId, targetId, 0, EnumUtils.CategoryToReloadedCategory(category)), AccsaberAPI.Throttler);
                     filename = FilenameRegex.Match(headers!.GetValues("Content-Disposition").First()).Value;
 
                     StatusTextChanged?.Invoke("Saving...");

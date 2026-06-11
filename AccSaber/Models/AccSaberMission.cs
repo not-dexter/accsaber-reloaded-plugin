@@ -41,7 +41,7 @@ namespace AccSaber.Models
         public APCategory Category { get; set; }
 
         [JsonProperty("categoryCode")]
-        public string? CategoryCode { get; set; }
+        public ReloadedAPCategory? CategoryCode { get; set; }
 
         [JsonProperty("targetMapDifficultyId")]
         public string? TargetMapDifficultyId { get; set; }
@@ -104,7 +104,7 @@ namespace AccSaber.Models
         private void OnDeserialized(StreamingContext context)
         {
             MissionPool = (MissionPool)Enum.Parse(typeof(MissionPool), Pool.Capitialize());
-            Category = EnumUtils.ReloadedCategoryToEnum(CategoryId)!.Value;
+            Category = EnumUtils.ReloadedCategoryIdToEnum(CategoryId);
         }
     }
 
@@ -152,7 +152,7 @@ namespace AccSaber.Models
         public string CategoryId { get; set; } = null!;
 
         [JsonProperty("categoryCode")]
-        public string CategoryCode { get; set; } = null!;
+        public ReloadedAPCategory CategoryCode { get; set; }
 
         [JsonProperty("targetMapDifficultyId")]
         public string TargetMapDifficultyId { get; set; } = null!;

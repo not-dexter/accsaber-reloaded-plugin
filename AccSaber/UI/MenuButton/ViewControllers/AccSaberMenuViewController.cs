@@ -660,7 +660,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			private readonly string _mapAuthor = data.SongAuthor;
 
 			[UIValue("map-diff")]
-			private string _mapDiff => DiffName(EnumUtils.DiffENumToReloadedDiff(Data.Difficulty));
+			private string _mapDiff => DiffName(EnumUtils.DiffToReloadedDiff(Data.Difficulty));
 
 			[UIValue("score-acc")]
 			private readonly string _scoreAcc = $"{data.Accuracy * 100:F2}%";
@@ -705,15 +705,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             #endregion
 
-			private string DiffName(string CategoryId)
+			private string DiffName(ReloadedDifficulty diff)
 			{
-				var returnString = CategoryId switch
+				var returnString = diff switch
 				{
-					"EXPERT_PLUS" => "<color=#8b5cf6>Expert+</color>",
-					"EXPERT" => "<color=#ef4444>Expert</color>",
-					"HARD" => "<color=#f97316>Hard</color>",
-					"NORMAL" => "<color=#4a90d9>Normal</color>",
-					"EASY" => "<color=#3cb371>Easy</color>",
+                    ReloadedDifficulty.EXPERT_PLUS => "<color=#8b5cf6>Expert+</color>",
+                    ReloadedDifficulty.EXPERT => "<color=#ef4444>Expert</color>",
+                    ReloadedDifficulty.HARD => "<color=#f97316>Hard</color>",
+                    ReloadedDifficulty.NORMAL => "<color=#4a90d9>Normal</color>",
+                    ReloadedDifficulty.EASY => "<color=#3cb371>Easy</color>",
 					_ => ""
 				};
 				return returnString;

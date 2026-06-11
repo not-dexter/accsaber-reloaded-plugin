@@ -35,6 +35,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool _isLoading, _parsed = false;
         private string _dailyTime = null!, _weeklyTime = null!;
         private DateTime _dailyRefreshDate, _weeklyRefreshDate;
+        private IEnumerator? _updateTimeRoutine;
 
         private CancellationTokenSource? TimeUpdaterCanceller = null;
 
@@ -69,6 +70,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly PlayerSocialLife _playerData = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly AccSaberLeaderboardViewController _leaderboardViewController = null!;
+        [Inject] private readonly MainThreadDispatcher _mainThreadDispatcher = null!;
 
         [UIValue("is-loading")]
         private bool IsLoading
@@ -149,21 +151,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         private void UpdateTimer()
         {
-            IEnumerator UpdateTime()
-            {
-                yield return LoopWaitInstruction;
-
-                DailyTime = $"<color={ColorUtils.GREY}>Resets {_dailyRefreshDate.ToRelativeTime(2).ToLower()}</color>";
-                WeeklyTime = $"<color={ColorUtils.GREY}>Resets {_weeklyRefreshDate.ToRelativeTime(3).ToLower()}</color>";
-
-                if (_dailyRefreshDate <= DateTime.UtcNow)
-                {
-                    StopTimer();
-                    SetMissions(true).ContinueWith(finish => UpdateTimer());
-                }
-            }
-
-            if (TimeUpdaterCanceller is not null) 
+            if (TimeUpdaterCanceller is not null)
             {
                 TimeUpdaterCanceller.Cancel();
                 TimeUpdaterCanceller.Dispose();
@@ -172,19 +160,54 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             CancellationToken ct = TimeUpdaterCanceller.Token;
 
-            Task.Run(() =>
+            WaitForEndOfFrame WaitInstruction = new();
+            WaitForSeconds DelayInstruction = new(1);
+
+            IEnumerator UpdateTime()
             {
-                while (!ct.IsCancellationRequested)
+
+                yield return WaitInstruction;
+
+                if (ct.IsCancellationRequested)
+                    yield break;
+
+                DailyTime = $"<color={ColorUtils.GREY}>Resets {_dailyRefreshDate.ToRelativeTime(2).ToLower()}</color>";
+                WeeklyTime = $"<color={ColorUtils.GREY}>Resets {_weeklyRefreshDate.ToRelativeTime(3).ToLower()}</color>";
+
+                if (_dailyRefreshDate <= DateTime.UtcNow)
                 {
-                    _parentFlowCoordinator.StartCoroutine(UpdateTime());
-                    Task.Delay(1000, ct).Wait();
+                    StopTimer();
+                    Plugin.Log.Info($"daily = {_dailyRefreshDate}, now = {DateTime.UtcNow}");
+                    SetMissions(true).ContinueWith(finish => UpdateTimer());
                 }
-            }, ct);
+
+                if (ct.IsCancellationRequested)
+                    yield break;
+
+                yield return DelayInstruction;
+            }
+
+            if (_updateTimeRoutine is not null)
+            {
+                IEnumerator currentRoutine = _updateTimeRoutine;
+                _mainThreadDispatcher.EnqueueStopRoutine(currentRoutine);
+            }
+
+            _updateTimeRoutine = UpdateTime();
+
+            _mainThreadDispatcher.EnqueueRoutine(_updateTimeRoutine);
         }
         public void StopTimer()
         {
             if (TimeUpdaterCanceller is null)
                 return;
+
+            if (_updateTimeRoutine is not null)
+            {
+                IEnumerator currentRoutine = _updateTimeRoutine;
+                _mainThreadDispatcher.EnqueueStopRoutine(currentRoutine);
+                _updateTimeRoutine = null;
+            }
 
             TimeUpdaterCanceller.Cancel();
             TimeUpdaterCanceller.Dispose();
@@ -380,7 +403,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 if (TargetDiff is null)
                     return Data.Description;
                 else
-                    return Data.Description.Replace(EnumUtils.DiffToReloadedDiff(TargetDiff.Difficulty), TargetDiff.Difficulty.ToString());
+                    return Data.Description.Replace(EnumUtils.DiffToReloadedDiff(TargetDiff.Difficulty).ToString(), TargetDiff.Difficulty.ToString());
             }
 
             [UIValue("extraText")]
@@ -422,7 +445,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PercentBarTop?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * progress);
                 PercentBarBottom?.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - progress));
 
-                PercentBarTop_image?.color = ColorUtils.GetColor(Data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryToEnum(Data.CategoryId)).Color();
+                PercentBarTop_image?.color = ColorUtils.GetColor(Data.CategoryId is null ? APCategory.Overall : EnumUtils.ReloadedCategoryIdToEnum(Data.CategoryId)).Color();
                 PercentBarBottom_image?.color = ColorUtils.GREY.Color().ColorWithAlpha(0.15f);
 
                 DescriptionText.enableAutoSizing = true;

@@ -1,13 +1,19 @@
-﻿using AccSaber.Models;
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using static AccSaber.Utils.MiscUtils;
 
 namespace AccSaber.Utils
 {
+    public enum ReloadedDifficulty
+    {
+        EASY = 1, NORMAL = 3, HARD = 5, EXPERT = 7, EXPERT_PLUS = 9
+    }
+    public enum ReloadedAPCategory
+    {
+        true_acc, standard_acc, tech_acc, overall
+    }
     public enum APCategory
     {
         True, Standard, Tech, Overall
@@ -80,61 +86,36 @@ namespace AccSaber.Utils
     {
         public const string OverallReloadedCategory = "b0000000-0000-0000-0000-000000000005";
 
-        public static string DiffNumToReloadedDiff(int diffNum) => diffNum switch
-        {
-            1 => "EASY",
-            3 => "NORMAL",
-            5 => "HARD",
-            7 => "EXPERT",
-            9 => "EXPERT_PLUS",
-            _ => throw new ArgumentException("Invalid difficulty number. Must be one of the following: 1, 3, 5, 7, 9.")
-        };
-
-        public static string DiffENumToReloadedDiff(BeatmapDifficulty diff) => diff switch
-        {
-            BeatmapDifficulty.Easy => "EASY",
-            BeatmapDifficulty.Normal => "NORMAL",
-            BeatmapDifficulty.Hard => "HARD",
-            BeatmapDifficulty.Expert => "EXPERT",
-            BeatmapDifficulty.ExpertPlus => "EXPERT_PLUS",
-            _ => throw new ArgumentException("Invalid difficulty. Must be one of the following: Easy, NORMAL, HARD, EXPERT, EXPERT_PLUS.")
-        };
-        public static string DiffToReloadedDiff(BeatmapDifficulty diff) => DiffNumToReloadedDiff(FromDiff(diff));
-        public static int ReloadedDiffToDiffNum(string diff) => diff switch
-        {
-            "EASY" => 1,
-            "NORMAL" => 3,
-            "HARD" => 5,
-            "EXPERT" => 7,
-            "EXPERT_PLUS" => 9,
-            _ => throw new ArgumentException("Invalid difficulty string. Must be one of the following: EASY, NORMAL, HARD, EXPERT, EXPERT_PLUS.")
-        };
-        public static BeatmapDifficulty ReloadedDiffToDiff(string diff) => ToDiff(ReloadedDiffToDiffNum(diff));
-        public static APCategory? ReloadedCategoryToEnum(string? category) => category switch
+        public static ReloadedDifficulty DiffToReloadedDiff(BeatmapDifficulty diff) => (ReloadedDifficulty)FromDiff(diff);
+        public static BeatmapDifficulty ReloadedDiffToDiff(ReloadedDifficulty diff) => ToDiff((int)diff);
+        public static APCategory ReloadedCategoryIdToEnum(string? categoryId) => categoryId switch
         {
             "b0000000-0000-0000-0000-000000000001" => APCategory.True,
             "b0000000-0000-0000-0000-000000000002" => APCategory.Standard,
             "b0000000-0000-0000-0000-000000000003" => APCategory.Tech,
-            "b0000000-0000-0000-0000-000000000005" => APCategory.Overall,
-            _ => null
+            "b0000000-0000-0000-0000-000000000005" or null => APCategory.Overall,
+            _ => throw new ArgumentException($"The given category id \"{categoryId}\" cannot be converted to an {nameof(APCategory)} enum.")
         };
-        public static string? CategoryIdToReloadedCategory(string? category) => category switch
+        public static string CategoryIdToReloadedCategoryId(string? category) => category switch
         {
             nameof(APCategory.True) => "b0000000-0000-0000-0000-000000000001",
             nameof(APCategory.Standard) => "b0000000-0000-0000-0000-000000000002",
             nameof(APCategory.Tech) => "b0000000-0000-0000-0000-000000000003",
-            nameof(APCategory.Overall) => "b0000000-0000-0000-0000-000000000005",
-            _ => null
+            nameof(APCategory.Overall) or null => "b0000000-0000-0000-0000-000000000005",
+            _ => throw new ArgumentException($"The given category \"{category}\" cannot be converted to a reloaded UUID.")
         };
-        public static string? CategoryIdToOtherReloadedCategory(string? category) => category switch
+        public static string CategoryIdToReloadedCategoryId(APCategory category) => CategoryIdToReloadedCategoryId(category.ToString());
+        public static ReloadedAPCategory CategoryToReloadedCategory(string? category) => category switch
         {
-            nameof(APCategory.True) => "true_acc",
-            nameof(APCategory.Standard) => "standard_acc",
-            nameof(APCategory.Tech) => "tech_acc",
-            nameof(APCategory.Overall) => "overall",
-            _ => null
+            nameof(APCategory.True) => ReloadedAPCategory.true_acc,
+            nameof(APCategory.Standard) => ReloadedAPCategory.standard_acc,
+            nameof(APCategory.Tech) => ReloadedAPCategory.tech_acc,
+            nameof(APCategory.Overall) or null => ReloadedAPCategory.overall,
+            _ => throw new ArgumentException($"The given category \"{category}\" cannot be converted to a {nameof(ReloadedAPCategory)} enum.")
         };
-        public static string? EnumToReloadedCategory(APCategory category) => CategoryIdToReloadedCategory(category.ToString());
+        public static ReloadedAPCategory CategoryToReloadedCategory(APCategory category) => (ReloadedAPCategory)(int)category;
+        public static APCategory ReloadedCategoryToCategory(ReloadedAPCategory category) => (APCategory)(int)category;
+        public static string EnumToReloadedCategory(APCategory category) => CategoryIdToReloadedCategoryId(category.ToString());
         public static string? EnumToRankedStatus(MapStatus status) => status switch
         {
             MapStatus.Qualified => "QUALIFIED",

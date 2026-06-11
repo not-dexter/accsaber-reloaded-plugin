@@ -54,8 +54,8 @@ namespace AccSaber.Models.CacheModels
             AP = score.AP;
             WeightedAp = score.WeightedAp;
             TimeSet = score.TimeSet;
-            Difficulty = EnumUtils.ReloadedDiffToDiff(score.Difficulty);
-            Category = EnumUtils.ReloadedCategoryToEnum(score.CategoryId)!.Value;
+            Difficulty = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(score.Difficulty));
+            Category = EnumUtils.ReloadedCategoryIdToEnum(score.CategoryId);
         }
     }
 }

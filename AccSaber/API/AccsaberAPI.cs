@@ -680,7 +680,8 @@ namespace AccSaber.API
                 if (selectedDiff is not null && scoreInfoCacher.TryGetCachedItem(selectedDiff.DifficultyId, out ScoreCache val) && val.UserIds.Contains(userId))
                     return val.Data.First(token => token.PlayerId.Equals(userId));
             }
-            string reloadedDiff = EnumUtils.DiffToReloadedDiff(diff);
+
+            ReloadedDifficulty reloadedDiff = EnumUtils.DiffToReloadedDiff(diff);
 
             string? dataStr = await CallAPI_String(string.Format(APAPI_SCORE, userId, hash.ToLower(), reloadedDiff), Throttler, true, ct: ct).ConfigureAwait(false);
             if (string.IsNullOrEmpty(dataStr)) 
