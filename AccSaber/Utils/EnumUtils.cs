@@ -88,7 +88,7 @@ namespace AccSaber.Utils
 
         public static ReloadedDifficulty DiffToReloadedDiff(BeatmapDifficulty diff) => (ReloadedDifficulty)FromDiff(diff);
         public static BeatmapDifficulty ReloadedDiffToDiff(ReloadedDifficulty diff) => ToDiff((int)diff);
-        private static APCategory ReloadedCategoryIdToCategory(string? categoryId) => categoryId switch
+        public static APCategory ReloadedCategoryIdToCategory(Guid? categoryId) => categoryId?.ToString() switch
         {
             "b0000000-0000-0000-0000-000000000001" => APCategory.True,
             "b0000000-0000-0000-0000-000000000002" => APCategory.Standard,
@@ -96,7 +96,6 @@ namespace AccSaber.Utils
             "b0000000-0000-0000-0000-000000000005" or null => APCategory.Overall,
             _ => throw new ArgumentException($"The given category id \"{categoryId}\" cannot be converted to an {nameof(APCategory)} enum.")
         };
-        public static APCategory ReloadedCategoryIdToCategory(Guid? categoryId) => ReloadedCategoryIdToCategory(categoryId?.ToString());
         public static Guid CategoryIdToReloadedCategoryId(string? category) => Guid.Parse(category switch
         {
             nameof(APCategory.True) => "b0000000-0000-0000-0000-000000000001",

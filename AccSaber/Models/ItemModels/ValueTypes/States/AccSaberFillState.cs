@@ -19,7 +19,7 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
         private Gradient? _gradient;
 
         [JsonIgnore]
-        private static readonly ObjectCacher<Gradient> GradientCache = new(TimeSpan.FromMinutes(30)); 
+        private static readonly ObjectCacher<Guid, Gradient> GradientCache = new(TimeSpan.FromMinutes(30)); 
 
         public override bool Equals(AccSaberFillState other)
         {

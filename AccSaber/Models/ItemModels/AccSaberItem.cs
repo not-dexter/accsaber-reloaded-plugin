@@ -11,10 +11,10 @@ namespace AccSaber.Models.ItemModels
     internal class AccSaberItem<T> : IModel where T : ItemValueModel
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("typeId")]
-        public string TypeId { get; set; } = null!;
+        public Guid TypeId { get; set; }
 
         [JsonProperty("typeKey")]
         public string TypeKey { get; set; } = null!;

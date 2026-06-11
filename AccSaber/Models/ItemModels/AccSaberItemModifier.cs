@@ -2,6 +2,7 @@
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
 
 namespace AccSaber.Models.ItemModels
 {
@@ -9,7 +10,7 @@ namespace AccSaber.Models.ItemModels
     internal class AccSaberItemModifier : IModel
     {
         [JsonProperty("id")]
-        public string Id { get; set; } = null!;
+        public Guid Id { get; set; }
 
         [JsonProperty("key")]
         public string Key { get; set; } = null!;

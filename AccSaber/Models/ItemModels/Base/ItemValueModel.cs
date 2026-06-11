@@ -6,7 +6,7 @@ namespace AccSaber.Models.ItemModels.Base
     internal abstract class ItemValueModel : IModel
     {
         [JsonIgnore]
-        public string ItemId { get; set; } = null!;
+        public System.Guid ItemId { get; set; }
 
         public virtual void Propagate() { }
     }

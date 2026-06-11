@@ -11,7 +11,7 @@ namespace AccSaber.Models.ItemModels
     internal class AccSaberItemType<T> : IModel where T : ItemValueModel
     {
         [JsonProperty("linkId")]
-        public string LinkId { get; set; } = null!;
+        public Guid LinkId { get; set; }
 
         [JsonProperty("item")]
         public AccSaberItem<T> Item { get; set; } = null!;
@@ -32,7 +32,7 @@ namespace AccSaber.Models.ItemModels
         public string SourceId { get; set; } = null!;
 
         [JsonProperty("awardedByStaffId")]
-        public string? AwardedByStaffId { get; set; }
+        public Guid? AwardedByStaffId { get; set; }
 
         [JsonProperty("reason")]
         public string? Reason { get; set; }
