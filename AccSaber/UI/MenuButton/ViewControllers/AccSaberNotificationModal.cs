@@ -5,13 +5,12 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
 using System;
-using System.ComponentModel;
 using System.Threading.Tasks;
 using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
-    internal sealed class AccSaberNotificationModal : INotifyPropertyChanged, IDisposable
+    internal sealed class AccSaberNotificationModal : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
     {
         private bool _parsed;
         private IPopup _currentInstance = null!;
@@ -20,8 +19,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private string _targetPrompt = null!;
         private readonly AsyncLock _mainLocker = new();
         private AsyncLock.Releaser _currentLocker = default;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         [UIComponent("modal")]
         private ModalView _modalView = null!;
@@ -36,7 +33,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _targetPrompt = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TargetPrompt)));
+                NotifyPropertyChanged(nameof(TargetPrompt));
             }
         }
 

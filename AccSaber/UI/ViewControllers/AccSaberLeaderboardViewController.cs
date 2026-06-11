@@ -5,15 +5,14 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
+using AccSaber.Utils.Safety;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +28,7 @@ namespace AccSaber.UI.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.Views.AccSaberLeaderboardView.bsml")]
     [HotReload(RelativePathToLayout = @"..\UI\Views\AccSaberLeaderboardView.bsml")]
-    internal sealed class AccSaberLeaderboardViewController : BSMLAutomaticViewController, INotifyPropertyChanged
+    internal sealed class AccSaberLeaderboardViewController : BSMLSafeAutomaticViewController
     {
 #pragma warning disable IDE0044, IDE0051
 
@@ -68,7 +67,6 @@ namespace AccSaber.UI.ViewControllers
 
         public event Action<bool>? OnMapChanged; // bool == is map ranked or not.
 
-        public new event PropertyChangedEventHandler? PropertyChanged;
         public string RankedHeader => $"{RANKED_HEADER} | <color={GetColor(CurrentCategory)}>{CurrentCategory}</color>";
         public LeaderboardDisplayType DisplayType { get; private set; }
         public Guid? DifficultyId => difficultyInfo?.DifficultyId;
@@ -134,7 +132,7 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly AccSaberPanelViewController aspvc = null!;
         [Inject] private readonly LeaderboardScoreModalController lsmc = null!;
         [Inject] private readonly LeaderboardSettingsModalController lbsmc = null!;
-        [Inject] private readonly MainThreadDispatcher mainThreadDispatcher = null!;
+        private MainThreadDispatcher MainThreadDispatcher => _mainThreadDispatcher;
 
         #endregion Injects
 
@@ -203,10 +201,10 @@ namespace AccSaber.UI.ViewControllers
             {
                 _loading = value;
                 _unranked = false;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Unranked)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Loading)));
 
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Ranked)));
+                NotifyPropertyChanged(nameof(Unranked));
+                NotifyPropertyChanged(nameof(Loading));
+                NotifyPropertyChanged(nameof(Ranked));
             }
         }
         [UIValue("unranked")] private bool Unranked
@@ -216,10 +214,10 @@ namespace AccSaber.UI.ViewControllers
             {
                 _unranked = value;
                 _loading = false;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Loading)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Unranked)));
 
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Ranked)));
+                NotifyPropertyChanged(nameof(Unranked));
+                NotifyPropertyChanged(nameof(Loading));
+                NotifyPropertyChanged(nameof(Ranked));
             }
         }
         [UIValue("ranked")] private bool Ranked => !_unranked && !_loading;
@@ -232,7 +230,7 @@ namespace AccSaber.UI.ViewControllers
         private void OnCellSelected(ICellDataSource cell)
         {
             if (cell is LeaderboardEntryDisplay dataInfo && lsmc is not null)
-                lsmc.ShowModal(this, dataInfo.ScoreData);
+                lsmc.ShowModal(dataInfo.ScoreData);
         }
         [UIAction("OnCellHighlightChanged")]
         private void OnCellHighlightChanged(ICellDataSource cell, bool highlighted)
@@ -281,10 +279,10 @@ namespace AccSaber.UI.ViewControllers
             const string underlineHighlightedColor = "#FFFA";
 
             if (dataInfo.AllowUnderline)
-                mainThreadDispatcher.EnqueueRoutine(highlighted ? FadeToColorUnderline(underlineHighlightedColor.Color()) : FadeToColorUnderline(LeaderboardEntryDisplay.DefaultUnderlineColor.Color()));
+                MainThreadDispatcher.EnqueueRoutine(highlighted ? FadeToColorUnderline(underlineHighlightedColor.Color()) : FadeToColorUnderline(LeaderboardEntryDisplay.DefaultUnderlineColor.Color()));
             
             if (!dataInfo.BGColor.Equals(DIMMER))
-                mainThreadDispatcher.EnqueueRoutine(highlighted ? FadeToColorBackground(dataInfo.BGColor.DimColor(-4).Color()) : FadeToColorBackground(dataInfo.BGColor.Color()));
+                MainThreadDispatcher.EnqueueRoutine(highlighted ? FadeToColorBackground(dataInfo.BGColor.DimColor(-4).Color()) : FadeToColorBackground(dataInfo.BGColor.Color()));
         }
 
         [UIAction("ToggleCombinedIcons")]
@@ -324,7 +322,7 @@ namespace AccSaber.UI.ViewControllers
                     locker.Value.Dispose();
                 }
             }
-            mainThreadDispatcher.EnqueueRoutine(UpdateUI());
+            MainThreadDispatcher.EnqueueRoutine(UpdateUI());
         }
 
         [UIAction("#post-parse")]
@@ -496,11 +494,11 @@ namespace AccSaber.UI.ViewControllers
             }
 
             if (loadRequested)
-                mainThreadDispatcher.EnqueueAction(() => loadRequested = !ShowLoading(true));
+                MainThreadDispatcher.EnqueueAction(() => loadRequested = !ShowLoading(true));
 
             if (!TryUpdateCurrentMap() && refreshRequested)
             {
-                mainThreadDispatcher.EnqueueRoutine(WaitUntilValidUpdate());
+                MainThreadDispatcher.EnqueueRoutine(WaitUntilValidUpdate());
                 refreshRequested = false;
             }
         }
@@ -510,7 +508,7 @@ namespace AccSaber.UI.ViewControllers
         {
             Plugin.Log.Info("Player score recieved");
 
-            mainThreadDispatcher.EnqueueAction(() =>
+            MainThreadDispatcher.EnqueueAction(() =>
             {
                 if (currentPlayerScore is null || currentPlayerScore.Accuracy <= token.Accuracy)
                 {
@@ -779,11 +777,11 @@ namespace AccSaber.UI.ViewControllers
                                 Plugin.Log.Error(e);
                             }
                         }
-                        mainThreadDispatcher.EnqueueRoutine(ShowBad());
+                        MainThreadDispatcher.EnqueueRoutine(ShowBad());
                         return true;
                     }
 
-                    mainThreadDispatcher.EnqueueAction(() => ShowLoading());
+                    MainThreadDispatcher.EnqueueAction(() => ShowLoading());
 
                     currentPlayerPage = await GetPlayerPage(overridePlayerScore, hash, diff, version);
 
@@ -867,7 +865,7 @@ namespace AccSaber.UI.ViewControllers
                     gotCachedData = api.ScoreDataCached(difficultyId, requestedPage, filter, relationLen);
                 }
 
-                mainThreadDispatcher.EnqueueAction(() =>
+                MainThreadDispatcher.EnqueueAction(() =>
                 {
                     if (version != refreshVersion)
                         return;
@@ -891,7 +889,7 @@ namespace AccSaber.UI.ViewControllers
             {
                 Plugin.Log.Error("Error checking leaderboard cache:\n" + e);
 
-                mainThreadDispatcher.EnqueueAction(() =>
+                MainThreadDispatcher.EnqueueAction(() =>
                 {
                     if (version == refreshVersion)
                         Loading = true;
@@ -901,7 +899,7 @@ namespace AccSaber.UI.ViewControllers
 
         public void ForceShowLeaderboard()
         {
-            mainThreadDispatcher.EnqueueAction(() => Unranked = false);
+            MainThreadDispatcher.EnqueueAction(() => Unranked = false);
         }
         public async void ShowPlayerPage(string playerId)
         {
@@ -996,7 +994,7 @@ namespace AccSaber.UI.ViewControllers
                         break;
                 }
 
-                mainThreadDispatcher.EnqueueRoutine(ReloadData());
+                MainThreadDispatcher.EnqueueRoutine(ReloadData());
 
                 IEnumerator ReloadData()
                 {

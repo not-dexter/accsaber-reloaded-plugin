@@ -4,6 +4,7 @@ using AccSaber.Consts;
 using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
+using AccSaber.Utils.Safety;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
@@ -70,9 +71,9 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly LeaderboardUserModalController lumc = null!;
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly AccsaberAPI api = null!;
+        [Inject] private readonly MainThreadDispatcher mainThreadDispatcher = null!;
 
         private AccSaberPlayer lastUser = null!;
-        private MonoBehaviour currentHost = null!;
 
         #endregion
 
@@ -87,73 +88,82 @@ namespace AccSaber.UI.ViewControllers
         {
             modalView.Hide(false);
 
-            lumc.ShowModal(modal.transform.parent, currentHost, lastUser.PlayerId);
+            lumc.ShowModal(modal.transform.parent, lastUser.PlayerId);
         }
 
         public void BindModal(GameObject parent)
         {
             VersionUtils.Parse(ResourcePaths.LEADERBOARD_SCORE_MODAL, parent.transform, this);
-            modal.transform.SetParent(parent.transform);
+            mainThreadDispatcher.EnqueueAction(() => modal.transform.SetParent(parent.transform));
         }
 
-        public Task ShowModal(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer? playerInfo = null)
+        public Task ShowModal(AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer? playerInfo = null)
         {
-            ShowModalStart(host);
+            ShowStart();
 
-            return playerInfo is null ? Task.Run(() => ShowTextsAsync(host, scoreInfo)) : Task.Run(() => ShowTextsAsync(host, scoreInfo, playerInfo));
+            return playerInfo is null ? Task.Run(() => ShowTextsAsync(scoreInfo)) : Task.Run(() => ShowTextsAsync(scoreInfo, playerInfo));
         }
-        private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo)
+        private async Task ShowTextsAsync(AccSaberLeaderboardEntry scoreInfo)
         {
-            AccSaberPlayer? playerInfo = await api.GetPlayerInfo(scoreInfo.PlayerId, true, false);
-            if (playerInfo is not null)
-                await ShowTextsAsync(host, scoreInfo, playerInfo);
-            else
+            try
             {
-                Plugin.Log.Error("Player info is null somehow, check api for weirdness.");
-                loader.SetActive(false);
+                AccSaberPlayer? playerInfo = await api.GetPlayerInfo(scoreInfo.PlayerId, true, false);
+
+                if (playerInfo is not null)
+                    ShowTextsAsync(scoreInfo, playerInfo);
+                else
+                {
+                    Plugin.Log.Error("Player info is null somehow, check api for weirdness.");
+                    mainThreadDispatcher.EnqueueAction(() => loader.SetActive(false));
+                }
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.Error(e);
             }
         }
-        private async Task ShowTextsAsync(MonoBehaviour host, AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer playerInfo) =>
-            await Task.Run(() => host.StartCoroutine(ShowTexts(scoreInfo, playerInfo)));
-        private void ShowModalStart(MonoBehaviour host)
+        private void ShowTextsAsync(AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer playerInfo) =>
+            mainThreadDispatcher.EnqueueAction(() => ShowTexts(scoreInfo, playerInfo));
+        private void ShowStart()
         {
-            currentHost = host;
+            mainThreadDispatcher.AssertOnMainThread();
+
             parserParams.EmitEvent(modalShowName);
-            host.StartCoroutine(ShowStart());
-        }
-        private IEnumerator ShowStart()
-        {
-            yield return new WaitForEndOfFrame();
 
             (modal.transform as RectTransform)!.sizeDelta = new Vector2(containerWidth, containerHeight);
             loader.SetActive(true);
             container.SetActive(false);
         }
-        private IEnumerator ShowTexts(AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer playerInfo)
+        private void ShowTexts(AccSaberLeaderboardEntry scoreInfo, AccSaberPlayer playerInfo)
         {
+            try
+            {
+                mainThreadDispatcher.AssertOnMainThread();
+
                 lastUser = playerInfo;
                 AccSaberPlayerLevelData levelInfo = playerInfo.LevelData;
 
-            yield return new WaitForEndOfFrame();
+                string titleColor = GetTitleColor(levelInfo.PlayerTitle);
+                playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
+                playerNameText.SetText(scoreInfo.PlayerName);
 
-            string titleColor = GetTitleColor(levelInfo.PlayerTitle);
-            playerNameText.colorGradient = ColorUtils.ColorToGradient(titleColor);
-            playerNameText.SetText(scoreInfo.PlayerName);
+                timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(PC.TimePlaces));
 
-            timeSetText.SetText(scoreInfo.TimeSet.ToRelativeTime(PC.TimePlaces));
+                apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
+                accText.SetText($"<color={ACC}>{scoreInfo.Accuracy * 100f:N4}%</color>");
+                rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
 
-            apText.SetText($"<color={AP}>{scoreInfo.AP:N2}ap</color>");
-            accText.SetText($"<color={ACC}>{scoreInfo.Accuracy * 100f:N4}%</color>");
-            rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
+                weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
+                xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
+                scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
 
-            weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
-            xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
-            scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
-
-            yield return new WaitForFixedUpdate();
-
-            loader.SetActive(false);
-            container.SetActive(true);
+                loader.SetActive(false);
+                container.SetActive(true);
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
     }
 }

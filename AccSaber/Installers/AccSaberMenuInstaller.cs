@@ -8,6 +8,7 @@ using AccSaber.UI.MenuButton.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
+using AccSaber.Utils.Safety;
 using AccsaberLeaderboard.UI.BSML_Addons;
 using Zenject;
 
@@ -67,7 +68,6 @@ namespace AccSaber.Installers
 			Container.Bind<LeaderboardScoreModalController>().AsSingle();
 			Container.Bind<LeaderboardUserModalController>().AsSingle();
             Container.Bind<LeaderboardSettingsModalController>().AsSingle();
-            Container.Bind<WhereScoreModalController>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AddonAdder>().AsSingle();
 		}
 	}

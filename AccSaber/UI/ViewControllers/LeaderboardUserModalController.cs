@@ -3,7 +3,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -12,6 +11,7 @@ using AccSaber.Consts;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
+using AccSaber.Utils.Safety;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
@@ -24,7 +24,7 @@ using Zenject;
 
 namespace AccSaber.UI.ViewControllers
 {
-	internal sealed class LeaderboardUserModalController : INotifyPropertyChanged, IDisposable
+	internal sealed class LeaderboardUserModalController : SafeNotifyPropertyChanged, IDisposable
 	{
 #pragma warning disable IDE0051
 		private string? _userId;
@@ -45,10 +45,6 @@ namespace AccSaber.UI.ViewControllers
 		private string _headset = null!;
 
 		//private bool friendColorSwapped = false, rivalColorSwapped = false;
-
-		private MonoBehaviour? _host;
-
-		public event PropertyChangedEventHandler? PropertyChanged;
 
 		[UIValue("pixelImg")]
 		private const string PixelImg = ResourcePaths.PIXEL;
@@ -114,8 +110,8 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_isLoading = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading)));
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotLoading)));
+				NotifyPropertyChanged(nameof(IsLoading));
+				NotifyPropertyChanged(nameof(IsNotLoading));
 			}
 		}
 
@@ -129,7 +125,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_categoryValue = (APCategory)Enum.Parse(typeof(APCategory), value);
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CategoryValue)));
+				NotifyPropertyChanged(nameof(CategoryValue));
 				_ = UpdateUserInfo();
 			}
 		}
@@ -144,7 +140,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_username = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Username)));
+				NotifyPropertyChanged(nameof(Username));
 			}
 		}
 
@@ -155,7 +151,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_rank = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Rank)));
+				NotifyPropertyChanged(nameof(Rank));
 			}
 		}
 
@@ -166,7 +162,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_country = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Country)));
+				NotifyPropertyChanged(nameof(Country));
 			}
 		}
 
@@ -177,7 +173,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_level = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Level)));
+				NotifyPropertyChanged(nameof(Level));
 			}
 		}
 
@@ -188,7 +184,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_ap = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Ap)));
+				NotifyPropertyChanged(nameof(Ap));
 			}
 		}
 		[UIValue("xp")]
@@ -198,7 +194,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_xp = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Xp)));
+				NotifyPropertyChanged(nameof(Xp));
 			}
 		}
 
@@ -210,7 +206,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_plays = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Plays)));
+				NotifyPropertyChanged(nameof(Plays));
 			}
 		}
 		
@@ -221,7 +217,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_headset = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Headset)));
+				NotifyPropertyChanged(nameof(Headset));
 			}
 		}
 
@@ -246,7 +242,7 @@ namespace AccSaber.UI.ViewControllers
 			set
 			{
 				_relationLoading = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RelationLoading)));
+				NotifyPropertyChanged(nameof(RelationLoading));
 			}
 		}
 
@@ -354,52 +350,45 @@ namespace AccSaber.UI.ViewControllers
 			Accessors.ViewValidAccessor(ref _modalView) = false;
 		}
 
-		public void ShowModal(Transform parentTransform, MonoBehaviour host, string userId)
+		public void ShowModal(Transform parentTransform, string userId)
 		{
+			_mainThreadDispatcher.AssertOnMainThread();
+
             Parse(parentTransform);
 
-            _host = host;
             _userId = userId;
 			_firstLoad = true;
 
 			if (!userId.Equals(_user?.PlayerId))
 				_user = null;
 
-			IEnumerator Show()
-			{
-				yield return new WaitForEndOfFrame();
+            if (_playerData.PlayerID != userId)
+            {
+                _friendButton.gameObject.SetActive(true);
+                _rivalButton.gameObject.SetActive(true);
+                _generatePlaylist.gameObject.SetActive(true);
 
-				if (_playerData.PlayerID != userId)
-				{
-                    _friendButton.gameObject.SetActive(true);
-                    _rivalButton.gameObject.SetActive(true);
-					_generatePlaylist.gameObject.SetActive(true);
+                if (_playerData.PlayerFollowedIDs_Internal.Contains(userId))
+                    _friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
+                else
+                    _friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
 
-                    if (_playerData.PlayerFollowedIDs_Internal.Contains(userId))
-						_friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
-                    else
-                        _friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
-
-                    if (_playerData.PlayerRivalIDs_Internal.Contains(userId))
-                        _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
-                    else
-                        _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
-                } else
-				{
-					_friendButton.gameObject.SetActive(false);
-                    _rivalButton.gameObject.SetActive(false);
-					_generatePlaylist.gameObject.SetActive(false);
-                }
-
-                CategoryValue = APCategory.Overall.ToString();
-
-				yield return new WaitForFixedUpdate();
-
-                _parserParams.EmitEvent("close-modal");
-                _parserParams.EmitEvent("open-modal");
+                if (_playerData.PlayerRivalIDs_Internal.Contains(userId))
+                    _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
+                else
+                    _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
+            }
+            else
+            {
+                _friendButton.gameObject.SetActive(false);
+                _rivalButton.gameObject.SetActive(false);
+                _generatePlaylist.gameObject.SetActive(false);
             }
 
-			host.StartCoroutine(Show());
+            CategoryValue = APCategory.Overall.ToString();
+
+            _parserParams.EmitEvent("close-modal");
+            _parserParams.EmitEvent("open-modal");
         }
 
 		public void HideModal()
@@ -466,68 +455,72 @@ namespace AccSaber.UI.ViewControllers
 
 			if (stats.StatDiffs is null && !await stats.LoadStatDiff())
 				return;
+            try
+            {
+                _mainThreadDispatcher.AssertOnMainThread();
 
-            // this stat diff positioning fix is so lazy LMAO
+				// this stat diff positioning fix is so lazy LMAO
 
-            Username = $"{userInfo.PlayerName}";
-			Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color> #{stats.Rank} {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
-			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color> #{stats.CountryRank} {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
-			Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color> {stats.AP:N2} AP {StatDiff(stats.StatDiffs.ApDiff)}": $"{stats.AP:N2} AP";
-			Level = $"LVL {userInfo.LevelData.PlayerLevel}";
-			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
-			Plays = $"{stats.Plays} ranked plays";
-			Headset = userInfo.Headset ?? "";
+				Username = $"{userInfo.PlayerName}";
+				Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color> #{stats.Rank} {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
+				Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color> #{stats.CountryRank} {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
+				Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color> {stats.AP:N2} AP {StatDiff(stats.StatDiffs.ApDiff)}": $"{stats.AP:N2} AP";
+				Level = $"LVL {userInfo.LevelData.PlayerLevel}";
+				Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
+				Plays = $"{stats.Plays} ranked plays";
+				Headset = userInfo.Headset ?? "";
 
-			if (titleRoutine is not null)
-                _host!.StopCoroutine(titleRoutine);
+				if (titleRoutine is not null)
+					_mainThreadDispatcher.StopCoroutine(titleRoutine);
 
-			await userInfo.LoadItems;
+				await userInfo.LoadItems;
 
-			IEnumerator WaitThenUpdate()
-			{
-				yield return new WaitUntil(_titleText.IsActive);
-				yield return new WaitForEndOfFrame();
-                titleRoutine = userInfo.Items!.Set(_host!, _titleText);
-            }
-
-			_host!.StartCoroutine(WaitThenUpdate());
-
-            if (borderRoutine is not null)
-                _host!.StopCoroutine(borderRoutine);
-
-            borderRoutine = userInfo.Items!.Set(_host!, _playerImageBorder, _progressBarImage);
-
-            if (_firstLoad)
-			{
-				if (userInfo.AvatarUrl is not null)
-					await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
-
-                const float barLen = 20f;
-
-                IEnumerator SetBarLen()
+				IEnumerator WaitThenUpdate()
 				{
+					yield return new WaitUntil(_titleText.IsActive);
 					yield return new WaitForEndOfFrame();
-
-                    _progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent / 100f);
-                    _progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent / 100f));
-                }
-				_host!.StartCoroutine(SetBarLen());
-
-                IsLoading = false;
-				_firstLoad = false;
-			}
-			else
-			{
-				IsLoading = false;
-
-				if (_userInfoCanvasGroup is null)
-				{
-					return;
+					titleRoutine = userInfo.Items!.Set(_mainThreadDispatcher, _titleText);
 				}
 
-				var tween = new FloatTween(0f, 1f, val => _userInfoCanvasGroup.alpha = val, 0.5f, EaseType.OutSine);
-				_timeTweeningManager.AddTween(tween, this);
+				_mainThreadDispatcher.StartCoroutine(WaitThenUpdate());
+
+				if (borderRoutine is not null)
+					_mainThreadDispatcher.StopCoroutine(borderRoutine);
+
+				borderRoutine = userInfo.Items!.Set(_mainThreadDispatcher, _playerImageBorder, _progressBarImage);
+
+				const float barLen = 20f;
+
+				_progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent / 100f);
+				_progressBarInverse.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * (1 - userInfo.LevelData.ProgressPercent / 100f));
+
+            
+                if (_firstLoad)
+                {
+                    if (userInfo.AvatarUrl is not null)
+                        await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
+
+                    _firstLoad = false;
+                }
+                else
+                {
+                    if (_userInfoCanvasGroup is null)
+                    {
+                        return;
+                    }
+
+                    var tween = new FloatTween(0f, 1f, val => _userInfoCanvasGroup.alpha = val, 0.5f, EaseType.OutSine);
+                    _timeTweeningManager.AddTween(tween, this);
+                }
+            }
+			catch (Exception e)
+			{
+				Plugin.Log.Error(e);
 			}
+			finally
+			{
+                IsLoading = false;
+            }
 		}
 
 		private void OnModalClosed()
@@ -535,12 +528,12 @@ namespace AccSaber.UI.ViewControllers
 			_user = null;
 			if (titleRoutine is not null)
 			{
-				_host!.StopCoroutine(titleRoutine);
+				_mainThreadDispatcher.EnqueueStopRoutine(titleRoutine);
 				titleRoutine = null;
             }
             if (borderRoutine is not null)
 			{
-                _host!.StopCoroutine(borderRoutine);
+                _mainThreadDispatcher.EnqueueStopRoutine(borderRoutine);
 				borderRoutine = null;
             }
         }

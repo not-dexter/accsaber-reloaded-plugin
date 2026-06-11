@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
-namespace AccSaber.Utils.Misc
+namespace AccSaber.Utils.Safety
 {
     internal class MainThreadDispatcher : MonoBehaviour
     {
@@ -20,5 +21,15 @@ namespace AccSaber.Utils.Misc
         public void EnqueueStopRoutine(IEnumerator routine) => _actionQueue.Enqueue(() => StopCoroutine(routine));
         public void EnqueueStopRoutine(Coroutine routine) => _actionQueue.Enqueue(() => StopCoroutine(routine));
         public void EnqueueAction(Action action) => _actionQueue.Enqueue(action);
+
+        public void AssertOnMainThread([CallerMemberName] string callerName = "")
+        {
+            if (!IPA.Utilities.UnityGame.OnMainThread)
+            {
+                string error = $"{callerName} is not on the main thread!";
+                Plugin.Log.Critical(error); // in case the error gets eaten by a async function or something.
+                throw new Exception(error);
+            }
+        }
     }
 }

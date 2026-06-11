@@ -17,6 +17,8 @@ using System.Collections.Generic;
 using System.Collections;
 using UnityEngine;
 using AccSaber.Utils.Misc;
+using AccSaber.Utils.Safety;
+
 
 
 #if NEW_VERSION
@@ -43,6 +45,7 @@ namespace AccSaber.Utils
         [Inject] private readonly AccsaberAPI _api = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly AccSaberLeaderboardViewController _leaderboardVC = null!;
+        [Inject] private readonly MainThreadDispatcher _threadDispatcher = null!;
 
         public event Action<string?>? StatusTextChanged;
 
@@ -429,19 +432,17 @@ namespace AccSaber.Utils
                     return;
                 }
 
-                IEnumerator PresentRoutine()
+                void PresentOnMainThread()
                 {
-                    yield return new WaitForEndOfFrame();
-
                     try
                     {
 
                         closeMenu?.Invoke();
 
 #if NEW_VERSION
-                    BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);
+                        BeatmapKey key = level.GetBeatmapKeys().First(k => k.difficulty == cachedDiff.Difficulty);
 
-                    LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, in key, level);
+                        LevelSelectionFlowCoordinator.State flow = new(SelectLevelCategoryViewController.LevelCategory.All, SongCore.Loader.CustomLevelsPack, in key, level);
 #else
                         IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
                         IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == cachedDiff.Difficulty);
@@ -483,7 +484,8 @@ namespace AccSaber.Utils
                     }
                 }
 
-                _mainFlowCoordinator.StartCoroutine(PresentRoutine());
+                _threadDispatcher.EnqueueAction(PresentOnMainThread);
+
             }
         }
 #if NEW_VERSION

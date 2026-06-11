@@ -70,7 +70,7 @@ namespace AccSaber.Models.PlayerModels
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
+            Category = EnumUtils.ReloadedCategoryIdToCategoryNullable(CategoryId);
         }
     }
 }

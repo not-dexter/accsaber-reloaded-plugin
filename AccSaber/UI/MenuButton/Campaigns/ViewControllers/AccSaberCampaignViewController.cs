@@ -3,11 +3,9 @@ using AccSaber.Models;
 using AccSaber.Utils;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
@@ -16,7 +14,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Campaigns.Views.AccSaberCampaignView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberCampaignView.bsml")]
-    internal class AccSaberCampaignViewController : BSMLAutomaticViewController, INotifyPropertyChanged
+    internal class AccSaberCampaignViewController : Utils.Safety.BSMLSafeAutomaticViewController
     {
 #pragma warning disable IDE0051
         private bool _parsed = false;
@@ -27,7 +25,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private string _campaignCreator = null!;
         private List<AccSaberCampaign> accSaberCampaigns = null!;
         private AccSaberCampaign _currentCampaign = null!;
-        public new event PropertyChangedEventHandler? PropertyChanged;
 
         [UIComponent("campaign-list")]
         private readonly CustomCellListTableData _campaignList = null!;
@@ -65,8 +62,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set
             {
                 _isLoading = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotLoading)));
+                NotifyPropertyChanged(nameof(IsLoading));
+                NotifyPropertyChanged(nameof(IsNotLoading));
             }
         }
         [UIValue("InCampaign")]
@@ -76,8 +73,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set
             {
                 _inCampaign = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InCampaign)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotInCampaign)));
+                NotifyPropertyChanged(nameof(InCampaign));
+                NotifyPropertyChanged(nameof(NotInCampaign));
             }
         }
 
@@ -88,7 +85,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set
             {
                 _campaignTitle = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CampaignTitle)));
+                NotifyPropertyChanged(nameof(CampaignTitle));
             }
         }
 
@@ -99,7 +96,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set
             {
                 _campaignCreator = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CampaignCreator)));
+                NotifyPropertyChanged(nameof(CampaignCreator));
             }
         }
 
@@ -127,7 +124,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private void CampaignSelected(TableView table, CampaignCell cellObj)
         {
             if (cellObj != null)
-                _currentCampaign = cellObj.data;
+                _currentCampaign = cellObj.Data;
 
             table.ClearSelection();
 
@@ -237,22 +234,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             StartCoroutine(WaitThenUpdate());
         }
 
-        internal class CampaignCell(AccSaberCampaign campaign) : INotifyPropertyChanged
+        internal class CampaignCell(AccSaberCampaign campaign) : Utils.Safety.SafeNotifyPropertyChanged
         {
-            public event PropertyChangedEventHandler? PropertyChanged;
+            public readonly AccSaberCampaign Data = campaign;
 
-            public AccSaberCampaign data = campaign;
-
-            [UIValue(nameof(Name))] private string Name => campaign.Name;
-            [UIValue(nameof(Author))] private string Author => campaign.CreatorName;
-            [UIValue(nameof(MapCount))] private int MapCount => campaign.DifficultyCount!.Value;
+            [UIValue(nameof(Name))] private string Name => Data.Name;
+            [UIValue(nameof(Author))] private string Author => Data.CreatorName;
+            [UIValue(nameof(MapCount))] private int MapCount => Data.DifficultyCount!.Value;
 
         }
 
-        internal class CampaignMap(AccSaberCampaignMap map) : INotifyPropertyChanged
+        internal class CampaignMap(AccSaberCampaignMap map) : Utils.Safety.SafeNotifyPropertyChanged
         {
-            public event PropertyChangedEventHandler? PropertyChanged;
-
             [UIValue(nameof(Name))] private string Name => map.SongName;
             [UIValue(nameof(Author))] private string Author => map.SongAuthor;
             [UIValue(nameof(MapCount))] private string MapCount => map.Difficulty;

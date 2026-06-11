@@ -12,10 +12,11 @@ using BeatSaberMarkupLanguage;
 
 namespace AccSaber.UI.MenuButton
 {
-    internal class AccSaberMainFlowCoordinator : FlowCoordinator
+    internal class AccSaberMainFlowCoordinator : Utils.Safety.SafeFlowCoordinator
     {
+        protected override FlowCoordinator ParentFlowCoordinator { get; set; } = null!;
+
         private MainFlowCoordinator _mainFlowCoordinator = null!;
-        private FlowCoordinator? _parentFlowCoordinator;
         private AccSaberNewsViewController _accSaberRelationsViewController = null!;
         private AccSaberMenuViewController _accSaberMenuViewController = null!;
         private AccSaberMilestoneViewController _accSaberMilestoneViewController = null!;
@@ -46,22 +47,27 @@ namespace AccSaber.UI.MenuButton
                 OnHubDeactivated += OnDismiss;
             }
         }
-        internal void PresentFlowCoordinator()
+        private void OnDestroy()
         {
-            IEnumerator PresentRoutine()
+            OnHubDeactivated -= OnDismiss;
+        }
+        public override void PresentFlowCoordinator(Action? callback = null, bool immediately = false)
+        {
+            ParentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
+
+            void OnCallback()
             {
-                _parentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
-
-                yield return new WaitForEndOfFrame();
-
-                _parentFlowCoordinator.PresentFlowCoordinator(this, () =>
-                {
-                    OnHubActivated?.Invoke();
-                    _accSaberMilestoneViewController.UpdateTabs();
-                });
+                OnHubActivated?.Invoke();
+                _accSaberMilestoneViewController.UpdateTabs();
+                callback?.Invoke();
             }
 
-            _mainFlowCoordinator.StartCoroutine(PresentRoutine());
+            base.PresentFlowCoordinator(OnCallback, immediately);
+        }
+        public override void DismissFlowCoordinator(Action? callback = null, bool immediately = false)
+        {
+            OnHubDeactivated?.Invoke();
+            base.DismissFlowCoordinator(callback, immediately);
         }
 
 
@@ -79,25 +85,12 @@ namespace AccSaber.UI.MenuButton
             SetLeftScreenViewController(null, ViewController.AnimationType.None);
 #endif
         }
-        protected override void BackButtonWasPressed(ViewController topViewController)
-        {
-            OnHubDeactivated?.Invoke();
-            _parentFlowCoordinator?.DismissFlowCoordinator(this);
-        }
-
-        internal void Close(bool instant = false)
-        {
-            OnHubDeactivated?.Invoke();
-            _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: instant);
-        }
         internal void CloseToMainMenu()
         {
-            OnHubDeactivated?.Invoke();
+            DismissFlowCoordinator(immediately: true);
 
-            _parentFlowCoordinator?.DismissFlowCoordinator(this, immediately: true);
-
-            if (_parentFlowCoordinator is SoloFreePlayFlowCoordinator)
-                _mainFlowCoordinator.DismissFlowCoordinator(_parentFlowCoordinator, immediately: true);
+            if (ParentFlowCoordinator is SoloFreePlayFlowCoordinator)
+                _mainFlowCoordinator.DismissFlowCoordinator(ParentFlowCoordinator, immediately: true);
         }
     }
 }

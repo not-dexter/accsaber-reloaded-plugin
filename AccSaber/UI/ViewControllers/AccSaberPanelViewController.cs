@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using AccSaber.API;
+﻿using AccSaber.API;
 using AccSaber.Configuration;
 using AccSaber.Managers;
 using AccSaber.Models;
@@ -9,12 +6,15 @@ using AccSaber.Models.PlayerModels;
 using AccSaber.UI.MenuButton;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
+using AccSaber.Utils.Safety;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using SiraUtil.Logging;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Tweening;
 using UnityEngine;
 using Zenject;
@@ -23,7 +23,7 @@ namespace AccSaber.UI.ViewControllers
 {
 	[ViewDefinition("AccSaber.UI.Views.AccSaberPanelView.bsml")]
 	[HotReload(RelativePathToLayout = @"..\UI\Views\AccSaberPanelView.bsml")]
-	internal sealed class AccSaberPanelViewController : BSMLAutomaticViewController, IInitializable, IDisposable
+	internal sealed class AccSaberPanelViewController : BSMLSafeAutomaticViewController, IInitializable, IDisposable
 	{
 		[UIComponent("container")] private readonly Backgroundable _container = null!;
 		[UIComponent("logo")] private ImageView _logo = null!;
@@ -57,65 +57,80 @@ namespace AccSaber.UI.ViewControllers
         
 		private void AccSaberStoreOnOnAccSaberRankedMapUpdated(AccSaberBasicDifficulty? mapInfo)
 		{
-			if (_api.CurrentLoginState == AccsaberAPI.LoginState.Success && !_firstMap)
-				PromptText = "";
-
-			_firstMap = false;
-
-			if (mapInfo is null || !_parsed)
+			void Update()
 			{
-				return;
-			}
+                if (_api.CurrentLoginState == AccsaberAPI.LoginState.Success && !_firstMap)
+                    PromptText = "";
 
-			NotifyPropertyChanged(nameof(OverallRankingText));
-			NotifyPropertyChanged(nameof(CategoryRankingText));
-			NotifyPropertyChanged(nameof(MapComplexityText));
-			
-			if (_pluginConfig.RainbowHeader)
-			{
-				return;
-			}
+                _firstMap = false;
 
-			string category = mapInfo is AccSaberDifficulty diff && diff.Status != MapStatus.Ranked ? diff.RankedStatus : mapInfo.Category?.ToString() ?? "";
+                if (mapInfo is null || !_parsed)
+                {
+                    return;
+                }
 
-			if (!_container.gameObject.activeInHierarchy)
-			{
-				SetBannerColor(category);
-			}
-			else
-			{
-				TweenBannerColor(category);	
-			}
+                NotifyPropertyChanged(nameof(OverallRankingText));
+                NotifyPropertyChanged(nameof(CategoryRankingText));
+                NotifyPropertyChanged(nameof(MapComplexityText));
 
-		}
+                if (_pluginConfig.RainbowHeader)
+                {
+                    return;
+                }
+
+                string category = mapInfo is AccSaberDifficulty diff && diff.Status != MapStatus.Ranked ? diff.RankedStatus : mapInfo.Category?.ToString() ?? "";
+
+                if (!_container.gameObject.activeInHierarchy)
+                {
+                    SetBannerColor(category);
+                }
+                else
+                {
+                    TweenBannerColor(category);
+                }
+            }
+
+            _mainThreadDispatcher.EnqueueAction(Update);
+        }
 
 		private void AccSaberStoreOnOnUpdatingFromAccSaberAPI()
 		{
-			LoadingActive = true;
+			_mainThreadDispatcher.EnqueueAction(() => LoadingActive = true);
 		}
 
 		private void AccSaberStoreOnOnUpdatedFromAccSaberAPI(bool isNew)
 		{		
-			if (isNew)
+			void Update()
 			{
-				NotifyPropertyChanged(nameof(OverallRankingText));
-				NotifyPropertyChanged(nameof(CategoryRankingText));
-			}
-	
-			LoadingActive = false;
+                if (isNew)
+                {
+                    NotifyPropertyChanged(nameof(OverallRankingText));
+                    NotifyPropertyChanged(nameof(CategoryRankingText));
+                }
+
+                LoadingActive = false;
+            }
+
+			_mainThreadDispatcher.EnqueueAction(Update);
 		}
         private void AccSaberAPIOnOnLoginUpdated(AccsaberAPI.LoginState loginState, string content)
         {
-			LoadingActive = loginState == AccsaberAPI.LoginState.InProgress;
+			void Update()
+			{
+                LoadingActive = loginState == AccsaberAPI.LoginState.InProgress;
 
-			string _color = loginState switch {
-				AccsaberAPI.LoginState.InProgress => ColorUtils.GREY,
-				AccsaberAPI.LoginState.Success => "#00FF00",
-				AccsaberAPI.LoginState.Failed => ColorUtils.TECH,
-				_ => ""
-			};
+                string _color = loginState switch
+                {
+                    AccsaberAPI.LoginState.InProgress => ColorUtils.GREY,
+                    AccsaberAPI.LoginState.Success => "#00FF00",
+                    AccsaberAPI.LoginState.Failed => ColorUtils.TECH,
+                    _ => ""
+                };
 
-            PromptText = $"<color={_color}>{content}</color>";
+                PromptText = $"<color={_color}>{content}</color>";
+            }
+
+            _mainThreadDispatcher.EnqueueAction(Update);
         }
         public void Initialize()
 		{
@@ -133,7 +148,7 @@ namespace AccSaber.UI.ViewControllers
             _api.OnLoginUpdated -= AccSaberAPIOnOnLoginUpdated;
         }
 
-		protected override async void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+		protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 		{
 			base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
 			
@@ -142,7 +157,7 @@ namespace AccSaber.UI.ViewControllers
 			
 			if (_pluginConfig.RainbowHeader)
 			{
-				await ToggleRainbowBannerTween(true);
+				_ = ToggleRainbowBannerTween(true);
 			}
 		}
 
@@ -186,6 +201,8 @@ namespace AccSaber.UI.ViewControllers
 
 		private async Task ToggleRainbowBannerTween(bool enable)
 		{
+			_mainThreadDispatcher.AssertOnMainThread();
+
 			if (_container.Background() is not ImageView background)
 			{
 				return;
@@ -220,17 +237,6 @@ namespace AccSaber.UI.ViewControllers
 				}
 			}
 		}
-		private string GetCategoryName(string category)
-		{
-			return category switch
-			{
-				"b0000000-0000-0000-0000-000000000001" => "True",
-				"b0000000-0000-0000-0000-000000000002" => "Standard",
-				"b0000000-0000-0000-0000-000000000003" => "Tech",
-
-				_ => "Overall"
-			};
-		}
 
 		private Color GetCategoryColor(string category)
 		{
@@ -248,6 +254,8 @@ namespace AccSaber.UI.ViewControllers
 		[UIAction("#post-parse")]
 		public void PostParse()
 		{
+			_mainThreadDispatcher.AssertOnMainThread();
+
 			if (_container.Background() is ImageView background)
 			{
 				background.material = Utilities.ImageResources.NoGlowMat;

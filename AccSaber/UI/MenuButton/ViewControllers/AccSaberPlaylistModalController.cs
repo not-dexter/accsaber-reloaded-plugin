@@ -9,7 +9,6 @@ using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
 using System;
 using System.Collections;
-using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -20,7 +19,7 @@ using Zenject;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
-    internal class AccSaberPlaylistModalController : INotifyPropertyChanged, IInitializable, IDisposable
+    internal class AccSaberPlaylistModalController : Utils.Safety.SafeNotifyPropertyChanged, IInitializable, IDisposable
     {
 #pragma warning disable IDE0051
         [Inject] private readonly AccSaberMainFlowCoordinator mainFlowCoordinator = null!;
@@ -31,8 +30,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         private ButtonType buttonType;
         private bool _cellsLoading, parsed = false;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         [UIComponent("modal")] 
         private readonly ModalView modal = null!;
@@ -66,8 +63,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     return;
 
                 _cellsLoading = value;
-                PropertyChanged?.Invoke(this, new(nameof(CellsLoading)));
-                PropertyChanged?.Invoke(this, new(nameof(CellsNotLoading)));
+                NotifyPropertyChanged(nameof(CellsLoading));
+                NotifyPropertyChanged(nameof(CellsNotLoading));
             }
         }
 
@@ -152,7 +149,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (GoToPlaylist != PC.GoToPlaylist)
             {
                 GoToPlaylist = PC.GoToPlaylist;
-                PropertyChanged?.Invoke(this, new(nameof(GoToPlaylist)));
+                NotifyPropertyChanged(nameof(GoToPlaylist));
             }
 
             parsed = true;
@@ -245,7 +242,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
             Categorical, Missing
         }
-        private sealed class BatchCell(AccSaberBatch data) : ICellDataSource, INotifyPropertyChanged
+        private sealed class BatchCell(AccSaberBatch data) : Utils.Safety.SafeNotifyPropertyChanged, ICellDataSource
         {
             public string TemplatePath => ResourcePaths.ACC_SABER_PLAYLIST_CELL;
 
@@ -256,8 +253,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             public readonly AccSaberBatch Data = data;
 
             private bool _showStatus = false;
-
-            public event PropertyChangedEventHandler? PropertyChanged;
 
             [UIValue("title")]
             public readonly string Title = data.Name;
@@ -281,8 +276,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         return;
 
                     _showStatus = value;
-                    PropertyChanged?.Invoke(this, new(nameof(ShowStatus)));
-                    PropertyChanged?.Invoke(this, new(nameof(NotShowStatus)));
+                    NotifyPropertyChanged(nameof(ShowStatus));
+                    NotifyPropertyChanged(nameof(NotShowStatus));
                 }
             }
 

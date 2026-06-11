@@ -3,7 +3,6 @@ using AccSaber.Models;
 using AccSaber.Utils;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System;
 using System.Collections;
@@ -17,11 +16,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberNewsView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberNewsView.bsml")]
-    internal class AccSaberNewsViewController : BSMLAutomaticViewController, INotifyPropertyChanged
+    internal class AccSaberNewsViewController : Utils.Safety.BSMLSafeAutomaticViewController, INotifyPropertyChanged
     {
-#pragma warning disable IDE0051
-        public new event PropertyChangedEventHandler? PropertyChanged;
-
         private bool _parsed;
         private bool _isLoading;
         private AccSaberStore.NewsType _currentTab;
@@ -45,8 +41,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _isLoading = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotLoading)));
+                NotifyPropertyChanged(nameof(IsLoading));
+                NotifyPropertyChanged(nameof(IsNotLoading));
             }
         }
 

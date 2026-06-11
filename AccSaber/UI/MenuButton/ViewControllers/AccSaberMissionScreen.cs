@@ -5,6 +5,7 @@ using AccSaber.Models;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
+using AccSaber.Utils.Safety;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -12,7 +13,6 @@ using HMUI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +29,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMissionScreen.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
-    internal class AccSaberMissionScreen : INotifyPropertyChanged, AccSaberNotificationModal.IPopup
+    internal class AccSaberMissionScreen : SafeNotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
 #pragma warning disable IDE0051
         private bool _isLoading, _parsed = false;
@@ -40,7 +40,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private CancellationTokenSource? TimeUpdaterCanceller = null;
 
         private readonly AsyncLock _missionLock = new();
-        private static readonly WaitForEndOfFrame LoopWaitInstruction = new();
 
         [UIComponent("container")] 
         private readonly Backgroundable _container = null!;
@@ -60,8 +59,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIComponent("weekly-time-text")]
         private readonly TextMeshProUGUI _weeklyTimeText = null!;
 
-        public event PropertyChangedEventHandler? PropertyChanged;
-
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
         [Inject] private readonly LevelUtils _levelUtils = null!;
@@ -70,7 +67,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly PlayerSocialLife _playerData = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly AccSaberLeaderboardViewController _leaderboardViewController = null!;
-        [Inject] private readonly MainThreadDispatcher _mainThreadDispatcher = null!;
 
         [UIValue("is-loading")]
         private bool IsLoading
@@ -79,8 +75,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _isLoading = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotLoading)));
+                NotifyPropertyChanged(nameof(IsLoading));
+                NotifyPropertyChanged(nameof(IsNotLoading));
             }
         }
 
@@ -95,7 +91,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _dailyTime = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DailyTime)));
+                NotifyPropertyChanged(nameof(DailyTime));
             }
         }
         [UIValue("weekly-time")]
@@ -105,7 +101,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _weeklyTime = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(WeeklyTime)));
+                NotifyPropertyChanged(nameof(WeeklyTime));
             }
         }
 
@@ -326,7 +322,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
-        internal class MissionCell(AccSaberMission data, AccSaberBasicDifficulty? targetDiff) : ICellDataSource, INotifyPropertyChanged
+        internal class MissionCell(AccSaberMission data, AccSaberBasicDifficulty? targetDiff) : SafeNotifyPropertyChanged, ICellDataSource
         {
             public string TemplatePath => ResourcePaths.ACC_SABER_MISSION_CELL;
 
@@ -339,8 +335,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             private bool _showStatus = false;
             private string _statusText = null!;
-
-            public event PropertyChangedEventHandler? PropertyChanged;
 
             private readonly string color = data.Band switch
             {
@@ -365,8 +359,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                     if (update)
                     {
-                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowStatus)));
-                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NotShowStatus)));
+                        NotifyPropertyChanged(nameof(ShowStatus));
+                        NotifyPropertyChanged(nameof(NotShowStatus));
                     }
                 }
             }
@@ -385,7 +379,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 #else
                     _statusText = $"<size=20%>{value}</size>";
 #endif
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatusText)));
+                    NotifyPropertyChanged(nameof(StatusText));
                 }
             }
 

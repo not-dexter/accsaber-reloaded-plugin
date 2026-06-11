@@ -8,12 +8,10 @@ using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
-using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using IPA.Utilities;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -26,12 +24,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMilestoneView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMilestoneView.bsml")]
-    internal class AccSaberMilestoneViewController : BSMLAutomaticViewController, INotifyPropertyChanged, AccSaberNotificationModal.IPopup
+    internal class AccSaberMilestoneViewController : Utils.Safety.BSMLSafeAutomaticViewController, AccSaberNotificationModal.IPopup
     {
 #pragma warning disable IDE0051
         private static readonly Dictionary<Guid, AccSaberFullMilestone> MilestoneCache = [];
-
-		public new event PropertyChangedEventHandler? PropertyChanged;
 
 		private bool _parsed;
 		private bool _isLoading;
@@ -44,10 +40,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _currentTab = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMilestoneTab)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsMissionTab)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerOffset)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ContainerWidth)));
+                NotifyPropertyChanged(nameof(IsMilestoneTab));
+                NotifyPropertyChanged(nameof(IsMissionTab));
+                NotifyPropertyChanged(nameof(ContainerOffset));
+                NotifyPropertyChanged(nameof(ContainerWidth));
             }
         }
 
@@ -82,8 +78,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_isLoading = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading)));
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotLoading)));
+				NotifyPropertyChanged(nameof(IsLoading));
+				NotifyPropertyChanged(nameof(IsNotLoading));
 			}
 		}
 
@@ -243,10 +239,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 IsLoading = false;
             }
         }
-        internal class MilestoneCell : INotifyPropertyChanged
+        internal class MilestoneCell : Utils.Safety.SafeNotifyPropertyChanged
 		{
             public readonly AccSaberMilestone data;
-            public event PropertyChangedEventHandler? PropertyChanged;
 
             private readonly bool flip;
             private readonly float progressPercent;
@@ -320,8 +315,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         return;
 
                     _showStatus = value;
-                    PropertyChanged?.Invoke(this, new(nameof(ShowStatus)));
-                    PropertyChanged?.Invoke(this, new(nameof(NotShowStatus)));
+                    NotifyPropertyChanged(nameof(ShowStatus));
+                    NotifyPropertyChanged(nameof(NotShowStatus));
                 }
             }
             [UIValue(nameof(NotShowStatus))] public bool NotShowStatus => !ShowStatus;

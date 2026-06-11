@@ -8,12 +8,10 @@ using AccSaber.UI.MenuButton.Campaigns;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Components;
 using BeatSaberMarkupLanguage.Attributes;
-using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using TMPro;
@@ -35,7 +33,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Views.AccSaberMenuView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMenuView.bsml")]
-    internal class AccSaberMenuViewController : BSMLAutomaticViewController, INotifyPropertyChanged, IInitializable, IDisposable, AccSaberNotificationModal.IPopup
+    internal class AccSaberMenuViewController : Utils.Safety.BSMLSafeAutomaticViewController, IInitializable, IDisposable, AccSaberNotificationModal.IPopup
 	{
 #pragma warning disable IDE0051
 		private AccSaberPlayer? _user;
@@ -75,9 +73,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
-
-
-        public new event PropertyChangedEventHandler? PropertyChanged;
 
         [UIComponent("profile-image")]
         private readonly ImageView _profileImage = null!;
@@ -129,8 +124,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _isLoading = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsNotLoading)));
+                NotifyPropertyChanged(nameof(IsLoading));
+                NotifyPropertyChanged(nameof(IsNotLoading));
             }
         }
 
@@ -144,8 +139,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_isScoresLoading = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsScoresLoading)));
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsScoresNotLoading)));
+				NotifyPropertyChanged(nameof(IsScoresLoading));
+				NotifyPropertyChanged(nameof(IsScoresNotLoading));
 			}
 		}
 
@@ -159,7 +154,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _categoryValue = (APCategory)Enum.Parse(typeof(APCategory), value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CategoryValue)));
+                NotifyPropertyChanged(nameof(CategoryValue));
 				WaitThenUpdateUserInfo();
             }
         }
@@ -174,7 +169,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_username = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Username)));
+				NotifyPropertyChanged(nameof(Username));
 			}
 		}
 
@@ -185,7 +180,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_rank = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Rank)));
+				NotifyPropertyChanged(nameof(Rank));
 			}
 		}
 
@@ -196,7 +191,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_country = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Country)));
+				NotifyPropertyChanged(nameof(Country));
 			}
 		}
 		[UIValue("level")]
@@ -206,7 +201,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_level = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Level)));
+				NotifyPropertyChanged(nameof(Level));
 			}
 		}
 
@@ -217,7 +212,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_ap = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Ap)));
+				NotifyPropertyChanged(nameof(Ap));
 			}
 		}
 		[UIValue("xp")]
@@ -227,7 +222,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_xp = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Xp)));
+				NotifyPropertyChanged(nameof(Xp));
 			}
 		}
 
@@ -239,7 +234,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_plays = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Plays)));
+				NotifyPropertyChanged(nameof(Plays));
 			}
 		}
 
@@ -250,7 +245,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_headset = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Headset)));
+				NotifyPropertyChanged(nameof(Headset));
 			}
 		}
 
@@ -272,7 +267,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			set
 			{
 				_pagnation = value;
-				PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Pagnation)));
+				NotifyPropertyChanged(nameof(Pagnation));
 			}
 		}
 
@@ -634,15 +629,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             parentCoordinator.OnHubDeactivated -= OnClose;
         }
 
-        internal class ScoreCell(AccSaberPlayerScore data) : ICellDataSource, INotifyPropertyChanged
+        internal class ScoreCell(AccSaberPlayerScore data) : Utils.Safety.SafeNotifyPropertyChanged, ICellDataSource
         {
 			public string TemplatePath => ResourcePaths.ACC_SABER_MENU_CELL;
 			public float CellSize => 9f;
 			public int TemplateId { get; set; }
 
             public readonly AccSaberPlayerScore Data = data;
-
-			public event PropertyChangedEventHandler? PropertyChanged;
 
 			#region BSML Values
 			private bool _showStatus;
@@ -682,8 +675,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				set
 				{
 					_showStatus = value;
-					PropertyChanged?.Invoke(this, new(nameof(ShowStatus)));
-					PropertyChanged?.Invoke(this, new(nameof(NotShowStatus)));
+					NotifyPropertyChanged(nameof(ShowStatus));
+					NotifyPropertyChanged(nameof(NotShowStatus));
 
                 }
 			}
@@ -697,7 +690,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				set
 				{
 					_statusText = value;
-                    PropertyChanged?.Invoke(this, new(nameof(StatusText)));
+                    NotifyPropertyChanged(nameof(StatusText));
                 }
 			}
 

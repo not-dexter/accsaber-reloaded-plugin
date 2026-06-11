@@ -8,19 +8,17 @@ using HMUI;
 using IPA.Utilities;
 using System;
 using System.Collections;
-using System.ComponentModel;
 using TMPro;
 using UnityEngine;
 
 namespace AccSaber.UI.MenuButton.ViewControllers
 {
-    internal sealed class AccSaberNewsModal : INotifyPropertyChanged, IDisposable
+    internal sealed class AccSaberNewsModal : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
     {
 #pragma warning disable IDE0051
         private bool _parsed;
         private string _title = null!;
         private string _content = null!;
-        public event PropertyChangedEventHandler? PropertyChanged;
         private MonoBehaviour? _host;
 
         [UIComponent("content-page")]
@@ -40,7 +38,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _title = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Title)));
+                NotifyPropertyChanged(nameof(Title));
             }
         }
 
@@ -52,7 +50,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _content = MarkdownParser.ParseMarkdown(value);
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Content)));
+                NotifyPropertyChanged(nameof(Content));
             }
         }
 
