@@ -161,6 +161,9 @@ namespace AccSaber.Utils
             };
         }
 
+        public static T Max<T>(T item1, T item2) where T : IComparable<T> => item1.CompareTo(item2) <= 0 ? item2 : item1;
+        public static T Min<T>(T item1, T item2) where T : IComparable<T> => item1.CompareTo(item2) <= 0 ? item1 : item2;
+
         public static string GenerateNonce(int byteLength = 32)
         {
             byte[] byteArray = new byte[byteLength];

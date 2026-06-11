@@ -11,8 +11,9 @@ using Zenject;
 
 namespace AccSaber.Utils
 {
-    internal class PlaylistUtils : IInitializable
+    internal class PlaylistUtils : IInitializable, IDisposable
     {
+#pragma warning disable IDE0051
         public const string PlaylistAuthor = "Accsaber Reloaded";
         public const string CustomDataKey = "customSync";
 
@@ -26,6 +27,8 @@ namespace AccSaber.Utils
 
         private Assembly? playlistManager = null, playlistLib = null;
         private static object? pdvbcInstance = null;
+
+        private Delegate? handler;
 
         private object? currentManagerInstance;
         private object? currentPlaylist;
@@ -88,18 +91,36 @@ namespace AccSaber.Utils
 
             try
             {
-                Type eventType = playlistManager.GetType("PlaylistManager.Utilities.Events");
-                EventInfo eventInfo = eventType.GetEvent("playlistSelected");
-                MethodInfo methodInfo = typeof(PlaylistUtils).GetMethod("OnPlaylistSelected", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (handler is null)
+                {
+                    Type eventType = playlistManager.GetType("PlaylistManager.Utilities.Events");
+                    EventInfo eventInfo = eventType.GetEvent("playlistSelected");
+                    MethodInfo methodInfo = typeof(PlaylistUtils).GetMethod("OnPlaylistSelected", BindingFlags.NonPublic | BindingFlags.Instance);
 
-                Delegate handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, this, methodInfo);
-                eventInfo.AddEventHandler(null, handler);
+                    handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, this, methodInfo);
+                    eventInfo.AddEventHandler(null, handler);
+                }
             }
             catch (Exception e)
             {
                 Plugin.Log.Error("There was an issue with binding OnPlaylistSelected!\n" + e);
             }
         }
+        public void Dispose()
+        {
+            try
+            {
+                if (handler is null || playlistManager is null)
+                    return;
+
+                playlistManager.GetType("PlaylistManager.Utilities.Events").GetEvent("playlistSelected").RemoveEventHandler(null, handler);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
+        }
+
         private static void SetPdvbc(object __instance) => pdvbcInstance = __instance;
         private void OnPlaylistSelected(object playlist, object playlistManager)
         {

@@ -15,18 +15,6 @@ namespace AccSaber.Utils
     {
         [Inject] private readonly SerializationHandler handler = null!;
 
-        //private static AccSaberSerializedCache<AccSaberPlayerScore> cachedPlayerScores = new();
-
-        //public static Dictionary<string, AccSaberBasicMap> CachedMaps { get; private set; } = [];
-        //public static int TotalMaps { get; private set; } = -1;
-        //public static List<AccSaberPlayerScore> CachedPlayerScores => cachedPlayerScores.Content;
-        //public static int CachedPlayerScoreLength
-        //{
-        //    get => cachedPlayerScores.MaxLength;
-        //    set => cachedPlayerScores.MaxLength = value;
-        //}
-        //public static int[] CategoryPlayerScoreLength = [-1, -1, -1]; // A bit hardcoded, but whatever
-
         private readonly List<AccSaberSerializedCache> caches = [];
         public IReadOnlyList<AccSaberSerializedCache> Caches => caches;
         public void Initialize()

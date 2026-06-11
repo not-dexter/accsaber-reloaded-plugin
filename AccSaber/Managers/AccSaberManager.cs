@@ -10,37 +10,51 @@ namespace AccSaber.Managers
 
 
         public void OnLeaderboardSet(BeatmapKey beatmapKey)
-		{
-			BeatmapLevel? level = _beatmapLevelsModel.GetBeatmapLevel(beatmapKey.levelId);
+        {
+            try
+            {
+                BeatmapLevel? level = _beatmapLevelsModel.GetBeatmapLevel(beatmapKey.levelId);
 
-            if (level is null)
-			{
-				return;
-			}
+                if (level is null)
+                {
+                    return;
+                }
 
 #if V40
-            string hash = SongCore.Utilities.Hashing.ComputeCustomLevelHash(level).ToLower();
+                string hash = SongCore.Utilities.Hashing.ComputeCustomLevelHash(level).ToLower();
 #else
             string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
 #endif
 
-            _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+                _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 #else
         
         public void OnLeaderboardSet(IDifficultyBeatmap beatmapKey)
         {
-			CustomPreviewBeatmapLevel? level = _beatmapLevelsModel.GetLevelPreviewForLevelId(beatmapKey.level.levelID) as CustomPreviewBeatmapLevel;
-
-            if (level is null)
+			try
             {
-                return;
-            }
+                CustomPreviewBeatmapLevel? level = _beatmapLevelsModel.GetLevelPreviewForLevelId(beatmapKey.level.levelID) as CustomPreviewBeatmapLevel;
 
-            string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
-            
-			_accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+                if (level is null)
+                {
+                    return;
+                }
+
+                string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
+
+                _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+            }
+            catch (System.Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
         }
 #endif
-        }
+    }
 }

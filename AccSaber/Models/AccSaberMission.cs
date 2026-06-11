@@ -1,4 +1,5 @@
-﻿using AccSaber.Utils;
+﻿using AccSaber.Models.Base;
+using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -7,7 +8,7 @@ using System.Runtime.Serialization;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal class AccSaberMission
+    internal class AccSaberMission : IModel
     {
         [JsonProperty("id")]
         public string Id { get; set; } = null!;

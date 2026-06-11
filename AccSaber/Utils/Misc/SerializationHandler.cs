@@ -15,7 +15,8 @@ namespace AccSaber.Utils.Misc
         [Inject] private readonly AccsaberAPI api = null!;
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
 
-        public readonly Dictionary<string, CacheInfo> CacheInfos;
+        private readonly Dictionary<string, CacheInfo> cacheInfos;
+        public IReadOnlyDictionary<string, CacheInfo> CacheInfos => cacheInfos;
 
         public int TotalMaps { get; private set; } = -1;
         public Dictionary<string, AccSaberBasicMap> CachedMaps = null!;
@@ -38,18 +39,32 @@ namespace AccSaber.Utils.Misc
             }
         }
 
+        private AccSaberSerializedCache<AccSaberMission> _missions = null!;
+        public IReadOnlyList<AccSaberMission> Missions => _missions.Content;
+
+        public async Task RevalidateMissions(bool forceRefresh = false)
+        {
+            if (!forceRefresh && await ValidateMissionCache(_missions))
+                return;
+
+            AccSaberSerializedCache<AccSaberMission> newCache = ((await LoadMissionCache()) as AccSaberSerializedCache<AccSaberMission>)!;
+
+            _missions.LastUpdated = newCache.LastUpdated;
+            _missions.MaxLength = newCache.MaxLength;
+            _missions.Content = newCache.Content;
+        }
+        public void InvalidateMissionCache() => _missions.LastUpdated = DateTime.MinValue;
+
+
         public SerializationHandler()
         {
-            CacheInfos = new(2)
+            cacheInfos = new(3)
             {
                 { ResourcePaths.MAP_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberBasicMap>), ValidateMapCache, LoadMapCache) },
-                { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, null) }
+                { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, null) },
+                { ResourcePaths.MISSION_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberMission>), ValidateMissionCache, LoadMissionCache) }
             };
         }
-        /*And btw, if you would prefer not to do the maps, I do have an idea for a compromise. If instead you add 2 properties to the score json object that is returned in normal endpoints, it help speed up the leaderboard loading the score menu.  
-
-The properties are playerScoreRank and playerCategoryScoreRank. playerScoreRank is what index the score is on the list of all player scores (sorted by ap, not weighted), playerCategoryScoreRank is the same thing but for the given category.  */
-
         internal async void SetCacheData(SerializerUtils serializerUtils)
         {
             try
@@ -72,6 +87,14 @@ The properties are playerScoreRank and playerCategoryScoreRank. playerScoreRank 
                     _playerCache = playerCache;
                 }
 
+                void HandleMissionCache(AccSaberSerializedCache cache)
+                {
+                    if (cache is not AccSaberSerializedCache<AccSaberMission> missionCache)
+                        return;
+
+                    _missions = missionCache;
+                }
+
                 foreach (AccSaberSerializedCache cache in serializerUtils.Caches)
                 {
                     switch (cache.Name)
@@ -82,6 +105,9 @@ The properties are playerScoreRank and playerCategoryScoreRank. playerScoreRank 
                         case ResourcePaths.PLAYER_SCORE_CACHE_NAME:
                             HandlePlayerScoreCache(cache);
                             break;
+                        case ResourcePaths.MISSION_CACHE_NAME:
+                            HandleMissionCache(cache);
+                            break;
                     }
                 }
             }
@@ -91,6 +117,12 @@ The properties are playerScoreRank and playerCategoryScoreRank. playerScoreRank 
             }
         }
 
+#pragma warning disable IDE0060
+        public void OnPlayerScoreUpdated(AccSaberLeaderboardEntry entry)
+        {
+            InvalidateMissionCache();
+        }
+#pragma warning restore IDE0060
         public (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(string difficultyId)
         {
             AccSaberBasicDifficulty diff = CachedDifficulties[difficultyId];
@@ -124,18 +156,6 @@ The properties are playerScoreRank and playerCategoryScoreRank. playerScoreRank 
                 Content = maps
             };
         }
-        private async Task<AccSaberSerializedCache> LoadPlayerScoreCache()
-        {
-            List<AccSaberPlayerScore> scores = [.. (await api.LoadAllPlayerScores()).Select(score => new AccSaberPlayerScore(score))];
-
-            return new AccSaberSerializedCache<AccSaberPlayerScore>()
-            {
-                LastUpdated = DateTime.UtcNow,
-                MaxLength = TotalMaps,
-                ExtraData = [new int[3] { -1, -1, -1 }],
-                Content = scores
-            };
-        }
 
         private async Task<bool> ValidatePlayerScoreCache(AccSaberSerializedCache cache)
         {
@@ -153,7 +173,33 @@ The properties are playerScoreRank and playerCategoryScoreRank. playerScoreRank 
 
             return valid;
         }
+        private async Task<AccSaberSerializedCache> LoadPlayerScoreCache()
+        {
+            List<AccSaberPlayerScore> scores = [.. (await api.LoadAllPlayerScores()).Select(score => new AccSaberPlayerScore(score))];
 
+            return new AccSaberSerializedCache<AccSaberPlayerScore>()
+            {
+                LastUpdated = DateTime.UtcNow,
+                MaxLength = TotalMaps,
+                ExtraData = [new int[3] { -1, -1, -1 }],
+                Content = scores
+            };
+        }
+
+        private async Task<bool> ValidateMissionCache(AccSaberSerializedCache cache) => cache.LastUpdated > DateTime.UtcNow;
+        private async Task<AccSaberSerializedCache> LoadMissionCache()
+        {
+            await playerInfo.LoadTask;
+
+            List<AccSaberMission> missions = (await APIHandler.CallAPI_Json<List<AccSaberMission>>(HelpfulPaths.APAPI_MISSIONS, AccsaberAPI.Throttler)) ?? [];
+
+            return new AccSaberSerializedCache<AccSaberMission>()
+            {
+                LastUpdated = missions.Aggregate(DateTime.MaxValue, (total, current) => MiscUtils.Min(total, current.ExpiresAt)),
+                MaxLength = missions.Count,
+                Content = missions
+            };
+        }
         public record struct CacheInfo(Type CacheType,
             Func<AccSaberSerializedCache, Task<bool>> Validate,
             Func<Task<AccSaberSerializedCache>>? Load);

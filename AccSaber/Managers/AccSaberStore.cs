@@ -24,6 +24,7 @@ namespace AccSaber.Managers
 		private readonly IPlatformUserModel _platformUserModel;
         private readonly PlayerSocialLife _playerInfo;
         private readonly AccsaberAPI _api;
+        private readonly SerializationHandler _serialHandler;
         private readonly AccSaberLeaderboardViewController _leaderboardVC;
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
@@ -44,14 +45,14 @@ namespace AccSaber.Managers
         private AccSaberBasicDifficulty? _currentRankedMap;
 
 #pragma warning disable IDE0290
-		public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel, PlayerSocialLife playerInfo, AccsaberAPI api, AccSaberLeaderboardViewController leaderboardVC)
+		public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel, PlayerSocialLife playerInfo, AccsaberAPI api, SerializationHandler serialHandler, AccSaberLeaderboardViewController leaderboardVC)
 		{
 			_log = log;
 			_platformUserModel = platformUserModel;
             _playerInfo = playerInfo;
             _api = api;
+            _serialHandler = serialHandler;
             _leaderboardVC = leaderboardVC;
-
         }
 
 		public AccSaberBasicDifficulty? CurrentRankedMap
@@ -99,25 +100,19 @@ namespace AccSaber.Managers
 			}
 			return [];
 		}
-        public async Task<List<AccSaberMission>> GetMissions(MissionPool pool = MissionPool.Daily, bool allPools = true)
+        public async Task<List<AccSaberMission>> GetMissions(MissionPool pool = MissionPool.Daily, bool allPools = true, bool overrideCache = false)
         {
-            await _playerInfo.LoadTask;
+            await _serialHandler.RevalidateMissions(overrideCache);
 
-            if (_playerInfo.PlayerID is not null)
-            {
-                string call = allPools ? HelpfulPaths.APAPI_MISSIONS : string.Format(HelpfulPaths.APAPI_MISSIONS_POOL, pool);
+            List<AccSaberMission> outp = [.. _serialHandler.Missions];
 
-                List<AccSaberMission>? outp = await APIHandler.CallAPI_Json<List<AccSaberMission>>(call, AccsaberAPI.Throttler);
+            if (!allPools)
+                outp = [.. outp.Where(mission => mission.MissionPool == pool)];
 
-                if (outp is null)
-                    return [];
+            // This is to make sure that the missions are always in the same order (first by pool, then alphabetically by name) since the API doesn't guarantee any order and it can be a bit jarring to have them switch around every time we fetch them.
+            outp.Sort((a, b) => a.MissionPool == b.MissionPool ? a.Name.CompareTo(b.Name) : a.MissionPool.CompareTo(b.MissionPool));
 
-                // This is to make sure that the missions are always in the same order (first by pool, then alphabetically by name) since the API doesn't guarantee any order and it can be a bit jarring to have them switch around every time we fetch them.
-                outp.Sort((a, b) => a.MissionPool == b.MissionPool ? a.Name.CompareTo(b.Name) : a.MissionPool.CompareTo(b.MissionPool));
-
-                return outp;
-            }
-            return [];
+            return outp;
         }
 
         public enum NewsType
@@ -282,7 +277,6 @@ namespace AccSaber.Managers
             {
                 const int maxRetries = 3;
 
-
                 AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
                 if (theLock is null)
                     return;
@@ -412,6 +406,7 @@ namespace AccSaber.Managers
 		{
 			OnScoreUpdated += UpdatePlayerScore;
             OnScoreUpdated += _api.OnScoreUpdated;
+            OnPlayerScoreUpdated += _serialHandler.OnPlayerScoreUpdated;
             _playerInfo.OnRelationChanged += UpdateLeaderboardOnRelationChanged;
 
             //These are all independent tasks, so start each of them on their own thread
@@ -422,6 +417,7 @@ namespace AccSaber.Managers
         {
             OnScoreUpdated -= UpdatePlayerScore;
             OnScoreUpdated -= _api.OnScoreUpdated;
+            OnPlayerScoreUpdated -= _serialHandler.OnPlayerScoreUpdated;
             _playerInfo.OnRelationChanged -= UpdateLeaderboardOnRelationChanged;
         }
 	}

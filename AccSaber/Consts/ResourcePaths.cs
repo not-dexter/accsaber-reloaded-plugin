@@ -70,10 +70,9 @@ namespace AccSaber.Consts
         public const string FOLDER_NAME = "Accsaber";
         public const string PLAYER_SCORE_CACHE_NAME = "PlayerScoreCache";
         public const string MAP_CACHE_NAME = "MapCache";
+        public const string MISSION_CACHE_NAME = "MissionCache";
 
         public static readonly string ACC_SABER_DATA_FOLDER = Path.Combine(Environment.CurrentDirectory, "UserData", FOLDER_NAME);
-        public static readonly string ACC_SABER_PLAYER_SCORE_CACHE = Path.Combine(ACC_SABER_DATA_FOLDER, PLAYER_SCORE_CACHE_NAME + ".json");
-        public static readonly string ACC_SABER_MAP_CACHE = Path.Combine(ACC_SABER_DATA_FOLDER, MAP_CACHE_NAME + ".json");
 
         public static readonly string CUSTOM_SONGS = Path.Combine(Environment.CurrentDirectory, "Beat Saber_Data", "CustomLevels");
         public static readonly string CUSTOM_PLAYLISTS = Path.Combine(Environment.CurrentDirectory, "Playlists");
