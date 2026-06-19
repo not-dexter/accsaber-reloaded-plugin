@@ -771,11 +771,11 @@ namespace AccSaber.API
             return [.. rankedMaps.Values];
         }
 
-        public async Task<List<AccSaberLeaderboardEntry>> LoadAllPlayerScores(CancellationToken ct = default)
+        public async Task<List<AccSaberBasicPlayerScore>> LoadAllPlayerScores(CancellationToken ct = default)
         {
             await playerInfo.LoadTask;
 
-            return (await CallAPI_Json<List<AccSaberLeaderboardEntry>>(string.Format(APAPI_SCORES_ALL, playerInfo.PlayerID!), Throttler, ct: ct)) ?? [];
+            return (await CallAPI_Json<List<AccSaberBasicPlayerScore>>(string.Format(APAPI_SCORES_ALL, playerInfo.PlayerID), Throttler, ct: ct)) ?? [];
         }
 
         public async Task<IEnumerable<AccSaberLeaderboardEntry>?> GetLeaderboardScores(Guid difficulty_id, int page = 0, int count = 10, CancellationToken ct = default)

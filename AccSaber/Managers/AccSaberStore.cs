@@ -104,6 +104,9 @@ namespace AccSaber.Managers
         {
             await _serialHandler.RevalidateMissions(overrideCache);
 
+            while (_serialHandler.Missions is null)
+                await Task.Delay(1000);
+
             List<AccSaberMission> outp = [.. _serialHandler.Missions];
 
             if (!allPools)

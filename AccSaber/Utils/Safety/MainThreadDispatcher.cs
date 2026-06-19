@@ -22,7 +22,7 @@ namespace AccSaber.Utils.Safety
         public void EnqueueStopRoutine(Coroutine routine) => _actionQueue.Enqueue(() => StopCoroutine(routine));
         public void EnqueueAction(Action action) => _actionQueue.Enqueue(action);
 
-        public void AssertOnMainThread([CallerMemberName] string callerName = "")
+        public static void AssertOnMainThread([CallerMemberName] string callerName = "")
         {
             if (!IPA.Utilities.UnityGame.OnMainThread)
             {

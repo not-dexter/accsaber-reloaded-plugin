@@ -8,7 +8,6 @@ using AccSaber.Utils.Safety;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
-using System.Collections;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -126,7 +125,7 @@ namespace AccSaber.UI.ViewControllers
             mainThreadDispatcher.EnqueueAction(() => ShowTexts(scoreInfo, playerInfo));
         private void ShowStart()
         {
-            mainThreadDispatcher.AssertOnMainThread();
+            MainThreadDispatcher.AssertOnMainThread();
 
             parserParams.EmitEvent(modalShowName);
 
@@ -138,7 +137,7 @@ namespace AccSaber.UI.ViewControllers
         {
             try
             {
-                mainThreadDispatcher.AssertOnMainThread();
+                MainThreadDispatcher.AssertOnMainThread();
 
                 lastUser = playerInfo;
                 AccSaberPlayerLevelData levelInfo = playerInfo.LevelData;

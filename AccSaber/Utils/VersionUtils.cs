@@ -25,6 +25,7 @@ namespace AccSaber.Utils
         public static Color ColorWithAlpha(this Color c, float alpha) => new(c.r, c.g, c.b, alpha);
         #endregion
         public static Task<Sprite> LoadSpriteAsync(string path) => Utilities.LoadSpriteAsync(Utilities.GetResource(Assembly.GetExecutingAssembly(), path));
+        public static Task<Sprite> LoadSpriteAsync(byte[] data, float PixelsPerUnit = 100) => Utilities.LoadSpriteAsync(data, PixelsPerUnit);
         public static IList Data(this CustomCellListTableData ccltd) => ccltd.Data;
         public static TableView TableView(this CustomCellListTableData ccltd) => ccltd.TableView;
         public static Image Background(this Backgroundable bg) => bg.Background;
@@ -44,6 +45,7 @@ namespace AccSaber.Utils
         #endregion
         public static Task<Sprite> LoadSpriteAsync(string path) =>
             Task.Run(() => Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), path)));
+        public static Task<Sprite> LoadSpriteAsync(byte[] data, float PixelsPerUnit = 100) => Task.Run(() => Utilities.LoadSpriteRaw(data, PixelsPerUnit));
         public static ref List<object> Data(this CustomCellListTableData ccltd) => ref ccltd.data;
         public static ref TableView TableView(this CustomCellListTableData ccltd) => ref ccltd.tableView;
         public static ref Image Background(this Backgroundable bg) => ref bg.background;

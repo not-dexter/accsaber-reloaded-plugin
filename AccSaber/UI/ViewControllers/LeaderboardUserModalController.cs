@@ -352,7 +352,7 @@ namespace AccSaber.UI.ViewControllers
 
 		public void ShowModal(Transform parentTransform, string userId)
 		{
-			_mainThreadDispatcher.AssertOnMainThread();
+			MainThreadDispatcher.AssertOnMainThread();
 
             Parse(parentTransform);
 
@@ -457,7 +457,7 @@ namespace AccSaber.UI.ViewControllers
 				return;
             try
             {
-                _mainThreadDispatcher.AssertOnMainThread();
+                MainThreadDispatcher.AssertOnMainThread();
 
 				// this stat diff positioning fix is so lazy LMAO
 

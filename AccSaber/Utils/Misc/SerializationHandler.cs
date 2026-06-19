@@ -39,8 +39,8 @@ namespace AccSaber.Utils.Misc
             }
         }
 
-        private AccSaberSerializedCache<AccSaberMission> _missions = null!;
-        public IReadOnlyList<AccSaberMission> Missions => _missions.Content;
+        private AccSaberSerializedCache<AccSaberMission>? _missions = null;
+        public IReadOnlyList<AccSaberMission>? Missions => _missions?.Content;
 
         public async Task RevalidateMissions(bool forceRefresh = false)
         {
@@ -53,7 +53,7 @@ namespace AccSaber.Utils.Misc
             _missions.MaxLength = newCache.MaxLength;
             _missions.Content = newCache.Content;
         }
-        public void InvalidateMissionCache() => _missions.LastUpdated = DateTime.MinValue;
+        public void InvalidateMissionCache() => _missions?.LastUpdated = DateTime.MinValue;
 
 
         public SerializationHandler()
@@ -173,7 +173,7 @@ namespace AccSaber.Utils.Misc
 
             return valid;
         }
-        private async Task<AccSaberSerializedCache> LoadPlayerScoreCache()
+        /*private async Task<AccSaberSerializedCache> LoadPlayerScoreCache()
         {
             List<AccSaberPlayerScore> scores = [.. (await api.LoadAllPlayerScores()).Select(score => new AccSaberPlayerScore(score))];
 
@@ -184,7 +184,7 @@ namespace AccSaber.Utils.Misc
                 ExtraData = [new int[3] { -1, -1, -1 }],
                 Content = scores
             };
-        }
+        }*/
 
         private async Task<bool> ValidateMissionCache(AccSaberSerializedCache cache) => cache.LastUpdated > DateTime.UtcNow;
         private async Task<AccSaberSerializedCache> LoadMissionCache()
@@ -198,6 +198,14 @@ namespace AccSaber.Utils.Misc
                 {
                     LastUpdated = DateTime.MinValue
                 };
+
+            DateTime now = DateTime.UtcNow;
+            for (int i = missions.Count - 1; i >= 0; --i)
+                if (missions[i].ExpiresAt < now)
+                {
+                    Plugin.Log.Critical("There is a bug with the missions endpoint! Please report this on Discord.");
+                    missions.RemoveAt(i);
+                }
 
             return new AccSaberSerializedCache<AccSaberMission>()
             {

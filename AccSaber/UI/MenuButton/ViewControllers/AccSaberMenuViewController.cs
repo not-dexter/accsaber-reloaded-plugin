@@ -21,6 +21,7 @@ using UnityEngine.UI;
 using Zenject;
 using AccSaber.Configuration;
 using AccSaber.Utils.Misc;
+using System.Threading;
 
 
 
@@ -544,8 +545,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 			using (locker.Value)
 			{
+				Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
 
 				IsScoresLoading = true;
+
+				foreach (ScoreCell cell in _scoreCells.Cast<ScoreCell>())
+					cell.CancelLoading();
+
 				_scoreCells.Clear();
 
 				try
@@ -586,21 +592,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					// Just gotta use a different type with AccsaberAPI (I did this so that I wouldn't have to cache a full LeaderboardEntry, just the important parts.
 					foreach (AccSaberPlayerScore score in content)
 					{
-						_scoreCells.Add(new ScoreCell(score));
+						_scoreCells.Add(new ScoreCell(score, serialHandler.CachedDifficulties[score.DifficultyId].Hash));
 					}
 
 
-					// Make sure to do UI updates at the end of frame. Otherwise you are spinning a wheel on whether Unity will crash the game or not.
-					IEnumerator WaitThenUpdate()
-					{
-						yield return new WaitForEndOfFrame();
-
-						_topScoresList.Data = _scoreCells;
-						IsScoresLoading = false;
-					}
-					StartCoroutine(WaitThenUpdate());
-
-				}
+                    _topScoresList.Data = _scoreCells;
+                    IsScoresLoading = false;
+                }
 				catch (Exception e)
 				{
 					// Since errors are not thrown in this function, throw them ourselves
@@ -629,13 +627,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             parentCoordinator.OnHubDeactivated -= OnClose;
         }
 
-        internal class ScoreCell(AccSaberPlayerScore data) : Utils.Safety.SafeNotifyPropertyChanged, ICellDataSource
+        internal class ScoreCell(AccSaberPlayerScore data, string mapHash) : Utils.Safety.SafeNotifyPropertyChanged, ICellDataSource
         {
 			public string TemplatePath => ResourcePaths.ACC_SABER_MENU_CELL;
 			public float CellSize => 9f;
 			public int TemplateId { get; set; }
 
             public readonly AccSaberPlayerScore Data = data;
+			public readonly string MapHash = mapHash;
+
+			private readonly CancellationTokenSource tokenSource = new();
 
 			#region BSML Values
 			private bool _showStatus;
@@ -648,7 +649,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			private readonly string _mapName = data.SongName;
 
 			[UIValue("map-author")]
-			private readonly string _mapAuthor = data.SongAuthor;
+			private readonly string _mapAuthor = data.SongAuthor ?? "Unknown Author";
 
 			[UIValue("map-diff")]
 			private string _mapDiff => DiffName(EnumUtils.DiffToReloadedDiff(Data.Difficulty));
@@ -664,9 +665,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue("map-category")]
 			private string _mapCategory => CategoryName(EnumUtils.CategoryToReloadedCategoryId(Data.Category)!);
-
-			[UIValue("map-cover")]
-			private readonly string _mapCover = data.CoverUrl;
 
 			[UIValue("show-status")]
 			public bool ShowStatus
@@ -729,7 +727,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			private void Parse()
             {
 				cover.material = ResourcePaths.BORDER_MATERIAL;
+
+
+				_ = cover.LoadCoverImage(MapHash, Data.CoverUrl, tokenSource.Token);
 			}
+
+			internal void CancelLoading()
+			{
+				tokenSource.Cancel();
+            }
             internal void UpdateStatus(string? text)
             {
                 bool update = text is not null;

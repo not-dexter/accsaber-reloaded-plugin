@@ -1,7 +1,7 @@
 <vertical id='background-container' bg='round-rect-panel' horizontal-fit='Unconstrained' pad='1'>
   <horizontal active='~not-show-status'>
       <vertical pad-top='1' pad-bottom='1' pref-width='7'>
-          <image id='cover' pref-height='6' pref-width='6' preserve-aspect='true' src='~map-cover'/>
+          <image id='cover' pref-height='6' pref-width='6' preserve-aspect='true'/>
       </vertical>
       <vertical pad-top='3' pad-bottom='3' pref-width='18'>
           <text text='~map-name' align='Left' font-size='3' overflow-mode='Ellipsis' word-wrapping='false'/>

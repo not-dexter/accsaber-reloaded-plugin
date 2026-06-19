@@ -1,10 +1,16 @@
 ﻿using AccSaber.API;
 using AccSaber.Models;
+using AccSaber.Utils.Safety;
+using BeatSaberMarkupLanguage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace AccSaber.Utils
 {
@@ -22,49 +28,8 @@ namespace AccSaber.Utils
         public const int SECONDS_WEEK = SECONDS_DAY * 7; // 604,800
         public const int SECONDS_YEAR = (int)(SECONDS_DAY * DAYS_YEAR); // 31,556,926
 
+        private static readonly Dictionary<string, Sprite> ImageCache = [];
 
-        /*public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
-        {
-            try
-            {
-                if (layersDeep <= 0)
-                    throw new ArgumentException("Cannot convert dateTime with zero or less layers.");
-
-                DateTime now = DateTime.UtcNow;
-
-                dateTime = dateTime.ToUniversalTime();
-
-                bool inFuture = now < dateTime;
-
-                TimeSpan timeSpan = inFuture ? dateTime - now : now - dateTime;
-
-                if (timeSpan <= TimeSpan.Zero)
-                    return formatting ? "Now." : "Now";
-
-                bool single = layersDeep == 1;
-                DateTime current = inFuture ? now : dateTime;
-                List<string> outpParts = [with(layersDeep * 2 - 1)];
-
-                while (timeSpan.Ticks > 0 && layersDeep-- > 0)
-                {
-                    var (timeDiff, str) = GetMostSignificantTime(timeSpan, current);
-                    timeSpan -= timeDiff;
-                    current = current.AddTicks(timeDiff.Ticks);
-
-                    outpParts.Add(layersDeep == 0 || timeSpan.Ticks == 0 ? " and " : ", ");
-                    outpParts.Add(str);
-                }
-
-                string outp = outpParts.Skip(1).Aggregate("", (total, current) => total + current);
-
-                return formatting ? inFuture ? $"In {outp}." : $"{outp} ago." : outp;
-            }
-            catch (Exception e)
-            {
-                Plugin.Log.Error($"There was an error converting the dateTime given ({dateTime}) to relative time!\n{e}");
-                return "";
-            }
-        }*/
         public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
         {
             try
@@ -111,7 +76,7 @@ namespace AccSaber.Utils
                 if (!formatting)
                     return output;
 
-                if (output == "now")
+                if (output.Equals("now"))
                     return "Now.";
 
                 return inFuture ? $"In {output}." : $"{output} ago.";
@@ -224,6 +189,73 @@ namespace AccSaber.Utils
             }
 
             return mult;
+        }
+
+        public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default)
+        {
+            try
+            {
+                MainThreadDispatcher.AssertOnMainThread();
+                Sprite? s = null;
+#if NEW_VERSION
+                BeatmapLevel? level = SongCore.Loader.GetLevelByHash(hash);
+
+                if (level is not null)
+                    s = await level.previewMediaData.GetCoverSpriteAsync();
+#else
+                CustomPreviewBeatmapLevel? level = SongCore.Loader.GetLevelByHash(hash);
+
+                if (level is not null)
+                    s = await level.GetCoverImageAsync(ct);
+#endif
+
+                if (!image.gameObject.activeSelf)
+                    return;
+
+                if (s is not null)
+                    image.sprite = s;
+
+                else if (coverUrl is not null)
+                    await LoadImage(image, coverUrl, ct);
+
+                else
+                    image.sprite = SongCore.Loader.defaultCoverImage;
+            }
+            catch (TaskCanceledException) when (ct.IsCancellationRequested) { }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error loading a cover image!\n" + e);
+                image.sprite = SongCore.Loader.defaultCoverImage;
+            }
+        }
+        public static async Task LoadImage(this Image image, string coverUrl, CancellationToken ct = default)
+        {
+            try
+            {
+                if (ImageCache.ContainsKey(coverUrl))
+                {
+                    image.sprite = ImageCache[coverUrl];
+                    return;
+                }
+
+                var (data, _) = await APIHandler.CallAPI_Bytes(coverUrl, null, ct: ct);
+
+                if (data is null)
+                    return;
+
+
+                Sprite s = await VersionUtils.LoadSpriteAsync(data);
+
+                if (image.gameObject.activeSelf)
+                    image.sprite = s;
+
+                ImageCache.Add(coverUrl, s);
+            }
+            catch (TaskCanceledException) when (ct.IsCancellationRequested) { }
+            catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an issue loading the image \"{coverUrl}\"!\n{e}");
+            }
         }
 
         public static bool Compare<T>(this T x, T y, string comp) where T : IComparable

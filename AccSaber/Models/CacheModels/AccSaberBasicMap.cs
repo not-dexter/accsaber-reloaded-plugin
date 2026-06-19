@@ -12,6 +12,9 @@ namespace AccSaber.Models.CacheModels
         [JsonProperty("songHash")]
         public string Hash { get; set; } = null!;
 
+        [JsonProperty("songName")]
+        public string SongName { get; set; } = null!;
+
         [JsonProperty("difficulties")]
         public virtual List<AccSaberBasicDifficulty> Difficulties { get; set; } = [];
 

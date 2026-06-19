@@ -201,7 +201,7 @@ namespace AccSaber.UI.ViewControllers
 
 		private async Task ToggleRainbowBannerTween(bool enable)
 		{
-			_mainThreadDispatcher.AssertOnMainThread();
+			MainThreadDispatcher.AssertOnMainThread();
 
 			if (_container.Background() is not ImageView background)
 			{
@@ -254,7 +254,7 @@ namespace AccSaber.UI.ViewControllers
 		[UIAction("#post-parse")]
 		public void PostParse()
 		{
-			_mainThreadDispatcher.AssertOnMainThread();
+			MainThreadDispatcher.AssertOnMainThread();
 
 			if (_container.Background() is ImageView background)
 			{

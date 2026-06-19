@@ -2,8 +2,6 @@
 using HMUI;
 using Zenject;
 using System;
-using System.Collections;
-using UnityEngine;
 
 
 #if !NEW_VERSION
