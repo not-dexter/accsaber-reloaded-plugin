@@ -18,6 +18,9 @@ namespace AccSaber.Utils.Misc
         private readonly Dictionary<string, CacheInfo> cacheInfos;
         public IReadOnlyDictionary<string, CacheInfo> CacheInfos => cacheInfos;
 
+        public readonly Task InitTask;
+        private readonly object initLock = new();
+
         public int TotalMaps { get; private set; } = -1;
         public Dictionary<string, AccSaberBasicMap> CachedMaps = null!;
         public Dictionary<Guid, AccSaberBasicDifficulty> CachedDifficulties = null!;
@@ -64,6 +67,12 @@ namespace AccSaber.Utils.Misc
                 { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, null) },
                 { ResourcePaths.MISSION_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberMission>), ValidateMissionCache, LoadMissionCache) }
             };
+
+            InitTask = Task.Run(() =>
+            {
+                lock (initLock)
+                    System.Threading.Monitor.Wait(initLock, 30_000); // timeout just to make sure a deadlock will not happen even if something breaks.
+            });
         }
         internal async void SetCacheData(SerializerUtils serializerUtils)
         {
@@ -114,6 +123,11 @@ namespace AccSaber.Utils.Misc
             catch (Exception e)
             {
                 Plugin.Log.Error(e);
+            }
+            finally
+            {
+                lock (initLock)
+                    System.Threading.Monitor.Pulse(initLock);
             }
         }
 

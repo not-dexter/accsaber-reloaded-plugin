@@ -104,8 +104,16 @@ namespace AccSaber.Managers
         {
             await _serialHandler.RevalidateMissions(overrideCache);
 
-            while (_serialHandler.Missions is null)
-                await Task.Delay(1000);
+            if (_serialHandler.Missions is null)
+            {
+                //Plugin.Log.Warn("Missions are null, waiting for init task...");
+                await _serialHandler.InitTask;
+                if (_serialHandler.Missions is null)
+                {
+                    Plugin.Log.Error("For some reason, the Missions screen is unable to load the missions correctly!");
+                    return [];
+                }
+            }
 
             List<AccSaberMission> outp = [.. _serialHandler.Missions];
 

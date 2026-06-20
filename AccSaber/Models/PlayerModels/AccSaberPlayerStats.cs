@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Runtime.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AccSaber.Models.PlayerModels
@@ -52,7 +53,7 @@ namespace AccSaber.Models.PlayerModels
         [JsonIgnore]
         public AccSaberPlayerStatsDiff? StatDiffs { get; set; }
 
-        public async Task<bool> LoadStatDiff()
+        public async Task<bool> LoadStatDiff(CancellationToken ct = default)
         {
             if (Category is null || StatDiffs is not null)
                 return false;
@@ -62,7 +63,7 @@ namespace AccSaber.Models.PlayerModels
             if (Category != APCategory.Overall)
                 category_id += "_acc";
 
-            StatDiffs = await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.Throttler);
+            StatDiffs = await APIHandler.CallAPI_Json<AccSaberPlayerStatsDiff>(string.Format(HelpfulPaths.APAPI_PLAYER_STATDIFF, PlayerId, category_id), AccsaberAPI.Throttler, ct: ct);
 
             return StatDiffs is not null;
         }

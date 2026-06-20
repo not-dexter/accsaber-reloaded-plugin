@@ -50,7 +50,7 @@ namespace AccSaber.Utils
                 // For calendar calculations, count forward from the earlier date.
                 DateTime cursor = inFuture ? now : target;
 
-                List<string> parts = new();
+                List<string> parts = [];
 
                 while (remaining.Ticks > 0 && parts.Count < layersDeep)
                 {
@@ -228,34 +228,45 @@ namespace AccSaber.Utils
                 image.sprite = SongCore.Loader.defaultCoverImage;
             }
         }
-        public static async Task LoadImage(this Image image, string coverUrl, CancellationToken ct = default)
+        public static async Task LoadImage(this Image image, string url, CancellationToken ct = default)
         {
             try
             {
-                if (ImageCache.ContainsKey(coverUrl))
-                {
-                    image.sprite = ImageCache[coverUrl];
-                    return;
-                }
+                Sprite? s = await GetImage(url, ct); 
 
-                var (data, _) = await APIHandler.CallAPI_Bytes(coverUrl, null, ct: ct);
-
-                if (data is null)
-                    return;
-
-
-                Sprite s = await VersionUtils.LoadSpriteAsync(data);
-
-                if (image.gameObject.activeSelf)
+                if (s is not null && image.gameObject.activeSelf)
                     image.sprite = s;
-
-                ImageCache.Add(coverUrl, s);
             }
             catch (TaskCanceledException) when (ct.IsCancellationRequested) { }
             catch (Exception e)
             {
-                Plugin.Log.Error($"There was an issue loading the image \"{coverUrl}\"!\n{e}");
+                Plugin.Log.Error($"There was an issue setting the image \"{url}\"!\n{e}");
             }
+        }
+        public static async Task<Sprite?> GetImage(string url, CancellationToken ct = default)
+        {
+            try
+            {
+                if (ImageCache.ContainsKey(url))
+                    return ImageCache[url];
+
+                var (data, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct);
+
+                if (data is null)
+                    return null;
+
+                Sprite s = await VersionUtils.LoadSpriteAsync(data);
+
+                ImageCache.Add(url, s);
+
+                return s;
+            }
+            catch (TaskCanceledException) when (ct.IsCancellationRequested) { }
+            catch (Exception e)
+            {
+                Plugin.Log.Error($"There was an issue loading the image \"{url}\"!\n{e}");
+            }
+            return null;
         }
 
         public static bool Compare<T>(this T x, T y, string comp) where T : IComparable

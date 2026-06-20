@@ -66,8 +66,9 @@ namespace AccSaber.Installers
 			Container.BindInterfacesAndSelfTo<AccSaberPanelViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberLeaderboardViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<LeaderboardScoreModalController>().AsSingle();
-			Container.Bind<LeaderboardUserModalController>().AsSingle();
+			Container.BindInterfacesAndSelfTo<LeaderboardUserModalController>().AsSingle();
             Container.Bind<LeaderboardSettingsModalController>().AsSingle();
+
 			Container.BindInterfacesAndSelfTo<AddonAdder>().AsSingle();
 		}
 	}

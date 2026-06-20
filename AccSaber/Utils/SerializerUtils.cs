@@ -70,12 +70,14 @@ namespace AccSaber.Utils
                         caches.Add(cache);
                     }
                 }
-
-                handler.SetCacheData(this);
-
-            } catch (Exception e)
+            } 
+            catch (Exception e)
             {
                 Plugin.Log.Error($"There was an error loading the cache files.\n{e}");
+            }
+            finally
+            {
+                handler.SetCacheData(this);
             }
         }
         private AccSaberSerializedCache? Load(string file, JsonSerializer serializer, Type serializedType)

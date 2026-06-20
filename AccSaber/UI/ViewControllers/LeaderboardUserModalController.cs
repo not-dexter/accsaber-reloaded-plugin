@@ -5,6 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using AccSaber.API;
 using AccSaber.Consts;
@@ -45,6 +46,7 @@ namespace AccSaber.UI.ViewControllers
 		private string _headset = null!;
 
 		//private bool friendColorSwapped = false, rivalColorSwapped = false;
+		private CancellationTokenSource? tokenSource = null;
 
 		[UIValue("pixelImg")]
 		private const string PixelImg = ResourcePaths.PIXEL;
@@ -80,7 +82,6 @@ namespace AccSaber.UI.ViewControllers
 		private readonly TextMeshProUGUI _titleText = null!;
 
         [UIValue("dimColor")] public const string dimColor = ColorUtils.DARK_BLUE;
-        [UIValue("playerImageBorder")] public const string playerImageBorderPath = ResourcePaths.GRADIENT_CORNER;
 
         [UIComponent("playerImageBackground")] private readonly ImageView _playerImageBackground = null!;
         [UIComponent("playerImageBorder")] private readonly ImageView _playerImageBorder = null!;
@@ -404,24 +405,43 @@ namespace AccSaber.UI.ViewControllers
 		
 		private async Task UpdateUserInfo()
 		{
-			if (_userId is null)
+			CancellationTokenSource tokenSource = new();
+			this.tokenSource = tokenSource;
+
+			CancellationToken ct = tokenSource.Token;
+
+			try
 			{
-				return;
-			}
+                if (_userId is null)
+                {
+                    return;
+                }
 
-            if (_user is null)
-            {
-                IsLoading = true;
-				_user = await _api.GetPlayerInfo(_userId, true, false);
+                if (_user is null)
+                {
+                    IsLoading = true;
+                    _user = await _api.GetPlayerInfo(_userId, true, false, ct);
+                }
+
+                if (_user is not null)
+                    await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == _categoryValue), ct);
             }
-
-			if (_user is not null)
-				await SetUserInfo(_user, _user.Statistics!.First(stat => stat.Category == _categoryValue));
+			catch (TaskCanceledException) when (ct.IsCancellationRequested) { }
+			catch (Exception e)
+			{
+				Plugin.Log.Error(e);
+			}
+			finally
+			{
+				tokenSource.Dispose();
+				if (this.tokenSource == tokenSource)
+					this.tokenSource = null; // check to make sure no race condition occurs
+			}
         }
 
-		private async Task SetUserInfo(AccSaberPlayer userInfo, AccSaberPlayerStats stats) // ty person for the progress bar -- you're welcome :)
+		private async Task SetUserInfo(AccSaberPlayer userInfo, AccSaberPlayerStats stats, CancellationToken ct = default) // ty person for the progress bar -- you're welcome :)
 		{
-			var _color = userInfo.LevelData.PlayerTitle.ToLower() switch
+            var _color = userInfo.LevelData.PlayerTitle.ToLower() switch
             {
                 "newcomer" => "#6B7280",
                 "apprentice" => "#3b82f6",
@@ -453,15 +473,16 @@ namespace AccSaber.UI.ViewControllers
 					return "";
 			}
 
-			if (stats.StatDiffs is null && !await stats.LoadStatDiff())
-				return;
             try
             {
                 MainThreadDispatcher.AssertOnMainThread();
 
-				// this stat diff positioning fix is so lazy LMAO
+                if (stats.StatDiffs is null && !await stats.LoadStatDiff(ct))
+                    return;
 
-				Username = $"{userInfo.PlayerName}";
+                // this stat diff positioning fix is so lazy LMAO
+
+                Username = $"{userInfo.PlayerName}";
 				Rank = stats.StatDiffs!.RankingDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color> #{stats.Rank} {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
 				Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color> #{stats.CountryRank} {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
 				Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=65%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color> {stats.AP:N2} AP {StatDiff(stats.StatDiffs.ApDiff)}": $"{stats.AP:N2} AP";
@@ -498,7 +519,7 @@ namespace AccSaber.UI.ViewControllers
                 if (_firstLoad)
                 {
                     if (userInfo.AvatarUrl is not null)
-                        await _profileImage.SetImageAsync(userInfo.AvatarUrl, false);
+                        await _profileImage.LoadImage(userInfo.AvatarUrl, ct);
 
                     _firstLoad = false;
                 }
@@ -513,6 +534,7 @@ namespace AccSaber.UI.ViewControllers
                     _timeTweeningManager.AddTween(tween, this);
                 }
             }
+			catch (TaskCanceledException) when (ct.IsCancellationRequested) { }
 			catch (Exception e)
 			{
 				Plugin.Log.Error(e);
@@ -526,6 +548,9 @@ namespace AccSaber.UI.ViewControllers
 		private void OnModalClosed()
 		{
 			_user = null;
+
+			tokenSource?.Cancel();
+
 			if (titleRoutine is not null)
 			{
 				_mainThreadDispatcher.EnqueueStopRoutine(titleRoutine);
@@ -540,7 +565,7 @@ namespace AccSaber.UI.ViewControllers
 
 		public void Dispose()
 		{
-			_modalView.blockerClickedEvent -= OnModalClosed;
+			_modalView?.blockerClickedEvent -= OnModalClosed;
 		}
 	}
 }
