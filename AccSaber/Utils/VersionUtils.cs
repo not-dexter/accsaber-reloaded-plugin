@@ -43,9 +43,8 @@ namespace AccSaber.Utils
         public static async Task SetImageAsync(this Image image, string location, bool animated = true) => image.SetImage(location);
 #pragma warning restore IDE0060
         #endregion
-        public static Task<Sprite> LoadSpriteAsync(string path) =>
-            Task.Run(() => Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), path)));
-        public static Task<Sprite> LoadSpriteAsync(byte[] data, float PixelsPerUnit = 100) => Task.Run(() => Utilities.LoadSpriteRaw(data, PixelsPerUnit));
+        public static async Task<Sprite> LoadSpriteAsync(string path) => Utilities.LoadSpriteRaw(Utilities.GetResource(Assembly.GetExecutingAssembly(), path));
+        public static async Task<Sprite> LoadSpriteAsync(byte[] data, float PixelsPerUnit = 100) => Utilities.LoadSpriteRaw(data, PixelsPerUnit);
         public static ref List<object> Data(this CustomCellListTableData ccltd) => ref ccltd.data;
         public static ref TableView TableView(this CustomCellListTableData ccltd) => ref ccltd.tableView;
         public static ref Image Background(this Backgroundable bg) => ref bg.background;

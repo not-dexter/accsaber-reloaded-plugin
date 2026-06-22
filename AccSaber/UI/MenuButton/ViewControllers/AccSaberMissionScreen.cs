@@ -33,7 +33,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     {
         private bool _isLoading, _parsed = false;
         private string _dailyTime = null!, _weeklyTime = null!;
-        private DateTime _dailyRefreshDate, _weeklyRefreshDate;
+        private DateTime _dailyRefreshDate, _weeklyRefreshDate, _lastUpdate = DateTime.UtcNow;
         private IEnumerator? _updateTimeRoutine;
 
         private CancellationTokenSource? TimeUpdaterCanceller = null;
@@ -172,7 +172,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 if (_dailyRefreshDate <= DateTime.UtcNow)
                 {
                     StopTimer();
-                    Plugin.Log.Info($"daily = {_dailyRefreshDate}, now = {DateTime.UtcNow}");
+                    //Plugin.Log.Info($"daily = {_dailyRefreshDate}, now = {DateTime.UtcNow}");
                     SetMissions(true).ContinueWith(finish => UpdateTimer());
                 }
 
@@ -263,7 +263,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 try
                 {
-                    List<AccSaberMission> missions = await _accSaberStore.GetMissions();
+                    List<AccSaberMission> missions = await _accSaberStore.GetMissions(overrideCache: _lastUpdate < SerializationHandler.LastScoreTime);
+
+                    _lastUpdate = DateTime.UtcNow;
 
                     while (forceNewContent && missions.First(mission => mission.MissionPool == MissionPool.Daily).ExpiresAt <= expiration)
                     {

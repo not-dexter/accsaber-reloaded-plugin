@@ -4,6 +4,7 @@ using AccSaber.Models;
 using AccSaber.Patches;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using IPA.Loader;
 using Newtonsoft.Json;
 using System;
@@ -238,6 +239,7 @@ namespace AccSaber.ScoreTracking
                 aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score);
 
             bool submitted = await api.SubmitScore(score);
+            SerializationHandler.LastScoreTime = DateTime.UtcNow;
 
             if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
                 aslvc.ForceShowLeaderboard();

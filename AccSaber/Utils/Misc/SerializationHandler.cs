@@ -15,6 +15,8 @@ namespace AccSaber.Utils.Misc
         [Inject] private readonly AccsaberAPI api = null!;
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
 
+        private bool invalidateMissions = false;
+
         private readonly Dictionary<string, CacheInfo> cacheInfos;
         public IReadOnlyDictionary<string, CacheInfo> CacheInfos => cacheInfos;
 
@@ -41,14 +43,19 @@ namespace AccSaber.Utils.Misc
                 return (int[])_playerCache.ExtraData[0];
             }
         }
+        public static DateTime LastScoreTime { get; internal set; } = DateTime.MinValue;
+
 
         private AccSaberSerializedCache<AccSaberMission>? _missions = null;
         public IReadOnlyList<AccSaberMission>? Missions => _missions?.Content;
 
         public async Task RevalidateMissions(bool forceRefresh = false)
         {
-            if (_missions is null || (!forceRefresh && await ValidateMissionCache(_missions)))
+            if (_missions is null || (!invalidateMissions && !forceRefresh && await ValidateMissionCache(_missions)))
                 return;
+
+            if (invalidateMissions)
+                invalidateMissions = false;
 
             AccSaberSerializedCache<AccSaberMission> newCache = ((await LoadMissionCache()) as AccSaberSerializedCache<AccSaberMission>)!;
 
@@ -183,7 +190,9 @@ namespace AccSaber.Utils.Misc
             if (response is null)
                 return true; // If we don't get a good response from the API, then we can't invalidate it, so might as well use what we have.
 
-            bool valid = lastUpdated >= response.Content![0].TimeSet;
+            LastScoreTime = response.Content![0].TimeSet;
+            bool valid = lastUpdated >= LastScoreTime;
+            invalidateMissions = !valid;
 
             return valid;
         }
