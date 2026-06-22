@@ -8,7 +8,6 @@ namespace AccSaber.Utils.Safety
 {
     internal class MainThreadDispatcher : MonoBehaviour
     {
-#pragma warning disable IDE0051
         private static readonly ConcurrentQueue<Action> _actionQueue = [];
 
         private void Update()

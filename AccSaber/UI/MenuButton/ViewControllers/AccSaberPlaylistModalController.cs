@@ -21,7 +21,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     internal class AccSaberPlaylistModalController : Utils.Safety.SafeNotifyPropertyChanged, IInitializable, IDisposable
     {
-#pragma warning disable IDE0051
         [Inject] private readonly AccSaberMainFlowCoordinator mainFlowCoordinator = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly PlaylistUtils playlistUtils = null!;

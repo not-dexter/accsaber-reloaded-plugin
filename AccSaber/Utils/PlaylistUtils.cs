@@ -13,7 +13,6 @@ namespace AccSaber.Utils
 {
     internal class PlaylistUtils : IInitializable, IDisposable
     {
-#pragma warning disable IDE0051
         public const string PlaylistAuthor = "Accsaber Reloaded";
         public const string CustomDataKey = "customSync";
 
@@ -171,14 +170,26 @@ namespace AccSaber.Utils
                 APCategory category = (APCategory)Enum.Parse(typeof(APCategory), args[3 + offset]);
                 string type = args[4 + offset];
 
+                ComparisonType compType = comp.FromComparisonString();
+                if (compType == ComparisonType.NONE)
+                {
+                    if (!Enum.TryParse(comp, out compType))
+                    {
+                        if (int.TryParse(comp, out int compNum) && compNum > 0)
+                            compType = (ComparisonType)compNum;
+                        else
+                            throw new Exception($"The comparison type \"{comp}\" cannot be parsed!");
+                    }
+                }
+
                 IEnumerable<PlaylistMapInfo>? maps = null;
                 switch (type)
                 {
                     case "ap":
-                        maps = await levelUtils.GetMapsAp(category, playerId, threshold, comp.FromComparisonString());
+                        maps = await levelUtils.GetMapsAp(category, playerId, threshold, compType);
                         break;
                     case "accuracy":
-                        maps = await levelUtils.GetMapsAcc(category, playerId, threshold, comp.FromComparisonString());
+                        maps = await levelUtils.GetMapsAcc(category, playerId, threshold, compType);
                         break;
                 }
 

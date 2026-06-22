@@ -15,7 +15,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 {
     internal sealed class AccSaberNewsModal : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
     {
-#pragma warning disable IDE0051
         private bool _parsed;
         private string _title = null!;
         private string _content = null!;

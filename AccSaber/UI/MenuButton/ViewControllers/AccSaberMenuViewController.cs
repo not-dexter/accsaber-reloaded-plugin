@@ -36,8 +36,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMenuView.bsml")]
     internal class AccSaberMenuViewController : Utils.Safety.BSMLSafeAutomaticViewController, IInitializable, IDisposable, AccSaberNotificationModal.IPopup
 	{
-#pragma warning disable IDE0051
-		private AccSaberPlayer? _user;
+        private AccSaberPlayer? _user;
         private bool _parsed;
         private bool _firstLoad;
         private bool _isLoading;
@@ -652,7 +651,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			private readonly string _mapAuthor = data.SongAuthor ?? "Unknown Author";
 
 			[UIValue("map-diff")]
-			private string _mapDiff => DiffName(EnumUtils.DiffToReloadedDiff(Data.Difficulty));
+			private string MapDiff => DiffName(EnumUtils.DiffToReloadedDiff(Data.Difficulty));
 
 			[UIValue("score-acc")]
 			private readonly string _scoreAcc = $"{data.Accuracy * 100:F2}%";
@@ -664,7 +663,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             private readonly string _scoreWeighted = $"<color={ColorUtils.GREY}>({data.WeightedAp:F2} AP)</color>";
 
             [UIValue("map-category")]
-			private string _mapCategory => CategoryName(EnumUtils.CategoryToReloadedCategoryId(Data.Category)!);
+			private string MapCategory => CategoryName(EnumUtils.CategoryToReloadedCategoryId(Data.Category));
 
 			[UIValue("show-status")]
 			public bool ShowStatus

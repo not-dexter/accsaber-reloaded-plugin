@@ -1,7 +1,6 @@
 ﻿using AccSaber.API;
 using AccSaber.Models;
 using AccSaber.Utils.Safety;
-using BeatSaberMarkupLanguage;
 using System;
 using System.Collections.Generic;
 using System.Linq;

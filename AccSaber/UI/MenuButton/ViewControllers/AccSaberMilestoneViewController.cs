@@ -26,7 +26,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMilestoneView.bsml")]
     internal class AccSaberMilestoneViewController : Utils.Safety.BSMLSafeAutomaticViewController, AccSaberNotificationModal.IPopup
     {
-#pragma warning disable IDE0051
         private static readonly Dictionary<Guid, AccSaberFullMilestone> MilestoneCache = [];
 
 		private bool _parsed;

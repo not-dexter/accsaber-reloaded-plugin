@@ -294,7 +294,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             hoveredTags = ParserParams.GetObjectsWithTag("hovered");
             neitherTags = ParserParams.GetObjectsWithTag("un-selected-un-hovered");
         }
-#pragma warning disable IDE0051
+
         private void Awake()
         {
             RectTransform rt = (gameObject.transform as RectTransform)!;
@@ -310,7 +310,6 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             gameObject.AddComponent<LayoutElement>();
             gameObject.AddComponent<Touchable>();
         }
-#pragma warning restore IDE0051
     }
 
     public interface ICellDataSource

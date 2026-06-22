@@ -31,7 +31,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
     internal class AccSaberMissionScreen : SafeNotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
-#pragma warning disable IDE0051
         private bool _isLoading, _parsed = false;
         private string _dailyTime = null!, _weeklyTime = null!;
         private DateTime _dailyRefreshDate, _weeklyRefreshDate;

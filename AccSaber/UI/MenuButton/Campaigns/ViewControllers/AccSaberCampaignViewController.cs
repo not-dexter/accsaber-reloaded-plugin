@@ -16,7 +16,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberCampaignView.bsml")]
     internal class AccSaberCampaignViewController : Utils.Safety.BSMLSafeAutomaticViewController
     {
-#pragma warning disable IDE0051
+#pragma warning disable CS0414 // Field assigned to but never read.
         private bool _parsed = false;
         private CategoryTab _currentTab;
         private bool _isLoading;

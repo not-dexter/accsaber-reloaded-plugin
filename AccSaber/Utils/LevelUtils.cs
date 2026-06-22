@@ -70,6 +70,9 @@ namespace AccSaber.Utils
 
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAp(APCategory type, string playerId, float apThreshold, ComparisonType comp)
         {
+            if (comp == ComparisonType.NONE)
+                throw new ArgumentException("Comparison type cannot be none.");
+
             IEnumerable<AccSaberBasicDifficulty>? scores = (await _api.GetMapsAboveThreshold(playerId, apThreshold, type))?.Cast<AccSaberBasicDifficulty>();
 
             if (scores is null)
@@ -91,6 +94,9 @@ namespace AccSaber.Utils
         }
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, ComparisonType comp)
         {
+            if (comp == ComparisonType.NONE)
+                throw new ArgumentException("Comparison type cannot be none.");
+
             string sort = (comp & ComparisonType.LT) != 0 ? "&sort=accuracy,desc" : "&sort=accuracy,asc";
             AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.CategoryToReloadedCategoryId(type), 0, 50) + sort, AccsaberAPI.Throttler);
 
@@ -124,6 +130,9 @@ namespace AccSaber.Utils
         {
             try
             {
+                if (comp == ComparisonType.NONE)
+                    throw new ArgumentException("Comparison type cannot be none.");
+
                 StatusTextChanged += statEvent;
 
                 StatusTextChanged?.Invoke("Loading...");
@@ -146,7 +155,7 @@ namespace AccSaber.Utils
                 if (maps is null)
                     return;
 
-                await LoadPlaylist(filename, playlistName, maps, $"{comp},{apThreshold},{playerId},{type},ap", closeMenu);
+                await LoadPlaylist(filename, playlistName, maps, $"{comp.ToComparisonString()},{apThreshold},{playerId},{type},ap", closeMenu);
             }
             catch (Exception e)
             {
@@ -164,6 +173,9 @@ namespace AccSaber.Utils
         {
             try
             {
+                if (comp == ComparisonType.NONE)
+                    throw new ArgumentException("Comparison type cannot be none.");
+
                 StatusTextChanged += statEvent;
 
                 StatusTextChanged?.Invoke("Loading...");
@@ -186,7 +198,7 @@ namespace AccSaber.Utils
                 if (maps is null)
                     return;
 
-                await LoadPlaylist(filename, playlistName, maps, $"{comp},{accThreshold},{playerId},{type},accuracy", closeMenu);
+                await LoadPlaylist(filename, playlistName, maps, $"{comp.ToComparisonString()},{accThreshold},{playerId},{type},accuracy", closeMenu);
             }
             catch (Exception e)
             {

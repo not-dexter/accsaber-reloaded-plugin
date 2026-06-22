@@ -27,8 +27,7 @@ namespace AccSaber.UI.ViewControllers
 {
 	internal sealed class LeaderboardUserModalController : SafeNotifyPropertyChanged, IDisposable
 	{
-#pragma warning disable IDE0051
-		private string? _userId;
+        private string? _userId;
 		private AccSaberPlayer? _user;
 		private bool _parsed;
 		private bool _firstLoad;
