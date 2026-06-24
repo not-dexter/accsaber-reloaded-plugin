@@ -18,13 +18,10 @@ namespace AccSaber.Installers
     internal sealed class AccSaberMenuInstaller : Installer
 	{
 		private readonly PluginConfig _pluginConfig;
-		//private readonly APCalc _calc;
 
 		public AccSaberMenuInstaller(PluginConfig pluginConfig)
 		{
 			_pluginConfig = pluginConfig;
-            //_calc = calc;
-
         }
 		
 		public override void InstallBindings()
@@ -32,7 +29,6 @@ namespace AccSaber.Installers
 			Plugin.Container = Container;
 
 			Container.BindInstance(_pluginConfig).AsSingle();
-			//Container.BindInstance(_calc).AsSingle();
 
             Container.BindInterfacesTo<PlayerSocialLife>().FromResolve();
 

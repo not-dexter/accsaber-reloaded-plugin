@@ -182,12 +182,12 @@ namespace AccSaber.API
 
         private List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right, bool reverseOrder = false) where T : IComparable
         {
-            return MergeListWithEnumerable(left, right, a => a);
+            return MergeListWithEnumerable(left, right, a => a, reverseOrder);
         }
 
         private List<T> MergeListWithEnumerable<T>(List<T> left, IEnumerable<T> right, Func<T, IComparable> converter, bool reverseOrder = false)
         {
-            List<T> outp = new(left.Count + right.Count());
+            List<T> outp = [with(left.Count + right.Count())];
             IEnumerator<T>? rightEnum = right.GetEnumerator();
 
             rightEnum.MoveNext();
@@ -941,7 +941,7 @@ namespace AccSaber.API
             }
         }
 
-        public async Task<IEnumerable<AccSaberPlayerScore>?> GetPlayerScores(int page, int pageLength, APCategory category = APCategory.Overall, CancellationToken ct = default)
+        /*public async Task<IEnumerable<AccSaberPlayerScore>?> GetPlayerScores(int page, int pageLength, APCategory category = APCategory.Overall, CancellationToken ct = default)
         { // page is zero indexed.
             // The cache should be sorted, so this should not be an issue.
             IEnumerable<AccSaberPlayerScore> filteredCache = serialHandler.PlayerScores;
@@ -967,7 +967,7 @@ namespace AccSaber.API
 
             IEnumerable<AccSaberPlayerScore> outp = response.Content.Select(entry => new AccSaberPlayerScore(entry));
 
-            if (category == APCategory.Overall) // TODO: At some point, support caching for any context the score returns. As it is, it would take too much time.
+            if (category == APCategory.Overall) // TOD O: At some point, support caching for any context the score returns. As it is, it would take too much time.
             {
                 serialHandler.PlayerScores.AddRange(outp);
 
@@ -980,6 +980,21 @@ namespace AccSaber.API
             }
 
             return outp;
+        }*/ // NOTE: Cache covers getting all scores, no need to do this anymore.
+        public IEnumerable<AccSaberPlayerScore> GetPlayerScores(int page, int pageLength, APCategory category = APCategory.Overall)
+        { // page is zero indexed.
+            // The cache should be sorted, so this should not be an issue.
+            IEnumerable<AccSaberPlayerScore> filteredCache = serialHandler.PlayerScores;
+            if (category == APCategory.Overall || serialHandler.CategoryPlayerScoreLength[(int)category] >= 0)
+            {
+                if (category != APCategory.Overall)
+                    filteredCache = filteredCache.Where(score => score.Category == category);
+
+                if (filteredCache.Count() >= (page + 1) * pageLength)
+                    return filteredCache.Skip(page * pageLength).Take(pageLength);
+            }
+            
+            throw new Exception("Cache is not working correctly!");
         }
         public async Task<IEnumerable<AccSaberDifficulty>?> GetMapsAboveThreshold(string playerId, float apThreshold, APCategory category = APCategory.Overall, CancellationToken ct = default)
         {

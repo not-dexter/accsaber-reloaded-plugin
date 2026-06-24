@@ -46,6 +46,7 @@ namespace AccSaber.Utils
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly AccSaberLeaderboardViewController _leaderboardVC = null!;
         [Inject] private readonly MainThreadDispatcher _threadDispatcher = null!;
+        [Inject] private readonly PlayerSocialLife _playerInfo = null!;
 
         public event Action<string?>? StatusTextChanged;
 
@@ -92,6 +93,19 @@ namespace AccSaber.Utils
 
             return _playlistUtils.GetPlaylistData(ids);
         }
+        internal IEnumerable<PlaylistUtils.PlaylistMapInfo> GetMapsAp(APCategory type, float apThreshold, ComparisonType comp)
+        {
+            if (comp == ComparisonType.NONE)
+                throw new ArgumentException("Comparison type cannot be none.");
+
+            List<AccSaberPlayerScore> scores = [.. _serialHandler.PlayerScores.Where(score => score.Category == type && comp.Compare<float>(score.AP, apThreshold))];
+            MyFloatComparer floatComp = new(comp.Invert());
+            scores.Sort((a, b) => floatComp.Compare(a.AP, b.AP));
+
+            IEnumerable<Guid> ids = scores.Select(entry => entry.DifficultyId);
+
+            return _playlistUtils.GetPlaylistData(ids);
+        }
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, ComparisonType comp)
         {
             if (comp == ComparisonType.NONE)
@@ -99,6 +113,8 @@ namespace AccSaber.Utils
 
             string sort = (comp & ComparisonType.LT) != 0 ? "&sort=accuracy,desc" : "&sort=accuracy,asc";
             AccSaberPagedContent<AccSaberLeaderboardEntry>? scores = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(HelpfulPaths.APAPI_CATEGORY_SCORES, playerId, EnumUtils.CategoryToReloadedCategoryId(type), 0, 50) + sort, AccsaberAPI.Throttler);
+
+            _serialHandler.PlayerScores.Where(score => comp.Compare<float>(score.Accuracy, accThreshold)).Select(entry => entry.DifficultyId);
 
             if (scores is null || scores.Content is null)
                 return null;
@@ -113,7 +129,19 @@ namespace AccSaber.Utils
 
             return _playlistUtils.GetPlaylistData(ids);
         }
+        internal IEnumerable<PlaylistUtils.PlaylistMapInfo> GetMapsAcc(APCategory type, float accThreshold, ComparisonType comp)
+        {
+            if (comp == ComparisonType.NONE)
+                throw new ArgumentException("Comparison type cannot be none.");
 
+            List<AccSaberPlayerScore> scores = [.. _serialHandler.PlayerScores.Where(score => score.Category == type && comp.Compare<float>(score.Accuracy, accThreshold))];
+            MyFloatComparer floatComp = new(comp.Invert());
+            scores.Sort((a, b) => floatComp.Compare(a.Accuracy, b.Accuracy));
+
+            IEnumerable<Guid> ids = scores.Select(entry => entry.DifficultyId);
+
+            return _playlistUtils.GetPlaylistData(ids);
+        }
         public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, string? customSyncData, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             StatusTextChanged += statEvent;
@@ -137,6 +165,9 @@ namespace AccSaber.Utils
 
                 StatusTextChanged?.Invoke("Loading...");
 
+                await _playerInfo.LoadTask;
+                bool isMainPlayer = playerId.Equals(_playerInfo.PlayerID);
+
                 string categoryName = EnumUtils.CategoryToReloadedCategory(type).ToString().Replace('_','-');
                 string thresholdDirection = (comp & ComparisonType.GT) != 0 ? "above" : "below";
 
@@ -150,7 +181,7 @@ namespace AccSaber.Utils
                     return;
                 }
 
-                IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = await GetMapsAp(type, playerId, apThreshold, comp);
+                IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = isMainPlayer ? GetMapsAp(type, apThreshold, comp) : await GetMapsAp(type, playerId, apThreshold, comp);
 
                 if (maps is null)
                     return;
@@ -180,6 +211,9 @@ namespace AccSaber.Utils
 
                 StatusTextChanged?.Invoke("Loading...");
 
+                await _playerInfo.LoadTask;
+                bool isMainPlayer = playerId.Equals(_playerInfo.PlayerID);
+
                 string categoryName = EnumUtils.CategoryToReloadedCategory(type).ToString().Replace('_','-');
                 string thresholdDirection = (comp & ComparisonType.GT) != 0 ? "above" : "below";
 
@@ -193,7 +227,7 @@ namespace AccSaber.Utils
                     return;
                 }
 
-                IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = await GetMapsAcc(type, playerId, accThreshold, comp);
+                IEnumerable<PlaylistUtils.PlaylistMapInfo>? maps = isMainPlayer ? GetMapsAcc(type, accThreshold, comp) : await GetMapsAcc(type, playerId, accThreshold, comp);
 
                 if (maps is null)
                     return;

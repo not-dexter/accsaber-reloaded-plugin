@@ -341,4 +341,23 @@ namespace AccSaber.Utils
 
     public delegate bool SpecifiedComparer<T>(T x, T y);
     public delegate bool SpecifiedComparer(IComparable x, IComparable y);
+
+    public class MyFloatComparer(ComparisonType compType) : IComparer<float> 
+    {
+        private readonly ComparisonType compType = compType;
+        public int Compare(float x, float y)
+        {
+            if (Mathf.Approximately(x, y))
+                return 0;
+
+            float comp;
+            if ((compType & ComparisonType.GT) != 0)
+                comp = y - x;
+            else if ((compType & ComparisonType.LT) != 0)
+                comp = x - y;
+            else return -1;
+
+            return comp < 0 ? -1 : 1;
+        }
+    }
 }

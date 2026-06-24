@@ -1,5 +1,6 @@
 ﻿using AccSaber.API;
 using AccSaber.Consts;
+using AccSaber.Counter;
 using AccSaber.Models;
 using AccSaber.Models.CacheModels;
 using System;
@@ -14,6 +15,7 @@ namespace AccSaber.Utils.Misc
     {
         [Inject] private readonly AccsaberAPI api = null!;
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
+        [Inject] private readonly APCalc calc = null!;
 
         private bool invalidateMissions = false;
 
@@ -71,7 +73,7 @@ namespace AccSaber.Utils.Misc
             cacheInfos = new(3)
             {
                 { ResourcePaths.MAP_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberBasicMap>), ValidateMapCache, LoadMapCache) },
-                { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, null) },
+                { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, LoadPlayerScoreCache) },
                 { ResourcePaths.MISSION_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberMission>), ValidateMissionCache, LoadMissionCache) }
             };
 
@@ -93,6 +95,9 @@ namespace AccSaber.Utils.Misc
                     CachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
                     CachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
                         .Select(diff => new KeyValuePair<Guid, AccSaberBasicDifficulty>(diff.DifficultyId, diff)))];
+
+                    if (_playerCache is not null)
+                        SetPlayerScoreCache();
                 }
 
                 void HandlePlayerScoreCache(AccSaberSerializedCache cache)
@@ -101,6 +106,28 @@ namespace AccSaber.Utils.Misc
                         return;
 
                     _playerCache = playerCache;
+
+                    if (CachedDifficulties is not null)
+                        SetPlayerScoreCache();
+                }
+
+                void SetPlayerScoreCache()
+                {
+                    _playerCache.ExtraData ??= [];
+                    _playerCache.ExtraData.Clear();
+                    int[] arr = [0, 0, 0];
+                    _playerCache.ExtraData.Add(arr);
+
+                    foreach (AccSaberPlayerScore score in _playerCache.Content)
+                    {
+                        AccSaberBasicDifficulty diff = CachedDifficulties[score.DifficultyId];
+                        score.PersonalRank = arr[(int)diff.Category!.Value]++;
+
+                        if (score.WeightedAp < 0f)
+                            score.SetValues(diff, calc);
+                    }
+
+                    _playerCache.Content.Sort((a, b) => (int)Math.Round(b.WeightedAp - a.WeightedAp));
                 }
 
                 void HandleMissionCache(AccSaberSerializedCache cache)
@@ -138,12 +165,43 @@ namespace AccSaber.Utils.Misc
             }
         }
 
-#pragma warning disable IDE0060
         public void OnPlayerScoreUpdated(AccSaberLeaderboardEntry entry)
         {
             InvalidateMissionCache();
+
+            AccSaberPlayerScore? oldScore = PlayerScores.FirstOrDefault(score => score.DifficultyId.Equals(entry.DifficultyId));
+
+            if (oldScore is null || oldScore.AP > entry.AP)
+                return;
+
+            PlayerScores.Remove(oldScore);
+
+            AccSaberPlayerScore newScore = new(entry);
+            int prevRank = oldScore.PersonalRank;
+            bool inserted = false;
+
+            for (int rank = 0, i = 0; rank <= prevRank; ++i)
+            {
+                AccSaberPlayerScore score = PlayerScores[i];
+
+                if (score.Category != newScore.Category)
+                    continue;
+
+                if (!inserted && score.AP < newScore.AP)
+                {
+                    PlayerScores.Insert(i++, newScore);
+                    newScore.PersonalRank = rank++;
+                    score.PersonalRank = rank++;
+                    inserted = true;
+                    continue;
+                }
+
+                if (inserted)
+                    score.PersonalRank = rank;
+
+                ++rank;
+            }
         }
-#pragma warning restore IDE0060
         public (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(Guid difficultyId)
         {
             AccSaberBasicDifficulty diff = CachedDifficulties[difficultyId];
@@ -191,23 +249,25 @@ namespace AccSaber.Utils.Misc
                 return true; // If we don't get a good response from the API, then we can't invalidate it, so might as well use what we have.
 
             LastScoreTime = response.Content![0].TimeSet;
-            bool valid = lastUpdated >= LastScoreTime;
+            bool valid = lastUpdated >= LastScoreTime && cache is AccSaberSerializedCache<AccSaberPlayerScore> playerCache && playerCache.Content.Count == response.TotalElements;
             invalidateMissions = !valid;
 
             return valid;
         }
-        /*private async Task<AccSaberSerializedCache> LoadPlayerScoreCache()
+        private async Task<AccSaberSerializedCache> LoadPlayerScoreCache()
         {
             List<AccSaberPlayerScore> scores = [.. (await api.LoadAllPlayerScores()).Select(score => new AccSaberPlayerScore(score))];
+
+            scores.Sort((a, b) => (int)Math.Round(b.AP - a.AP)); // greatest to least
 
             return new AccSaberSerializedCache<AccSaberPlayerScore>()
             {
                 LastUpdated = DateTime.UtcNow,
                 MaxLength = TotalMaps,
-                ExtraData = [new int[3] { -1, -1, -1 }],
+                ExtraData = [new int[3] { 0, 0, 0 }],
                 Content = scores
             };
-        }*/
+        }
 
         private async Task<bool> ValidateMissionCache(AccSaberSerializedCache cache) => cache.LastUpdated > DateTime.UtcNow;
         private async Task<AccSaberSerializedCache> LoadMissionCache()

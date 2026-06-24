@@ -23,10 +23,6 @@ namespace AccSaber
 			zenjector.UseLogger(logger);
 			Log = logger;
 
-            //APCalc calc = new();
-
-            //MainThreadDispatcher mtd = new UnityEngine.GameObject("MainThreadDispatcherGO").AddComponent<MainThreadDispatcher>();
-
             zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
 			zenjector.Install<AccSaberAppInstaller>(Location.App);
 			zenjector.Install<AccSaberGameInstaller>(Location.StandardPlayer);

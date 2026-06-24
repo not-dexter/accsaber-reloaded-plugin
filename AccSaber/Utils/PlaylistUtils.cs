@@ -19,6 +19,7 @@ namespace AccSaber.Utils
         [Inject] private readonly LevelPackDetailViewController lpdvc = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly SerializationHandler serialHandler = null!;
+        [Inject] private readonly PlayerSocialLife playerInfo = null!;
 
         [BeatSaberMarkupLanguage.Attributes.UIComponent("customSyncButton")] private readonly UnityEngine.UI.Button customSyncButton = null!;
 
@@ -182,14 +183,17 @@ namespace AccSaber.Utils
                     }
                 }
 
+                await playerInfo.LoadTask;
+                bool isMainPlayer = playerId.Equals(playerInfo.PlayerID);
+
                 IEnumerable<PlaylistMapInfo>? maps = null;
                 switch (type)
                 {
                     case "ap":
-                        maps = await levelUtils.GetMapsAp(category, playerId, threshold, compType);
+                        maps = isMainPlayer ? levelUtils.GetMapsAp(category, threshold, compType) : await levelUtils.GetMapsAp(category, playerId, threshold, compType);
                         break;
                     case "accuracy":
-                        maps = await levelUtils.GetMapsAcc(category, playerId, threshold, compType);
+                        maps = isMainPlayer ? levelUtils.GetMapsAcc(category, threshold, compType) : await levelUtils.GetMapsAcc(category, playerId, threshold, compType);
                         break;
                 }
 
@@ -371,33 +375,40 @@ namespace AccSaber.Utils
 
         public List<PlaylistMapInfo> GetPlaylistData(IEnumerable<Guid> mapDiffIds)
         {
-            HashSet<Guid> idSet = [.. mapDiffIds];
-            List<PlaylistMapInfo> maps = [];
+            Dictionary<Guid, int> idSet = [];
+
+            int count = 0;
+            foreach (Guid id in mapDiffIds)
+                idSet[id] = count++;
+
+            PlaylistMapInfo[] maps = new PlaylistMapInfo[idSet.Count];
 
             foreach (AccSaberBasicMap map in serialHandler.CachedMaps.Values)
             {
-                AccSaberBasicDifficulty? basicDiff = map.Difficulties.FirstOrDefault(diff => idSet.Contains(diff.DifficultyId));
+                AccSaberBasicDifficulty? basicDiff = map.Difficulties.FirstOrDefault(diff => idSet.ContainsKey(diff.DifficultyId));
 
                 if (basicDiff is null)
                     continue;
 
                 string hash = basicDiff.Hash;
                 List<PlaylistDiffInfo> diffInfo = [];
+                int index = int.MaxValue;
 
                 do
                 {
+                    index = Math.Min(idSet[basicDiff.DifficultyId], index);
                     diffInfo.Add(new("Standard", basicDiff.Difficulty)); // characteristic is always standard for now, but this is where we'd add it if we added more characteristics to the API
                     idSet.Remove(basicDiff.DifficultyId);
-                    basicDiff = map.Difficulties.FirstOrDefault(diff => idSet.Contains(diff.DifficultyId));
+                    basicDiff = map.Difficulties.FirstOrDefault(diff => idSet.ContainsKey(diff.DifficultyId));
                 } while (basicDiff is not null);
 
-                maps.Add(new(hash, diffInfo));
+                maps[index] = new(hash, diffInfo);
 
                 if (idSet.Count == 0)
                     break;
             }
 
-            return maps;
+            return [.. maps.Where(info => info != default)];
         }
 
         public readonly record struct PlaylistMapInfo(string Hash, IEnumerable<PlaylistDiffInfo> DiffInfo);

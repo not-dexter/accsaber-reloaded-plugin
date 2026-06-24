@@ -1,5 +1,7 @@
-﻿using AccSaber.Models.Base;
+﻿using AccSaber.Counter;
+using AccSaber.Models.Base;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
@@ -11,6 +13,9 @@ namespace AccSaber.Models.CacheModels
     {
         [JsonProperty("rank")]
         public int Rank { get; set; }
+
+        [JsonIgnore]
+        public int PersonalRank { get; set; } = -1;
 
         [JsonProperty("coverUrl")]
         public string? CoverUrl { get; set; }
@@ -31,7 +36,7 @@ namespace AccSaber.Models.CacheModels
         public float AP { get; set; }
 
         [JsonProperty("weightedAp")]
-        public float WeightedAp { get; set; }
+        public float WeightedAp { get; set; } = -1f;
 
         [JsonProperty("timeSet")]
         public DateTime TimeSet { get; set; }
@@ -57,19 +62,40 @@ namespace AccSaber.Models.CacheModels
             Difficulty = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(score.Difficulty));
             Category = EnumUtils.ReloadedCategoryIdToCategory(score.CategoryId);
         }
-        internal AccSaberPlayerScore(AccSaberBasicPlayerScore score, AccSaberBasicDifficulty diff)
-        { // TODO: Actually implement this once I have the info needed to do so.
+        internal AccSaberPlayerScore(AccSaberBasicPlayerScore score)
+        {
             Rank = score.Rank;
-            CoverUrl = null;
-            SongName = diff.ParentInfo?.SongName ?? "Not Found.";
-            SongAuthor = null;
+            CoverUrl = score.CoverUrl;
+            SongName = score.SongName;
+            SongAuthor = score.SongAuthor;
             DifficultyId = score.DifficultyId;
             Accuracy = score.Accuracy;
             AP = score.AP;
-            //WeightedAp = score.WeightedAp;
             TimeSet = score.TimeSet;
+        }
+
+        internal void SetValues(AccSaberBasicDifficulty diff, APCalc calc)
+        {
+            if (PersonalRank < 0)
+                throw new Exception("Cannot set values without the personal rank being set first.");
+
             Difficulty = diff.Difficulty;
             Category = diff.Category ?? APCategory.Overall;
+
+            WeightedAp = AP * calc.GetWeight(PersonalRank);
+        }
+        internal void SetValues(SerializationHandler handler, APCalc calc) => 
+            SetValues(handler.CachedDifficulties[DifficultyId], calc);
+        
+        internal void SetValues()
+        {
+            SerializationHandler? handler = Plugin.Container.TryResolve<SerializationHandler>();
+            APCalc? calc = Plugin.Container.TryResolve<APCalc>();
+
+            if (handler is null || calc is null)
+                throw new Exception("Cannot resolve util classes.");
+
+            SetValues(handler, calc);
         }
     }
 
@@ -81,6 +107,17 @@ namespace AccSaber.Models.CacheModels
 
         [JsonProperty("songHash")]
         public string Hash { get; set; } = null!;
+
+        [JsonProperty("songName")]
+        public string SongName { get; set; } = null!;
+
+        [JsonProperty("songAuthor")]
+        public string SongAuthor { get; set; } = null!;
+
+        [JsonProperty("coverUrl")]
+        public string CoverUrl { get; set; } = null!;
+
+        // cdnCoverUrl
 
         [JsonProperty("ssLeaderboardId")]
         public string SsLeaderboardId { get; set; } = null!;

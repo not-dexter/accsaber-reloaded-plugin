@@ -16,16 +16,34 @@ namespace AccSaber.Models
         public string Name { get; set; } = null!;
         
         [JsonProperty("points")]
-        public List<Vector2> Points { get; set; } = null!;
+        public List<Vector2>? Points { get; set; }
 
         [JsonProperty("scale")]
-        public float Scale { get; set; }
+        public float? Scale { get; set; }
 
         [JsonProperty("shift")]
-        public float Shift { get; set; }
+        public float? Shift { get; set; }
 
         [JsonProperty("type")]
         public string Type { get; set; } = null!;
+
+        [JsonProperty("xParameterName")]
+        public string? XName { get; set; }
+
+        [JsonProperty("xParameterValue")]
+        public float? XVal { get; set; }
+
+        [JsonProperty("yParameterName")]
+        public string? YName { get; set; }
+
+        [JsonProperty("yParameterValue")]
+        public float? YVal { get; set; }
+
+        [JsonProperty("zParameterName")]
+        public string? ZName { get; set; }
+
+        [JsonProperty("zParameterValue")]
+        public float? ZVal { get; set; }
         
     }
 }
