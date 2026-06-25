@@ -990,8 +990,7 @@ namespace AccSaber.API
                 if (category != APCategory.Overall)
                     filteredCache = filteredCache.Where(score => score.Category == category);
 
-                if (filteredCache.Count() >= (page + 1) * pageLength)
-                    return filteredCache.Skip(page * pageLength).Take(pageLength);
+                return filteredCache.Skip(page * pageLength).Take(pageLength);
             }
             
             throw new Exception("Cache is not working correctly!");

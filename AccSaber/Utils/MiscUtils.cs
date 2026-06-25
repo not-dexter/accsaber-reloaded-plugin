@@ -342,7 +342,7 @@ namespace AccSaber.Utils
     public delegate bool SpecifiedComparer<T>(T x, T y);
     public delegate bool SpecifiedComparer(IComparable x, IComparable y);
 
-    public class MyFloatComparer(ComparisonType compType) : IComparer<float> 
+    public class MyFloatComparer(ComparisonType compType = ComparisonType.LT) : IComparer<float> 
     {
         private readonly ComparisonType compType = compType;
         public int Compare(float x, float y)
@@ -358,6 +358,21 @@ namespace AccSaber.Utils
             else return -1;
 
             return comp < 0 ? -1 : 1;
+        }
+    }
+    public class SelectComparer<TBase, TComp>(Func<TBase, TComp> converter, IComparer<TComp> comparer, IComparer<TBase>? backupComparer = null) : IComparer<TBase>
+    {
+        private readonly Func<TBase, TComp> Converter = converter;
+        private readonly IComparer<TComp> Comparer = comparer;
+        private readonly IComparer<TBase>? BackupComparer = backupComparer;
+        public int Compare(TBase x, TBase y)
+        {
+            int outp = Comparer.Compare(Converter(x), Converter(y));
+
+            if (outp == 0 && BackupComparer is not null)
+                return BackupComparer.Compare(x, y);
+
+            return outp;
         }
     }
 }

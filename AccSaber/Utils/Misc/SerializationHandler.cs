@@ -18,6 +18,7 @@ namespace AccSaber.Utils.Misc
         [Inject] private readonly APCalc calc = null!;
 
         private bool invalidateMissions = false;
+        private SelectComparer<AccSaberPlayerScore, float> PlayerScoreSorter;
 
         private readonly Dictionary<string, CacheInfo> cacheInfos;
         public IReadOnlyDictionary<string, CacheInfo> CacheInfos => cacheInfos;
@@ -82,6 +83,10 @@ namespace AccSaber.Utils.Misc
                 lock (initLock)
                     System.Threading.Monitor.Wait(initLock, 30_000); // timeout just to make sure a deadlock will not happen even if something breaks.
             });
+
+            SelectComparer<AccSaberPlayerScore, float> backupSorter = new(score => score.AP, new MyFloatComparer(ComparisonType.GT));
+
+            PlayerScoreSorter = new(score => score.WeightedAp, new MyFloatComparer(ComparisonType.GT), backupSorter);
         }
         internal async void SetCacheData(SerializerUtils serializerUtils)
         {
@@ -127,7 +132,7 @@ namespace AccSaber.Utils.Misc
                             score.SetValues(diff, calc);
                     }
 
-                    _playerCache.Content.Sort((a, b) => (int)Math.Round(b.WeightedAp - a.WeightedAp));
+                    _playerCache.Content.Sort(PlayerScoreSorter);
                 }
 
                 void HandleMissionCache(AccSaberSerializedCache cache)
@@ -171,36 +176,47 @@ namespace AccSaber.Utils.Misc
 
             AccSaberPlayerScore? oldScore = PlayerScores.FirstOrDefault(score => score.DifficultyId.Equals(entry.DifficultyId));
 
-            if (oldScore is null || oldScore.AP > entry.AP)
+            if (oldScore.AP > entry.AP)
                 return;
 
-            PlayerScores.Remove(oldScore);
+            if (oldScore is not null)
+                PlayerScores.Remove(oldScore);
 
             AccSaberPlayerScore newScore = new(entry);
-            int prevRank = oldScore.PersonalRank;
-            bool inserted = false;
+            int highestIndex = -1;
 
-            for (int rank = 0, i = 0; rank <= prevRank; ++i)
+            for (int rank = 0, i = 0; i < PlayerScores.Count; ++i)
             {
                 AccSaberPlayerScore score = PlayerScores[i];
 
                 if (score.Category != newScore.Category)
                     continue;
 
-                if (!inserted && score.AP < newScore.AP)
+                if (highestIndex == -1 && score.AP < newScore.AP)
                 {
-                    PlayerScores.Insert(i++, newScore);
-                    newScore.PersonalRank = rank++;
-                    score.PersonalRank = rank++;
-                    inserted = true;
-                    continue;
+                    highestIndex = i;
+                    newScore.PersonalRank = rank;
+                    break;
                 }
-
-                if (inserted)
-                    score.PersonalRank = rank;
 
                 ++rank;
             }
+
+            newScore.SetValues(this, calc);
+
+            if (highestIndex == -1 && PlayerScores.Last().AP > newScore.AP)
+            {
+                PlayerScores.Add(newScore); // This is a very rare case, as it means the user improved their lowest score but didn't improve it past their second lowest.
+                return;
+            }
+            if (highestIndex == 0)
+            {
+                PlayerScores.Insert(0, newScore); // No need to binary search when there is a single option.
+                return;
+            }
+
+            int index = PlayerScores.BinarySearch(0, highestIndex + 1, newScore, PlayerScoreSorter);
+            PlayerScores.Insert(index < 0 ? ~index : index, newScore); // We allow positive indexes to be inserted because duplicate ap values are allowed.
         }
         public (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(Guid difficultyId)
         {
