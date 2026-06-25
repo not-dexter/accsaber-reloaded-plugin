@@ -197,30 +197,54 @@ namespace AccSaber.Models
         [UIValue(nameof(NotFullCombo))] public bool NotFullCombo => !FullCombo;
         [UIValue(nameof(ShowCombo))] public bool ShowCombo => Parent.ShowCombo;
 
+        [UIValue(nameof(Streak))] public string Streak => $"<color={GREY}>{ScoreData.Streak115 ?? -1:N0}x</color> <color={GREY_DIM}>115</color>";
+        [UIValue(nameof(ShowStreak))] public bool ShowStreak => Parent.ShowStreak;
+
 
 
         [UIValue(nameof(Pixelimg))] private const string Pixelimg = ResourcePaths.PIXEL;
         [UIValue(nameof(FontSize))] public float FontSize => Parent.OnPlayerPage ? BIG_FONT_SIZE : SMALL_FONT_SIZE;
-        [UIValue(nameof(TimeSize))] public float TimeSize => Parent.OnPlayerPage ? 2.8f : 2.5f;
+        [UIValue(nameof(TimeSize))] public float TimeSize => FontSize - 0.5f;
         [UIValue(nameof(ContainerHeight))] public float ContainerHeight => (Parent.OnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE) - 0.1f;
 
         [UIValue(nameof(parentContainerWidth))] public const float parentContainerWidth = containerWidth;
-        [UIValue(nameof(containerPadding))] public const float containerPadding = 1f;
+        [UIValue(nameof(containerPadding))] public const int containerPadding = 1;
         [UIValue(nameof(elementSpacing))] public const float elementSpacing = 0f;
 
         [UIValue(nameof(rankWidth))] public const float rankWidth = 10f;
         [UIValue(nameof(apWidth))] public const float apWidth = 12f + apPadding;
-        [UIValue(nameof(apPadding))] public const float apPadding = 2f;
+        [UIValue(nameof(apPadding))] public const int apPadding = 2;
         [UIValue(nameof(accWidth))] public const float accWidth = 12f;
         [UIValue(nameof(scoreWidth))] public const float scoreWidth = 8f + scorePadding;
-        [UIValue(nameof(scorePadding))] public const float scorePadding = 2f;
+        [UIValue(nameof(scorePadding))] public const int scorePadding = 2;
         [UIValue(nameof(timeSetWidth))] public const float timeSetWidth = 12f;
-        [UIValue(nameof(comboWidth))] public const float comboWidth = 3.5f;
+        [UIValue(nameof(comboWidth))] public const float comboWidth = 2.5f + comboPadding;
+        [UIValue(nameof(comboPadding))] public const int comboPadding = 1;
+        [UIValue(nameof(streakWidth))] public const float streakWidth = 8f;
 
-        [UIValue(nameof(nameWidth))]
-        public float nameWidth = parent.ShowCombo ?
-            containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - comboWidth - elementSpacing * 6f - containerPadding * 2f :
-            containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - elementSpacing * 5f - containerPadding * 2f;
+        [UIValue("nameWidth")]
+        public float NameWidth
+        {
+            get
+            {
+                bool hasCombo = ShowCombo, hasStreak = ShowStreak;
+                float spacingNum = 5f;
+                float subtractNum = containerWidth - rankWidth - apWidth - accWidth - scoreWidth - timeSetWidth - containerPadding * 2f;
+
+                if (hasCombo)
+                {
+                    ++spacingNum;
+                    subtractNum -= comboWidth;
+                }
+                if (hasStreak)
+                {
+                    ++subtractNum;
+                    subtractNum -= streakWidth;
+                }
+
+                return subtractNum - elementSpacing * spacingNum;
+            }
+        }
 
         public const string DefaultUnderlineColor = "#AAA6";
 
@@ -264,11 +288,20 @@ namespace AccSaber.Models
         {
             Container.Underline?.color = DefaultUnderlineColor.Color();
 
-            Lsmc.OnSettingUpdated += () =>
-            {
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowCombo)));
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Acc)));
-            };
+            Lsmc.OnSettingUpdated += OnSettingsUpdate;
+        }
+
+        private void OnSettingsUpdate()
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowCombo)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowStreak)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Acc)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameWidth)));
+        }
+
+        ~LeaderboardEntryDisplay()
+        {
+            Lsmc.OnSettingUpdated -= OnSettingsUpdate;
         }
     }
 }

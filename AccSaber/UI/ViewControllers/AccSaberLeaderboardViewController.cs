@@ -77,6 +77,7 @@ namespace AccSaber.UI.ViewControllers
 
         public int AccDecimals => PC.AccDecimals;
         public bool ShowCombo => PC.ShowCombo;
+        public bool ShowStreak => PC.ShowStreak;
 
         public APCategory? CurrentCategory => difficultyInfo?.Category;
 

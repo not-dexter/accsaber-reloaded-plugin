@@ -51,6 +51,16 @@ namespace AccSaber.UI.ViewControllers
                 OnSettingUpdated!.Invoke();
             }
         }
+        [UIValue("ShowStreak")]
+        public bool ShowStreak
+        {
+            get => PC.ShowStreak;
+            set
+            {
+                PC.ShowStreak = value;
+                OnSettingUpdated!.Invoke();
+            }
+        }
 
         [UIValue("CombineRelations")]
         public bool CombineRelations

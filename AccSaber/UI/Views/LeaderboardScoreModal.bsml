@@ -37,8 +37,8 @@
 		  <text id='scoreText' text='Score' font-size='~valueFontSize' align='Center'/>
       </vertical>
       <vertical pref-width='~valueWidth'>
-        <text text='XP Gained' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
-        <text id='xpText' text='XP gained' font-size='~valueFontSize' align='Center'/>
+        <text text='115 Streak' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>
+        <text id='streakText' text='115 Streak' font-size='~valueFontSize' align='Center'/>
       </vertical>
       <vertical pref-width='~valueWidth'>
 		  <text text='Weighted AP' font-color='~labelColor' font-size='~labelFontSize' align='Center'/>

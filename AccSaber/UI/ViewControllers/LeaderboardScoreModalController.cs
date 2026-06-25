@@ -61,7 +61,7 @@ namespace AccSaber.UI.ViewControllers
         [UIComponent("rankText")] private TextMeshProUGUI rankText = null!;
 
         [UIComponent("weightedText")] private TextMeshProUGUI weightedText = null!;
-        [UIComponent("xpText")] private TextMeshProUGUI xpText = null!;
+        [UIComponent("streakText")] private TextMeshProUGUI streakText = null!;
         [UIComponent("scoreText")] private TextMeshProUGUI scoreText = null!;
 
         #endregion
@@ -153,7 +153,7 @@ namespace AccSaber.UI.ViewControllers
                 rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
 
                 weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
-                xpText.SetText($"<color={LEVEL}>{scoreInfo.XpGained:N2}xp</color>");
+                streakText.SetText($"<color={RELOADED}>{scoreInfo.Streak115:N0}</color>");
                 scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
 
                 loader.SetActive(false);
