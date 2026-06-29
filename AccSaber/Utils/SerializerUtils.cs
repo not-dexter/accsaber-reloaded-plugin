@@ -38,10 +38,7 @@ namespace AccSaber.Utils
             try
             {
                 if (!Directory.Exists(ResourcePaths.ACC_SABER_DATA_FOLDER))
-                {
                     Directory.CreateDirectory(ResourcePaths.ACC_SABER_DATA_FOLDER);
-                    return;
-                }
 
                 JsonSerializer serializer = new();
 

@@ -332,7 +332,7 @@ namespace AccSaber.Utils.Misc
             return new AccSaberSerializedCache<AccSaberPlayerScore>()
             {
                 LastUpdated = DateTime.UtcNow,
-                MaxLength = TotalMaps,
+                MaxLength = scores.Count,
                 ExtraData = [new int[3] { 0, 0, 0 }],
                 Content = scores
             };
