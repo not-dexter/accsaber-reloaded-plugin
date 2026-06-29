@@ -462,11 +462,12 @@ namespace AccSaber.Utils
                     cachedDiff = mapData.Value.diff;
                     hash = map.Hash;
                 }
-
-#if NEW_VERSION
+#if V40
+                BeatmapLevel? level = SongCore.Loader.GetLevelByHash(hash.ToUpper()) ?? await DownloadSong(map);
+#elif NEW_VERSION
                 BeatmapLevel? level = SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + hash.ToUpper()) ?? await DownloadSong(map);
 #else
-                    IBeatmapLevel? level = (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + hash.ToUpper(), CancellationToken.None)).beatmapLevel ?? await DownloadSong(map);
+                IBeatmapLevel? level = (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + hash.ToUpper(), CancellationToken.None)).beatmapLevel ?? await DownloadSong(map);
 #endif
                 if (endEvent)
                     StatusTextChanged?.Invoke(null);
@@ -500,7 +501,11 @@ namespace AccSaber.Utils
 
                         _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf().PresentFlowCoordinator(_soloCoordinator, immediately: true);
 
+#if V41
+                        StandardLevelDetailViewController? sldvc = UnityEngine.Object.FindFirstObjectByType<StandardLevelDetailViewController>();
+#else
                         StandardLevelDetailViewController? sldvc = UnityEngine.Object.FindObjectOfType<StandardLevelDetailViewController>();
+#endif
                         StandardLevelDetailView? sldv = sldvc?.GetField<StandardLevelDetailView, StandardLevelDetailViewController>("_standardLevelDetailView");
 
 #if NEW_VERSION

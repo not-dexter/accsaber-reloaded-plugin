@@ -42,8 +42,12 @@ namespace AccSaber.Utils
         public static async Task<UserInfo> GetUserInfo(this IPlatformUserModel model) => await model.GetUserInfo(default);
 #endif
         public static Color ColorWithAlpha(this Color c, float alpha) => new(c.r, c.g, c.b, alpha);
-#endregion
+        #endregion
+#if V41
+        public static Task<Sprite> LoadSpriteAsync(string path) => Utilities.LoadSpriteAsync(Utilities.GetResourceAsync(Assembly.GetExecutingAssembly(), path).GetAwaiter().GetResult());
+#else
         public static Task<Sprite> LoadSpriteAsync(string path) => Utilities.LoadSpriteAsync(Utilities.GetResource(Assembly.GetExecutingAssembly(), path));
+#endif
         public static Task<Sprite> LoadSpriteAsync(byte[] data, float PixelsPerUnit = 100) => Utilities.LoadSpriteAsync(data, PixelsPerUnit);
         public static IList Data(this CustomCellListTableData ccltd) => ccltd.Data;
         public static TableView TableView(this CustomCellListTableData ccltd) => ccltd.TableView;

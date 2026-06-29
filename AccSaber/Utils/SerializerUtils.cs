@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Zenject;
+using static BeatSaberMarkupLanguage.Components.KEYBOARD;
 
 namespace AccSaber.Utils
 {
@@ -44,14 +45,11 @@ namespace AccSaber.Utils
 
                 JsonSerializer serializer = new();
 
-                IEnumerable<string> files = handler.CacheInfos.Keys.Select(key => Path.Combine(ResourcePaths.ACC_SABER_DATA_FOLDER, key + ".json"));
-
-                foreach (string filepath in files)
+                foreach (string key in handler.CacheInfos.Keys)
                 {
-                    string filename = filepath[(filepath.LastIndexOf('\\') + 1)..filepath.LastIndexOf('.')];
-                    if (handler.CacheInfos.TryGetValue(filename, out SerializationHandler.CacheInfo cacheInfo))
+                    if (handler.CacheInfos.TryGetValue(key, out SerializationHandler.CacheInfo cacheInfo))
                     {
-                        AccSaberSerializedCache? cache = Load(filepath, serializer, cacheInfo.CacheType);
+                        AccSaberSerializedCache? cache = Load(Path.Combine(ResourcePaths.ACC_SABER_DATA_FOLDER, key + ".json"), serializer, cacheInfo.CacheType);
 
                         if (cache is null || !await cacheInfo.Validate(cache))
                         {
@@ -65,7 +63,7 @@ namespace AccSaber.Utils
                                 
                         }
 
-                        cache.Name = filename;
+                        cache.Name = key;
 
                         caches.Add(cache);
                     }

@@ -1,6 +1,7 @@
 ﻿using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
+using IPA.Utilities;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -68,6 +69,8 @@ namespace AccsaberLeaderboard.UI.Components
         }
         public void ApplyBorder(string? src = null, Color tint = default)
         {
+            AccSaber.Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
+
             if (tint == default)
                 tint = Color.white;
 
@@ -156,10 +159,14 @@ namespace AccsaberLeaderboard.UI.Components
         {
             if (cachedSprites.TryGetValue(src, out Sprite? outp))
                 return outp;
+#if V41
+            byte[] file = Utilities.GetResourceAsync(Assembly.GetExecutingAssembly(), src).GetAwaiter().GetResult();
+#else
             byte[] file = Utilities.GetResource(Assembly.GetExecutingAssembly(), src);
+#endif
             if (file.Length != 0)
             {
-                Texture2D texture2D = new(0, 0, TextureFormat.RGBA32, false, false);
+                Texture2D texture2D = new(1, 1, TextureFormat.RGBA32, false, false);
                 if (texture2D.LoadImage(file))
                     outp = Utilities.LoadSpriteFromTexture(texture2D);
             }
