@@ -679,20 +679,22 @@ namespace AccSaber.API
 
         public async Task<AccSaberLeaderboardEntry?> GetScoreData(string userId, string hash, BeatmapDifficulty diff, CancellationToken ct = default)
         {
+            AccSaberBasicDifficulty? selectedDiff = null;
             if (serialHandler.CachedMaps.TryGetValue(hash, out AccSaberBasicMap map))
             {
-                AccSaberBasicDifficulty? selectedDiff = map.Difficulties?.FirstOrDefault(currentDiff => currentDiff.Difficulty == diff);
+                selectedDiff = map.Difficulties?.FirstOrDefault(currentDiff => currentDiff.Difficulty == diff);
                 if (selectedDiff is not null && scoreInfoCacher.TryGetCachedItem(selectedDiff.DifficultyId, out ScoreCache val) && val.UserIds.Contains(userId))
                     return val.Data.First(token => token.PlayerId.Equals(userId));
             }
 
             ReloadedDifficulty reloadedDiff = EnumUtils.DiffToReloadedDiff(diff);
 
-            string? dataStr = await CallAPI_String(string.Format(APAPI_SCORE, userId, hash.ToLower(), reloadedDiff), Throttler, true, ct: ct).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(dataStr)) 
-                return null;
+            AccSaberLeaderboardEntry? outp = await CallAPI_Json<AccSaberLeaderboardEntry>(string.Format(APAPI_SCORE, userId, hash.ToLower(), reloadedDiff), Throttler, true, ct: ct).ConfigureAwait(false);
+            
+            if (outp is not null && selectedDiff is not null)
+                CacheScoreData(selectedDiff.DifficultyId, [outp], [], null);
 
-            return JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(dataStr!);
+            return outp;
         }
 
         public AccSaberBasicMap? GetLeaderboard(string hash, CancellationToken ct = default)
