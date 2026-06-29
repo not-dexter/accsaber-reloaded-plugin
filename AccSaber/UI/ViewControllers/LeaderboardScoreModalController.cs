@@ -153,7 +153,7 @@ namespace AccSaber.UI.ViewControllers
                 rankText.SetText($"<color={RANK}>#{scoreInfo.Rank}</color>");
 
                 weightedText.SetText($"<color={AP}>{scoreInfo.WeightedAp:N2}ap</color>");
-                streakText.SetText($"<color={RELOADED}>{scoreInfo.Streak115:N0}</color>");
+                streakText.SetText($"<color={RELOADED}>{scoreInfo.Streak115:N0}x</color>");
                 scoreText.SetText($"<color={GREY}>{scoreInfo.Score:N0}</color>");
 
                 loader.SetActive(false);

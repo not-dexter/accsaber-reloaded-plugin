@@ -11,17 +11,21 @@ using System.Numerics;
 using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using AccSaber.Models.PlayerModels;
+using AccSaber.Patches;
+using AccSaber.Utils.Misc;
+using Zenject;
 
 #if !NEW_VERSION
 using Oculus.Platform;
 #endif
 
+#if V41
+using OculusStudios.Platform.Core;
+#endif
+
 using static AccSaber.API.APIHandler;
 using static AccSaber.API.HelpfulPaths;
-using AccSaber.Models.PlayerModels;
-using AccSaber.Patches;
-using AccSaber.Utils.Misc;
-using Zenject;
 
 namespace AccSaber.API
 {
@@ -985,7 +989,7 @@ namespace AccSaber.API
         { // page is zero indexed.
             // The cache should be sorted, so this should not be an issue.
             IEnumerable<AccSaberPlayerScore> filteredCache = serialHandler.PlayerScores;
-            if (category == APCategory.Overall || serialHandler.CategoryPlayerScoreLength[(int)category] >= 0)
+            if (category == APCategory.Overall || serialHandler.CategoryPlayerScores[(int)category].Count >= 0)
             {
                 if (category != APCategory.Overall)
                     filteredCache = filteredCache.Where(score => score.Category == category);
@@ -1042,19 +1046,39 @@ namespace AccSaber.API
 
                 SetLoginState(LoginState.InProgress);
 
+#if V41
+                IPlatform platformUserModel = Plugin.Container.TryResolve<IPlatform>();
+                UserInfo.Platform platform = platformUserModel.vendor switch
+                {
+                    Vendor.Valve => UserInfo.Platform.Steam,
+                    Vendor.Meta => UserInfo.Platform.Oculus,
+                    _ => throw new NotImplementedException()
+                };
+#else
                 IPlatformUserModel platformUserModel = Plugin.Container.TryResolve<IPlatformUserModel>();
                 PlatformUserAuthTokenData authToken = await platformUserModel.GetUserAuthToken();
                 UserInfo userInfo = await platformUserModel.GetUserInfo();
+                UserInfo.Platform platform = userInfo.platform;
+#endif
+
+
+
                 string token = "";
                 string provider = "";
-                switch (userInfo.platform)
+                switch (platform)
                 {
                     case UserInfo.Platform.Steam:
+#if V41
+                        token = await platformUserModel.user.GetAccessTokenAsync();
+#else
                         token = authToken.token;
+#endif
                         provider = "steamTicket";
                         break;
                     case UserInfo.Platform.Oculus:
-#if NEW_VERSION
+#if V41
+                        token = await platformUserModel.user.GetXPlatformAccessTokenAsync();
+#elif NEW_VERSION
                         token = (await platformUserModel.RequestXPlatformAccessToken(CancellationToken.None)).token;
 #else
                     token = await OculusTicket();
@@ -1133,7 +1157,7 @@ namespace AccSaber.API
             //Note: Currently this will submit on party mode and probably multiplayer, which will need to be fixed
         }
 
-        #endregion
+#endregion
         #region Misc structs
 
         private struct ScoreCache
@@ -1187,8 +1211,11 @@ namespace AccSaber.API
             public string UserId { get; set; } = null!;
 
             [JsonIgnore]
+#if V41
+            public IPlatform? UserModel { get; set; }
+#else
             public IPlatformUserModel? UserModel { get; set; }
-
+#endif
 
             [OnDeserialized]
             private void OnDeserialized(StreamingContext context)
@@ -1197,6 +1224,6 @@ namespace AccSaber.API
             }
         }
 
-        #endregion
+#endregion
     }
 }

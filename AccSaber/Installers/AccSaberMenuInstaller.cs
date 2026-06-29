@@ -53,7 +53,7 @@ namespace AccSaber.Installers
             Container.Bind<AccSaberNewsModal>().AsSingle();
             Container.BindInterfacesAndSelfTo<AccSaberNotificationModal>().AsSingle();
 
-            Container.BindInterfacesAndSelfTo<AccSaberStore>().AsSingle();
+			Container.BindInterfacesAndSelfTo<AccSaberStore>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberManager>().AsSingle();
 			Container.BindInterfacesTo<AccSaberCustomLeaderboard>().AsSingle();
 

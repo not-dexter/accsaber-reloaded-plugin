@@ -9,7 +9,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using BeatSaberMarkupLanguage.FloatingScreen;
+using System;
 
+
+#if V41
+using OculusStudios.Platform.Core;
+#endif
 
 #if NEW_VERSION
 using System.Collections;
@@ -21,9 +26,23 @@ namespace AccSaber.Utils
     {
 #if NEW_VERSION
         #region Higher Version Only
+#if V41
+        public static async Task<UserInfo> GetUserInfo(this IPlatform model)
+        {
+            UserInfo.Platform platform = model.vendor switch
+            {
+                Vendor.Valve => UserInfo.Platform.Steam,
+                Vendor.Meta => UserInfo.Platform.Oculus,
+                _ => throw new NotImplementedException()
+            };
+
+            return new(platform, model.user.userId.ToString(), model.user.displayName);
+        }
+#else
         public static async Task<UserInfo> GetUserInfo(this IPlatformUserModel model) => await model.GetUserInfo(default);
+#endif
         public static Color ColorWithAlpha(this Color c, float alpha) => new(c.r, c.g, c.b, alpha);
-        #endregion
+#endregion
         public static Task<Sprite> LoadSpriteAsync(string path) => Utilities.LoadSpriteAsync(Utilities.GetResource(Assembly.GetExecutingAssembly(), path));
         public static Task<Sprite> LoadSpriteAsync(byte[] data, float PixelsPerUnit = 100) => Utilities.LoadSpriteAsync(data, PixelsPerUnit);
         public static IList Data(this CustomCellListTableData ccltd) => ccltd.Data;

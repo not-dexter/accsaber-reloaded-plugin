@@ -65,7 +65,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
         [Inject] private readonly PluginConfig PC = null!;
-		[Inject] private readonly AccSaberStore store = null!;
 		[Inject] private readonly PlayerSocialLife playerInfo = null!;
 		[Inject] private readonly AccsaberAPI api = null!;
 		[Inject] private readonly SerializationHandler serialHandler = null!;
@@ -557,7 +556,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				{
 					IEnumerable<AccSaberPlayerScore> content = api.GetPlayerScores(PageNumber, 5, _categoryValue);
 
-					_maxPage = (int)Math.Ceiling((_categoryValue == APCategory.Overall ? serialHandler.PlayerScoreLength : serialHandler.CategoryPlayerScoreLength[(int)_categoryValue]) / 5f);
+					_maxPage = (int)Math.Ceiling((_categoryValue == APCategory.Overall ? serialHandler.PlayerScoreLength : serialHandler.CategoryPlayerScores[(int)_categoryValue].Count) / 5f);
 
 					Pagnation = $"{_pageNumber + 1}/{_maxPage}";
 
@@ -584,14 +583,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void Initialize()
         {
-            store.OnPlayerScoreUpdated += OnAccSaberPlayerUpdated;
+            AccSaberStore.OnPlayerScoreUpdated += OnAccSaberPlayerUpdated;
             parentCoordinator.OnHubActivated += OnOpen;
             parentCoordinator.OnHubDeactivated += OnClose;
         }
 
         public void Dispose()
         {
-            store.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
+            AccSaberStore.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
             parentCoordinator.OnHubActivated -= OnOpen;
             parentCoordinator.OnHubDeactivated -= OnClose;
         }
@@ -621,7 +620,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			private readonly string _mapAuthor = data.SongAuthor ?? "Unknown Author";
 
 			[UIValue("map-diff")]
-			private string MapDiff => DiffName(EnumUtils.DiffToReloadedDiff(Data.Difficulty));
+			private string MapDiff => DiffName(EnumUtils.DiffToReloadedDiff(Data.Difficulty!.Value));
 
 			[UIValue("score-acc")]
 			private readonly string _scoreAcc = $"{data.Accuracy * 100:F2}%";
@@ -633,7 +632,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             private readonly string _scoreWeighted = $"<color={ColorUtils.GREY}>({data.WeightedAp:F2} AP)</color>";
 
             [UIValue("map-category")]
-			private string MapCategory => CategoryName(EnumUtils.CategoryToReloadedCategoryId(Data.Category));
+			private string MapCategory => CategoryName(EnumUtils.CategoryToReloadedCategoryId(Data.Category!.Value));
 
 			[UIValue("show-status")]
 			public bool ShowStatus

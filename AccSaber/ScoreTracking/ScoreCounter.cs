@@ -37,7 +37,7 @@ namespace AccSaber.ScoreTracking
         private int current115Streak, combo, notes, totalNotes;
         private readonly object submitLock = new();
         private bool transitionFinished, counterDisposed, failed;
-        private string gamemode = null!;
+        private string? gamemode = null;
 
         private bool AtEndsOfMap => notes == 0 || notes == totalNotes;
 
@@ -203,46 +203,53 @@ namespace AccSaber.ScoreTracking
         }
         private async void SubmitScore()
         {
-            const float completionPercent = 0.75f;
-
-            float completion = (float)notes / totalNotes;
-
-            Plugin.Log.Debug($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
-
-            Plugin.Log.Debug(JsonConvert.SerializeObject(score));
-
-            if (completion < completionPercent)
+            try
             {
-                Plugin.Log.Debug($"No score submit, completion did not reach the threshold of {completionPercent * 100f:N2}%.");
-                return;
-            }
+                const float completionPercent = 0.75f;
 
-            if (!AllowedModes.Contains(gamemode))
+                float completion = (float)notes / totalNotes;
+
+                Plugin.Log.Debug($"{notes} / {totalNotes} note(s) handled. Player completed {completion * 100f:N2}% of the map.");
+
+                Plugin.Log.Debug(JsonConvert.SerializeObject(score));
+
+                if (completion < completionPercent)
+                {
+                    Plugin.Log.Debug($"No score submit, completion did not reach the threshold of {completionPercent * 100f:N2}%.");
+                    return;
+                }
+
+                if (gamemode is null || !AllowedModes.Contains(gamemode))
+                {
+                    Plugin.Log.Debug($"The gamemode played is not an allowed mode (mode = {gamemode ?? "null"})");
+                    return;
+                }
+
+                if (!SubmissionPatch.Submit)
+                {
+                    Plugin.Log.Debug("No score submit: " + SubmissionPatch.GetSubmitReason());
+                    return;
+                }
+
+                if (totalNotes < 115 || notes > totalNotes)
+                {
+                    Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
+                    return;
+                }
+
+                if (!score.UncompletedMap!.Value)
+                    aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score, true, TimeSpan.FromSeconds(7));
+
+                bool submitted = await api.SubmitScore(score);
+                SerializationHandler.LastScoreTime = DateTime.UtcNow;
+
+                if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
+                    aslvc.ForceShowLeaderboard();
+            }
+            catch (Exception e)
             {
-                Plugin.Log.Debug($"The gamemode played is not an allowed mode (mode = {gamemode})");
-                return;
+                Plugin.Log.Error("There was an error submitting a score!!!\n" + e);
             }
-
-            if (!SubmissionPatch.Submit)
-            {
-                Plugin.Log.Debug("No score submit: " + SubmissionPatch.GetSubmitReason());
-                return;
-            }
-
-            if (totalNotes < 115 || notes > totalNotes)
-            {
-                Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
-                return;
-            }
-
-            if (!score.UncompletedMap!.Value)
-                aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score);
-
-            bool submitted = await api.SubmitScore(score);
-            SerializationHandler.LastScoreTime = DateTime.UtcNow;
-
-            if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
-                aslvc.ForceShowLeaderboard();
         }
     }
 }

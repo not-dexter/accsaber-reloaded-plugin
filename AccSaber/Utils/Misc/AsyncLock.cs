@@ -11,9 +11,9 @@ namespace AccSaber.Utils.Misc
         /// <summary>
         /// Acquires the lock asynchronously. Use 'using' to release it automatically.
         /// </summary>
-        public async Task<Releaser> LockAsync()
+        public async Task<Releaser> LockAsync(CancellationToken ct = default)
         {
-            await _semaphore.WaitAsync().ConfigureAwait(false);
+            await _semaphore.WaitAsync(ct).ConfigureAwait(false);
             return new Releaser(_semaphore);
         }
         /// <summary>

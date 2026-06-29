@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AccSaber.Utils.Misc;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -38,29 +39,35 @@ namespace AccSaber.API
         private int CallsThisCycle = 0;
 
         ///<summary>Lock to protect cycle state for concurrent callers.</summary>
-        private readonly object locker = new();
+        private readonly AsyncLock locker = new();
 
         /// <summary>
-        /// Enforces the throttling policy for a single call.
+        /// Rate-limits callers so that at most <see cref="CallsPerCycle"/> operations may start within a rolling
+        /// <see cref="CycleLength"/>-second window.
         /// </summary>
+        /// <param name="ct">
+        /// A <see cref="CancellationToken"/> which, when cancelled, will cancel the throttling delay. If cancellation
+        /// occurs during the throttling wait, the returned task will complete with an <see cref="OperationCanceledException"/>.
+        /// </param>
         /// <returns>
-        /// A <see cref="Task"/> that completes when any necessary throttling delay has finished.
-        /// Callers should await this task before performing the rate-limited operation.
+        /// A <see cref="Task"/> that completes immediately when no throttling is required, or completes after the computed
+        /// throttling delay when the rate limit has been exceeded.
         /// </returns>
         /// <remarks>
-        /// - If the current cycle has expired (elapsed >= <see cref="CycleLength"/> seconds),
-        ///   the cycle counters are reset immediately.
-        /// - If the call would exceed the allowed calls in the current cycle, the method computes
-        ///   the remaining milliseconds in the cycle, performs a blocking wait while holding the
-        ///   internal lock to update cycle state, then performs an equivalent asynchronous delay
-        ///   after releasing the lock and logs the throttling duration via <c>Plugin.Log.Info</c>.
-        /// - Because of the synchronous sleep inside the lock followed by an awaiting <see cref="Task.Delay(int)"/>,
-        ///   the caller will experience both a blocking and an asynchronous wait equal to the computed rest time.
+        /// - This method is safe for concurrent callers: internal cycle bookkeeping is protected by a lock.
+        /// - The method increments the current-cycle call counter and, if the counter exceeds <see cref="CallsPerCycle"/>,
+        ///   computes the remaining milliseconds in the cycle, updates cycle state, logs the throttling, and awaits
+        ///   a <see cref="Task.Delay"/> for that duration.
+        /// - Cancellation is observed only during the asynchronous delay; callers that are cancelled during the wait will
+        ///   receive an <see cref="OperationCanceledException"/>.
         /// </remarks>
-        public async Task Call()
+        /// <exception cref="TaskCanceledException">
+        /// This is thrown if the <see cref="CancellationToken"/> is cancelled before the method has finished execution.
+        /// </exception>
+        public async Task Call(CancellationToken ct = default)
         {
-            int restTime = 0;
-            lock (locker)
+            AsyncLock.Releaser releaser = await locker.LockAsync();
+            using (releaser)
             {
                 TimeSpan diff = DateTime.UtcNow - CycleStartTime;
 
@@ -74,16 +81,16 @@ namespace AccSaber.API
 
                 if (CallsThisCycle > CallsPerCycle)
                 {
-                    restTime = (int)(CycleLength * 1000 - diff.TotalMilliseconds);
-                    Thread.Sleep(restTime);
+                    int restTime = (int)(CycleLength * 1000 - diff.TotalMilliseconds);
+
+                    Plugin.Log.Info("Throttling calls for " + restTime + "ms.");
+                    await Task.Delay(restTime, ct);
+
                     CallsThisCycle = 1;
                     CycleStartTime = DateTime.UtcNow.AddMilliseconds(restTime);
                 }
-            }
-            if (restTime > 0)
-            {
-                Plugin.Log.Info("Throttling calls for " + restTime + "ms.");
-                await Task.Delay(restTime);
+
+                ct.ThrowIfCancellationRequested();
             }
         }
     }

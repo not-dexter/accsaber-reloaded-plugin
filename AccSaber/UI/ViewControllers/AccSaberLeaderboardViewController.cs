@@ -56,7 +56,8 @@ namespace AccSaber.UI.ViewControllers
         private Color selectorDefaultColor, defaultPageTopColor, defaultPageUpColor, defaultPageYouColor, defaultPageDownColor;
         private Color highlightPageTopColor, highlightPageYouColor;
         private AccSaberBasicDifficulty? difficultyInfo;
-        private bool refreshRequested = false, loadRequested = false, loaded = false;
+        private bool loaded = false;
+        private Requester refreshRequester, loadRequester;
         private int refreshVersion, playerScoreVersion;
 
         private string? titlePanelTitle;
@@ -426,6 +427,12 @@ namespace AccSaber.UI.ViewControllers
 
         #region Methods
 
+        internal AccSaberLeaderboardViewController()
+        {
+            refreshRequester = new(RefreshRequest, this);
+            loadRequester = new(LoadRequest, this);
+        }
+
         private void OnEnable()
         {
             UpdateHeaderTitle();
@@ -448,7 +455,7 @@ namespace AccSaber.UI.ViewControllers
             sldvc?.didChangeDifficultyBeatmapEvent += Handler1;
             sldvc?.didChangeContentEvent += Handler2;
             aspvc?.OnSettingsClicked += OnSettingsClicked;
-            store?.OnPlayerScoreUpdated += OnPlayerScoreUpdated;
+            AccSaberStore.OnPlayerScoreUpdated += OnPlayerScoreUpdated;
             lbsmc?.OnCombineRelations += ToggleCombinedIcons;
         }
         private new void OnDestroy()
@@ -458,7 +465,7 @@ namespace AccSaber.UI.ViewControllers
             sldvc?.didChangeDifficultyBeatmapEvent -= Handler1;
             sldvc?.didChangeContentEvent -= Handler2;
             aspvc?.OnSettingsClicked -= OnSettingsClicked;
-            store?.OnPlayerScoreUpdated -= OnPlayerScoreUpdated;
+            AccSaberStore.OnPlayerScoreUpdated -= OnPlayerScoreUpdated;
             lbsmc?.OnCombineRelations -= ToggleCombinedIcons;
         }
         internal void OnGameRefresh()
@@ -469,7 +476,7 @@ namespace AccSaber.UI.ViewControllers
 
             page = 1;
             currentPage = -1;
-            refreshRequested = true;
+            refreshRequester.Request();
         }
 
         private void DoEnableUpdate()
@@ -481,12 +488,8 @@ namespace AccSaber.UI.ViewControllers
 
                 try
                 {
-                    if (loadRequested)
-                    {
-                        ShowLoading(true);
-                        loadRequested = false;
-                    }
-                    ForceRefresh(false);
+                    loadRequester.TryFulfillRequest();
+                    refreshRequester.TryFulfillRequest();
                 }
                 catch (Exception e)
                 {
@@ -494,15 +497,12 @@ namespace AccSaber.UI.ViewControllers
                 }
             }
 
-            if (loadRequested)
-                MainThreadDispatcher.EnqueueAction(() => loadRequested = !ShowLoading(true));
-
-            if (!TryUpdateCurrentMap() && refreshRequested)
-            {
-                MainThreadDispatcher.EnqueueRoutine(WaitUntilValidUpdate());
-                refreshRequested = false;
-            }
+            TryUpdateCurrentMap();
+            MainThreadDispatcher.EnqueueRoutine(WaitUntilValidUpdate());
         }
+
+        private void RefreshRequest() => ForceRefresh(false);
+        private bool LoadRequest() => !ShowLoading(true);
 
         private void OnSettingsClicked() => lbsmc?.ShowModal(leaderboardContainer.transform);
         private void OnPlayerScoreUpdated(AccSaberLeaderboardEntry token)
@@ -701,12 +701,14 @@ namespace AccSaber.UI.ViewControllers
             currentPage = -1;
 
             if (!gameObject.activeInHierarchy || !await DoRefresh(false))
-                refreshRequested = true;
+                refreshRequester.Request(false);
         }
         private void ForceRefresh(bool overridePlayerScore, int version = -1)
         {
             if (!gameObject.activeInHierarchy)
                 return;
+
+            refreshRequester.CancelRequest();
 
             _ = ForceRefresh_Internal(overridePlayerScore, version);
         }
@@ -800,20 +802,31 @@ namespace AccSaber.UI.ViewControllers
             return true;
         }
 
-        public void LoadUntilNextRefreshIfScoreBeaten(int score)
+        public void LoadUntilNextRefreshIfScoreBeaten(int score, bool overridePlayerScore, TimeSpan timeout = default)
         {
             if ((currentPlayerScore?.Score ?? -1) < score)
-                LoadUntilNextRefresh();
+            {
+                store.InvalidateCurrentMapCache();
+                LoadUntilNextRefresh(overridePlayerScore, timeout);
+            }
         }
-        public void LoadUntilNextRefresh()
+        public void LoadUntilNextRefresh(bool overridePlayerScore, TimeSpan timeout = default)
         {
             if (!ShowLoading(true))
-                loadRequested = true;
+                loadRequester.Request(false);
+
+            if (overridePlayerScore)
+                currentPlayerScore = null;
+
+            if (timeout > TimeSpan.Zero)
+                refreshRequester.RequestIn(timeout);
         }
         private bool ShowLoading(bool forceLoad = false)
         {
             if (!gameObject.activeInHierarchy)
                 return false;
+
+            loadRequester.CancelRequest();
 
             if (Loading || DifficultyId is null)
                 return true;

@@ -190,6 +190,40 @@ namespace AccSaber.Utils
             return mult;
         }
 
+        public static IEnumerable<T> MergeSortedLists<T>(IComparer<T> comparer, params IEnumerable<IEnumerable<T>> lists)
+        {
+            List<IEnumerator<T>> iterators = [with(lists.Count())];
+
+            foreach (IEnumerable<T> list in lists)
+            {
+                IEnumerator<T> enumerator = list.GetEnumerator();
+                enumerator.MoveNext();
+                iterators.Add(enumerator);
+            }
+
+            while (iterators.Count > 0) 
+            {
+                T current = iterators[0].Current;
+                int currentIndex = 0;
+
+                for (int i = 1; i < iterators.Count; ++i)
+                {
+                    if (comparer.Compare(iterators[i].Current, current) < 0)
+                    {
+                        current = iterators[i].Current;
+                        currentIndex = i;
+                    }
+                }
+
+                yield return current;
+
+                if (!iterators[currentIndex].MoveNext())
+                    iterators.RemoveAt(currentIndex);
+            }
+        }
+        public static IEnumerable<T> MergeSortedLists<T>(params IEnumerable<IEnumerable<T>> lists) where T : IComparable<T> =>
+            MergeSortedLists(Comparer<T>.Default, lists);
+
         public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default)
         {
             try

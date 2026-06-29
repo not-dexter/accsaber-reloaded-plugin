@@ -14,7 +14,7 @@ namespace AccSaber.Models.CacheModels
         [JsonProperty("rank")]
         public int Rank { get; set; }
 
-        [JsonIgnore]
+        [JsonProperty("personalRank")]
         public int PersonalRank { get; set; } = -1;
 
         [JsonProperty("coverUrl")]
@@ -42,10 +42,10 @@ namespace AccSaber.Models.CacheModels
         public DateTime TimeSet { get; set; }
 
         [JsonProperty("difficulty")]
-        public BeatmapDifficulty Difficulty { get; set; }
+        public BeatmapDifficulty? Difficulty { get; set; } = null;
 
         [JsonProperty("category")]
-        public APCategory Category { get; set; }
+        public APCategory? Category { get; set; } = null;
 
         public AccSaberPlayerScore() { }
         internal AccSaberPlayerScore(AccSaberLeaderboardEntry score)
@@ -74,6 +74,10 @@ namespace AccSaber.Models.CacheModels
             TimeSet = score.TimeSet;
         }
 
+        internal void SetWeight(APCalc calc)
+        {
+            WeightedAp = AP * calc.GetWeight(PersonalRank);
+        }
         internal void SetValues(AccSaberBasicDifficulty diff, APCalc calc)
         {
             if (PersonalRank < 0)
@@ -82,7 +86,7 @@ namespace AccSaber.Models.CacheModels
             Difficulty = diff.Difficulty;
             Category = diff.Category ?? APCategory.Overall;
 
-            WeightedAp = AP * calc.GetWeight(PersonalRank);
+            SetWeight(calc);
         }
         internal void SetValues(SerializationHandler handler, APCalc calc) => 
             SetValues(handler.CachedDifficulties[DifficultyId], calc);

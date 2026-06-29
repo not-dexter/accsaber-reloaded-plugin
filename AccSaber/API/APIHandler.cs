@@ -234,9 +234,9 @@ namespace AccSaber.API
             }
         }
 
-        private static async Task<bool> CheckServerHealth(string domain, int maxRetries = 3, int msDelay = 10000)
+        private static async Task<bool> CheckServerHealth(string domain, int maxRetries = 3, int msDelay = 10000, CancellationToken ct = default)
         {
-            AsyncLock.Releaser releaser = await serverHealthLock.LockAsync();
+            AsyncLock.Releaser releaser = await serverHealthLock.LockAsync(ct);
 
             using (releaser)
             {
@@ -255,25 +255,25 @@ namespace AccSaber.API
 
                 for (; maxRetries > 0; maxRetries--)
                 {
-                    var (success, response) = await CallAPI_Internal(new HttpRequestMessage(HttpMethod.Get, testData.Value.url), testData.Value.throttler, quiet: true, maxRetries: 1);
+                    var (success, response) = await CallAPI_Internal(new HttpRequestMessage(HttpMethod.Get, testData.Value.url), testData.Value.throttler, quiet: true, maxRetries: 1, ct);
 
                     if (success || response is not null)
                         return success;
 
                     Plugin.Log.Warn("Health check failed for " + domain + ", however a retry is allowed since there was no response.");
-                    await Task.Delay(msDelay).ConfigureAwait(false);
+                    await Task.Delay(msDelay, ct).ConfigureAwait(false);
                 }
 
                 return false;
             }
         }
-        public static async Task<bool> CheckDomain(string domain)
+        public static async Task<bool> CheckDomain(string domain, CancellationToken ct = default)
         {
             bool cached = serverHealthCache.TryGetValue(domain, out var healthInfo);
             if (!cached || !healthInfo.isHealthy && healthInfo.lastFailedCheck + badHealthTimeout < DateTime.UtcNow)
             {
 
-                bool isHealthy = await CheckServerHealth(domain, maxRetries: 2).ConfigureAwait(false);
+                bool isHealthy = await CheckServerHealth(domain, maxRetries: 2, ct: ct).ConfigureAwait(false);
                 serverHealthCache[domain] = (DateTime.UtcNow, isHealthy);
                 if (!isHealthy)
                 {

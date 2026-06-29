@@ -16,20 +16,29 @@ using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
 
+#if V41
+using OculusStudios.Platform.Core;
+#endif
+
 namespace AccSaber.Managers
 {
 	internal sealed class AccSaberStore : IInitializable, IDisposable
 	{
 		private readonly SiraLog _log;
-		private readonly IPlatformUserModel _platformUserModel;
+#if V41
+        private readonly IPlatform _platformUserModel;
+        private UserInfo? _userInfo = null;
+#else
+        private readonly IPlatformUserModel _platformUserModel;
+#endif
         private readonly PlayerSocialLife _playerInfo;
         private readonly AccsaberAPI _api;
         private readonly SerializationHandler _serialHandler;
         private readonly AccSaberLeaderboardViewController _leaderboardVC;
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
-        public event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
-        public event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
+        public static event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
+        public static event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
         public event Action? OnUpdatingFromAccSaberAPI;
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
@@ -37,16 +46,20 @@ namespace AccSaber.Managers
 
         public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
 		internal static CancellationTokenSource WebsocketCanceller { get; private set; } = new();
-        internal const int RecieveBufferSize = 5120;
+        internal const int ReceiveBufferSize = 5120;
         internal const int SendBufferSize = 16;
+        private static readonly TimeSpan WebsocketIdleTimeout = TimeSpan.FromMinutes(10);
 
         private static readonly AsyncLock listenerLock = new();
 
         private AccSaberBasicDifficulty? _currentRankedMap;
 
-#pragma warning disable IDE0290
-		public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel, PlayerSocialLife playerInfo, AccsaberAPI api, SerializationHandler serialHandler, AccSaberLeaderboardViewController leaderboardVC)
-		{
+#if V41
+        public AccSaberStore(SiraLog log, IPlatform platformUserModel, PlayerSocialLife playerInfo, AccsaberAPI api, SerializationHandler serialHandler, AccSaberLeaderboardViewController leaderboardVC)
+#else
+        public AccSaberStore(SiraLog log, IPlatformUserModel platformUserModel, PlayerSocialLife playerInfo, AccsaberAPI api, SerializationHandler serialHandler, AccSaberLeaderboardViewController leaderboardVC)
+#endif
+        {
 			_log = log;
 			_platformUserModel = platformUserModel;
             _playerInfo = playerInfo;
@@ -276,109 +289,210 @@ namespace AccSaber.Managers
 
         public async Task StartWebsocket(CancellationToken ct = default)
         {
-            object locker = new();
-            void WaitForHealth(string domain, bool health)
-            {
-                if (health && domain.Equals(HelpfulPaths.APAPI_DOMAIN))
-                    lock (locker)
-                        Monitor.PulseAll(locker);
-            }
+            bool started = false;
 
             try
             {
-                const int maxRetries = 3;
-
                 AsyncLock.Releaser? theLock = await listenerLock.TryLockAsync();
                 if (theLock is null)
+                {
+                    Plugin.Log.Warn("Cannot start websocket when it is already running!");
                     return;
+                }
 
-                int retries = 0;
+                Throttler throttler = new(3, 120); // 3 calls every 120 seconds
+                Plugin.Log.Info("Websocket starting.");
+                started = true;
 
                 using (theLock.Value)
                     while (true)
                     {
-                        if (!await APIHandler.CheckDomain(HelpfulPaths.APAPI_DOMAIN))
+                        if (!await APIHandler.CheckDomain(HelpfulPaths.APAPI_DOMAIN, ct))
                         {
                             Plugin.Log.Warn("Pausing the websocket loop until the api is found to be healthy again.");
-                            lock (locker)
-                            {
-                                APIHandler.OnHealthUpdated += WaitForHealth;
-                                Monitor.Wait(locker);
-                                APIHandler.OnHealthUpdated -= WaitForHealth;
-                            }
+                            await WaitForAPIHealth(ct);
+                            Plugin.Log.Info("API is back up, restarting the websocket.");
                         }
 
-                        Plugin.Log.Info("Websocket starting.");
                         await ListenForScores(ct);
+
                         await Task.Delay(1000, ct);
-                        if (++retries >= maxRetries)
-                        {
-                            retries = 0;
-                            Plugin.Log.Warn("Too many retries, waiting 2 minutes before retry.");
-                            await Task.Delay(120000, ct);
-                        }
+                        await throttler.Call(ct);
+
+                        Plugin.Log.Info("Restarting the websocket.");
                     }
             }
             catch (OperationCanceledException)
             {
-                Plugin.Log.Info("Websocket closed.");
+                Plugin.Log.Info("Websocket canceled.");
             }
             catch (Exception e)
             {
                 Plugin.Log.Error("There was an error starting the websocket!\n" + e);
             }
+            finally
+            {
+                if (started)
+                    Plugin.Log.Info("The websocket has closed.");
+            }
+        }
+        private async Task WaitForAPIHealth(CancellationToken ct)
+        {
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+               
+                if (await APIHandler.CheckDomain(HelpfulPaths.APAPI_DOMAIN, ct))
+                    return;
+
+                TaskCompletionSource<object?> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+                void Handler(string domain, bool health)
+                {
+                    if (health && domain.Equals(HelpfulPaths.APAPI_DOMAIN))
+                        tcs.TrySetResult(null);
+                }
+
+                APIHandler.OnHealthUpdated += Handler;
+
+                try
+                {
+                    if (await APIHandler.CheckDomain(HelpfulPaths.APAPI_DOMAIN, ct))
+                        return;
+
+                    using var reg = ct.Register(() => tcs.TrySetCanceled(ct));
+                    await tcs.Task;
+                }
+                finally
+                {
+                    APIHandler.OnHealthUpdated -= Handler;
+                }
+            }
         }
         private async Task ListenForScores(CancellationToken ct)
         {
+            ClientWebSocket? webSocket = null;
+
+            CancellationTokenSource? receiveCts = null;
+
             try
             {
-                using ClientWebSocket webSocket = new();
-                await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), ct);
+                webSocket = new();
+                webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+
+                using CancellationTokenSource connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                connectCts.CancelAfter(TimeSpan.FromSeconds(30));
+
+                await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), connectCts.Token);
+
+                Plugin.Log.Info("Websocket connected.");
+
+                byte[] buffer = new byte[ReceiveBufferSize];
+                ArraySegment<byte> clientBuffer = new(buffer);
+
                 using MemoryStream ms = new();
-                WebSocketReceiveResult result;
-                while (webSocket.State == WebSocketState.Open)
+
+                while (webSocket.State == WebSocketState.Open && !ct.IsCancellationRequested)
                 {
+                    ms.SetLength(0);
+
+                    WebSocketReceiveResult result;
+
                     do
                     {
-                        ArraySegment<byte> clientBuffer = WebSocket.CreateClientBuffer(RecieveBufferSize, SendBufferSize);
-                        result = await webSocket.ReceiveAsync(clientBuffer, ct);
+                        receiveCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        receiveCts.CancelAfter(WebsocketIdleTimeout);
+
+                        result = await webSocket.ReceiveAsync(clientBuffer, receiveCts.Token);
+
+                        receiveCts.Dispose();
+                        receiveCts = null;
+
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", ct);
+                            Plugin.Log.Warn($"Websocket closed by server. Status: {result.CloseStatus}, Description: {result.CloseStatusDescription}");
+
+                            using CancellationTokenSource closeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                            closeCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+                            try
+                            {
+                                await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", closeCts.Token);
+                            }
+                            catch (OperationCanceledException) when (closeCts.IsCancellationRequested && !ct.IsCancellationRequested)
+                            {
+                                Plugin.Log.Warn("Timed out while responding to websocket close frame.");
+                            }
+                            
                             return;
                         }
+
                         ms.Write(clientBuffer.Array, clientBuffer.Offset, result.Count);
                     }
                     while (!result.EndOfMessage);
 
                     if (result.MessageType == WebSocketMessageType.Text)
 					{
-						AccSaberLeaderboardEntry? entry = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(Encoding.UTF8.GetString(ms.ToArray()));
-						if (entry is not null)
-							OnScoreUpdated?.Invoke(entry);
-						else
-							Plugin.Log.Error("The websocket was not able to deserialize a given entry.");
-                    }
+                        AccSaberLeaderboardEntry? entry;
 
-                    ms.SetLength(0);
+                        try
+                        {
+                            string json = Encoding.UTF8.GetString(ms.ToArray());
+
+                            entry = JsonConvert.DeserializeObject<AccSaberLeaderboardEntry>(json);
+
+                            if (entry is null)
+                            {
+                                Plugin.Log.Error("The websocket message deserialized to null.");
+                                continue;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Plugin.Log.Error("There was an error deserializing the websocket message.\n" + e);
+                            continue;
+                        }
+
+                        try
+                        {
+                            OnScoreUpdated?.Invoke(entry);
+                            Plugin.Log.Info("Websocket recieved score.");
+                        }
+                        catch (Exception e)
+                        {
+                            Plugin.Log.Error("There was an issue sending the score update out!\n" + e);
+                        }
+                    }
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 throw;
             }
+            catch (OperationCanceledException) when (receiveCts?.IsCancellationRequested ?? false)
+            {
+                Plugin.Log.Info("Websocket timed out waiting for a new score.");
+            }
             catch (OperationCanceledException)
             {
-                Plugin.Log.Info("The remote party has very rudely left us hanging (closed connect without handshake).");
+                Plugin.Log.Warn("Websocket timed out or was abandoned. Restarting.");
             }
             catch (Exception e)
             {
                 Plugin.Log.Error("There was an error with the websocket!\n" + e);
             }
+            finally
+            {
+                receiveCts?.Dispose();
+
+                Plugin.Log.Warn($"ListenForScores exiting. Websocket state: {webSocket?.State}");
+
+                webSocket?.Dispose();
+            }
         }
         private void UpdatePlayerScore(AccSaberLeaderboardEntry score)
         {
-            //Plugin.Log.Debug($"score name = {score.PlayerName}, score id = {score.PlayerId}, player id = {PlayerSocialLife.PlayerID}");
+            Plugin.Log.Debug($"score name = {score.PlayerName}, score id = {score.PlayerId}, player id = {_playerInfo.PlayerID}");
             if (score.PlayerId.Equals(_playerInfo.PlayerID)) { 
                 OnPlayerScoreUpdated?.Invoke(score);
                 _ = UpdateAccSaberInfo();
@@ -387,8 +501,16 @@ namespace AccSaber.Managers
 
 		public async Task<UserInfo?> GetPlatformUserInfo()
 		{
-			// GetUserInfo caches the result, no need to do it ourselves
-			return await _platformUserModel.GetUserInfo();
+#if V41
+            if (_userInfo is not null)
+                return _userInfo;
+
+            _userInfo = await _platformUserModel.GetUserInfo();
+            return _userInfo;
+#else
+            // GetUserInfo caches the result, no need to do it ourselves
+            return await _platformUserModel.GetUserInfo();
+#endif
 		}
 
         public void InvalidateCurrentMapCache()
