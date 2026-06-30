@@ -104,6 +104,16 @@ namespace AccSaber.UI.ViewControllers
                 PC.DisablePopups = value;
             }
         }
+
+        [UIValue("DisableIncompleteSubmissions")]
+        public bool DisableIncompleteSubmissions
+        {
+            get => !PC.SubmitOnIncompletePlay;
+            set
+            {
+                PC.SubmitOnIncompletePlay = !value;
+            }
+        }
         public void ShowModal(Transform parentTransform)
         {
             Parse(parentTransform);

@@ -209,11 +209,13 @@ namespace AccSaber.Utils.Misc
 
             AccSaberPlayerScore? oldScore = categoryScores.FirstOrDefault(score => score.DifficultyId.Equals(entry.DifficultyId));
 
-            if (oldScore.AP > entry.AP)
-                return;
-
             if (oldScore is not null)
+            {
                 categoryScores.Remove(oldScore);
+
+                if (oldScore.AP > entry.AP)
+                    return;
+            }
 
             AccSaberPlayerScore newScore = new(entry);
 

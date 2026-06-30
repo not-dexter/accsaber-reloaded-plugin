@@ -69,6 +69,28 @@ namespace AccSaber.Utils
                 Monitor.PulseAll(LoadWaiterLock);
         }
 
+        internal IEnumerable<PlaylistUtils.PlaylistMapInfo> GetMapsUnplayed(APCategory type)
+        {
+            HashSet<Guid> playerScoreDiffIds = [.. (type == APCategory.Overall ? _serialHandler.PlayerScores : _serialHandler.CategoryPlayerScores[(int)type])
+                .Select(score => score.DifficultyId)];
+
+            IEnumerable<AccSaberBasicDifficulty> diffs = type == APCategory.Overall ? _serialHandler.CachedDifficulties.Values :
+                _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category is not null && diff.Category.Value == type);
+
+            return GetMapsUnplayed_Internal(type, diffs.Where(diff => playerScoreDiffIds.Contains(diff.DifficultyId)));
+        }
+        private IEnumerable<PlaylistUtils.PlaylistMapInfo> GetMapsUnplayed_Internal(APCategory type, IEnumerable<AccSaberBasicDifficulty> playerDiffs)
+        {
+            HashSet<AccSaberBasicDifficulty> playerDiffSet = [.. playerDiffs];
+            IEnumerable<AccSaberBasicDifficulty> diffs;
+
+            if (type == APCategory.Overall)
+                diffs = _serialHandler.CachedDifficulties.Values.Where(diff => !playerDiffSet.Contains(diff));
+            else
+                diffs = _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category is not null && diff.Category.Value == type && !playerDiffSet.Contains(diff));
+
+            return _playlistUtils.GetPlaylistData(diffs.Select(diff => diff.DifficultyId));
+        }
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAp(APCategory type, string playerId, float apThreshold, ComparisonType comp)
         {
             if (comp == ComparisonType.NONE)
@@ -91,7 +113,12 @@ namespace AccSaber.Utils
                 ids = _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId);
             }
 
-            return _playlistUtils.GetPlaylistData(ids);
+            List<PlaylistUtils.PlaylistMapInfo> outp = _playlistUtils.GetPlaylistData(ids);
+
+            if ((comp & ComparisonType.LT) != 0)
+                outp.AddRange(GetMapsUnplayed(type));
+
+            return outp;
         }
         internal IEnumerable<PlaylistUtils.PlaylistMapInfo> GetMapsAp(APCategory type, float apThreshold, ComparisonType comp)
         {
@@ -104,7 +131,12 @@ namespace AccSaber.Utils
 
             IEnumerable<Guid> ids = scores.Select(entry => entry.DifficultyId);
 
-            return _playlistUtils.GetPlaylistData(ids);
+            List<PlaylistUtils.PlaylistMapInfo> outp = _playlistUtils.GetPlaylistData(ids);
+
+            if ((comp & ComparisonType.LT) != 0)
+                outp.AddRange(GetMapsUnplayed(type));
+
+            return outp;
         }
         internal async Task<IEnumerable<PlaylistUtils.PlaylistMapInfo>?> GetMapsAcc(APCategory type, string playerId, float accThreshold, ComparisonType comp)
         {
@@ -127,7 +159,12 @@ namespace AccSaber.Utils
 
             IEnumerable<Guid> ids = scores.Content.Where(entry => comparer(entry.Accuracy, accThreshold)).Select(entry => entry.DifficultyId);
 
-            return _playlistUtils.GetPlaylistData(ids);
+            List<PlaylistUtils.PlaylistMapInfo> outp = _playlistUtils.GetPlaylistData(ids);
+
+            if ((comp & ComparisonType.LT) != 0)
+                outp.AddRange(GetMapsUnplayed(type));
+
+            return outp;
         }
         internal IEnumerable<PlaylistUtils.PlaylistMapInfo> GetMapsAcc(APCategory type, float accThreshold, ComparisonType comp)
         {
@@ -140,7 +177,12 @@ namespace AccSaber.Utils
 
             IEnumerable<Guid> ids = scores.Select(entry => entry.DifficultyId);
 
-            return _playlistUtils.GetPlaylistData(ids);
+            List<PlaylistUtils.PlaylistMapInfo> outp = _playlistUtils.GetPlaylistData(ids);
+
+            if ((comp & ComparisonType.LT) != 0)
+                outp.AddRange(GetMapsUnplayed(type));
+
+            return outp;
         }
         public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, string? customSyncData, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
@@ -572,7 +614,7 @@ namespace AccSaber.Utils
                 await Task.Run(() =>
                 {
                     lock (LoadWaiterLock)
-                        Monitor.Wait(LoadWaiterLock);
+                        Monitor.Wait(LoadWaiterLock, 15_000);
                 });
 
 #if NEW_VERSION

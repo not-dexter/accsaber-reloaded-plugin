@@ -46,7 +46,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberBasicDifficulty : IModel
+    internal class AccSaberBasicDifficulty : IModel, IEquatable<AccSaberBasicDifficulty>
     {
         [JsonProperty("id")]
         public Guid DifficultyId { get; set; }
@@ -92,5 +92,9 @@ namespace AccSaber.Models
         {
             Hash = null!;
         }
+
+        public bool Equals(AccSaberBasicDifficulty other) => DifficultyId.Equals(other.DifficultyId);
+        public override bool Equals(object obj) => obj is AccSaberBasicDifficulty other && Equals(other);
+        public override int GetHashCode() => DifficultyId.GetHashCode();
     }
 }

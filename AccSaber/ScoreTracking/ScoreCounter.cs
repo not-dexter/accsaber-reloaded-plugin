@@ -33,6 +33,7 @@ namespace AccSaber.ScoreTracking
         private AccSaberScore score = null!;
         private AccsaberAPI api = null!;
         private AccSaberLeaderboardViewController aslvc = null!;
+        private Configuration.PluginConfig config = null!;
 
         private int current115Streak, combo, notes, totalNotes;
         private readonly object submitLock = new();
@@ -53,6 +54,8 @@ namespace AccSaber.ScoreTracking
             store ??= Plugin.Container.TryResolve<AccSaberStore>();
             api ??= Plugin.Container.TryResolve<AccsaberAPI>();
             aslvc ??= Plugin.Container.TryResolve<AccSaberLeaderboardViewController>();
+            config ??= Plugin.Container.TryResolve<Configuration.PluginConfig>();
+
 
             if (mods.noFailOn0Energy)
                 energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
@@ -234,6 +237,14 @@ namespace AccSaber.ScoreTracking
                 if (totalNotes < 115 || notes > totalNotes)
                 {
                     Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
+                    return;
+                }
+
+                bool mapIncomplete = score.UncompletedMap!.Value;
+
+                if (!config.SubmitOnIncompletePlay && mapIncomplete)
+                {
+                    Plugin.Log.Info("No score submit: Incomplete score submission has been disabled.");
                     return;
                 }
 
