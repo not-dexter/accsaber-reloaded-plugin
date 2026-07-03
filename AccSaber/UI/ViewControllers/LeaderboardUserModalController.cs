@@ -80,6 +80,9 @@ namespace AccSaber.UI.ViewControllers
 		[UIComponent("title-text")]
 		private readonly TextMeshProUGUI _titleText = null!;
 
+        [UIComponent("playerName")]
+        private readonly TextMeshProUGUI _playerName = null!;
+
         [UIValue("dimColor")] public const string dimColor = ColorUtils.DARK_BLUE;
 
         [UIComponent("playerImageBackground")] private readonly ImageView _playerImageBackground = null!;
@@ -345,8 +348,11 @@ namespace AccSaber.UI.ViewControllers
 
                 _parsed = true;
 			}
-			
-			_modalView.transform.SetParent(parentTransform.transform);
+			_playerName.enableAutoSizing = true;
+            _playerName.fontSizeMin = 1f;
+            _playerName.fontSizeMax = 5f;
+
+            _modalView.transform.SetParent(parentTransform.transform);
 			Accessors.ViewValidAccessor(ref _modalView) = false;
 		}
 

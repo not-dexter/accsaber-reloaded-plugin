@@ -8,7 +8,7 @@ namespace AccSaber.Models
     internal class AccSaberCampaign : IModel
     {
         [JsonProperty("id")]
-        public Guid Id { get; set; }
+        public string Id { get; set; } = null!;
 
         [JsonProperty("creatorId")]
         public string CreatorId { get; set; } = null!;
@@ -46,11 +46,17 @@ namespace AccSaber.Models
         [JsonProperty("difficultyCount")]
         public int? DifficultyCount { get; set; }
 
+        [JsonProperty("totalDifficulties")]
+        public int? TotalDifficulties { get; set; }
+
+        [JsonProperty("iconUrl")]
+        public string IconUrl { get; set; } = null!;
+
         [JsonProperty("completionMode")]
         public string CompletionMode { get; set; } = null!;
 
         [JsonProperty("completionXp")]
-        public int CompletionXp { get; set; }
+        public float CompletionXp { get; set; }
 
         [JsonProperty("curatorNotes")]
         public string CuratorNotes { get; set; } = null!;
@@ -75,18 +81,21 @@ namespace AccSaber.Models
 
         [JsonProperty("difficulties")]
         public List<AccSaberCampaignMap>? Difficulties { get; set; }
+
+        [JsonIgnore]
+        public string? ProgressStatus { get; set; }
     }
 
     internal class CampaignTags
     {
         [JsonProperty("id")]
-        public Guid Id { get; set; }
+        public string Id { get; set; } = null!;
 
         [JsonProperty("kind")]
         public string Kind { get; set; } = null!;
 
         [JsonProperty("categoryId")]
-        public Guid CategoryId { get; set; }
+        public string CategoryId { get; set; } = null!;
 
         [JsonProperty("name")]
         public string Name { get; set; } = null!;
@@ -98,10 +107,10 @@ namespace AccSaber.Models
     internal class AccSaberCampaignMap
     {
         [JsonProperty("id")]
-        public Guid Id { get; set; }
+        public string Id { get; set; } = null!;
 
         [JsonProperty("mapDifficultyId")]
-        public Guid MapDifficultyId { get; set; }
+        public string MapDifficultyId { get; set; } = null!;
 
         [JsonProperty("songName")]
         public string SongName { get; set; } = null!;
@@ -135,6 +144,17 @@ namespace AccSaber.Models
         public int XP { get; set; }
 
         [JsonProperty("prerequisiteMapIds")]
-        public virtual List<Guid> PrerequisiteMapIds { get; set; } = [];
+        public virtual List<string> PrerequisiteMapIds { get; set; } = [];
+    }
+    internal class AccSaberCampaignPaged : IModel
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; } = null!;
+
+        [JsonProperty("campaign")]
+        public AccSaberCampaign Campaign { get; set; } = null!;
+
+        [JsonProperty("progressStatus")]
+        public string? ProgressStatus { get; set; }
     }
 }

@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -218,16 +219,18 @@ namespace AccSaber.Managers
         public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 999)
         {
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGNS_ACTIVE, page, size);
-            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(call, AccsaberAPI.Throttler);
+            AccSaberPagedContent<AccSaberCampaignPaged>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaignPaged>>(call, AccsaberAPI.Throttler);
 
             if (content is null)
                 return [];
 
             List<AccSaberCampaign> newCampaignEntries = [];
 
-            foreach (AccSaberCampaign newsCampaign in content.Content!)
+
+            foreach (AccSaberCampaignPaged newCampaign in content.Content!)
             {
-                newCampaignEntries.Add(newsCampaign);
+                newCampaign.Campaign.ProgressStatus = newCampaign.ProgressStatus;
+                newCampaignEntries.Add(newCampaign.Campaign);
             }
 
             return newCampaignEntries;
@@ -245,6 +248,16 @@ namespace AccSaber.Managers
             }
 
             return content;
+        }
+        public async Task<bool> StartCampaign(string id)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_START_CAMPAIGN, id);
+
+            HttpRequestMessage request = new(HttpMethod.Post, call);
+
+            var (Success, _) = await APIHandler.CallAPI(request, AccsaberAPI.Throttler, maxRetries: 1).ConfigureAwait(false);
+
+            return Success;
         }
 
         private async Task UpdateAccSaberInfo()

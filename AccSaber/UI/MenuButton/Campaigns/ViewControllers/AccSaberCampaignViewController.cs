@@ -1,9 +1,11 @@
 ﻿using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -22,9 +24,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private bool _isLoading;
         private bool _inCampaign;
         private string _campaignTitle = null!;
+        private string _campaignDescription = null!;
         private string _campaignCreator = null!;
-        private List<AccSaberCampaign> accSaberCampaigns = null!;
         private AccSaberCampaign _currentCampaign = null!;
+        private List<AccSaberCampaign> _activeCampaigns = null!;
+
+        [UIComponent("CampaignImage")]
+        private readonly ImageView _campaignImage = null!;
 
         [UIComponent("campaign-list")]
         private readonly CustomCellListTableData _campaignList = null!;
@@ -88,7 +94,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged(nameof(CampaignTitle));
             }
         }
-
+        [UIValue("CampaignDescription")]
+        private string CampaignDescription
+        {
+            get => _campaignDescription;
+            set
+            {
+                _campaignDescription = value;
+                NotifyPropertyChanged(nameof(CampaignDescription));
+            }
+        }
         [UIValue("CampaignCreator")]
         private string CampaignCreator
         {
@@ -107,14 +122,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private bool IsNotLoading => !_isLoading;
 
         [UIAction("#post-parse")]
-        private void Parsed()
+        private async void Parsed()
         {
             if(!_parsed)
             {
                 _parsed = true;
-
             }
-            //accSaberCampaigns = await _accSaberStore.GetCampaigns();
+
+            _activeCampaigns = await _accSaberStore.GetActiveCampaigns();
+            
             CurrentTab = 0;
             IsLoading = false;
             InCampaign = false;
@@ -142,63 +158,52 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
         [UIAction("PlayCampaign")]
-        private void PlayCampaign()
+        private async void PlayCampaign()
         {
             InCampaign = true;
-            if(_currentCampaign is not null)
+            if (_currentCampaign is not null)
+            {
+                if (!_activeCampaigns.Contains(_currentCampaign) && _currentCampaign.ProgressStatus != "IN_PROGRESS")
+                {
+                    if (await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
+                        Plugin.Log.Error("Failed to start campaign!");
+                    else
+                        _activeCampaigns.Add(await _accSaberStore.GetCampaign(_currentCampaign.Id));
+                }
+
+                _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id);
+
                 _ = SetMaps(_currentCampaign);
+            }
         }
 
         [UIAction("tab-selected")]
         private void CategoryTabSelected(SegmentedControl segmentedControl, int index)
         {
             CurrentTab = (CategoryTab)index;
-
-            _ = UpdateTabs();
         }
         public async Task UpdateTabs()
         {
             _campaignCells.Clear();
             _campaignList.Data().Clear();
-            List<AccSaberCampaign> tabCampaigns;
+            _campaignList.TableView().ReloadData();
 
-            switch (CurrentTab)
+            List<AccSaberCampaign> tabCampaigns = CurrentTab switch
             {
-                case CategoryTab.Active:
-                    //tabCampaigns = await _accSaberStore.GetActiveCampaigns();
-                    var camp = new AccSaberCampaign() { Name = "Active Campaign 1", CreatorName = "Creator 1", DifficultyCount = 2 };
-                    var camp2 = new AccSaberCampaign() { Name = "Active Campaign 2", CreatorName = "Creator 2", DifficultyCount = 3 };
+                CategoryTab.Active => await _accSaberStore.GetActiveCampaigns(),
+                CategoryTab.Curated => await _accSaberStore.GetCampaigns("CURATED"),
+                CategoryTab.All => await _accSaberStore.GetCampaigns("PUBLISHED"),
+                _ => throw new NotImplementedException(),
+            };
 
-                    
-                    tabCampaigns = new List<AccSaberCampaign> { camp, camp2 };
-                    break;
-                case CategoryTab.Curated:
-                    // tabCampaigns = await _accSaberStore.GetCampaigns("CURATED");
-                    var cur_list = new List<AccSaberCampaignMap>();
-
-                    for (int i = 0;  i < 10; i++)
-                        cur_list.Add(new AccSaberCampaignMap() { SongName = $"Curated song {i}", SongAuthor = $"Creator {i}", Difficulty = "HARD" });
-
-                    var cur_camp = new AccSaberCampaign() { Name = "Curated Campaign 1", CreatorName = "Creator 1", DifficultyCount = 2, Difficulties = cur_list };
-                    var cur_camp2 = new AccSaberCampaign() { Name = "Curated Campaign 2", CreatorName = "Creator 2", DifficultyCount = 3, Difficulties = cur_list };
-
-
-                    tabCampaigns = new List<AccSaberCampaign> { cur_camp, cur_camp2 };
-                    break;
-                default:
-                    //tabCampaigns = await _accSaberStore.GetCampaigns("PUBLISHED");
-                    var pub_camp = new AccSaberCampaign() { Name = "Published Campaign 1", CreatorName = "Creator 1", DifficultyCount = 2 };
-                    var pub_camp2 = new AccSaberCampaign() { Name = "Published Campaign 2", CreatorName = "Creator 2", DifficultyCount = 3 };
-
-
-                    tabCampaigns = new List<AccSaberCampaign> { pub_camp, pub_camp2 };
-                    break;
-            }                    
-
-            foreach(var campaign in tabCampaigns)
+            foreach (var campaign in tabCampaigns)
             {
+                if (CurrentTab == CategoryTab.Active && campaign.ProgressStatus != "IN_PROGRESS")
+                    continue;
+
                 _campaignCells.Add(new CampaignCell(campaign));
             }
+
             IEnumerator WaitThenUpdate()
             {
                 yield return new WaitForEndOfFrame();
@@ -213,6 +218,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             CampaignTitle = campaign.Name;
             CampaignCreator = campaign.CreatorName;
+            CampaignDescription = campaign.Description;
+            await _campaignImage.SetImageAsync(campaign.IconUrl); // its in webp </3 // update its no longer in webp :)
         }
 
         public async Task SetMaps(AccSaberCampaign campaign)

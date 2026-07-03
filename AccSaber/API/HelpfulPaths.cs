@@ -244,7 +244,15 @@
         /// <remarks>
         /// Format parameters: page, size.
         /// </remarks>
-        public const string APAPI_CAMPAIGNS_ACTIVE = APAPI + "campaigns?page={0}&size={1}"; //no params
+        public const string APAPI_CAMPAIGNS_ACTIVE = APAPI + "campaigns/me?page={0}&size={1}"; //no params
+
+        /// <summary>
+        /// Activates specified campaign.
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: id.
+        /// </remarks>
+        public const string APAPI_START_CAMPAIGN = APAPI + "campaigns/{0}/start";
 
         /// <summary>
         /// Retrieves specified campaign.

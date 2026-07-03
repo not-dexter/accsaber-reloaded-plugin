@@ -1,4 +1,4 @@
-<vertical pref-width='64' pref-height='12' bg='round-rect-panel'>
+<vertical pref-width='64' pref-height='12' bg='round-rect-panel' pad='2'>
   <horizontal active='~notShowStatus'>
     <text text='~title' align='Left'/>
     <text text='~status' align='Right'/>

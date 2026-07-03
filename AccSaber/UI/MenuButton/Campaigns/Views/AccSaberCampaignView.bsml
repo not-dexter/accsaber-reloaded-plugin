@@ -40,14 +40,14 @@
 			</horizontal>
 			<vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~NotInCampaign'>
 				<horizontal preferred-width='100' horizontal-fit='PreferredSize'>
-					<img preserve-aspect='true' src='AccSaber.Resources.AccSaber.png' preferred-width='25' preferred-height='25'/>
+					<img preserve-aspect='true' id='CampaignImage' preferred-width='25' preferred-height='25'/>
 					<vertical preferred-width='60' preferred-height='10' vertical-fit='PreferredSize'>
 						<text text='~CampaignTitle' align='Left' font-size='6'/>
 						<text text='~CampaignCreator' align='Left' font-size='3.5'/>
 					</vertical>
 				</horizontal>
-				<text text='campaign description' align='Center' font-size='3.5'/>
-				<button text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'/>
+				<text text='~CampaignDescription' align='Center' font-size='3.5'/>
+				<button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'/>
 			</vertical>
 			<vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~InCampaign'>
 			</vertical>
