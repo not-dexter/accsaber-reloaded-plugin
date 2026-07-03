@@ -45,13 +45,13 @@ namespace AccSaber.Consts
         public const string LEADERBOARD_CELL = MAIN_BSML_PATH + ".LeaderboardCell.bsml";
         public const string LEADERBOARD_SCORE_MODAL = MAIN_BSML_PATH + ".LeaderboardScoreModal.bsml";
         public const string LEADERBOARD_USER_MODAL = MAIN_BSML_PATH + ".LeaderboardUserModal.bsml";
-        public const string WHERE_SCORE_MODAL_VIEW = MAIN_BSML_PATH + ".WhereScoreModalView.bsml";
         public const string LEADERBOARD_SETTINGS_MODAL = MAIN_BSML_PATH + ".LeaderboardSettingsModal.bsml";
 
         public const string MENU_BSML_PATH = "AccSaber.UI.MenuButton.Views";
         public const string ACC_SABER_MENU_VIEW = MENU_BSML_PATH + ".AccSaberMenuView.bsml";
         public const string ACC_SABER_MENU_CELL = MENU_BSML_PATH + ".AccSaberMenuCell.bsml";
         public const string ACC_SABER_PLAYLIST_MODAL = MENU_BSML_PATH + ".AccSaberPlaylistModal.bsml";
+        public const string ACC_SABER_PLAYLIST_SETTINGS_MODAL = MENU_BSML_PATH + ".AccSaberPlaylistSettingsModal.bsml";
         public const string ACC_SABER_PLAYLIST_CELL = MENU_BSML_PATH + ".AccSaberPlaylistCell.bsml";
         public const string ACC_SABER_MISSION_SCREEN = MENU_BSML_PATH + ".AccSaberMissionScreen.bsml";
         public const string ACC_SABER_MISSION_CELL = MENU_BSML_PATH + ".AccSaberMissionCell.bsml";

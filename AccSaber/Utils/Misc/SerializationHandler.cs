@@ -232,19 +232,23 @@ namespace AccSaber.Utils.Misc
 
             newScore.SetValues(this, calc);
 
+            int temp, index;
+
             if (newScore.PersonalRank == -1 && categoryScores.Last().AP > newScore.AP)
             {
                 categoryScores.Add(newScore); // This is a very rare case, as it means the user improved their lowest score but didn't improve it past their second lowest.
+
+                temp = PlayerScores.BinarySearch(newScore, APScoreSorter);
+                PlayerScores.Insert(temp < 0 ? ~temp : temp, newScore);
+
                 return;
             }
-
-            int index;
 
             if (newScore.PersonalRank == 0)
                 index = 0;
             else
             {
-                int temp = categoryScores.BinarySearch(0, newScore.PersonalRank + 1, newScore, APScoreSorter);
+                temp = categoryScores.BinarySearch(0, newScore.PersonalRank + 1, newScore, APScoreSorter);
                 index = temp < 0 ? ~temp : temp; // We allow positive indexes to be inserted because duplicate ap values are allowed.
             }
 

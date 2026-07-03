@@ -1,9 +1,11 @@
 ﻿using AccSaber.API;
 using AccSaber.Models;
 using AccSaber.Utils.Safety;
+using HMUI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -347,6 +349,10 @@ namespace AccSaber.Utils
         public static string Capitialize(this string str) => char.ToUpper(str[0]) + str[1..];
         public static string CapitializeWords(this string str) => string.Join(" ", str.Split(' ').Select(word => word.Capitialize()));
         public static void CapitializeSelf(ref string str) => str = str.Capitialize();
+
+        public static void AttachTo(this ModalView modal, Transform parent) =>
+            typeof(ModalView).GetMethod("SetupView", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(modal, [parent]);
+        public static void AttachTo(this ModalView modal, Component parent) => modal.AttachTo(parent.transform);
 
         #region Debug functions
         /// <summary>

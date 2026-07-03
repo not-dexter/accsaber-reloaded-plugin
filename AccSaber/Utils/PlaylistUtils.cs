@@ -1,4 +1,5 @@
-﻿using AccSaber.Models;
+﻿using AccSaber.Configuration;
+using AccSaber.Models;
 using AccSaber.Models.CacheModels;
 using AccSaber.Utils.Misc;
 using HarmonyLib;
@@ -20,10 +21,9 @@ namespace AccSaber.Utils
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
+        [Inject] private readonly PluginConfig pluginConfig = null!;
 
         [BeatSaberMarkupLanguage.Attributes.UIComponent("customSyncButton")] private readonly UnityEngine.UI.Button customSyncButton = null!;
-
-        private bool _init = false;
 
         private Assembly? playlistManager = null, playlistLib = null;
         private static object? pdvbcInstance = null;
@@ -36,11 +36,6 @@ namespace AccSaber.Utils
 
         public void Initialize()
         {
-            if (_init)
-                return;
-
-            _init = true;
-
             bool playlistManagerExists = false;
             bool playlistLibExists = false;
 
@@ -244,8 +239,57 @@ namespace AccSaber.Utils
             }
         }
 
-        // Reflection taken from: https://github.com/BeatLeader/beatleader-mod/blob/master/Source/7_Utils/Interop/Interops/PlaylistsLibInterop.cs#L10
-        public void LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistMapInfo> maps, string? customSyncData, Action<string?>? statusUpdater = null, bool endEvent = true)
+        public void DeleteCustomPlaylists(bool overrideSettings = false)
+        {
+            if (playlistLib is null)
+            {
+                Plugin.Log.Warn("BeatSaberPlaylistsLib is not installed, cannot delete playlists.");
+                return;
+            }
+
+            try
+            {
+                Type playlistLibManagerType = playlistLib.GetType("BeatSaberPlaylistsLib.PlaylistManager");
+                Type playlistType = playlistLib.GetType("BeatSaberPlaylistsLib.Types.IPlaylist");
+
+                MethodInfo tryGetCustomData = playlistType.GetMethod("TryGetCustomData", BindingFlags.Public | BindingFlags.Instance);
+                MethodInfo deletePlaylist = playlistLibManagerType.GetMethod("DeletePlaylist", BindingFlags.Public | BindingFlags.Instance, null, [playlistType], null);
+
+                PropertyInfo playlistLibManagerProperty = playlistLibManagerType.GetProperty("DefaultManager", BindingFlags.Static | BindingFlags.Public);
+                PropertyInfo playlistFilename = playlistType.GetProperty("Filename", BindingFlags.Public | BindingFlags.Instance);
+
+                object managerInstance = playlistLibManagerProperty.GetValue(null);
+                object playlistArray = playlistLibManagerType.GetMethod("GetAllPlaylists", BindingFlags.Instance | BindingFlags.Public, null, [typeof(bool)], null).Invoke(managerInstance, [true]);
+
+                if (playlistArray is not IEnumerable<object> playlists)
+                {
+                    Plugin.Log.Error("There was an issue getting the playlists to delete!");
+                    return;
+                }
+
+                object?[] customDataParams = [CustomDataKey, null];
+                object? playlistManagerInstance = null;
+
+                foreach (object playlist in playlists)
+                {
+                    if ((bool)tryGetCustomData.Invoke(playlist, customDataParams) && customDataParams[1] is string)
+                    {
+                        playlistManagerInstance ??= playlistLibManagerType.GetMethod("GetManagerForPlaylist", BindingFlags.Public | BindingFlags.Instance).Invoke(managerInstance, [playlist]);
+
+                        deletePlaylist.Invoke(playlistManagerInstance, [playlist]);
+                    }
+                }
+
+                playlistLibManagerType.GetMethod("RefreshPlaylists", BindingFlags.Public | BindingFlags.Instance).Invoke(managerInstance, [false]);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an error deleting custom playlists!\n" + e);
+            }
+        }
+
+        // Reflection adapted from: https://github.com/BeatLeader/beatleader-mod/blob/master/Source/7_Utils/Interop/Interops/PlaylistsLibInterop.cs#L10
+        public void LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistMapInfo> maps, string? customSyncData, Action<string?>? statusUpdater = null, bool endEvent = true, bool overrideSettings = false)
         {
             try
             {
@@ -254,6 +298,15 @@ namespace AccSaber.Utils
                     Plugin.Log.Warn("BeatSaberPlaylistsLib is not installed, cannot create playlist.");
                     return;
                 }
+
+                if (!pluginConfig.AllowMultipleCustomPlaylists && !overrideSettings)
+                {
+                    statusUpdater?.Invoke("Deleting old playlists...");
+                    DeleteCustomPlaylists();
+                }
+
+                if (pluginConfig.CustomPlaylistPath.Length > 0 && !overrideSettings)
+                    filename = System.IO.Path.Combine(pluginConfig.CustomPlaylistPath, filename);
 
                 statusUpdater?.Invoke("Creating...");
 
@@ -299,7 +352,7 @@ namespace AccSaber.Utils
                     statusUpdater?.Invoke(null);
             }
         }
-        public void RefreshPlaylist(string filename)
+        public void RefreshPlaylist(string filename, bool overrideSettings = false)
         {
             if (playlistLib is null)
             {
@@ -309,6 +362,9 @@ namespace AccSaber.Utils
 
             try
             {
+                if (pluginConfig.CustomPlaylistPath.Length > 0 && !overrideSettings)
+                    filename = System.IO.Path.Combine(pluginConfig.CustomPlaylistPath, filename);
+
                 Type playlistLibManagerType = playlistLib.GetType("BeatSaberPlaylistsLib.PlaylistManager");
                 Type playlistType = playlistLib.GetType("BeatSaberPlaylistsLib.Types.IPlaylist");
 
@@ -352,10 +408,13 @@ namespace AccSaber.Utils
 
                 object managerInstance = playlistLibManagerProperty.GetValue(null);
 
-                object[] playlists = (object[])playlistLibManagerType.GetMethod("GetAllPlaylists", BindingFlags.Public | BindingFlags.Instance, null, [], null).Invoke(managerInstance, []);
+                object[] playlists = (object[])playlistLibManagerType.GetMethod("GetAllPlaylists", BindingFlags.Public | BindingFlags.Instance, null, [typeof(bool)], null).Invoke(managerInstance, [true]);
                 PropertyInfo filenameProperty = playlistType.GetProperty("Filename", BindingFlags.Public | BindingFlags.Instance);
 
                 object? playlistWrapper = playlists.FirstOrDefault(list => filename.Equals((string)filenameProperty.GetValue(list)));
+
+                //Plugin.Log.Info("filename = " + filename);
+                //Plugin.Log.Info("playlists = " + string.Join(", ", playlists.Select(list => (string)filenameProperty.GetValue(list))));
 
                 if (playlistWrapper is null)
                     return null;

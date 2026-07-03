@@ -18,6 +18,8 @@ using System.Collections;
 using UnityEngine;
 using AccSaber.Utils.Misc;
 using AccSaber.Utils.Safety;
+using AccSaber.Configuration;
+
 
 
 
@@ -47,6 +49,7 @@ namespace AccSaber.Utils
         [Inject] private readonly AccSaberLeaderboardViewController _leaderboardVC = null!;
         [Inject] private readonly MainThreadDispatcher _threadDispatcher = null!;
         [Inject] private readonly PlayerSocialLife _playerInfo = null!;
+        [Inject] private readonly PluginConfig _config = null!;
 
         public event Action<string?>? StatusTextChanged;
 
@@ -67,6 +70,19 @@ namespace AccSaber.Utils
         {
             lock (LoadWaiterLock)
                 Monitor.PulseAll(LoadWaiterLock);
+        }
+
+        private bool CheckForCustomPlaylist(string name)
+        {
+            string path = _config.CustomPlaylistPath.Length > 0 ? Path.Combine(ResourcePaths.CUSTOM_PLAYLISTS, _config.CustomPlaylistPath) : ResourcePaths.CUSTOM_PLAYLISTS;
+
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+                return false;
+            }
+
+            return Directory.GetFiles(path).Any(file => file.Contains(name));
         }
 
         internal IEnumerable<PlaylistUtils.PlaylistMapInfo> GetMapsUnplayed(APCategory type)
@@ -184,11 +200,12 @@ namespace AccSaber.Utils
 
             return outp;
         }
+
         public async Task LoadPlaylist(string filename, string playlistName, IEnumerable<PlaylistUtils.PlaylistMapInfo> maps, string? customSyncData, Action? closeMenu, Action<string?>? statEvent = null, bool endEvent = true)
         {
             StatusTextChanged += statEvent;
 
-            if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+            if (!CheckForCustomPlaylist(filename))
                 _playlistUtils.LoadPlaylist(filename, playlistName, maps, customSyncData, StatusTextChanged, endEvent);
 
             if (closeMenu is not null)
@@ -216,7 +233,7 @@ namespace AccSaber.Utils
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{apThreshold:0.##}ap";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {apThreshold:0.##}ap";
 
-                if (Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                if (CheckForCustomPlaylist(filename))
                 {
                     if (closeMenu is not null)
                         await GoToPlaylist(filename, closeMenu);
@@ -262,7 +279,7 @@ namespace AccSaber.Utils
                 string filename = $"accsaber-reloaded-{categoryName}-{thresholdDirection}-{accThreshold * 100f:0.##}%";
                 string playlistName = $"{categoryName.Replace('-',' ').CapitializeWords()} {thresholdDirection.Capitialize()} {accThreshold * 100f:0.##}%";
 
-                if (Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                if (CheckForCustomPlaylist(filename))
                 {
                     if (closeMenu is not null)
                         await GoToPlaylist(filename, closeMenu);
@@ -298,7 +315,7 @@ namespace AccSaber.Utils
 
                 string filename = $"accsaber-reloaded-missing-{playerId}-{categoryName.Replace('_', '-')}.bplist";
 
-                if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                if (!CheckForCustomPlaylist(filename))
                 {
 
                     StatusTextChanged?.Invoke("Downloading...");
@@ -344,7 +361,7 @@ namespace AccSaber.Utils
 
                 //Plugin.Log.Info($"{Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Print()}");
 
-                if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename))) {
+                if (!CheckForCustomPlaylist(filename)) {
 
                     StatusTextChanged?.Invoke("Downloading...");
 
@@ -385,7 +402,7 @@ namespace AccSaber.Utils
 
                 string filename = $"accsaber-snipe-{sniperId}-{targetId}-{EnumUtils.CategoryToReloadedCategory(category).ToString().Replace('_','-')}.bplist";
 
-                if (!Directory.GetFiles(ResourcePaths.CUSTOM_PLAYLISTS).Any(name => name.Contains(filename)))
+                if (!CheckForCustomPlaylist(filename))
                 {
                     StatusTextChanged?.Invoke("Downloading...");
 

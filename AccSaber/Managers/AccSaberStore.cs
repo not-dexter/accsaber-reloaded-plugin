@@ -236,7 +236,7 @@ namespace AccSaber.Managers
             return newCampaignEntries;
         }
 
-        public async Task<AccSaberCampaign> GetCampaign(string id)
+        public async Task<AccSaberCampaign> GetCampaign(Guid id)
         {
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGN, id);
             AccSaberCampaign? content = await APIHandler.CallAPI_Json<AccSaberCampaign>(call, AccsaberAPI.Throttler);
@@ -249,7 +249,7 @@ namespace AccSaber.Managers
 
             return content;
         }
-        public async Task<bool> StartCampaign(string id)
+        public async Task<bool> StartCampaign(Guid id)
         {
             string call = string.Format(HelpfulPaths.APAPI_START_CAMPAIGN, id);
 

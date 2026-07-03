@@ -7,13 +7,14 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
 using System;
+using System.ComponentModel;
 using System.Reflection;
 using UnityEngine;
 using Zenject;
 
 namespace AccSaber.UI.ViewControllers
 {
-    internal sealed class LeaderboardSettingsModalController
+    internal sealed class LeaderboardSettingsModalController : IInitializable, IDisposable
     {
         private bool _parsed;
         
@@ -23,8 +24,8 @@ namespace AccSaber.UI.ViewControllers
         [UIParams]
         private readonly BSMLParserParams _parserParams = null!;
 
+        public event PropertyChangedEventHandler? PropertyChanged;
         public event Action? OnCombineRelations;
-        public event Action? OnSettingUpdated;
 
         [Inject] private readonly PluginConfig PC = null!;
         private void Parse(Transform parentTransform)
@@ -44,22 +45,12 @@ namespace AccSaber.UI.ViewControllers
         [UIValue("ShowCombo")]
         public bool ShowCombo
         {
-            get => PC.ShowCombo;
-            set
-            {
-                PC.ShowCombo = value;
-                OnSettingUpdated!.Invoke();
-            }
+            get => PC.ShowCombo; set => PC.ShowCombo = value;
         }
         [UIValue("ShowStreak")]
         public bool ShowStreak
         {
-            get => PC.ShowStreak;
-            set
-            {
-                PC.ShowStreak = value;
-                OnSettingUpdated!.Invoke();
-            }
+            get => PC.ShowStreak; set => PC.ShowStreak = value;
         }
 
         [UIValue("CombineRelations")]
@@ -67,52 +58,34 @@ namespace AccSaber.UI.ViewControllers
         {
             get => PC.CombineRelations;
             set
-            {   
+            {
                 PC.CombineRelations = value;
-                OnCombineRelations!.Invoke();
+                OnCombineRelations?.Invoke();
             }
         }
 
         [UIValue("AccDecimals")]
         public int AccDecimals
         {
-            get => PC.AccDecimals;
-            set
-            {
-                PC.AccDecimals = value;
-                OnSettingUpdated!.Invoke();
-            }
+            get => PC.AccDecimals; set => PC.AccDecimals = value;
         }
         [UIValue("TimePlaces")]
         public int TimePlaces
         {
-            get => PC.TimePlaces;
-            set
-            {
-                PC.TimePlaces = value;
-                OnSettingUpdated!.Invoke();
-            }
+            get => PC.TimePlaces; set => PC.TimePlaces = value;
         }
 
 
         [UIValue("DisablePopups")]
         public bool DisablePopups
         {
-            get => PC.DisablePopups;
-            set
-            {
-                PC.DisablePopups = value;
-            }
+            get => PC.DisablePopups; set => PC.DisablePopups = value;
         }
 
         [UIValue("DisableIncompleteSubmissions")]
         public bool DisableIncompleteSubmissions
         {
-            get => !PC.SubmitOnIncompletePlay;
-            set
-            {
-                PC.SubmitOnIncompletePlay = !value;
-            }
+            get => !PC.SubmitOnIncompletePlay; set => PC.SubmitOnIncompletePlay = !value;
         }
         public void ShowModal(Transform parentTransform)
         {
@@ -120,6 +93,8 @@ namespace AccSaber.UI.ViewControllers
             
             _parserParams.EmitEvent("close-modal");
             _parserParams.EmitEvent("open-modal");
+
+            PropertyChanged?.Invoke(this, new(nameof(DisablePopups)));
         }
 
         public void HideModal()
@@ -130,6 +105,23 @@ namespace AccSaber.UI.ViewControllers
             }
 			
             _parserParams.EmitEvent("close-modal");
+        }
+
+        public void Initialize()
+        {
+            PC.PropertyChanged += PluginConfigUpdated;
+        }
+        public void Dispose()
+        {
+            PC.PropertyChanged -= PluginConfigUpdated;
+        }
+
+        private void PluginConfigUpdated(object sender, PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName is nameof(PluginConfig.DisablePopups)){
+                PropertyChanged?.Invoke(this, new(nameof(DisablePopups)));
+                Plugin.Log.Info("this works");
+            }
         }
     }
 }

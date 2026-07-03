@@ -1,4 +1,5 @@
-﻿using AccSaber.Consts;
+﻿using AccSaber.Configuration;
+using AccSaber.Consts;
 using AccSaber.Models.Base;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
@@ -142,7 +143,7 @@ namespace AccSaber.Models
         public override int GetHashCode() => MiscUtils.GetHashCode(PlayerId, TimeSet);
     }
 
-    internal class LeaderboardEntryDisplay(AccSaberLeaderboardEntry data, AccSaberLeaderboardViewController parent, PlayerSocialLife playerInfo, LeaderboardSettingsModalController lsmc) : ICellDataSource, INotifyPropertyChanged
+    internal class LeaderboardEntryDisplay : ICellDataSource, INotifyPropertyChanged
     {
         public string TemplatePath => ResourcePaths.LEADERBOARD_CELL;
         public float CellSize => Parent.OnPlayerPage ? BIG_CELL_SIZE : SMALL_CELL_SIZE;
@@ -153,10 +154,18 @@ namespace AccSaber.Models
         public Coroutine? UnderlineFadeRoutine { get; set; }
         public Coroutine? BackgroundFadeRoutine { get; set; }
 
-        public readonly AccSaberLeaderboardEntry ScoreData = data;
-        private readonly AccSaberLeaderboardViewController Parent = parent;
-        private readonly PlayerSocialLife PlayerInfo = playerInfo;
-        private readonly LeaderboardSettingsModalController Lsmc = lsmc;
+        public readonly AccSaberLeaderboardEntry ScoreData;
+        private readonly AccSaberLeaderboardViewController Parent;
+        private readonly PlayerSocialLife PlayerInfo;
+        private readonly PluginConfig Config;
+
+        internal LeaderboardEntryDisplay(AccSaberLeaderboardEntry data, AccSaberLeaderboardViewController parent)
+        {
+            ScoreData = data;
+            Parent = parent;
+            PlayerInfo = Plugin.Container.TryResolve<PlayerSocialLife>();
+            Config = Plugin.Container.TryResolve<PluginConfig>();
+        }
 
         [UIComponent(nameof(Container))] public readonly CustomBackground Container = null!;
 
@@ -288,20 +297,33 @@ namespace AccSaber.Models
         {
             Container.Underline?.color = DefaultUnderlineColor.Color();
 
-            Lsmc.OnSettingUpdated += OnSettingsUpdate;
+            Config.PropertyChanged += OnSettingsUpdate;
         }
 
-        private void OnSettingsUpdate()
+        private void OnSettingsUpdate(object sender, PropertyChangedEventArgs args)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowCombo)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowStreak)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Acc)));
+            if (!(Container?.gameObject.activeInHierarchy ?? false))
+                return;
+
+            switch (args.PropertyName)
+            {
+                case nameof(PluginConfig.ShowCombo):
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowCombo)));
+                    break;
+                case nameof(PluginConfig.ShowStreak):
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowStreak)));
+                    break;
+                case nameof(PluginConfig.AccDecimals):
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Acc)));
+                    break;
+            }
+
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameWidth)));
         }
 
         ~LeaderboardEntryDisplay()
         {
-            Lsmc.OnSettingUpdated -= OnSettingsUpdate;
+            Config.PropertyChanged -= OnSettingsUpdate;
         }
     }
 }

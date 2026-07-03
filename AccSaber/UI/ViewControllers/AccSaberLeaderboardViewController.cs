@@ -170,8 +170,8 @@ namespace AccSaber.UI.ViewControllers
             {
                 IEnumerable<ICellDataSource> outp = scoreDatas;
                 if (currentPlayerScore is not null && !OnPlayerPage)
-                    return BelowPlayerPage ? [.. outp.Prepend(Spacer).Prepend(new LeaderboardEntryDisplay(currentPlayerScore, this, playerInfo, lbsmc))] :
-                        [.. outp.Append(Spacer).Append(new LeaderboardEntryDisplay(currentPlayerScore, this, playerInfo, lbsmc))];
+                    return BelowPlayerPage ? [.. outp.Prepend(Spacer).Prepend(new LeaderboardEntryDisplay(currentPlayerScore, this))] :
+                        [.. outp.Append(Spacer).Append(new LeaderboardEntryDisplay(currentPlayerScore, this))];
                 return [.. outp];
             }
         }
@@ -1034,7 +1034,7 @@ namespace AccSaber.UI.ViewControllers
                         scoreDatas.Clear();
 
                         if (scores is not null)
-                            scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score, this, playerInfo, lbsmc)));
+                            scoreDatas.AddRange(scores.Select(score => new LeaderboardEntryDisplay(score, this)));
 
                         SetSelectorButtonSelectability(currentPlayerPage > 0 || currentPlayerPage == 0 && AttemptToSetPlayerPage());
 

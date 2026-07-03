@@ -48,6 +48,7 @@ namespace AccSaber.Installers
 			Container.Bind<AccSaberNewsViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberMenuViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberPlaylistModalController>().AsSingle();
+			Container.BindInterfacesAndSelfTo<AccSaberPlaylistSettingsModalController>().AsSingle();
 			Container.Bind<AccSaberMilestoneViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<AccSaberMainFlowCoordinator>().FromNewComponentOnNewGameObject().AsSingle();
             Container.Bind<AccSaberNewsModal>().AsSingle();
@@ -63,7 +64,7 @@ namespace AccSaber.Installers
 			Container.BindInterfacesAndSelfTo<AccSaberLeaderboardViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.Bind<LeaderboardScoreModalController>().AsSingle();
 			Container.BindInterfacesAndSelfTo<LeaderboardUserModalController>().AsSingle();
-            Container.Bind<LeaderboardSettingsModalController>().AsSingle();
+            Container.BindInterfacesAndSelfTo<LeaderboardSettingsModalController>().AsSingle();
 
 			Container.BindInterfacesAndSelfTo<AddonAdder>().AsSingle();
 		}

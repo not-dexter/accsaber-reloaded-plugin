@@ -1,7 +1,6 @@
 ﻿using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
@@ -51,7 +50,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             All
         }
 
-        [Inject] private AccSaberStore _accSaberStore = null!;
+        [Inject] private readonly AccSaberStore _accSaberStore = null!;
         private CategoryTab CurrentTab
         {
             get => _currentTab;

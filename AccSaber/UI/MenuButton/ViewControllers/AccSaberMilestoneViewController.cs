@@ -48,13 +48,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         private readonly AsyncLock milestoneLock = new();
 
-        [Inject] private readonly AccSaberStore _accSaberStore = null!;
-        [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
+        [Inject] private readonly AccSaberStore accSaberStore = null!;
+        [Inject] private readonly AccSaberMainFlowCoordinator parentFlowCoordinator = null!;
+        [Inject] private readonly AccSaberPlaylistSettingsModalController aspsmc = null!;
         [Inject] private readonly AccSaberMissionScreen mc = null!;
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
-        [Inject] private readonly LevelUtils _levelUtils = null!;
+        [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly PluginConfig PC = null!;
-        [Inject] private readonly PlayerSocialLife _playerInfo = null!;
+        [Inject] private readonly PlayerSocialLife playerInfo = null!;
 
 		private List<AccSaberMilestone> _milestones = null!;
 
@@ -116,11 +117,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("#post-parse")]
 		private void Parsed()
 		{
-			if (!_parsed)
-			{
-				_parsed = true;
-			}
+            if (!_parsed)
+                _parsed = true;
 
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_PLAYLIST_SETTINGS_MODAL, _container, aspsmc);
             VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, _contentContainer, mc);
 
             if (!_milestonesList.TableView().canSelectSelectedCell)
@@ -128,7 +128,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             CurrentTab = 0;
 
-			_ = SetMilestones(0);
+            _ = SetMilestones(0);
         }
 
 #pragma warning disable IDE0060 // index is needed for this function to be called correctly.
@@ -154,9 +154,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (PC.DisablePopups)
                 PopupSuccess(cellObj);
             else
-                _ = asnm.ShowModal(_container.transform, this, cellObj, _parentFlowCoordinator, "Would you like to go to this Playlist?");
+                _ = asnm.ShowModal(_container.transform, this, cellObj, parentFlowCoordinator, "Would you like to go to this Playlist?");
         }
 #pragma warning restore IDE0060
+
+        [UIAction("show-playlist-settings")]
+        private void ShowPlaylistSettings()
+        {
+            aspsmc.Show();
+        }
 
         private static readonly Regex ApRegex = new(@"(?<=\W|^)[Aa][Pp](?=\W|$)");
         public void PopupSuccess(object cellObj)
@@ -164,10 +170,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (cellObj is not MilestoneCell cell)
                 return;
 
-            void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
+            void CloseMenu() => parentFlowCoordinator.CloseToMainMenu();
 
             if (cell.data.TargetValue < 1f) // This should handle all accuracy milestones
-                _ = _levelUtils.LoadPlaylistAcc(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, ComparisonType.LT, CloseMenu, cell.UpdateStatus);
+                _ = levelUtils.LoadPlaylistAcc(cell.data.Category, playerInfo.PlayerID!, cell.data.TargetValue, ComparisonType.LT, CloseMenu, cell.UpdateStatus);
             else if (ApRegex.Match(cell.data.Description).Success)
             {
                 async Task ApTask()
@@ -181,17 +187,17 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                     if (milestone is null || milestone.QuerySpec.Having is null || milestone.QuerySpec.Having.Operator is null || !milestone.QuerySpec.From.Equals("scores", System.StringComparison.OrdinalIgnoreCase))
                     {
-                        await _levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
+                        await levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
                         return;
                     }
 
-                    await _levelUtils.LoadPlaylistAp(cell.data.Category, _playerInfo.PlayerID!, cell.data.TargetValue, milestone.QuerySpec.Having.Operator.FromComparisonString().Flip(), CloseMenu, cell.UpdateStatus);
+                    await levelUtils.LoadPlaylistAp(cell.data.Category, playerInfo.PlayerID!, cell.data.TargetValue, milestone.QuerySpec.Having.Operator.FromComparisonString().Flip(), CloseMenu, cell.UpdateStatus);
                 }
 
                 _ = ApTask();
             }
             else
-                _ = _levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
+                _ = levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
         }
 
 
@@ -220,14 +226,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 _milestoneCells.Clear();
                 _milestonesList.Data().Clear();
-                await _playerInfo.LoadTask;
+                await playerInfo.LoadTask;
 
-                if (_playerInfo.PlayerID is null)
+                if (playerInfo.PlayerID is null)
                 {
                     return;
                 }
 
-                _milestones = await _accSaberStore.GetUserMilestones(tab == MilestoneTab.Completed);
+                _milestones = await accSaberStore.GetUserMilestones(tab == MilestoneTab.Completed);
 
                 foreach (AccSaberMilestone milestone in _milestones)
                 {

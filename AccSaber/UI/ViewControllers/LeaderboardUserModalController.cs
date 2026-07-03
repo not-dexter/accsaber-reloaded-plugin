@@ -332,8 +332,7 @@ namespace AccSaber.UI.ViewControllers
 
 				var canvasGroup = _modalView.gameObject.AddComponent<CanvasGroup>();
 				var dropdownModalView = _categoryDropdown.Find("DropdownTableView").GetComponent<ModalView>();
-				// Idk why I can get away with this, but I can and will.
-				typeof(ModalView).GetMethod("SetupView", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(dropdownModalView, [_modalView.transform]);
+				dropdownModalView.AttachTo(_modalView);
 
                 _userInfoCanvasGroup = _userInfo.gameObject.AddComponent<CanvasGroup>();
 

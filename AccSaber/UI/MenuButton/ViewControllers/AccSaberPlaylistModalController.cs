@@ -143,7 +143,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (parsed)
                 return;
 
-            typeof(ModalView).GetMethod("SetupView", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).Invoke(categoryModal, [modal.transform]);
+            categoryModal.AttachTo(modal);
 
             if (GoToPlaylist != PC.GoToPlaylist)
             {
