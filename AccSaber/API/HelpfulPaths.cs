@@ -225,9 +225,9 @@
 
 
         /// <summary>
-        /// Retrieves all news entries.
+        /// Retrieves all campaign entries.
         /// </summary>
-        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns"; //no params
+        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns?status={0}"; // status
 
         /// <summary>
         /// Retrieves all news entries.
@@ -235,7 +235,7 @@
         /// <remarks>
         /// Format parameters: status, page, size.
         /// </remarks>
-        public const string APAPI_CAMPAIGNS_STATUS = APAPI + "campaigns?status={0}&page={1}&size={2}"; //no params
+        public const string APAPI_CAMPAIGNS_STATUS = APAPI + "campaigns?status={0}&page={1}&size={2}"; 
 
 
         /// <summary>
@@ -244,7 +244,7 @@
         /// <remarks>
         /// Format parameters: page, size.
         /// </remarks>
-        public const string APAPI_CAMPAIGNS_ACTIVE = APAPI + "campaigns/me?page={0}&size={1}"; //no params
+        public const string APAPI_CAMPAIGNS_ACTIVE = APAPI + "campaigns/me?page={0}&size={1}"; 
 
         /// <summary>
         /// Activates specified campaign.

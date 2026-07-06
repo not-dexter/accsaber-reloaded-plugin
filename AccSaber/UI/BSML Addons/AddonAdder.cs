@@ -1,4 +1,5 @@
-﻿using AccSaber.UI.BSML_Addons.TypeHandlers;
+﻿using AccSaber.UI.BSML_Addons.Tags;
+using AccSaber.UI.BSML_Addons.TypeHandlers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccsaberLeaderboard.UI.BSML_Addons.Tags;
@@ -31,10 +32,12 @@ namespace AccsaberLeaderboard.UI.BSML_Addons
 
             instance.RegisterTag(new BetterVertical());
             instance.RegisterTag(new BetterHorizontal());
+            instance.RegisterTag(new My2DScrollableContainer());
             instance.RegisterTag(new MyCustomList());
 
             instance.RegisterTypeHandler(new CustomBackgroundHandler());
             instance.RegisterTypeHandler(new MyCustomCellListTableDataHandler());
+            instance.RegisterTypeHandler(new ScrollRectHandler());
             instance.RegisterTypeHandler(new SkewAdder());
 
 #if !NEW_VERSION

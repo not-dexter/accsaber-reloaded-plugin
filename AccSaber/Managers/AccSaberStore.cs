@@ -44,6 +44,7 @@ namespace AccSaber.Managers
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
 		private AccSaberPlayer? _currentUser;
+        private readonly ObjectCacher<Guid, AccSaberCampaign> _campaignCache = new();
 
         public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
 		internal static CancellationTokenSource WebsocketCanceller { get; private set; } = new();
@@ -179,10 +180,10 @@ namespace AccSaber.Managers
             return newNewsEntries;
         }
 
-        public async Task<List<AccSaberCampaign>> GetCampaigns()
+        public async Task<List<AccSaberCampaign>> GetCampaigns(string status)
         {
 
-            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(HelpfulPaths.APAPI_CAMPAIGNS_ALL, AccsaberAPI.Throttler);
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(string.Format(HelpfulPaths.APAPI_CAMPAIGNS_ALL, status), AccsaberAPI.Throttler);
 
             if (content is null)
                 return [];
@@ -196,7 +197,7 @@ namespace AccSaber.Managers
 
             return newCampaignEntries;
         }
-        public async Task<List<AccSaberCampaign>> GetCampaigns(string status, int page = 0, int size = 999)
+        public async Task<List<AccSaberCampaign>> GetCampaignsPaged(string status, int page = 0, int size = 10)
         {
 
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGNS_STATUS, status, page, size);
@@ -216,7 +217,7 @@ namespace AccSaber.Managers
             return newCampaignEntries;
         }
 
-        public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 999)
+        public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 10)
         {
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGNS_ACTIVE, page, size);
             AccSaberPagedContent<AccSaberCampaignPaged>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaignPaged>>(call, AccsaberAPI.Throttler);
@@ -238,6 +239,9 @@ namespace AccSaber.Managers
 
         public async Task<AccSaberCampaign> GetCampaign(Guid id)
         {
+            if (_campaignCache.TryGetCachedItem(id, out AccSaberCampaign? item))
+                return item!;
+
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGN, id);
             AccSaberCampaign? content = await APIHandler.CallAPI_Json<AccSaberCampaign>(call, AccsaberAPI.Throttler);
 
@@ -246,6 +250,8 @@ namespace AccSaber.Managers
                 Plugin.Log.Debug("Campaign not found");
                 return new AccSaberCampaign();
             }
+
+            _campaignCache.CacheItem(id, content);
 
             return content;
         }

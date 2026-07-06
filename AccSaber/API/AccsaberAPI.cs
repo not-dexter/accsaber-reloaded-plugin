@@ -168,10 +168,10 @@ namespace AccSaber.API
                         if (!val.ContainsLength(displayType) && leaderboardSize >= 0)
                             val.GetLength(displayType) = leaderboardSize;
 
-                scoreInfoCacher.CacheItem(val, diffId);
+                scoreInfoCacher.CacheItem(diffId, val);
             }
             else
-                scoreInfoCacher.CacheItem(new([.. scoreData], [.. scoreData.Select(data => data.PlayerId)], [.. blockedUserIndexes], sizeData ?? []), diffId);
+                scoreInfoCacher.CacheItem(diffId, new([.. scoreData], [.. scoreData.Select(data => data.PlayerId)], [.. blockedUserIndexes], sizeData ?? []));
 
             //ScoreCache c = scoreInfoCacher.diffId.CachedItem;
             //Plugin.Log.Info($"The cache now has {c.Data.Count} entries: {c.Data.Select(GetRank).Print()}");
@@ -941,7 +941,7 @@ namespace AccSaber.API
                 if (statDiff)
                     await outp.LoadStatDiffs;
 
-                playerInfoCacher.CacheItem(outp, userId);
+                playerInfoCacher.CacheItem(userId, outp);
 
                 return outp;
             }

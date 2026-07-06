@@ -10,6 +10,12 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
+using AccSaber.Consts;
+
+
+#if NEW_VERSION
+using BeatSaberMarkupLanguage;
+#endif
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
@@ -27,6 +33,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private string _campaignCreator = null!;
         private AccSaberCampaign _currentCampaign = null!;
         private List<AccSaberCampaign> _activeCampaigns = null!;
+
+        [UIObject("CampaignMapContainer")]
+        private readonly GameObject _campaignMapContainer = null!;
 
         [UIComponent("CampaignImage")]
         private readonly ImageView _campaignImage = null!;
@@ -51,6 +60,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
+        [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         private CategoryTab CurrentTab
         {
             get => _currentTab;
@@ -128,11 +138,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _parsed = true;
             }
 
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_VIEW, _campaignMapContainer, _campaignMapViewController);
+
             _activeCampaigns = await _accSaberStore.GetActiveCampaigns();
             
             CurrentTab = 0;
-            IsLoading = false;
             InCampaign = false;
+
+            _ = UpdateTabs();
         }
 
         [UIAction("campaign-selected")]
@@ -164,7 +177,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 if (!_activeCampaigns.Contains(_currentCampaign) && _currentCampaign.ProgressStatus != "IN_PROGRESS")
                 {
-                    if (await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
+                    if (false && await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
                         Plugin.Log.Error("Failed to start campaign!");
                     else
                         _activeCampaigns.Add(await _accSaberStore.GetCampaign(_currentCampaign.Id));
@@ -172,15 +185,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id);
 
+                _campaignMapViewController.SetCampaign(_currentCampaign);
+
                 _ = SetMaps(_currentCampaign);
             }
         }
 
+#pragma warning disable IDE0060
         [UIAction("tab-selected")]
         private void CategoryTabSelected(SegmentedControl segmentedControl, int index)
         {
             CurrentTab = (CategoryTab)index;
         }
+#pragma warning restore IDE0060
         public async Task UpdateTabs()
         {
             _campaignCells.Clear();
@@ -189,7 +206,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             List<AccSaberCampaign> tabCampaigns = CurrentTab switch
             {
-                CategoryTab.Active => await _accSaberStore.GetActiveCampaigns(),
+                CategoryTab.Active => _activeCampaigns,
                 CategoryTab.Curated => await _accSaberStore.GetCampaigns("CURATED"),
                 CategoryTab.All => await _accSaberStore.GetCampaigns("PUBLISHED"),
                 _ => throw new NotImplementedException(),

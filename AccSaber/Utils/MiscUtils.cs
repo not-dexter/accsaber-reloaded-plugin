@@ -3,6 +3,7 @@ using AccSaber.Models;
 using AccSaber.Utils.Safety;
 using HMUI;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -29,7 +30,7 @@ namespace AccSaber.Utils
         public const int SECONDS_WEEK = SECONDS_DAY * 7; // 604,800
         public const int SECONDS_YEAR = (int)(SECONDS_DAY * DAYS_YEAR); // 31,556,926
 
-        private static readonly Dictionary<string, Sprite> ImageCache = [];
+        private static readonly ConcurrentDictionary<string, Sprite> ImageCache = [];
 
         public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
         {
@@ -292,7 +293,7 @@ namespace AccSaber.Utils
 
                 Sprite s = await VersionUtils.LoadSpriteAsync(data);
 
-                ImageCache.Add(url, s);
+                ImageCache.TryAdd(url, s);
 
                 return s;
             }

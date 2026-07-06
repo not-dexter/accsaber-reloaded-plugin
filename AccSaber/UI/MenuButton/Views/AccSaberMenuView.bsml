@@ -68,7 +68,7 @@
     </horizontal>
   </vertical>
   
-  <button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign' active='false'/>
+  <button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign' active='true'/>
   <button text='View Playlists' align='Left' anchor-pos-x='38' on-click='show-playlist-modal'/>
 
   <vertical bg='round-rect-panel' skew='0' anchor-pos-x='70' anchor-pos-y='-5' pref-width='15' pref-height='45' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>

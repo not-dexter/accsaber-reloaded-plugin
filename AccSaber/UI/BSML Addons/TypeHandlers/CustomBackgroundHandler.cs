@@ -1,4 +1,5 @@
-﻿using AccsaberLeaderboard.UI.Components;
+﻿using AccSaber.Utils;
+using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.TypeHandlers;
@@ -26,13 +27,8 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
 
         public override void HandleType(BSMLParser.ComponentTypeWithData componentType, BSMLParserParams parserParams)
         {
-#if NEW_VERSION
-            Dictionary<string, string> componentData = componentType.Data;
-            CustomBackground bg = (componentType.Component as CustomBackground)!;
-#else
-            Dictionary<string, string> componentData = componentType.data;
-            CustomBackground bg = (componentType.component as CustomBackground)!;
-#endif
+            Dictionary<string, string> componentData = componentType.Data();
+            CustomBackground bg = (componentType.Component() as CustomBackground)!;
 
             Color c = default;
 

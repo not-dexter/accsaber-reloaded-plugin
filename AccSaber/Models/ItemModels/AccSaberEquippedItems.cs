@@ -246,7 +246,7 @@ namespace AccSaber.Models.ItemModels
             Sprite outp = Sprite.Create(tex, new(0, 0, width, height), new(0.5f, 0.5f));
 
             if (!TextureBuffer.ContainsKey(gradient))
-                TextureBuffer.CacheItem(new Sprite[360], gradient);
+                TextureBuffer.CacheItem(gradient, new Sprite[360]);
 
             TextureBuffer.GetCachedItem(gradient)![degreesInt] = outp;
 

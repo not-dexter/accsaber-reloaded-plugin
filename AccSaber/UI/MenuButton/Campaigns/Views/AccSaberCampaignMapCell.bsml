@@ -1,0 +1,4 @@
+<stack id='container' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='~NodeHeight' pref-width='~NodeWidth' anchor-pos-y='~NodeYPos' anchor-pos-x='~NodeXPos' ignore-layout='true'>
+  <image id='borderImage'/>
+  <clickable-image id='coverImage' on-click='OnClicked'/>
+</stack>

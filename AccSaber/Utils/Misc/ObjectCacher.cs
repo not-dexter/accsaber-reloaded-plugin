@@ -53,13 +53,13 @@ namespace AccSaber.Utils.Misc
         /// <summary>
         /// Add or replace an item in the cache with an optional custom lifespan.
         /// </summary>
-        /// <param name="item">Value to cache.</param>
         /// <param name="key">Key under which the value will be stored.</param>
+        /// <param name="item">Value to cache.</param>
         /// <param name="lifespan">
-        /// Optional lifespan for this item. If <c>null</c>, the instance's default lifespan is used.
-        /// When the lifespan elapses (based on UTC time), the item becomes eligible for removal.
+        /// Optional lifespan for this item. If <c>null</c>, the instance's default lifespan is used. When the lifespan
+        /// elapses (based on UTC time), the item becomes eligible for removal.
         /// </param>
-        public void CacheItem(V item, K key, TimeSpan? lifespan = null)
+        public void CacheItem(K key, V item, TimeSpan? lifespan = null)
         {
             lock (cacheLock)
             {

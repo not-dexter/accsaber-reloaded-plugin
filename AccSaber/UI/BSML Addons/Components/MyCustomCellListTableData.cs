@@ -201,7 +201,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             if (pageInfo == default)
             {
                 pageInfo = PageUpdater(page, prefNumberOfCells);
-                pageCacher.CacheItem(pageInfo, page);
+                pageCacher.CacheItem(page, pageInfo);
             }
 
             if (pageInfo == default)

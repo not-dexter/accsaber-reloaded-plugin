@@ -75,7 +75,7 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
             }
 
             _gradient = g;
-            GradientCache.CacheItem(g, ItemId);
+            GradientCache.CacheItem(ItemId, g);
 
             return g;
         }
