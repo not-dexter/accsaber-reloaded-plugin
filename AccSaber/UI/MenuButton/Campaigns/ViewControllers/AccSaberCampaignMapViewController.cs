@@ -7,23 +7,28 @@ using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
+using IPA.Config.Data;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+using static NodePoseSyncState;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     internal class AccSaberCampaignMapViewController
     {
         public const float NODE_PADDING = 2f;
+        public const float SCALE_FACTOR = 0.2f;
 
         [Inject] private readonly SerializationHandler serialHandler = null!;
 
         private bool parsed = false;
         private readonly List<CampaignMapNode> campaignMapNodes = [];
-        private readonly List<GameObject> mapNodeArrows = [];
+        private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
+        private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
 
         [UIObject(nameof(ScrollContainer))]
         private readonly GameObject ScrollContainer = null!;
@@ -48,22 +53,23 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (!parsed || campaign.Difficulties is null)
                 return;
 
-            foreach (CampaignMapNode node in campaignMapNodes)
+            foreach (IDisposable node in campaignMapNodes.Cast<IDisposable>().Concat(campaignMapBarriers))
                 node.Dispose();
 
-            foreach (GameObject arrow in mapNodeArrows)
-                UnityEngine.Object.Destroy(arrow);
+            foreach (var (_, _, go) in mapNodeArrows)
+                UnityEngine.Object.Destroy(go);
 
             campaignMapNodes.Clear();
+            campaignMapBarriers.Clear();
             mapNodeArrows.Clear();
 
             int minHeight = int.MaxValue, maxHeight = int.MinValue, minWidth = int.MaxValue, maxWidth = int.MinValue;
             float minSize = float.MaxValue, maxSize = float.MinValue;
             float minHeightMaxSize = 0f, maxHeightMaxSize = 0f, minWidthMaxSize = 0f, maxWidthMaxSize = 0f;
 
-            foreach (AccSaberCampaignMap map in campaign.Difficulties)
+            foreach (AccSaberCampaignPositionable map in campaign.Difficulties)
             {
-                float size = map.Size * CampaignMapNode.SCALE_FACTOR;
+                float size = map.Size * SCALE_FACTOR;
 
 
                 if (minHeight > map.PositionY)
@@ -97,8 +103,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     maxSize = size;
             }
 
-            LayoutElement scrollLayout = NodeContainer.GetComponent<LayoutElement>();
-
             float offsetSize = minSize + NODE_PADDING;
             float width = (maxWidth - minWidth) * offsetSize + minWidthMaxSize / 2f + maxWidthMaxSize / 2f + NodeContainerPadding * 2;
             float height = (maxHeight - minHeight) * offsetSize + minHeightMaxSize / 2f + maxHeightMaxSize / 2f + NodeContainerPadding * 2;
@@ -107,6 +111,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             Plugin.Log.Info($"minWidth = {minWidth}, maxWidth = {maxWidth}, minWidthMaxSize = {minWidthMaxSize}, maxWidthMaxSize = {maxWidthMaxSize}");
             Plugin.Log.Info($"minHeight = {minHeight}, maxHeight = {maxHeight}, minHeightMaxSize = {minHeightMaxSize}, maxHeightMaxSize = {maxHeightMaxSize}");
 #endif
+
+            LayoutElement scrollLayout = NodeContainer.GetComponent<LayoutElement>();
 
             scrollLayout.preferredWidth = width;
             scrollLayout.preferredHeight = height;
@@ -125,14 +131,40 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 yShift = sign * (Mathf.Abs(minHeightMaxSize - maxHeightMaxSize) / 4f);
             }
 
-            float xOffset = 0f, yOffset = (maxHeight - minHeight) * offsetSize / 2f + yShift;
+            float xOffset = -(minWidth + maxWidth) / 2f * offsetSize, yOffset = -(minHeight + maxHeight) / 2f * offsetSize + yShift;
 
 #if PRINT_DEBUG
             Plugin.Log.Info($"xOffset = {xOffset}, yOffset = {yOffset}, yShift = {yShift}, offsetSize = {offsetSize}");
 #endif
 
             Dictionary<Guid, PositionData> knownPositions = [];
-            Queue<(Guid prereq, PositionData to)> neededPositions = [];
+            Queue<(Guid prereq, Guid toNode)> neededPositions = [];
+
+            void HandleArrows(AccSaberCampaignPositionablePrereq node, PositionData current)
+            {
+                knownPositions.Add(node.Id, current);
+
+                foreach (Guid id in node.PrerequisiteIds)
+                {
+                    if (knownPositions.TryGetValue(id, out PositionData from) && CreateArrow(NodeContainer.transform, from, current, Color.grey) is GameObject go)
+                    {
+                        go.transform.SetAsFirstSibling();
+                        mapNodeArrows.Add((id, node.Id, go));
+                    }
+                    else
+                        neededPositions.Enqueue((id, node.Id));
+                }
+            }
+
+            if (campaign.Barriers is not null)
+                foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
+                {
+                    CampaignMapBarrier barrierNode = new(barrier, NodeContainer.transform, xOffset, yOffset, offsetSize);
+
+                    campaignMapBarriers.Add(barrierNode);
+
+                    HandleArrows(barrier, new(barrierNode));
+                }
 
             foreach (AccSaberCampaignMap map in campaign.Difficulties)
             {
@@ -142,31 +174,30 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_CELL, NodeContainer, node);
 
-                PositionData current = new(node);
-                knownPositions.Add(map.Id, current);
-
-                foreach (Guid mapId in map.PrerequisiteMapIds)
-                {
-                    if (knownPositions.TryGetValue(mapId, out PositionData from) && CreateArrow(NodeContainer.transform, from, current, Color.grey) is GameObject go)
-                    {
-                        go.transform.SetAsFirstSibling();
-                        mapNodeArrows.Add(go);
-                    }
-                    else
-                        neededPositions.Enqueue((mapId, current));
-                }
+                HandleArrows(map, new(node));
             }
 
             while (neededPositions.Count > 0)
             {
-                var (prereq, to) = neededPositions.Dequeue();
-                if (knownPositions.TryGetValue(prereq, out PositionData from) && CreateArrow(NodeContainer.transform, from, to, Color.grey) is GameObject go)
+                var (prereq, toNode) = neededPositions.Dequeue();
+                if (knownPositions.TryGetValue(prereq, out PositionData from) && knownPositions.TryGetValue(toNode, out PositionData to) && CreateArrow(NodeContainer.transform, from, to, Color.grey) is GameObject go)
                 {
                     go.transform.SetAsFirstSibling();
-                    mapNodeArrows.Add(go);
+                    mapNodeArrows.Add((prereq, toNode, go));
                 }
                 else
-                    Plugin.Log.Error("There is an invalid prereq!\n" + prereq + ", " + to);
+                    Plugin.Log.Error("There is an invalid prereq!\n" + prereq + ", " + toNode);
+            }
+
+            Dictionary<Guid, CampaignMapBarrier> barrierNodeIds = [with(campaignMapBarriers.Select(barrier => new KeyValuePair<Guid, CampaignMapBarrier>(barrier.Barrier.Id, barrier)))];
+
+            foreach (var (fromNode, toNode, go) in mapNodeArrows)
+            {
+                if (barrierNodeIds.ContainsKey(fromNode))
+                    barrierNodeIds[fromNode].Rotation = Quaternion.Euler(barrierNodeIds[fromNode].Rotation.eulerAngles - go.transform.rotation.eulerAngles);
+
+                if (barrierNodeIds.ContainsKey(toNode))
+                    barrierNodeIds[toNode].Rotation = Quaternion.Euler(barrierNodeIds[toNode].Rotation.eulerAngles - go.transform.rotation.eulerAngles);
             }
         }
 
@@ -333,11 +364,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public record struct PositionData(Vector2 Position, Vector2 Size)
         {
             internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight)) { }
+            internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta) { }
         }
         internal class CampaignMapNode(AccSaberCampaignMap map, string mapHash, float xOffset, float yOffset, float offsetSize) : IDisposable
         {
-            public const float SCALE_FACTOR = 0.2f;
-
             public readonly AccSaberCampaignMap Map = map;
             public readonly string Hash = mapHash;
 
@@ -385,6 +415,62 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public void Dispose()
             {
                 UnityEngine.Object.Destroy(Container);
+            }
+        }
+
+        internal class CampaignMapBarrier : IDisposable
+        {
+            public const float WIDTH = 1f;
+
+            public readonly AccSaberCampaignBarrier Barrier;
+            private readonly Transform Parent;
+
+            private readonly GameObject obj;
+
+            public Quaternion Rotation { get => obj.transform.rotation; set => obj.transform.rotation = value; }
+            public Vector2 SizeDelta { get; private set; }
+            public Vector2 Position => obj.transform.GetComponent<RectTransform>().anchoredPosition;
+
+
+            public CampaignMapBarrier(AccSaberCampaignBarrier barrier, Transform parent, float xOffset, float yOffset, float offsetSize)
+            {
+                Barrier = barrier;
+                Parent = parent;
+
+                SizeDelta = new(WIDTH, Barrier.Size * SCALE_FACTOR);
+
+                obj = new("AccSaberCampaignBarrier");
+                obj.transform.SetParent(parent, false);
+
+                RectTransform transform = obj.AddComponent<RectTransform>();
+                transform.anchorMin = Vector2.zero;
+                transform.anchorMax = Vector2.one;
+                transform.anchoredPosition = new(Barrier.PositionX * offsetSize + xOffset, -Barrier.PositionY * offsetSize - yOffset); ;
+                transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+
+                LayoutElement layout = obj.AddComponent<LayoutElement>();
+                layout.ignoreLayout = true;
+                layout.preferredWidth = SizeDelta.x;
+                layout.preferredHeight = SizeDelta.y;
+
+                ContentSizeFitter sizeFitter = obj.AddComponent<ContentSizeFitter>();
+                sizeFitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+                sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                ImageView image = obj.AddComponent<ImageView>();
+                image.sprite = Utilities.ImageResources.WhitePixel;
+                image.material = Utilities.ImageResources.NoGlowMat;
+                image.type = Image.Type.Simple;
+                image.color = barrier.BorderColor?.Color() ?? Color.red;
+
+#if PRINT_DEBUG
+                Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
+#endif
+            }
+
+            public void Dispose()
+            {
+                UnityEngine.Object.Destroy(obj);
             }
         }
     }

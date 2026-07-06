@@ -147,6 +147,9 @@ namespace AccSaber.Models
     internal class AccSaberCampaignPositionable
     {
         [JsonProperty("size")]
+        public string SizeStr { get; set; } = "0";
+
+        [JsonIgnore]
         public int Size { get; set; }
 
         [JsonProperty("positionX")]
@@ -154,13 +157,25 @@ namespace AccSaber.Models
 
         [JsonProperty("positionY")]
         public int PositionY { get; set; }
-    }
 
-    internal class AccSaberCampaignMap : AccSaberCampaignPositionable
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            if (int.TryParse(SizeStr, out int size))
+                Size = size;
+        }
+    }
+    internal class AccSaberCampaignPositionablePrereq : AccSaberCampaignPositionable
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
 
+        [JsonProperty("prerequisiteCampaignDifficultyIds")]
+        public virtual List<Guid> PrerequisiteIds { get; set; } = [];
+    }
+
+    internal class AccSaberCampaignMap : AccSaberCampaignPositionablePrereq
+    {
         [JsonProperty("mapDifficultyId")]
         public Guid MapDifficultyId { get; set; }
 
@@ -193,9 +208,7 @@ namespace AccSaber.Models
 
         [JsonProperty("xp")]
         public float XP { get; set; }
-
-        [JsonProperty("prerequisiteCampaignDifficultyIds")]
-        public virtual List<Guid> PrerequisiteMapIds { get; set; } = [];
+        
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -204,11 +217,8 @@ namespace AccSaber.Models
                 Size = 48;
         }
     }
-    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionable
+    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionablePrereq
     {
-        [JsonProperty("id")]
-        public Guid Id { get; set; }
-
         [JsonProperty("conditionType")]
         public BarrierConditionType ConditionType { get; set; }
 
@@ -242,14 +252,18 @@ namespace AccSaber.Models
         [JsonProperty("xp")]
         public float Xp { get; set; }
 
-        [JsonProperty("prerequisiteCampaignDifficultyIds")]
-        public List<Guid> PrerequisiteCampaignDifficultyIds { get; set; } = [];
-
         [JsonProperty("affectedCampaignDifficultyIds")]
         public List<Guid> AffectedCampaignDifficultyIds { get; set; } = [];
 
         [JsonProperty("items")]
         public List<AccSaberCampaignItem> Items { get; set; } = [];
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            if (Size == default)
+                Size = 48;
+        }
 
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/BarrierConditionType.java
