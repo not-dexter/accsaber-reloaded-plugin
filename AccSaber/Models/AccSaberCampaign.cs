@@ -1,5 +1,4 @@
 ﻿using AccSaber.Models.Base;
-using IPA.Config.Data;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -55,7 +54,7 @@ namespace AccSaber.Models
         public int? TotalDifficulties { get; set; }
 
         [JsonProperty("iconUrl")]
-        public string IconUrl { get; set; } = null!;
+        public string? IconUrl { get; set; }
 
         [JsonProperty("completionXp")]
         public float CompletionXp { get; set; }
@@ -178,6 +177,9 @@ namespace AccSaber.Models
     {
         [JsonProperty("mapDifficultyId")]
         public Guid MapDifficultyId { get; set; }
+
+        [JsonProperty("mapAuthor")]
+        public string MapAuthor { get; set; } = null!;
 
         [JsonProperty("songName")]
         public string SongName { get; set; } = null!;

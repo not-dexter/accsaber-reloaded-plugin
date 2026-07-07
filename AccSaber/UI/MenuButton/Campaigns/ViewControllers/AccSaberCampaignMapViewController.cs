@@ -7,14 +7,13 @@ using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
-using IPA.Config.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
-using static NodePoseSyncState;
+using SongCore;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
@@ -24,6 +23,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public const float SCALE_FACTOR = 0.2f;
 
         [Inject] private readonly SerializationHandler serialHandler = null!;
+        [Inject] private readonly AccSaberCampaignFlow accCampaignFlow = null!;
+        [Inject] private readonly BeatmapCharacteristicCollectionSO _characteristicCollection = null!;
+        [Inject] private readonly AccSaberCampaignViewController acvc = null!;
+
 
         private bool parsed = false;
         private readonly List<CampaignMapNode> campaignMapNodes = [];
@@ -168,7 +171,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             foreach (AccSaberCampaignMap map in campaign.Difficulties)
             {
-                CampaignMapNode node = new(map, serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, xOffset, yOffset, offsetSize);
+                CampaignMapNode node = new(map, serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, xOffset, yOffset, offsetSize, accCampaignFlow, _characteristicCollection, acvc);
 
                 campaignMapNodes.Add(node);
 
@@ -360,16 +363,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             return Sprite.Create(texture, new(0f, 0f, width, height), new(0f, 0.5f), 100f);
         }
-
         public record struct PositionData(Vector2 Position, Vector2 Size)
         {
             internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight)) { }
             internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta) { }
         }
-        internal class CampaignMapNode(AccSaberCampaignMap map, string mapHash, float xOffset, float yOffset, float offsetSize) : IDisposable
+        internal class CampaignMapNode(AccSaberCampaignMap map, string mapHash, float xOffset, float yOffset, float offsetSize, AccSaberCampaignFlow flow,
+            BeatmapCharacteristicCollectionSO beatmapCharacteristic, AccSaberCampaignViewController campaignViewController) : IDisposable
         {
             public readonly AccSaberCampaignMap Map = map;
             public readonly string Hash = mapHash;
+
+            public readonly AccSaberCampaignFlow campaignFlow = flow;
+            private readonly BeatmapCharacteristicCollectionSO characteristicCollection = beatmapCharacteristic;
+            private readonly AccSaberCampaignViewController campaignController = campaignViewController;
 
             [UIObject("container")]
             private readonly GameObject Container = null!;
@@ -409,7 +416,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIAction("OnClicked")]
             private void OnClicked()
             {
+                var level = Loader.GetLevelByHash(Hash);
 
+                if (level is null)
+                    return;
+
+                var collection = Resources.FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO>().FirstOrDefault();
+                var keys = level.GetBeatmapKeys();
+
+                BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
+
+                BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty)));
+                
+                campaignFlow.ShowLeaderboard(key);
+
+                campaignController.SetMission(Map.SongName, Map.SongAuthor, Map.MapAuthor, Map.CoverUrl, key, level);
             }
 
             public void Dispose()

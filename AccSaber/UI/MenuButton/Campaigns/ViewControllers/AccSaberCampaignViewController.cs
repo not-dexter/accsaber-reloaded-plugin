@@ -13,6 +13,7 @@ using Zenject;
 using AccSaber.Consts;
 
 
+
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
 #endif
@@ -28,17 +29,24 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private CategoryTab _currentTab;
         private bool _isLoading;
         private bool _inCampaign;
+        private bool _inMap;
         private string _campaignTitle = null!;
         private string _campaignDescription = null!;
         private string _campaignCreator = null!;
         private AccSaberCampaign _currentCampaign = null!;
         private List<AccSaberCampaign> _activeCampaigns = null!;
+        public BeatmapKey _curBeatMapKey { get; set; }
+
+        public BeatmapLevel _curBeatMapLevel = null!;
 
         [UIObject("CampaignMapContainer")]
         private readonly GameObject _campaignMapContainer = null!;
 
         [UIComponent("CampaignImage")]
         private readonly ImageView _campaignImage = null!;
+
+        [UIComponent("MissionImage")]
+        private readonly ImageView _missionImage = null!;
 
         [UIComponent("campaign-list")]
         private readonly CustomCellListTableData _campaignList = null!;
@@ -60,7 +68,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
+        [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
+        [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
+        [Inject] private readonly PlayerDataModel _playerDataModel = null!;
+        [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
         private CategoryTab CurrentTab
         {
             get => _currentTab;
@@ -92,7 +104,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged(nameof(NotInCampaign));
             }
         }
-
+        [UIValue("InMap")]
+        public bool InMap
+        {
+            get => _inMap;
+            set
+            {
+                _inMap = value;
+                NotifyPropertyChanged(nameof(InMap));
+            }
+        }
         [UIValue("CampaignTitle")]
         private string CampaignTitle
         {
@@ -103,6 +124,28 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged(nameof(CampaignTitle));
             }
         }
+
+        [UIValue("MissionMapName")]
+        private string MissionMapName
+        {
+            get => _campaignDescription;
+            set
+            {
+                _campaignDescription = value;
+                NotifyPropertyChanged(nameof(MissionMapName));
+            }
+        }
+        [UIValue("MissionMapArtist")]
+        private string MissionMapArtist
+        {
+            get => _campaignCreator;
+            set
+            {
+                _campaignCreator = value;
+                NotifyPropertyChanged(nameof(MissionMapArtist));
+            }
+        }
+
         [UIValue("CampaignDescription")]
         private string CampaignDescription
         {
@@ -123,7 +166,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged(nameof(CampaignCreator));
             }
         }
-
         [UIValue("NotInCampaign")]
         private bool NotInCampaign => !_inCampaign;
 
@@ -144,6 +186,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             
             CurrentTab = 0;
             InCampaign = false;
+            InMap = false;
 
             _ = UpdateTabs();
         }
@@ -162,7 +205,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIAction("BackPressed")]
         private void BackPressed()
         {
+            _campaignFlow.HideLeaderboard();
             InCampaign = false;
+            InMap = false;
             _ = UpdateTabs();
             _diffCells.Clear();
             _diffList.Data().Clear();
@@ -191,6 +236,33 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         }
 
+        [UIAction("PlayMission")]
+        private void PlayMission()
+        {
+            _menuTransitionsHelper.StartStandardLevel(
+                gameMode: "Solo",
+                beatmapKey: _curBeatMapKey,
+                beatmapLevel: _curBeatMapLevel,
+                overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
+                overrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                beatmapOverrideColorScheme: _curBeatMapLevel.GetColorScheme(_curBeatMapKey.beatmapCharacteristic, _curBeatMapKey.difficulty),
+                gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
+                playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
+                practiceSettings: null,
+                environmentsListModel: _environmentsListModel,
+                backButtonText: "buh",
+                useTestNoteCutSoundEffects: false,
+                startPaused: false,
+                beforeSceneSwitchToGameplayCallback: null,
+                afterSceneSwitchToGameplayCallback: null,
+                levelFinishedCallback: LevelFinished,
+                levelRestartedCallback: null
+            );
+        }
+
+        private void LevelFinished(StandardLevelScenesTransitionSetupDataSO transition, LevelCompletionResults results)
+        {
+        }
 #pragma warning disable IDE0060
         [UIAction("tab-selected")]
         private void CategoryTabSelected(SegmentedControl segmentedControl, int index)
@@ -235,7 +307,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CampaignTitle = campaign.Name;
             CampaignCreator = campaign.CreatorName;
             CampaignDescription = campaign.Description;
-            await _campaignImage.SetImageAsync(campaign.IconUrl); // its in webp </3 // update its no longer in webp :)
+
+            if ((campaign.IconUrl is not null &&campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
+                await _campaignImage.SetImageAsync("AccSaber.Resources.AccSaber.png", false);
+            else
+                await _campaignImage.SetImageAsync(campaign.IconUrl, false);
+
+        }
+
+        public void SetMission(string missionName, string missionArtist, string missionMapper, string missionImage, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel)
+        {
+            _curBeatMapKey = beatmapkey;
+            _curBeatMapLevel = beatmapLevel;
+            MissionMapName = missionName;
+            MissionMapArtist = $"{missionArtist} [<color=#c0548f>{missionMapper}</color>]";
+            _ = _missionImage.SetImageAsync(missionImage);
+            InMap = true;
         }
 
         public async Task SetMaps(AccSaberCampaign campaign)

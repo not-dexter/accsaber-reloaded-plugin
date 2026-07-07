@@ -8,34 +8,20 @@
     <tab tags='tabs' tab-name='All' />
     <horizontal pref-width='160' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
       <horizontal>
-        <vertical pref-width='50' pref-height='70' pad='2'>
-          <button text='Go Back' on-click='BackPressed' active='~InCampaign' />
+        <vertical pref-width='50' pref-height='70' pad='2' active='~NotInCampaign'>
           <custom-list id='campaign-list' contents='campaign-cells' cell-size='12'  clickable-cells='true' select-cell='campaign-selected' visible-cells='4' stick-scrolling='true' active='~NotInCampaign'>
-            <horizontal bg='round-rect-panel' pad ='2'>
-              <vertical>
-                <text text='~Name' font-size='3' />
-                <text text='~Author' font-size='2.5' />
+            <horizontal bg='round-rect-panel' pref-width='40' pad-left='0' pad ='2' pad-right='5'>
+              <vertical pad-left='0'>
+                <text align='Left' text='~Name' font-size='3' />
+                <text align='Left' text='~Author' font-size='2.5' />
               </vertical>
-              <text text='~MapCount'></text>
-            </horizontal>
-          </custom-list>
-          <custom-list id='diff-list' contents='diff-cells' cell-size='12'  clickable-cells='true' select-cell='diff-selected' visible-cells='4' stick-scrolling='true' active='~InCampaign'>
-            <horizontal bg='round-rect-panel' pad ='2'>
-              <vertical>
-                <text text='~Name' font-size='3' />
-                <text text='~Author' font-size='2.5' />
-              </vertical>
-              <text text='~MapCount'></text>
+              <text text='~MapCount' align='Right'></text>
             </horizontal>
           </custom-list>
         </vertical>
         <vertical pref-width='4' active='~NotInCampaign'>
           <page-button event-click='campaign-list#PageUp' direction='Up' pref-height='3' pref-width='4' />
           <page-button event-click='campaign-list#PageDown' direction='Down' pref-height='3' pref-width='4' />
-        </vertical>
-        <vertical pref-width='4' active='~InCampaign'>
-          <page-button event-click='diff-list#PageUp' direction='Up' pref-height='3' pref-width='4' />
-          <page-button event-click='diff-list#PageDown' direction='Down' pref-height='3' pref-width='4' />
         </vertical>
       </horizontal>
       <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~NotInCampaign'>
@@ -46,10 +32,22 @@
             <text text='~CampaignCreator' align='Left' font-size='3.5' />
           </vertical>
         </horizontal>
-        <text text='~CampaignDescription' align='Center' font-size='3.5' />
+        <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
         <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
       </vertical>
-      <vertical id='CampaignMapContainer' pref-width='100' pref-height='70' pad='2' active='~InCampaign'/>
+      <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' active='~InCampaign'/>
+		<vertical preferred-width='50' bg='round-rect-panel' active='~InMap' pad ='4'>
+			<horizontal>
+				<img preserve-aspect='true' id='MissionImage' preferred-width='8' preferred-height='8' />
+				<vertical preferred-width='30'>
+			        <text text='~MissionMapName' align='Left' overflow-mode='Ellipsis' italics='true' font-size='4' />
+			        <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
+				</vertical>
+			</horizontal>
+			<vertical pref-height='10'></vertical>
+			<button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
+		</vertical>
     </horizontal>
   </vertical>
+ <button text='Go Back' on-click='BackPressed' active='~InCampaign' />
 </bg>
