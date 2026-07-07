@@ -38,12 +38,24 @@ namespace AccSaber.Managers
         private readonly AccSaberLeaderboardViewController _leaderboardVC;
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
+#if NEW_VERSION
+        public event Action<BeatmapKey, BeatmapLevel>? OnLeaderboardUpdated;
+#else
+        public event Action<IDifficultyBeatmap>? OnLeaderboardUpdated;
+#endif
         public static event Action<AccSaberLeaderboardEntry>? OnScoreUpdated;
         public static event Action<AccSaberLeaderboardEntry>? OnPlayerScoreUpdated;
         public event Action? OnUpdatingFromAccSaberAPI;
 		public event Action<bool>? OnUpdatedFromAccSaberAPI;
 
-		private AccSaberPlayer? _currentUser;
+#if NEW_VERSION
+        public BeatmapKey CurrentKey { get; private set; }
+        public BeatmapLevel CurrentLevel { get; private set; } = null!;
+#else
+        public IDifficultyBeatmap CurrentLevel { get; private set; } = null!;
+#endif
+
+        private AccSaberPlayer? _currentUser;
         private readonly ObjectCacher<Guid, AccSaberCampaign> _campaignCache = new();
 
         public  DateTime LastLocalUpdateTime { get; private set; } = DateTime.MinValue;
@@ -305,6 +317,20 @@ namespace AccSaber.Managers
 		{
             CurrentRankedMap = _api.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
         }
+#if NEW_VERSION
+        public void SetCurrentMap(BeatmapKey key, BeatmapLevel level)
+        {
+            CurrentKey = key;
+            CurrentLevel = level;
+            OnLeaderboardUpdated?.Invoke(key, level);
+        }
+#else
+        public void SetCurrentMap(IDifficultyBeatmap beatmap)
+        {
+            CurrentLevel = beatmap;
+            OnLeaderboardUpdated?.Invoke(beatmap);
+        }
+#endif
 
         public async Task StartWebsocket(CancellationToken ct = default)
         {

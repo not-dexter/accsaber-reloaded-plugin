@@ -13,6 +13,7 @@ namespace AccSaber.UI
 		private readonly AccSaberPanelViewController _accSaberPanelViewController;
 		private readonly AccSaberLeaderboardViewController _accSaberLeaderboardViewController;
 
+#pragma warning disable IDE0290
 		public AccSaberCustomLeaderboard(CustomLeaderboardManager customLeaderboardManager, AccSaberPanelViewController accSaberPanelViewController, AccSaberLeaderboardViewController accSaberLeaderboardViewController)
 		{
 			_customLeaderboardManager = customLeaderboardManager;

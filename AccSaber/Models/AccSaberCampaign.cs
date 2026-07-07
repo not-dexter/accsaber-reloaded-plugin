@@ -197,7 +197,7 @@ namespace AccSaber.Models
         public string Characteristic { get; set; } = null!;
 
         [JsonProperty("requirementType")]
-        public string RequirementType { get; set; } = null!;
+        public CampaignRequirementType RequirementType { get; set; }
 
         [JsonProperty("requirementValue")]
         public float RequirementValue { get; set; }
@@ -217,6 +217,17 @@ namespace AccSaber.Models
         {
             if (Size == default)
                 Size = 48;
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java
+        public enum CampaignRequirementType
+        {
+            ACC,
+            AP,
+            SCORE,
+            STREAK_115,
+            FC,
+            RANK
         }
     }
     internal class AccSaberCampaignBarrier : AccSaberCampaignPositionablePrereq

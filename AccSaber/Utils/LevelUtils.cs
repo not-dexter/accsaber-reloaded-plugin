@@ -521,10 +521,8 @@ namespace AccSaber.Utils
                     cachedDiff = mapData.Value.diff;
                     hash = map.Hash;
                 }
-#if V40
+#if NEW_VERSION
                 BeatmapLevel? level = SongCore.Loader.GetLevelByHash(hash.ToUpper()) ?? await DownloadSong(map);
-#elif NEW_VERSION
-                BeatmapLevel? level = SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevel(header + hash.ToUpper()) ?? await DownloadSong(map);
 #else
                 IBeatmapLevel? level = (await SongCore.Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(header + hash.ToUpper(), CancellationToken.None)).beatmapLevel ?? await DownloadSong(map);
 #endif
@@ -598,10 +596,11 @@ namespace AccSaber.Utils
 
             }
         }
+
 #if NEW_VERSION
-        private async Task<BeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
+        public async Task<BeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
 #else
-            private async Task<IBeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
+        public async Task<IBeatmapLevel?> DownloadSong(AccSaberBasicMap cachedMap)
 #endif
         {
             try

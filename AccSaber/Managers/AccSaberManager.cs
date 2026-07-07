@@ -27,6 +27,7 @@ namespace AccSaber.Managers
 #endif
 
                 _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+                _accSaberStore.SetCurrentMap(beatmapKey, level);
             }
             catch (System.Exception e)
             {
@@ -49,6 +50,7 @@ namespace AccSaber.Managers
                 string hash = SongCore.Utilities.Hashing.GetCustomLevelHash(level).ToLower();
 
                 _accSaberStore.SetMapFromBasicInfo(hash, beatmapKey.difficulty);
+                _accSaberStore.SetCurrentMap(beatmapKey);
             }
             catch (System.Exception e)
             {

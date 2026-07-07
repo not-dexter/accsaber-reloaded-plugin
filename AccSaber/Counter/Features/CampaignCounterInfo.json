@@ -1,0 +1,16 @@
+{
+  "Name": "Accsaber Campaign",
+  "Description": "Shows the objective for your current campaign mission.",
+  "CounterLocation": "AccSaber.Counter.Hosts.CampaignCounter",
+  "MultiplayerReady": false,
+  "ConfigDefaults": {
+    "Enabled": true,
+    "Position": "AboveHighway",
+    "Distance": 0
+  },
+  "BSML": {
+    "Resource": "AccSaber.Counter.Settings.Views.CampaignCounterSettings.bsml",
+    "Host": "AccSaber.Counter.Settings.ViewControllers.CampaignCounterSettingsViewController",
+    "Icon": "AccSaber.Resources.AccSaber.png"
+  }
+}

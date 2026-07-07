@@ -7,13 +7,15 @@ using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
+using SongCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Policy;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
-using SongCore;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
@@ -23,6 +25,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public const float SCALE_FACTOR = 0.2f;
 
         [Inject] private readonly SerializationHandler serialHandler = null!;
+        [Inject] private readonly LevelUtils levelUtils = null!;
+        [Inject] private readonly SerializationHandler serialUtils = null!;
         [Inject] private readonly AccSaberCampaignFlow accCampaignFlow = null!;
         [Inject] private readonly AccSaberCampaignViewController acvc = null!;
 
@@ -170,7 +174,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             foreach (AccSaberCampaignMap map in campaign.Difficulties)
             {
-                CampaignMapNode node = new(map, serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, xOffset, yOffset, offsetSize, accCampaignFlow, acvc);
+                CampaignMapNode node = new(map, serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, xOffset, yOffset, offsetSize, accCampaignFlow, acvc, levelUtils, serialUtils);
 
                 campaignMapNodes.Add(node);
 
@@ -368,13 +372,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta) { }
         }
         internal class CampaignMapNode(AccSaberCampaignMap map, string mapHash, float xOffset, float yOffset, float offsetSize, 
-            AccSaberCampaignFlow flow, AccSaberCampaignViewController campaignViewController) : IDisposable
+            AccSaberCampaignFlow flow, AccSaberCampaignViewController campaignViewController, LevelUtils levelUtils, SerializationHandler serialUtils) : IDisposable
         {
             public readonly AccSaberCampaignMap Map = map;
             public readonly string Hash = mapHash;
 
-            public readonly AccSaberCampaignFlow campaignFlow = flow;
+            private readonly AccSaberCampaignFlow campaignFlow = flow;
             private readonly AccSaberCampaignViewController campaignController = campaignViewController;
+            private readonly LevelUtils levelUtils = levelUtils;
+            private readonly SerializationHandler serialUtils = serialUtils;
 
             [UIObject("container")]
             private readonly GameObject Container = null!;
@@ -412,13 +418,27 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             [UIAction("OnClicked")]
-            private void OnClicked()
+            private async void OnClicked()
             {
-                var level = Loader.GetLevelByHash(Hash);
+#if NEW_VERSION
+                BeatmapLevel? level = Loader.GetLevelByHash(Hash);
+#else
+                IBeatmapLevel? level = (await Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(LevelUtils.header + Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
+#endif
 
                 if (level is null)
-                    return;
+                {
+                    Plugin.Log.Warn($"Cannot find level by hash \"{Hash}\", downloading...");
+                    level = await levelUtils.DownloadSong(serialUtils.CachedMaps[Hash]);
 
+                    if (level is null)
+                    {
+                        Plugin.Log.Critical("Level cannot be downloaded!");
+                        return;
+                    }
+                }
+
+#if NEW_VERSION
                 var keys = level.GetBeatmapKeys();
 
                 BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
@@ -428,6 +448,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 campaignFlow.ShowLeaderboard(key);
 
                 campaignController.SetMission(Map, key, level);
+#else
+                BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty));
+                IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
+                IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == mapDiff);
+
+                campaignFlow.ShowLeaderboard(diff);
+
+                campaignController.SetMission(Map, diff);
+#endif
             }
 
             public void Dispose()

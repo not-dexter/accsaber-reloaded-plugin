@@ -129,7 +129,7 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly AccsaberAPI api = null!;
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
-        [Inject] private readonly StandardLevelDetailViewController sldvc = null!;
+        //[Inject] private readonly StandardLevelDetailViewController sldvc = null!;
         [Inject] private readonly AccSaberStore store = null!;
         [Inject] private readonly AccSaberPanelViewController aspvc = null!;
         [Inject] private readonly LeaderboardScoreModalController lsmc = null!;
@@ -452,8 +452,7 @@ namespace AccSaber.UI.ViewControllers
         }
         private void Awake()
         {
-            sldvc?.didChangeDifficultyBeatmapEvent += Handler1;
-            sldvc?.didChangeContentEvent += Handler2;
+            store.OnLeaderboardUpdated += OnUpdateDiff;
             aspvc?.OnSettingsClicked += OnSettingsClicked;
             AccSaberStore.OnPlayerScoreUpdated += OnPlayerScoreUpdated;
             lbsmc?.OnCombineRelations += ToggleCombinedIcons;
@@ -462,8 +461,7 @@ namespace AccSaber.UI.ViewControllers
         {
             base.OnDestroy();
 
-            sldvc?.didChangeDifficultyBeatmapEvent -= Handler1;
-            sldvc?.didChangeContentEvent -= Handler2;
+            store.OnLeaderboardUpdated -= OnUpdateDiff;
             aspvc?.OnSettingsClicked -= OnSettingsClicked;
             AccSaberStore.OnPlayerScoreUpdated -= OnPlayerScoreUpdated;
             lbsmc?.OnCombineRelations -= ToggleCombinedIcons;
@@ -609,41 +607,21 @@ namespace AccSaber.UI.ViewControllers
 
         private void ReloadLeaderboard() => _ = LoadLeaderboardAsync();
 
-#if NEW_VERSION
-        private void Handler1(StandardLevelDetailViewController controller)
-        {
-            TryUpdateCurrentMap();
-        }
-#else
-        private void Handler1(StandardLevelDetailViewController controller, IDifficultyBeatmap beatmap)
-        {
-            if (beatmap is not null)
-                UpdateDiff(beatmap);
-        }
-#endif
-        private void Handler2(StandardLevelDetailViewController controller, StandardLevelDetailViewController.ContentType contentType)
-        {
-            if (contentType is > StandardLevelDetailViewController.ContentType.Loading and < StandardLevelDetailViewController.ContentType.Error)
-                TryUpdateCurrentMap();
-        }
-
         private bool TryUpdateCurrentMap()
         {
 #if NEW_VERSION
-            if (sldvc is not null && sldvc.beatmapLevel is not null && sldvc.beatmapKey != default)
-                return UpdateDiff(sldvc.beatmapLevel, sldvc.beatmapKey);
-#else
-            if (sldvc is not null && sldvc.selectedDifficultyBeatmap is not null)
-                return UpdateDiff(sldvc.selectedDifficultyBeatmap);
+            if (store.CurrentLevel is not null && store.CurrentKey != default)
+                return UpdateDiff(store.CurrentLevel, store.CurrentKey);
 #endif
             return false;
         }
 
 #if NEW_VERSION
+        private void OnUpdateDiff(BeatmapKey key, BeatmapLevel beatmap) => UpdateDiff(beatmap, key);
         private bool UpdateDiff(BeatmapLevel beatmap, BeatmapKey key)
         {
 #else
-
+        private void OnUpdateDiff(IDifficultyBeatmap beatmap) => UpdateDiff(beatmap);
         private bool UpdateDiff(IDifficultyBeatmap beatmap)
         {
 #endif

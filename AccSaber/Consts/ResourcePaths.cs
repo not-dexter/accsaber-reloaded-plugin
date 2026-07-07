@@ -82,6 +82,7 @@ namespace AccSaber.Consts
         public static readonly string CUSTOM_SONGS = Path.Combine(Environment.CurrentDirectory, "Beat Saber_Data", "CustomLevels");
         public static readonly string CUSTOM_PLAYLISTS = Path.Combine(Environment.CurrentDirectory, "Playlists");
 
+        public const string CAMPAIGN_COUNTER_FEATURE = "AccSaber.Counter.Features.CampaignCounterInfo.json";
         #endregion
     }
 }

@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
 using AccSaber.Consts;
+using AccSaber.Utils.Misc;
+
 
 
 
@@ -38,9 +40,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private string _missionObjective = null!;
         private AccSaberCampaign _currentCampaign = null!;
         private List<AccSaberCampaign> _activeCampaigns = null!;
-        public BeatmapKey _curBeatMapKey { get; set; }
+        private readonly List<CampaignMap> _diffCells = [];
 
-        public BeatmapLevel _curBeatMapLevel = null!;
+#if NEW_VERSION
+        public BeatmapKey CurrentBeatMapKey { get; set; }
+        public BeatmapLevel? CurrentBeatMapLevel { get; set; }
+#else
+        public IDifficultyBeatmap? CurrentBeatMapLevel { get; set; }
+#endif
 
         [UIObject("CampaignMapContainer")]
         private readonly GameObject _campaignMapContainer = null!;
@@ -57,12 +64,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("campaign-cells")]
         private readonly List<object> _campaignCells = [];
 
-        [UIComponent("diff-list")]
-        private readonly CustomCellListTableData _diffList = null!;
-
-        [UIValue("diff-cells")]
-        private readonly List<object> _diffCells = [];
-
         private enum CategoryTab
         {
             Active,
@@ -71,11 +72,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
+        [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
+#if NEW_VERSION
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
+#endif
         private CategoryTab CurrentTab
         {
             get => _currentTab;
@@ -223,8 +227,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             InMap = false;
             _ = UpdateTabs();
             _diffCells.Clear();
-            _diffList.Data().Clear();
-            _diffList.TableView().ReloadData();
         }
 
         [UIAction("PlayCampaign")]
@@ -245,20 +247,28 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 _campaignMapViewController.SetCampaign(_currentCampaign);
 
-                _ = SetMaps(_currentCampaign);
+                SetMaps(_currentCampaign);
             }
         }
 
         [UIAction("PlayMission")]
         private void PlayMission()
         {
+            if (CurrentBeatMapLevel is null)
+            {
+                Plugin.Log.Error("The current beat map is null when the play button is shown!!!");
+                return;
+            }
+
+#if V40
             _menuTransitionsHelper.StartStandardLevel(
                 gameMode: "Solo",
-                beatmapKey: _curBeatMapKey,
-                beatmapLevel: _curBeatMapLevel,
+                beatmapKey: CurrentBeatMapKey,
+                beatmapLevel: CurrentBeatMapLevel,
                 overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
-                overrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
-                beatmapOverrideColorScheme: _curBeatMapLevel.GetColorScheme(_curBeatMapKey.beatmapCharacteristic, _curBeatMapKey.difficulty),
+                playerOverrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                playerOverrideLightshowColors: _playerDataModel.playerData.colorSchemesSettings.ShouldOverrideLightshowColors(),
+                beatmapOverrideColorScheme: CurrentBeatMapLevel.GetColorScheme(CurrentBeatMapKey.beatmapCharacteristic, CurrentBeatMapKey.difficulty),
                 gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
                 playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
                 practiceSettings: null,
@@ -271,6 +281,44 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 levelFinishedCallback: LevelFinished,
                 levelRestartedCallback: null
             );
+#elif NEW_VERSION
+            _menuTransitionsHelper.StartStandardLevel(
+                gameMode: "Solo",
+                beatmapKey: CurrentBeatMapKey,
+                beatmapLevel: CurrentBeatMapLevel,
+                overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
+                overrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                beatmapOverrideColorScheme: CurrentBeatMapLevel.GetColorScheme(CurrentBeatMapKey.beatmapCharacteristic, CurrentBeatMapKey.difficulty),
+                gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
+                playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
+                practiceSettings: null,
+                environmentsListModel: _environmentsListModel,
+                backButtonText: "buh",
+                useTestNoteCutSoundEffects: false,
+                startPaused: false,
+                beforeSceneSwitchToGameplayCallback: null,
+                afterSceneSwitchToGameplayCallback: null,
+                levelFinishedCallback: LevelFinished,
+                levelRestartedCallback: null
+            );
+#else
+            _menuTransitionsHelper.StartStandardLevel(
+                gameMode: "Solo",
+                difficultyBeatmap: CurrentBeatMapLevel,
+                previewBeatmapLevel: CurrentBeatMapLevel.level,
+                overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
+                overrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
+                playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
+                practiceSettings: null,
+                backButtonText: "buh",
+                useTestNoteCutSoundEffects: false,
+                startPaused: false,
+                beforeSceneSwitchCallback: null,
+                levelFinishedCallback: LevelFinished,
+                levelRestartedCallback: null
+            );
+#endif
         }
 
         private void LevelFinished(StandardLevelScenesTransitionSetupDataSO transition, LevelCompletionResults results)
@@ -324,50 +372,47 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if ((campaign.IconUrl is not null &&campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
                 await _campaignImage.SetImageAsync("AccSaber.Resources.AccSaber.png", false);
             else
-                await _campaignImage.SetImageAsync(campaign.IconUrl, false);
+                await _campaignImage.LoadImage(campaign.IconUrl);
 
         }
 
+#if NEW_VERSION
         public void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel)
         {
-            _curBeatMapKey = beatmapkey;
-            _curBeatMapLevel = beatmapLevel;
+            CurrentBeatMapKey = beatmapkey;
+            CurrentBeatMapLevel = beatmapLevel;
+#else
+        public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel)
+        {
+            CurrentBeatMapLevel = beatmapLevel;
+#endif
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
 
             string objective = map.RequirementType switch
             {
-                "ACC" => $"Set at least <color={ColorUtils.OVERALL}>{map.RequirementValue * 100:N2}%</color> accuracy",
-                "AP" => $"Set a score worth <color={ColorUtils.OVERALL}>{map.RequirementValue:N0} AP</color> play",
-                "RANK" => $"Get rank <color={ColorUtils.OVERALL}>#{map.RequirementValue:N0}</color> or better on the map",
-                "STREAK_115" => $"Get <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> 115s in a row",
-                "SCORE" => $"Set a score of <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> points or higher",
-                "FC" => $"Set a Full Combo",
+                AccSaberCampaignMap.CampaignRequirementType.ACC => $"Set at least <color={ColorUtils.OVERALL}>{map.RequirementValue * 100:N2}%</color> accuracy",
+                AccSaberCampaignMap.CampaignRequirementType.AP => $"Set a score worth <color={ColorUtils.OVERALL}>{map.RequirementValue:N0} AP</color> play",
+                AccSaberCampaignMap.CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.OVERALL}>#{map.RequirementValue:N0}</color> or better on the map",
+                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"Get <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> 115s in a row",
+                AccSaberCampaignMap.CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> points or higher",
+                AccSaberCampaignMap.CampaignRequirementType.FC => $"Set a Full Combo",
                 _ => $"Get something with a requirement value of {map.RequirementValue:N0}"
             };
 
             MissionObjective = objective;
-            _ = _missionImage.SetImageAsync(map.CoverUrl);
+            _ = _missionImage.LoadCoverImage(_serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, map.CoverUrl);
             InMap = true;
         }
 
-        public async Task SetMaps(AccSaberCampaign campaign)
+        public void SetMaps(AccSaberCampaign campaign)
         {
             _diffCells.Clear();
-            _diffList.Data().Clear(); 
 
-            foreach (var diff in campaign.Difficulties!)
+            foreach (AccSaberCampaignMap diff in campaign.Difficulties!)
             {
                 _diffCells.Add(new CampaignMap(diff));
             }
-            IEnumerator WaitThenUpdate()
-            {
-                yield return new WaitForEndOfFrame();
-
-                _diffList.TableView().ReloadData();
-                IsLoading = false;
-            }
-            StartCoroutine(WaitThenUpdate());
         }
 
         internal class CampaignCell(AccSaberCampaign campaign) : Utils.Safety.SafeNotifyPropertyChanged

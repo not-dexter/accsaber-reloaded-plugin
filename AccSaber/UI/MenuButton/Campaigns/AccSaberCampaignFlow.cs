@@ -1,7 +1,5 @@
-﻿using AccSaber.Managers;
-using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
+﻿using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using HMUI;
-using System;
 using Zenject;
 
 #if !NEW_VERSION
@@ -44,7 +42,11 @@ namespace AccSaber.UI.MenuButton.Campaigns
             } 
         }
 
+#if NEW_VERSION
         public void ShowLeaderboard(BeatmapKey beatmapkey)
+#else
+        public void ShowLeaderboard(IDifficultyBeatmap beatmapkey)
+#endif
         {
             _leaderboardController.SetData(beatmapkey);
             SetRightScreenViewController(_leaderboardController, ViewController.AnimationType.In);
