@@ -36,7 +36,7 @@
         <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
       </vertical>
       <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' active='~InCampaign'/>
-		<vertical preferred-width='50' bg='round-rect-panel' active='~InMap' pad ='4'>
+		<vertical preferred-width='50' preferred-height='70' bg='round-rect-panel' active='~InMap' pad ='4'>
 			<horizontal>
 				<img preserve-aspect='true' id='MissionImage' preferred-width='8' preferred-height='8' />
 				<vertical preferred-width='30'>
@@ -44,6 +44,10 @@
 			        <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
 				</vertical>
 			</horizontal>
+			<vertical>
+				<text text='Objective' font-size='4' align='Center'/>
+				<text text='~MissionObjective' word-wrapping='true' font-size='3'/>
+			</vertical>
 			<vertical pref-height='10'></vertical>
 			<button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
 		</vertical>

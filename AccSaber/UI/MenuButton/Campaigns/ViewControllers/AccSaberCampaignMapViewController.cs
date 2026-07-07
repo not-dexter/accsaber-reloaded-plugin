@@ -24,7 +24,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly AccSaberCampaignFlow accCampaignFlow = null!;
-        [Inject] private readonly BeatmapCharacteristicCollectionSO _characteristicCollection = null!;
         [Inject] private readonly AccSaberCampaignViewController acvc = null!;
 
 
@@ -171,7 +170,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             foreach (AccSaberCampaignMap map in campaign.Difficulties)
             {
-                CampaignMapNode node = new(map, serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, xOffset, yOffset, offsetSize, accCampaignFlow, _characteristicCollection, acvc);
+                CampaignMapNode node = new(map, serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, xOffset, yOffset, offsetSize, accCampaignFlow, acvc);
 
                 campaignMapNodes.Add(node);
 
@@ -368,14 +367,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight)) { }
             internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta) { }
         }
-        internal class CampaignMapNode(AccSaberCampaignMap map, string mapHash, float xOffset, float yOffset, float offsetSize, AccSaberCampaignFlow flow,
-            BeatmapCharacteristicCollectionSO beatmapCharacteristic, AccSaberCampaignViewController campaignViewController) : IDisposable
+        internal class CampaignMapNode(AccSaberCampaignMap map, string mapHash, float xOffset, float yOffset, float offsetSize, 
+            AccSaberCampaignFlow flow, AccSaberCampaignViewController campaignViewController) : IDisposable
         {
             public readonly AccSaberCampaignMap Map = map;
             public readonly string Hash = mapHash;
 
             public readonly AccSaberCampaignFlow campaignFlow = flow;
-            private readonly BeatmapCharacteristicCollectionSO characteristicCollection = beatmapCharacteristic;
             private readonly AccSaberCampaignViewController campaignController = campaignViewController;
 
             [UIObject("container")]
@@ -421,7 +419,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 if (level is null)
                     return;
 
-                var collection = Resources.FindObjectsOfTypeAll<BeatmapCharacteristicCollectionSO>().FirstOrDefault();
                 var keys = level.GetBeatmapKeys();
 
                 BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
@@ -430,7 +427,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 
                 campaignFlow.ShowLeaderboard(key);
 
-                campaignController.SetMission(Map.SongName, Map.SongAuthor, Map.MapAuthor, Map.CoverUrl, key, level);
+                campaignController.SetMission(Map, key, level);
             }
 
             public void Dispose()

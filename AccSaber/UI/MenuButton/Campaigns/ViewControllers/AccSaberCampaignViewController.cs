@@ -33,6 +33,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private string _campaignTitle = null!;
         private string _campaignDescription = null!;
         private string _campaignCreator = null!;
+        private string _missionSongName = null!;
+        private string _missionSongAuthor = null!;
+        private string _missionObjective = null!;
         private AccSaberCampaign _currentCampaign = null!;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         public BeatmapKey _curBeatMapKey { get; set; }
@@ -128,21 +131,31 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("MissionMapName")]
         private string MissionMapName
         {
-            get => _campaignDescription;
+            get => _missionSongName;
             set
             {
-                _campaignDescription = value;
+                _missionSongName = value;
                 NotifyPropertyChanged(nameof(MissionMapName));
             }
         }
         [UIValue("MissionMapArtist")]
         private string MissionMapArtist
         {
-            get => _campaignCreator;
+            get => _missionSongAuthor;
             set
             {
-                _campaignCreator = value;
+                _missionSongAuthor = value;
                 NotifyPropertyChanged(nameof(MissionMapArtist));
+            }
+        }
+        [UIValue("MissionObjective")]
+        private string MissionObjective
+        {
+            get => _missionObjective;
+            set
+            {
+                _missionObjective = value;
+                NotifyPropertyChanged(nameof(MissionObjective));
             }
         }
 
@@ -315,13 +328,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         }
 
-        public void SetMission(string missionName, string missionArtist, string missionMapper, string missionImage, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel)
+        public void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel)
         {
             _curBeatMapKey = beatmapkey;
             _curBeatMapLevel = beatmapLevel;
-            MissionMapName = missionName;
-            MissionMapArtist = $"{missionArtist} [<color=#c0548f>{missionMapper}</color>]";
-            _ = _missionImage.SetImageAsync(missionImage);
+            MissionMapName = map.SongName;
+            MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
+
+            string objective = map.RequirementType switch
+            {
+                "ACC" => $"Set at least <color={ColorUtils.OVERALL}>{map.RequirementValue * 100:N2}%</color> accuracy",
+                "AP" => $"Set a score worth <color={ColorUtils.OVERALL}>{map.RequirementValue:N0} AP</color> play",
+                "RANK" => $"Get rank <color={ColorUtils.OVERALL}>#{map.RequirementValue:N0}</color> or better on the map",
+                "STREAK_115" => $"Get <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> 115s in a row",
+                "SCORE" => $"Set a score of <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> points or higher",
+                "FC" => $"Set a Full Combo",
+                _ => $"Get something with a requirement value of {map.RequirementValue:N0}"
+            };
+
+            MissionObjective = objective;
+            _ = _missionImage.SetImageAsync(map.CoverUrl);
             InMap = true;
         }
 

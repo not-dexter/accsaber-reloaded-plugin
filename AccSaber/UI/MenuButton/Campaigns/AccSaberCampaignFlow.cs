@@ -17,22 +17,15 @@ namespace AccSaber.UI.MenuButton.Campaigns
         private AccSaberCampaignViewController _campaignController = null!;
         private GameplaySetupViewController _gameplaySetupViewController = null!;
         private PlatformLeaderboardViewController _leaderboardController = null!;
-        private AccSaberStore _accSaberStore = null!;
-        private StandardLevelDetailViewController _standardLevelDetailViewController = null!;
-        public Action<StandardLevelDetailViewController>? CampaignMapUpdated;
 
         [Inject]
         protected void Construct(AccSaberCampaignViewController campaignController, AccSaberMainFlowCoordinator parentCoordinator,
-            GameplaySetupViewController gameplaySetupViewController, PlatformLeaderboardViewController platformLeaderboardViewController, 
-            AccSaberStore accSaberStore,
-            StandardLevelDetailViewController standardLevelDetailViewController)
+            GameplaySetupViewController gameplaySetupViewController, PlatformLeaderboardViewController platformLeaderboardViewController)
         {
             _campaignController = campaignController;
             _parentFlow = parentCoordinator;
             _gameplaySetupViewController = gameplaySetupViewController;
             _leaderboardController = platformLeaderboardViewController;
-            _accSaberStore = accSaberStore;
-            _standardLevelDetailViewController = standardLevelDetailViewController;
         }
         protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
@@ -41,11 +34,11 @@ namespace AccSaber.UI.MenuButton.Campaigns
                 SetTitle("AccSaber Campaigns");
                 showBackButton = true;
                 _gameplaySetupViewController.Setup(
-                       showModifiers: true,
-                       showEnvironmentOverrideSettings: true,
-                       showColorSchemesSettings: true,
-                       showMultiplayer: false,
-                       PlayerSettingsPanelController.PlayerSettingsPanelLayout.Singleplayer);
+                    showModifiers: true,
+                    showEnvironmentOverrideSettings: true,
+                    showColorSchemesSettings: true,
+                    showMultiplayer: false,
+                    PlayerSettingsPanelController.PlayerSettingsPanelLayout.Singleplayer);
                 
                 ProvideInitialViewControllers(_campaignController, _gameplaySetupViewController, null);
             } 
