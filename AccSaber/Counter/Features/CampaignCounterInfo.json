@@ -10,7 +10,7 @@
   },
   "BSML": {
     "Resource": "AccSaber.Counter.Settings.Views.CampaignCounterSettings.bsml",
-    "Host": "AccSaber.Counter.Settings.ViewControllers.CampaignCounterSettingsViewController",
+    "Host": "AccSaber.Plugin",
     "Icon": "AccSaber.Resources.AccSaber.png"
   }
 }

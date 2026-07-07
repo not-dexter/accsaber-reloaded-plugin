@@ -25,10 +25,16 @@ namespace AccSaber.UI.BSML_Addons.TypeHandlers
             ScrollRect scrollRect = (componentType.Component() as ScrollRect)!;
 
             if (componentData.TryGetValue("viewportWidth", out string viewportWidth) && float.TryParse(viewportWidth, out float vw))
+            {
                 scrollRect.viewport.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, vw);
+                scrollRect.horizontalScrollbar.value = 0;
+            }
 
             if (componentData.TryGetValue("viewportHeight", out string viewportHeight) && float.TryParse(viewportHeight, out float vh))
+            {
                 scrollRect.viewport.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, vh);
+                scrollRect.verticalScrollbar.value = 0;
+            }
 
             if (componentData.TryGetValue("contentWidth", out string contentWidth) && float.TryParse(contentWidth, out float cw))
                 scrollRect.content.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, cw);

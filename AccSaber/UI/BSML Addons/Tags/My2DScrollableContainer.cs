@@ -124,10 +124,10 @@ namespace AccSaber.UI.BSML_Addons.Tags
             scrollRect.verticalScrollbar = verticalScrollbar;
 
             scrollRect.horizontalScrollbarVisibility =
-                ScrollRect.ScrollbarVisibility.Permanent;
+                ScrollRect.ScrollbarVisibility.AutoHide;
 
             scrollRect.verticalScrollbarVisibility =
-                ScrollRect.ScrollbarVisibility.Permanent;
+                ScrollRect.ScrollbarVisibility.AutoHide;
 
             scrollRect.horizontalScrollbarSpacing = 0f;
             scrollRect.verticalScrollbarSpacing = 0f;

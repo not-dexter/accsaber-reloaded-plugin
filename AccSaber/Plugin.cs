@@ -11,8 +11,10 @@ using IPA.Loader;
 using Newtonsoft.Json.Linq;
 using SiraUtil.Zenject;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using Zenject;
 using IPALogger = IPA.Logging.Logger;
 
@@ -21,7 +23,10 @@ namespace AccSaber
 	[Plugin(RuntimeOptions.DynamicInit), NoEnableDisable]
 	public class Plugin
 	{
-		internal static DiContainer Container = null!;
+        private static Type _generatedConfigModelType = null!;
+        internal static Assembly CounterAssembly { get; private set; } = null!;
+
+        internal static DiContainer Container = null!, CounterGameContainer = null!;
 		internal static IPALogger Log = null!;
 		internal static Harmony harmony = null!;
 
@@ -35,7 +40,14 @@ namespace AccSaber
 			Log = logger;
 			Metadata = metadata;
 
-			InstallCounters();
+            try
+            {
+                InstallCounters();
+            }
+            catch (Exception e)
+            {
+                Log.Error("There was an exception handling counters+ interop!\n" + e);
+            }
 
             zenjector.Install<AccSaberMenuInstaller>(Location.Menu, config.Generated<PluginConfig>());
 			zenjector.Install<AccSaberAppInstaller>(Location.App);
@@ -44,12 +56,14 @@ namespace AccSaber
 			harmony = new("AccSaber.Leaderboard");
 
 			SubmissionPatch.ApplyKnownPatches(harmony);
+            MiscPatch.ApplyPatches(harmony);
 		}
+
 
 		private void InstallCounters()
 		{
-            Assembly? counterAssembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(assemb => assemb.GetName().Name.Equals("Counters+"));
-            CountersInstalled = counterAssembly is not null;
+            CounterAssembly = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(assemb => assemb.GetName().Name.Equals("Counters+"));
+            CountersInstalled = CounterAssembly is not null;
 
             if (!CountersInstalled)
             {
@@ -57,18 +71,85 @@ namespace AccSaber
                 return;
             }
 
-            Type customCounterFeature = counterAssembly!.GetType("CountersPlus.Custom.CustomCounterFeature");
+            Type dynamicConfigType = CreateEmptyConfigModelSubclass(CounterAssembly!.GetType("CountersPlus.ConfigModels.ConfigModel")); // This is so jank
+
+            Type customCounterFeature = CounterAssembly!.GetType("CountersPlus.Custom.CustomCounterFeature");
 
             object counterFeature = customCounterFeature.GetConstructor([]).Invoke([]);
 
             MethodInfo counterInit = customCounterFeature.GetMethod("Initialize", BindingFlags.NonPublic | BindingFlags.Instance);
             MethodInfo counterAfterInit = customCounterFeature.GetMethod("AfterInit", BindingFlags.Public | BindingFlags.Instance, null, [typeof(PluginMetadata)], null);
 
+            PropertyInfo incompleteCounters = customCounterFeature.GetProperty("incompleteCustomCounters", BindingFlags.NonPublic | BindingFlags.Instance);
 
             JObject counter = JObject.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.CAMPAIGN_COUNTER_FEATURE));
 
-            counterInit.Invoke(counterFeature, [Plugin.Metadata, counter]);
-            counterAfterInit.Invoke(counterFeature, [Plugin.Metadata]);
+            counterInit.Invoke(counterFeature, [Metadata, counter]);
+            counterAfterInit.Invoke(counterFeature, [Metadata]);
+
+            object customCounterInstance = ((Dictionary<PluginMetadata, object>)incompleteCounters.GetValue(counterFeature))[Metadata];
+
+            Type customCounterType = CounterAssembly.GetType("CountersPlus.Custom.CustomCounter");
+            Type bsmlSettings = customCounterType.GetNestedType("BSMLSettings");
+
+            object bsmlInstance = customCounterType.GetField("BSML").GetValue(customCounterInstance);
+            bsmlSettings.GetField("HostType").SetValue(bsmlInstance, dynamicConfigType);
+        }
+
+        public static Type CreateEmptyConfigModelSubclass(Type configModelType)
+        {
+            if (_generatedConfigModelType is not null)
+                return _generatedConfigModelType;
+
+            if (configModelType is null)
+                throw new ArgumentNullException(nameof(configModelType));
+
+            if (!configModelType.IsClass)
+                throw new ArgumentException("ConfigModel type must be a class.", nameof(configModelType));
+
+            if (!configModelType.IsAbstract)
+                throw new ArgumentException("ConfigModel type was expected to be abstract.", nameof(configModelType));
+
+            ConstructorInfo baseCtor = configModelType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: Type.EmptyTypes,
+                modifiers: null
+            ) ?? throw new InvalidOperationException("ConfigModel does not have a parameterless constructor.");
+
+            AssemblyName assemblyName = new("AccSaberConfigModelAssembly");
+
+            AssemblyBuilder assemblyBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(
+                assemblyName,
+                AssemblyBuilderAccess.Run
+            );
+
+            ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule(
+                "AccSaberConfigModelModule"
+            );
+
+            TypeBuilder typeBuilder = moduleBuilder.DefineType(
+                "AccSaberConfigModel",
+                TypeAttributes.Public | TypeAttributes.Class,
+                parent: configModelType
+            );
+
+            ConstructorBuilder ctorBuilder = typeBuilder.DefineConstructor(
+                MethodAttributes.Public,
+                CallingConventions.Standard,
+                Type.EmptyTypes
+            );
+
+            ILGenerator il = ctorBuilder.GetILGenerator();
+
+            // this.base()
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Call, baseCtor);
+            il.Emit(OpCodes.Ret);
+
+            _generatedConfigModelType = typeBuilder.CreateType();
+
+            return _generatedConfigModelType;
         }
     }
 }

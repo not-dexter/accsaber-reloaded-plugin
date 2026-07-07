@@ -38,7 +38,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private string _missionSongName = null!;
         private string _missionSongAuthor = null!;
         private string _missionObjective = null!;
-        private AccSaberCampaign _currentCampaign = null!;
+        private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly List<CampaignMap> _diffCells = [];
 
@@ -48,6 +48,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #else
         public IDifficultyBeatmap? CurrentBeatMapLevel { get; set; }
 #endif
+        public AccSaberCampaignMap? CurrentMap;
+        public bool MapStarted { get; private set; } = false;
 
         [UIObject("CampaignMapContainer")]
         private readonly GameObject _campaignMapContainer = null!;
@@ -100,7 +102,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged(nameof(IsNotLoading));
             }
         }
-        [UIValue("InCampaign")]
+        [UIValue("campaign-selected")]
+        private bool CampaignSelected
+        {
+            get;
+            set
+            {
+                if (value == field)
+                    return;
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = false;
+
+        [UIValue("in-campaign")]
         private bool InCampaign
         {
             get => _inCampaign;
@@ -111,7 +126,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged(nameof(NotInCampaign));
             }
         }
-        [UIValue("InMap")]
+        [UIValue("in-map")]
         public bool InMap
         {
             get => _inMap;
@@ -183,7 +198,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged(nameof(CampaignCreator));
             }
         }
-        [UIValue("NotInCampaign")]
+        [UIValue("not-in-campaign")]
         private bool NotInCampaign => !_inCampaign;
 
         [UIValue("is-not-loading")]
@@ -209,10 +224,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
         [UIAction("campaign-selected")]
-        private void CampaignSelected(TableView table, CampaignCell cellObj)
+        private void OnCampaignSelected(TableView table, CampaignCell cellObj)
         {
-            if (cellObj != null)
+            if (cellObj is not null)
                 _currentCampaign = cellObj.Data;
+            else
+                return;
+
+            CampaignSelected = true;
 
             table.ClearSelection();
 
@@ -259,6 +278,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Plugin.Log.Error("The current beat map is null when the play button is shown!!!");
                 return;
             }
+
+            MapStarted = true;
 
 #if V40
             _menuTransitionsHelper.StartStandardLevel(
@@ -323,7 +344,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         private void LevelFinished(StandardLevelScenesTransitionSetupDataSO transition, LevelCompletionResults results)
         {
+            MapStarted = false;
         }
+
 #pragma warning disable IDE0060
         [UIAction("tab-selected")]
         private void CategoryTabSelected(SegmentedControl segmentedControl, int index)
@@ -402,6 +425,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             MissionObjective = objective;
             _ = _missionImage.LoadCoverImage(_serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, map.CoverUrl);
+
+            CurrentMap = map;
+
             InMap = true;
         }
 
