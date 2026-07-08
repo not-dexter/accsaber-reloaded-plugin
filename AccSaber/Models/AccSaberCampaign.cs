@@ -6,7 +6,7 @@ using System.Runtime.Serialization;
 
 namespace AccSaber.Models
 {
-    internal class AccSaberCampaign : IModel
+    internal class AccSaberCampaign<T> : IModel
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -65,6 +65,9 @@ namespace AccSaber.Models
         [JsonProperty("backgroundUrl")]
         public string BackgroundUrl { get; set; } = null!;
 
+        [JsonProperty("completedDifficulties")]
+        public int? CompletedDifficulties { get; set; }
+
         [JsonProperty("submittedAt")]
         public DateTime SubmittedAt { get; set; }
 
@@ -81,7 +84,7 @@ namespace AccSaber.Models
         public List<CampaignTags>? Tags { get; set; }
 
         [JsonProperty("difficulties")]
-        public List<AccSaberCampaignMap>? Difficulties { get; set; }
+        public List<T>? Difficulties { get; set; }
 
         [JsonProperty("barriers")]
         public List<AccSaberCampaignBarrier>? Barriers { get; set; }
@@ -105,6 +108,7 @@ namespace AccSaber.Models
             TERMINAL, ALL
         }
     }
+    internal class AccSaberCampaign : AccSaberCampaign<AccSaberCampaignMap>;
 
     internal class CampaignTags
     {
@@ -331,6 +335,17 @@ namespace AccSaber.Models
         public string Effects { get; set; } = null!;
     }
 
+    internal class AccSaberCampaignPaged<T> : IModel
+    {
+        [JsonProperty("id")]
+        public Guid Id { get; set; }
+
+        [JsonProperty("campaign")]
+        public AccSaberCampaign<T> Campaign { get; set; } = null!;
+
+        [JsonProperty("progressStatus")]
+        public string? ProgressStatus { get; set; }
+    }
     internal class AccSaberCampaignPaged : IModel
     {
         [JsonProperty("id")]
@@ -341,5 +356,11 @@ namespace AccSaber.Models
 
         [JsonProperty("progressStatus")]
         public string? ProgressStatus { get; set; }
+    }
+
+    internal class AccSaberCampaignNode
+    {
+        [JsonProperty("node")]
+        public AccSaberCampaignMap Node { get; set; } = null!;
     }
 }

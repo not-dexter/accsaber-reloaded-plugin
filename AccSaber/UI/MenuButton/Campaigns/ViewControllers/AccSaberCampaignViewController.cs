@@ -178,6 +178,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         }
 
+        [UIValue("MissionComplete")]
+        private bool MissionComplete
+        {
+            get;
+            set
+            {
+                if (value != field)
+                {
+                    field = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
         [UIValue("CampaignDescription")]
         private string CampaignDescription
         {
@@ -400,12 +414,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
 #if NEW_VERSION
-        public void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel)
+        public void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel, bool completed)
         {
             CurrentBeatMapKey = beatmapkey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
-        public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel)
+        public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, bool completed)
         {
             CurrentBeatMapLevel = beatmapLevel;
 #endif
@@ -427,6 +441,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _ = _missionImage.LoadCoverImage(_serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, map.CoverUrl);
 
             CurrentMap = map;
+
+            MissionComplete = completed;
 
             InMap = true;
         }

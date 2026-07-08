@@ -48,6 +48,7 @@
           <text text='Objective' font-size='4' align='Center' />
           <text text='~MissionObjective' word-wrapping='true' font-size='3' />
         </vertical>
+        <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
         <vertical pref-height='10' />
         <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
       </vertical>

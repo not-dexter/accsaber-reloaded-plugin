@@ -1,6 +1,7 @@
 ﻿#define PRINT_DEBUG
 
 using AccSaber.Consts;
+using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
@@ -11,8 +12,6 @@ using SongCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Policy;
-using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -26,7 +25,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
-        [Inject] private readonly SerializationHandler serialUtils = null!;
+        [Inject] private readonly AccSaberStore store = null!;
         [Inject] private readonly AccSaberCampaignFlow accCampaignFlow = null!;
         [Inject] private readonly AccSaberCampaignViewController acvc = null!;
 
@@ -35,6 +34,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapNode> campaignMapNodes = [];
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
+
+        private readonly HashSet<Guid> completedDiffs = [];
 
         [UIObject(nameof(ScrollContainer))]
         private readonly GameObject ScrollContainer = null!;
@@ -54,7 +55,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 parsed = true;
         }
 
-        public void SetCampaign(AccSaberCampaign campaign)
+        public async void SetCampaign(AccSaberCampaign campaign)
         {
             if (!parsed || campaign.Difficulties is null)
                 return;
@@ -68,6 +69,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             campaignMapNodes.Clear();
             campaignMapBarriers.Clear();
             mapNodeArrows.Clear();
+
+            completedDiffs.Clear();
+            completedDiffs.UnionWith(await store.GetCampaignProgress(campaign.Id));
 
             int minHeight = int.MaxValue, maxHeight = int.MinValue, minWidth = int.MaxValue, maxWidth = int.MinValue;
             float minSize = float.MaxValue, maxSize = float.MinValue;
@@ -152,7 +156,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 foreach (Guid id in node.PrerequisiteIds)
                 {
-                    if (knownPositions.TryGetValue(id, out PositionData from) && CreateArrow(NodeContainer.transform, from, current, Color.grey) is GameObject go)
+                    if (knownPositions.TryGetValue(id, out PositionData from) && CreateArrow(NodeContainer.transform, from, current, completedDiffs.Contains(id) ? Color.white : Color.grey) is GameObject go)
                     {
                         go.transform.SetAsFirstSibling();
                         mapNodeArrows.Add((id, node.Id, go));
@@ -165,7 +169,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (campaign.Barriers is not null)
                 foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
                 {
-                    CampaignMapBarrier barrierNode = new(barrier, NodeContainer.transform, xOffset, yOffset, offsetSize);
+                    CampaignMapBarrier barrierNode = new(barrier, NodeContainer.transform, completedDiffs.Contains(barrier.Id), xOffset, yOffset, offsetSize);
 
                     campaignMapBarriers.Add(barrierNode);
 
@@ -174,7 +178,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             foreach (AccSaberCampaignMap map in campaign.Difficulties)
             {
-                CampaignMapNode node = new(map, serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, xOffset, yOffset, offsetSize, accCampaignFlow, acvc, levelUtils, serialUtils);
+                CampaignMapNode node = new(
+                    map: map,
+                    completed: completedDiffs.Contains(map.Id),
+                    mapHash: serialHandler.CachedDifficulties[map.MapDifficultyId].Hash,
+                    xOffset: xOffset,
+                    yOffset: yOffset,
+                    offsetSize: offsetSize,
+                    flow: accCampaignFlow,
+                    campaignViewController: acvc,
+                    levelUtils: levelUtils,
+                    serialUtils: serialHandler
+                    );
 
                 campaignMapNodes.Add(node);
 
@@ -186,7 +201,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             while (neededPositions.Count > 0)
             {
                 var (prereq, toNode) = neededPositions.Dequeue();
-                if (knownPositions.TryGetValue(prereq, out PositionData from) && knownPositions.TryGetValue(toNode, out PositionData to) && CreateArrow(NodeContainer.transform, from, to, Color.grey) is GameObject go)
+                if (knownPositions.TryGetValue(prereq, out PositionData from) && knownPositions.TryGetValue(toNode, out PositionData to) && CreateArrow(NodeContainer.transform, from, to, completedDiffs.Contains(prereq) ? Color.white : Color.grey) is GameObject go)
                 {
                     go.transform.SetAsFirstSibling();
                     mapNodeArrows.Add((prereq, toNode, go));
@@ -196,11 +211,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             Dictionary<Guid, CampaignMapBarrier> barrierNodeIds = [with(campaignMapBarriers.Select(barrier => new KeyValuePair<Guid, CampaignMapBarrier>(barrier.Barrier.Id, barrier)))];
+            Vector3 offsetRotaton = new(0f, 0f, 90f);
 
             foreach (var (fromNode, toNode, go) in mapNodeArrows)
             {
                 if (barrierNodeIds.ContainsKey(fromNode))
-                    barrierNodeIds[fromNode].Rotation = Quaternion.Euler(barrierNodeIds[fromNode].Rotation.eulerAngles - go.transform.rotation.eulerAngles);
+                    barrierNodeIds[fromNode].Rotation = Quaternion.Euler(barrierNodeIds[fromNode].Rotation.eulerAngles - go.transform.rotation.eulerAngles - offsetRotaton);
 
                 if (barrierNodeIds.ContainsKey(toNode))
                     barrierNodeIds[toNode].Rotation = Quaternion.Euler(barrierNodeIds[toNode].Rotation.eulerAngles - go.transform.rotation.eulerAngles);
@@ -371,11 +387,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight)) { }
             internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta) { }
         }
-        internal class CampaignMapNode(AccSaberCampaignMap map, string mapHash, float xOffset, float yOffset, float offsetSize, 
-            AccSaberCampaignFlow flow, AccSaberCampaignViewController campaignViewController, LevelUtils levelUtils, SerializationHandler serialUtils) : IDisposable
+        internal class CampaignMapNode(
+            AccSaberCampaignMap map,
+            bool completed,
+            string mapHash,
+            float xOffset,
+            float yOffset,
+            float offsetSize, 
+            AccSaberCampaignFlow flow,
+            AccSaberCampaignViewController campaignViewController,
+            LevelUtils levelUtils,
+            SerializationHandler serialUtils
+            ) : IDisposable
         {
             public readonly AccSaberCampaignMap Map = map;
             public readonly string Hash = mapHash;
+            public readonly bool Completed = completed;
 
             private readonly AccSaberCampaignFlow campaignFlow = flow;
             private readonly AccSaberCampaignViewController campaignController = campaignViewController;
@@ -408,6 +435,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private void PostParse()
             {
                 BorderImage.sprite = Utilities.ImageResources.WhitePixel;
+                BorderImage.color = Completed ? Color.white : Color.black;
 
                 CoverImage.transform.localScale *= 0.9f;
                 _ = CoverImage.LoadCoverImage(Hash, Map.CoverUrl);
@@ -439,7 +467,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
 
 #if NEW_VERSION
-                var keys = level.GetBeatmapKeys();
+                IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
 
                 BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
 
@@ -447,7 +475,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 
                 campaignFlow.ShowLeaderboard(key);
 
-                campaignController.SetMission(Map, key, level);
+                campaignController.SetMission(Map, key, level, Completed);
 #else
                 BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty));
                 IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
@@ -455,7 +483,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 campaignFlow.ShowLeaderboard(diff);
 
-                campaignController.SetMission(Map, diff);
+                campaignController.SetMission(Map, diff, Completed);
 #endif
             }
 
@@ -470,6 +498,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public const float WIDTH = 1f;
 
             public readonly AccSaberCampaignBarrier Barrier;
+            public readonly bool Completed;
             private readonly Transform Parent;
 
             private readonly GameObject obj;
@@ -479,9 +508,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public Vector2 Position => obj.transform.GetComponent<RectTransform>().anchoredPosition;
 
 
-            public CampaignMapBarrier(AccSaberCampaignBarrier barrier, Transform parent, float xOffset, float yOffset, float offsetSize)
+            public CampaignMapBarrier(AccSaberCampaignBarrier barrier, Transform parent, bool completed, float xOffset, float yOffset, float offsetSize)
             {
                 Barrier = barrier;
+                Completed = completed;
                 Parent = parent;
 
                 SizeDelta = new(WIDTH, Barrier.Size * SCALE_FACTOR);

@@ -262,6 +262,9 @@
         /// </remarks>
         public const string APAPI_CAMPAIGN = APAPI + "campaigns/{0}"; //campaign_id
 
+        public const string APAPI_CAMPAIGN_PROGRESS = APAPI + "campaigns/me/progress?ids={0}"; //campaign_id
+
+
         public const string APAPI_CURVE_AP = APAPI + "curves/acc00000-0000-0000-0000-000000000001"; // param entered already
 
         public const string APAPI_CURVE_WEIGHT = APAPI + "curves/acc00000-0000-0000-0000-000000000002"; // param entered already

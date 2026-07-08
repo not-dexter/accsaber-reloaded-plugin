@@ -5,6 +5,7 @@ using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SiraUtil.Logging;
 using System;
 using System.Collections.Generic;
@@ -227,6 +228,21 @@ namespace AccSaber.Managers
             }
 
             return newCampaignEntries;
+        }
+        public async Task<HashSet<Guid>> GetCampaignProgress(Guid campaignId)
+        {
+            List<JObject>? campaign =
+                await APIHandler.CallAPI_Json<List<JObject>>(
+                    string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler);
+
+            if (campaign is null)
+                return [];
+
+            // I don't wanna make an entire new tree of models for this one function, so just using JObjects.
+            HashSet<Guid> nodeIds = [.. campaign.First()["difficulties"].Where(node => (bool)(node["completed"] ?? false)).Select(node => Guid.Parse(node["node"]?["id"]?.ToString() ?? ""))];
+            HashSet<Guid> barrierIds = [.. campaign.First()["barriers"].Where(barrier => (bool)(barrier["satisfied"] ?? false)).Select(barrier => Guid.Parse(barrier["barrier"]?["id"]?.ToString() ?? ""))];
+
+            return [.. nodeIds, .. barrierIds];
         }
 
         public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 10)

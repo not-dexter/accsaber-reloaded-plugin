@@ -76,14 +76,14 @@ namespace AccSaber.UI.BSML_Addons.Tags
             scrollRect.movementType = ScrollRect.MovementType.Clamped;
             scrollRect.inertia = true;
             scrollRect.decelerationRate = 0.135f;
-            scrollRect.scrollSensitivity = 10f;
+            scrollRect.scrollSensitivity = 5f;
 
             AddScrollbars(scrollRect);
 
             return content;
         }
 
-        public static void AddScrollbars(ScrollRect scrollRect, float thickness = 2f)
+        public static void AddScrollbars(ScrollRect scrollRect, float thickness = 3f)
         {
             RectTransform root = scrollRect.GetComponent<RectTransform>();
             RectTransform viewport = scrollRect.viewport;
