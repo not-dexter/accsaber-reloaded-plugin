@@ -3,6 +3,7 @@ using AccSaber.Models;
 using AccSaber.Utils.Safety;
 using BeatSaberMarkupLanguage;
 using HMUI;
+using IPA.Utilities.Async;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -292,25 +293,30 @@ namespace AccSaber.Utils
                 if (ImageCache.ContainsKey(url))
                     return Utilities.LoadSpriteFromTexture(ImageCache[url]);
 
-                var (data, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct);
+                byte[]? data = null;
+
+                await Task.Run(async () => (data, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct).ConfigureAwait(false), ct);
 
                 if (data is null)
                     return null;
 
-                Texture2D t = new(2, 2, TextureFormat.RGBA32, false)
+                Texture2D t = await UnityMainThreadTaskScheduler.Factory
+                    .StartNew(() => Utilities.LoadImageAsync(data), ct)
+                    .Unwrap();
+
+                Sprite s = await UnityMainThreadTaskScheduler.Factory.StartNew(() =>
                 {
-                    wrapMode = TextureWrapMode.Clamp,
-                    filterMode = FilterMode.Bilinear
-                };
+                    Sprite sprite = Sprite.Create(
+                        t,
+                        new Rect(0, 0, t.width, t.height),
+                        new Vector2(0.5f, 0.5f),
+                        t.width
+                    );
 
-                ImageConversion.LoadImage(t, data, false);
+                    ImageCache.TryAdd(url, t);
 
-                Sprite s = Sprite.Create(
-                    t,
-                    new Rect(0, 0, t.width, t.height),
-                    new Vector2(0.5f, 0.5f),
-                    t.width
-                );
+                    return sprite;
+                }, ct);
 
                 ImageCache.TryAdd(url, t);
 

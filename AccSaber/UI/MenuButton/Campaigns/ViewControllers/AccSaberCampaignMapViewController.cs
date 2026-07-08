@@ -925,7 +925,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private void PostParse()
             {
                 BorderImage.sprite = GetBorderSprite(Shape);
-                BorderImage.color = Map.BorderColor?.Color() ?? Color.white;
+                BorderImage.color = Map.BorderColor?.Color() ?? ColorUtils.RANK.Color();
 
                 CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
 
