@@ -13,9 +13,6 @@ using Zenject;
 using AccSaber.Consts;
 using AccSaber.Utils.Misc;
 
-
-
-
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
 #endif
@@ -37,6 +34,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private string _campaignCreator = null!;
         private string _missionSongName = null!;
         private string _missionSongAuthor = null!;
+        private string _missionSongNoteCount = null!;
+        private string _missionSongNPS = null!;
+        private string _missionSongNJS = null!;
+        private string _missionSongDuration = null!;
         private string _missionObjective = null!;
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
@@ -175,6 +176,46 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 _missionSongAuthor = value;
                 NotifyPropertyChanged(nameof(MissionMapArtist));
+            }
+        }
+        [UIValue("MissionMapNPS")]
+        private string MissionMapNPS
+        {
+            get => _missionSongNPS;
+            set
+            {
+                _missionSongNPS = value;
+                NotifyPropertyChanged(nameof(MissionMapNPS));
+            }
+        }
+        [UIValue("MissionMapNoteCount")]
+        private string MissionMapNoteCount
+        {
+            get => _missionSongNoteCount;
+            set
+            {
+                _missionSongNoteCount = value;
+                NotifyPropertyChanged(nameof(MissionMapNoteCount));
+            }
+        }
+        [UIValue("MissionMapNJS")]
+        private string MissionMapNJS
+        {
+            get => _missionSongNJS;
+            set
+            {
+                _missionSongNJS = value;
+                NotifyPropertyChanged(nameof(MissionMapNJS));
+            }
+        }
+        [UIValue("MissionMapDuration")]
+        private string MissionMapDuration
+        {
+            get => _missionSongDuration;
+            set
+            {
+                _missionSongDuration = value;
+                NotifyPropertyChanged(nameof(MissionMapDuration));
             }
         }
         [UIValue("MissionObjective")]
@@ -388,7 +429,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 CategoryTab.Active => _activeCampaigns,
                 CategoryTab.Curated => await _accSaberStore.GetCampaigns("CURATED"),
-                CategoryTab.All => await _accSaberStore.GetCampaigns("PUBLISHED"),
+                CategoryTab.All => await _accSaberStore.GetCampaigns(),
                 _ => throw new NotImplementedException(),
             };
 
@@ -432,9 +473,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgress.CampaignProgressValue completion)
         {
             CurrentBeatMapLevel = beatmapLevel;
-#endif
+#endif            
+            int noteCount = 0;
+            float nps = 0;
+            float njs = 0;
+            //(noteCount, nps, njs) = await GetMapData(beatmapLevel, beatmapkey);
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
+            MissionMapNPS = $"{nps:N2}";
+            MissionMapNoteCount = noteCount.ToString();
+            MissionMapNJS = $"{njs:N1}";
+            TimeSpan Duration = TimeSpan.FromSeconds(beatmapLevel.songDuration);
+            
+
+            MissionMapDuration = string.Format("{0:D1}:{1:D2}", Duration.Minutes, Duration.Seconds);
+
 
             string objective = map.RequirementType switch
             {

@@ -194,10 +194,10 @@ namespace AccSaber.Managers
             return newNewsEntries;
         }
 
-        public async Task<List<AccSaberCampaign>> GetCampaigns(string status)
+        public async Task<List<AccSaberCampaign>> GetCampaigns(string status = "")
         {
 
-            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(string.Format(HelpfulPaths.APAPI_CAMPAIGNS_ALL, status), AccsaberAPI.Throttler);
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(status != "" ? string.Format(HelpfulPaths.APAPI_CAMPAIGNS, status) : HelpfulPaths.APAPI_CAMPAIGNS_ALL, AccsaberAPI.Throttler);
 
             if (content is null)
                 return [];

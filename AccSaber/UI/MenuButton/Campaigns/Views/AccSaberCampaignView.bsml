@@ -9,7 +9,7 @@
     <horizontal pref-width='160' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
       <horizontal>
         <vertical pref-width='50' pref-height='70' pad='2' active='~not-in-campaign'>
-          <custom-list id='campaign-list' contents='campaign-cells' cell-size='12'  clickable-cells='true' select-cell='campaign-selected' visible-cells='4' stick-scrolling='true' active='~not-in-campaign'>
+          <custom-list id='campaign-list' contents='campaign-cells' cell-size='12'  clickable-cells='true' select-cell='campaign-selected' visible-cells='4' active='~not-in-campaign'>
             <horizontal bg='round-rect-panel' pref-width='40' pad-left='0' pad ='2' pad-right='5'>
               <vertical pad-left='0'>
                 <text align='Left' text='~Name' font-size='3' />
@@ -44,6 +44,24 @@
             <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
           </vertical>
         </horizontal>
+		<horizontal> 
+			<horizontal pref-width='6.3'>
+				<img src="#ClockIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
+                <text text='~MissionMapDuration' italics='true' font-size='2' />
+			</horizontal>
+			<horizontal pref-width='6.3'>
+				<img src="#NPSIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
+                <text text='~MissionMapNPS' italics='true' font-size='2' />
+			</horizontal>
+			<horizontal pref-width='6.3'>
+				<img src="#GameNoteIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
+                <text text='~MissionMapNoteCount' italics='true' font-size='2' />	
+			</horizontal>
+			<horizontal pref-width='6.3'>
+				<img src="#FastNotesIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
+                <text text='~MissionMapNJS' italics='true' font-size='2' />
+			</horizontal>
+		</horizontal>
         <vertical>
           <text text='Objective' font-size='4' align='Center' />
           <text text='~MissionObjective' word-wrapping='true' font-size='3' />

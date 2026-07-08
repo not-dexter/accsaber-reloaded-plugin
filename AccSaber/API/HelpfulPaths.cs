@@ -223,11 +223,16 @@
         /// </remarks>
         public const string APAPI_NEWS_TYPE = APAPI + "news?type={0}"; //type
 
-
         /// <summary>
         /// Retrieves all campaign entries.
         /// </summary>
-        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns?status={0}"; // status
+        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns"; //no params
+
+        /// <summary>
+        /// Retrieves specified campaign entries.
+        /// /// Format parameters: status
+        /// </summary>
+        public const string APAPI_CAMPAIGNS = APAPI + "campaigns?status={0}"; // status
 
         /// <summary>
         /// Retrieves all news entries.
