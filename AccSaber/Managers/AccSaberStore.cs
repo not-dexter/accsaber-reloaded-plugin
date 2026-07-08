@@ -17,6 +17,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
+using static AccSaber.Managers.CampaignProgress;
 
 #if V41
 using OculusStudios.Platform.Core;
@@ -229,22 +230,43 @@ namespace AccSaber.Managers
 
             return newCampaignEntries;
         }
-        public async Task<HashSet<Guid>> GetCampaignProgress(Guid campaignId)
+        public async Task<CampaignProgress> GetCampaignProgress(Guid campaignId)
         {
             //Plugin.Log.Info(await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler) ?? "null");
 
-            List<JObject>? campaign =
+            List<JObject>? campaignList =
                 await APIHandler.CallAPI_Json<List<JObject>>(
                     string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler);
 
-            if (campaign is null)
-                return [];
+            if (campaignList is null)
+                return default;
 
             // I don't wanna make an entire new tree of models for this one function, so just using JObjects.
-            HashSet<Guid> nodeIds = [.. campaign.First()["difficulties"].Where(node => (bool)(node["completed"] ?? false)).Select(node => Guid.Parse(node["node"]?["id"]?.ToString() ?? ""))];
-            HashSet<Guid> barrierIds = [.. campaign.First()["barriers"].Where(barrier => (bool)(barrier["satisfied"] ?? false)).Select(barrier => Guid.Parse(barrier["barrier"]?["id"]?.ToString() ?? ""))];
+            // After looking at this mess, maybe I should have made the models 0.o
 
-            return [.. nodeIds, .. barrierIds];
+            JObject campaignObj = campaignList.First();
+
+            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> diffValues = 
+                campaignObj["difficulties"]
+                .Select(node => new KeyValuePair<Guid, CampaignProgressValue>(
+                    Guid.Parse(node["node"]?["id"]?.ToString() ?? ""),
+                    new((float)(node["userValue"] ?? 0f),
+                     GetCompletionStatus(
+                         (bool)(node["unlocked"] ?? false),
+                         (bool)(node["completed"] ?? false)
+                    ))));
+
+            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> barrierValues = 
+                campaignObj["barriers"]
+                .Select(barrier => new KeyValuePair<Guid, CampaignProgressValue>(
+                    Guid.Parse(barrier["barrier"]?["id"]?.ToString() ?? ""),
+                    new((float)(barrier["currentValue"] ?? 0f),
+                     GetCompletionStatus(
+                         (bool)(barrier["unlocked"] ?? false),
+                         (bool)(barrier["satisfied"] ?? false)
+                         ))));
+
+            return new([with(diffValues.Concat(barrierValues))]);
         }
 
         public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 10)
@@ -617,4 +639,56 @@ namespace AccSaber.Managers
             _playerInfo.OnRelationChanged -= UpdateLeaderboardOnRelationChanged;
         }
 	}
+
+    public readonly struct CampaignProgress
+    {
+        public readonly Dictionary<Guid, CampaignProgressValue> PlayerValues;
+        public readonly HashSet<Guid> CompletedItems, UnlockedItems;
+
+        public CampaignProgress(Dictionary<Guid, CampaignProgressValue> playerValues)
+        {
+            PlayerValues = playerValues;
+
+            CompletedItems = [];
+            UnlockedItems = [];
+
+            foreach (KeyValuePair<Guid, CampaignProgressValue> kvp in playerValues)
+                switch (kvp.Value.Completion)
+                {
+                    case CompletionStatus.Incomplete:
+                        continue;
+                    case CompletionStatus.Unlocked:
+                        UnlockedItems.Add(kvp.Key);
+                        continue;
+                    case CompletionStatus.Complete:
+                        CompletedItems.Add(kvp.Key);
+                        continue;
+                }
+        }
+
+        public static CompletionStatus GetCompletionStatus(bool unlocked, bool complete)
+        {
+            if (unlocked)
+            {
+                if (complete)
+                    return CompletionStatus.Complete;
+                else
+                    return CompletionStatus.Unlocked;
+            }
+            else
+            {
+                if (complete)
+                    throw new ArgumentException("Cannot complete a node or barrier that is not unlocked.");
+                else
+                    return CompletionStatus.Incomplete;
+            }
+        }
+
+        public enum CompletionStatus
+        {
+            Incomplete, Unlocked, Complete
+        }
+
+        public record struct CampaignProgressValue(float Progress, CompletionStatus Completion);
+    }
 }

@@ -1,6 +1,5 @@
 ﻿using AccSaber.Configuration;
 using AccSaber.Consts;
-using AccSaber.Counter;
 using AccSaber.Installers;
 using AccSaber.Patches;
 using BeatSaberMarkupLanguage;
@@ -12,7 +11,6 @@ using Newtonsoft.Json.Linq;
 using SiraUtil.Zenject;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;

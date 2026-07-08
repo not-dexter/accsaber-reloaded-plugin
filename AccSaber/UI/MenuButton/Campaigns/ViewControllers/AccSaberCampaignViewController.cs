@@ -42,6 +42,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly List<CampaignMap> _diffCells = [];
 
+        private CampaignProgress.CampaignProgressValue CampaignProgressVal
+        {
+            get;
+            set
+            {
+                field = value;
+                MissionComplete = value.Completion == CampaignProgress.CompletionStatus.Complete;
+            }
+        }
+
 #if NEW_VERSION
         public BeatmapKey CurrentBeatMapKey { get; set; }
         public BeatmapLevel? CurrentBeatMapLevel { get; set; }
@@ -414,12 +424,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
 #if NEW_VERSION
-        public void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel, bool completed)
+        public void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel, CampaignProgress.CampaignProgressValue completion)
         {
             CurrentBeatMapKey = beatmapkey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
-        public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, bool completed)
+        public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgress.CampaignProgressValue completion)
         {
             CurrentBeatMapLevel = beatmapLevel;
 #endif
@@ -442,7 +452,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             CurrentMap = map;
 
-            MissionComplete = completed;
+            CampaignProgressVal = completion;
 
             InMap = true;
         }

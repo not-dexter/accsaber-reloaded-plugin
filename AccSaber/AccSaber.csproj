@@ -211,15 +211,12 @@
     <EmbeddedResource Include="manifest.json" />
     <EmbeddedResource Include="Resources\*.png" />
     <EmbeddedResource Include="Counter\Features\*.json" />
-    <EmbeddedResource Include="Counter\Settings\Views\*.bsml"/>
+    <EmbeddedResource Include="Counter\Settings\Views\*.bsml" />
     <EmbeddedResource Include="UI\Views\*.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Views\*.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\*.bsml" />
   </ItemGroup>
   <ItemGroup Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
     <Compile Remove="Utils\OldVersion\*.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Counter\Settings\Views\" />
   </ItemGroup>
 </Project>

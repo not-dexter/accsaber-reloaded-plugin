@@ -1,7 +1,9 @@
 ﻿using AccSaber.API;
 using AccSaber.Models;
 using AccSaber.Utils.Safety;
+using BeatSaberMarkupLanguage;
 using HMUI;
+using IPA.Loader.Features;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -30,7 +32,7 @@ namespace AccSaber.Utils
         public const int SECONDS_WEEK = SECONDS_DAY * 7; // 604,800
         public const int SECONDS_YEAR = (int)(SECONDS_DAY * DAYS_YEAR); // 31,556,926
 
-        private static readonly ConcurrentDictionary<string, Sprite> ImageCache = [];
+        private static readonly ConcurrentDictionary<string, Texture2D> ImageCache = [];
 
         public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
         {
@@ -227,7 +229,7 @@ namespace AccSaber.Utils
         public static IEnumerable<T> MergeSortedLists<T>(params IEnumerable<IEnumerable<T>> lists) where T : IComparable<T> =>
             MergeSortedLists(Comparer<T>.Default, lists);
 
-        public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default)
+        public static async Task LoadCoverImageWithMask(this Image image, string hash, string? coverUrl, Func<Sprite, Sprite>? applyMask, CancellationToken ct = default)
         {
             try
             {
@@ -249,11 +251,14 @@ namespace AccSaber.Utils
                     return;
 
                 if (s is not null)
-                    image.sprite = s;
+                    image.sprite = applyMask is not null ? applyMask(s) : s;
 
                 else if (coverUrl is not null)
+                {
                     await LoadImage(image, coverUrl, ct);
-
+                    if (applyMask is not null)
+                        image.sprite = applyMask(image.sprite);
+                }
                 else
                     image.sprite = SongCore.Loader.defaultCoverImage;
             }
@@ -264,6 +269,8 @@ namespace AccSaber.Utils
                 image.sprite = SongCore.Loader.defaultCoverImage;
             }
         }
+        public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default) =>
+            await LoadCoverImageWithMask(image, hash, coverUrl, null, ct);
         public static async Task LoadImage(this Image image, string url, CancellationToken ct = default)
         {
             try
@@ -284,16 +291,29 @@ namespace AccSaber.Utils
             try
             {
                 if (ImageCache.ContainsKey(url))
-                    return ImageCache[url];
+                    return Utilities.LoadSpriteFromTexture(ImageCache[url]);
 
                 var (data, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct);
 
                 if (data is null)
                     return null;
 
-                Sprite s = await VersionUtils.LoadSpriteAsync(data);
+                Texture2D t = new(2, 2, TextureFormat.RGBA32, false)
+                {
+                    wrapMode = TextureWrapMode.Clamp,
+                    filterMode = FilterMode.Bilinear
+                };
 
-                ImageCache.TryAdd(url, s);
+                ImageConversion.LoadImage(t, data, false);
+
+                Sprite s = Sprite.Create(
+                    t,
+                    new Rect(0, 0, t.width, t.height),
+                    new Vector2(0.5f, 0.5f),
+                    t.width
+                );
+
+                ImageCache.TryAdd(url, t);
 
                 return s;
             }

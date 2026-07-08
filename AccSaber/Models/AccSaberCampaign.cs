@@ -212,6 +212,12 @@ namespace AccSaber.Models
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
 
+        [JsonProperty("borderColor")]
+        public string? BorderColor { get; set; } 
+
+        [JsonProperty("borderShape")]
+        public string? BorderShape { get; set; }
+
         [JsonProperty("xp")]
         public float XP { get; set; }
         
