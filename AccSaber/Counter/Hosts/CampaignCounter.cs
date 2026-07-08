@@ -1,7 +1,6 @@
 ﻿using AccSaber.Models;
 using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.Utils.Misc;
-using JetBrains.Annotations;
 using System;
 using System.Reflection;
 using TMPro;

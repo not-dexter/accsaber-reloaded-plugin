@@ -3,7 +3,6 @@ using AccSaber.Models;
 using AccSaber.Utils.Safety;
 using BeatSaberMarkupLanguage;
 using HMUI;
-using IPA.Loader.Features;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

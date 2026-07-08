@@ -161,7 +161,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 foreach (Guid id in node.PrerequisiteIds)
                 {
-                    if (knownPositions.TryGetValue(id, out PositionData from) && CreateArrow(NodeContainer.transform, from, current, campaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey) is GameObject go)
+                    if (knownPositions.TryGetValue(id, out PositionData from) &&
+                        CreateArrow(NodeContainer.transform, from, current, campaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey) 
+                        is GameObject go)
                     {
                         go.transform.SetAsFirstSibling();
                         mapNodeArrows.Add((id, node.Id, go));
@@ -216,7 +218,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 if (knownPositions.TryGetValue(prereq, out PositionData from) &&
                     knownPositions.TryGetValue(toNode, out PositionData to) &&
-                    CreateArrow(NodeContainer.transform, from, to,
+                    CreateArrow(
+                        NodeContainer.transform, from, to,
                         campaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey)
                         is GameObject go)
                 {
@@ -445,13 +448,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             arrowSize.x = length;
             arrowRect.sizeDelta = arrowSize;
 
-            RectTransform shaftRect = (arrow.transform.Find("Shaft") as RectTransform)!;
-            RectTransform headRect = (arrow.transform.Find("Head") as RectTransform)!;
 
-            if (headRect is null || shaftRect is null)
+            if (arrow.transform.Find("Head") is not RectTransform headRect || arrow.transform.Find("Shaft") is not RectTransform shaftRect)
                 return;
 
-            float headLength = headRect.sizeDelta.x;
+            float headLength = Mathf.Min(headRect.sizeDelta.x, length);
             float shaftLength = Mathf.Max(0f, length - headLength);
 
             Vector2 shaftSize = shaftRect.sizeDelta;
@@ -460,9 +461,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             headRect.anchoredPosition = new Vector2(shaftLength, 0f);
         }
-        public static GameObject? CreateArrow(Transform parent, PositionData from, PositionData to, Color color, float shaftThickness = 1f, float headLength = 4f, float headWidth = 4f, string name = "UI Arrow")
+        public static GameObject? CreateArrow(
+            Transform parent,
+            PositionData from,
+            PositionData to,
+            Color color,
+            float shaftThickness = 1f,
+            float headLength = 4f,
+            float headWidth = 4f,
+            string name = "UI Arrow")
         {
-            if (!TryGetClippedArrowPoints(from, to, out Vector2 fromPos, out Vector2 toPos))
+            if (!TryGetClippedArrowPoints(from, from.Shape, to, to.Shape, out Vector2 fromPos, out Vector2 toPos))
             {
                 fromPos = from.Position;
                 toPos = to.Position;
@@ -530,7 +539,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             return arrow;
         }
 
-        private static bool TryGetClippedArrowPoints(PositionData from, PositionData to, out Vector2 arrowStart, out Vector2 arrowEnd, float padding = 0f)
+        private static bool TryGetClippedArrowPoints(
+            PositionData from,
+            NodeShape fromShape,
+            PositionData to,
+            NodeShape toShape,
+            out Vector2 arrowStart,
+            out Vector2 arrowEnd,
+            float padding = 0f)
         {
             arrowStart = from.Position;
             arrowEnd = to.Position;
@@ -542,16 +558,23 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Vector2 direction = delta.normalized;
 
-            arrowStart = GetRectEdgePoint(from.Position, from.Size, direction, padding);
-            arrowEnd = GetRectEdgePoint(to.Position, to.Size, -direction, padding);
+            arrowStart = GetShapeEdgePoint(from.Position, from.Size, fromShape, direction, padding);
+            arrowEnd = GetShapeEdgePoint(to.Position, to.Size, toShape, -direction, padding);
 
-            // If the objects overlap or are too close, there may be no usable arrow length.
+            // If the two shapes overlap, or are too close, the clipped arrow may be invalid.
             if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
                 return false;
 
             return true;
         }
-        private static bool TryGetClippedArrowPoints(PositionData from, Quaternion fromRotation, PositionData to, Quaternion toRotation, out Vector2 arrowStart, out Vector2 arrowEnd, float padding = 0f)
+        private static bool TryGetClippedArrowPoints(
+            PositionData from,
+            Quaternion fromRotation,
+            PositionData to,
+            Quaternion toRotation,
+            out Vector2 arrowStart,
+            out Vector2 arrowEnd,
+            float padding = 0f)
         {
             arrowStart = from.Position;
             arrowEnd = to.Position;
@@ -563,9 +586,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Vector2 direction = delta.normalized;
 
-            arrowStart = GetRotatedRectEdgePoint(from.Position, from.Size, fromRotation, direction, padding);
+            arrowStart = GetRotatedShapeEdgePoint(from.Position, from.Size, from.Shape, fromRotation, direction, padding);
 
-            arrowEnd = GetRotatedRectEdgePoint(to.Position, to.Size, toRotation, -direction, padding);
+            arrowEnd = GetRotatedShapeEdgePoint(to.Position, to.Size, to.Shape, toRotation, -direction, padding);
 
             if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
                 return false;
@@ -573,33 +596,197 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             return true;
         }
 
-        private static Vector2 GetRotatedRectEdgePoint(Vector2 rectCenter, Vector2 rectSize, Quaternion rectRotation, Vector2 worldDirection, float padding = 0f)
+        private static Vector2 GetRotatedShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Quaternion rotation, Vector2 worldDirection, float padding = 0f)
         {
-            Vector2 halfSize = new(Mathf.Abs(rectSize.x) * 0.5f, Mathf.Abs(rectSize.y) * 0.5f);
+            if (worldDirection.sqrMagnitude < 0.0001f)
+                return center;
 
-            Vector3 localDirection3 = Quaternion.Inverse(rectRotation) * new Vector3(worldDirection.x, worldDirection.y, 0f);
+            worldDirection.Normalize();
+
+            Vector2 halfSize = new(
+                Mathf.Abs(size.x) * 0.5f,
+                Mathf.Abs(size.y) * 0.5f
+            );
+
+            if (halfSize.x <= 0.0001f || halfSize.y <= 0.0001f)
+                return center;
+
+            // Convert the world-space arrow direction into the node's local rotated space.
+            Vector3 localDirection3 =
+                Quaternion.Inverse(rotation) *
+                new Vector3(worldDirection.x, worldDirection.y, 0f);
 
             Vector2 localDirection = new(localDirection3.x, localDirection3.y);
 
             if (localDirection.sqrMagnitude < 0.0001f)
-                return rectCenter;
+                return center;
 
             localDirection.Normalize();
 
+            float distanceToEdge = GetShapeDistanceToEdge(
+                halfSize,
+                shape,
+                localDirection
+            );
+
+            return center + worldDirection * (distanceToEdge + padding);
+        }
+        private static float GetShapeDistanceToEdge(
+            Vector2 halfSize,
+            NodeShape shape,
+            Vector2 localDirection)
+        {
+            return shape switch
+            {
+                NodeShape.Square => GetRectangleDistanceToEdge(halfSize, localDirection),
+                NodeShape.Circle => GetEllipseDistanceToEdge(halfSize, localDirection),
+                NodeShape.Diamond => GetDiamondDistanceToEdge(halfSize, localDirection),
+                NodeShape.Hexagon => GetHexagonDistanceToEdge(halfSize, localDirection),
+                _ => GetRectangleDistanceToEdge(halfSize, localDirection)
+            };
+        }
+        private static Vector2 GetShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Vector2 direction, float padding = 0f)
+        {
+            if (direction.sqrMagnitude < 0.0001f)
+                return center;
+
+            direction.Normalize();
+
+            Vector2 halfSize = new(
+                Mathf.Abs(size.x) * 0.5f,
+                Mathf.Abs(size.y) * 0.5f
+            );
+
+            if (halfSize.x <= 0.0001f || halfSize.y <= 0.0001f)
+                return center;
+
+            float distance = shape switch
+            {
+                NodeShape.Square => GetRectangleDistanceToEdge(halfSize, direction),
+                NodeShape.Circle => GetEllipseDistanceToEdge(halfSize, direction),
+                NodeShape.Diamond => GetDiamondDistanceToEdge(halfSize, direction),
+                NodeShape.Hexagon => GetHexagonDistanceToEdge(halfSize, direction),
+                _ => GetRectangleDistanceToEdge(halfSize, direction)
+            };
+
+            return center + direction * (distance + padding);
+        }
+        private static float GetRectangleDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
             float distanceToVerticalEdge =
-                Mathf.Abs(localDirection.x) > 0.0001f
-                    ? halfSize.x / Mathf.Abs(localDirection.x)
+                Mathf.Abs(direction.x) > 0.0001f
+                    ? halfSize.x / Mathf.Abs(direction.x)
                     : float.PositiveInfinity;
 
             float distanceToHorizontalEdge =
-                Mathf.Abs(localDirection.y) > 0.0001f
-                    ? halfSize.y / Mathf.Abs(localDirection.y)
+                Mathf.Abs(direction.y) > 0.0001f
+                    ? halfSize.y / Mathf.Abs(direction.y)
                     : float.PositiveInfinity;
 
-            float distanceToEdge = Mathf.Min(distanceToVerticalEdge, distanceToHorizontalEdge);
-
-            return rectCenter + worldDirection.normalized * (distanceToEdge + padding);
+            return Mathf.Min(distanceToVerticalEdge, distanceToHorizontalEdge);
         }
+
+        private static float GetEllipseDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
+            // This treats Circle as an ellipse using the full Size.
+            // If Size.x == Size.y, this is a true circle.
+            float x = direction.x / halfSize.x;
+            float y = direction.y / halfSize.y;
+
+            float denominator = Mathf.Sqrt((x * x) + (y * y));
+
+            if (denominator <= 0.0001f)
+                return 0f;
+
+            return 1f / denominator;
+        }
+
+        private static float GetDiamondDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
+            // Diamond equation:
+            // abs(x / halfWidth) + abs(y / halfHeight) = 1
+            float denominator =
+                Mathf.Abs(direction.x) / halfSize.x +
+                Mathf.Abs(direction.y) / halfSize.y;
+
+            if (denominator <= 0.0001f)
+                return 0f;
+
+            return 1f / denominator;
+        }
+
+
+        private static float GetHexagonDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
+            if (direction.sqrMagnitude < 0.0001f)
+                return 0f;
+
+            direction.Normalize();
+
+            // width : height = 2 : sqrt(3)
+            //
+            // halfSize.x = outer radius
+            // halfSize.y = apothem
+            //
+            // If your RectTransform is slightly non-regular, this still fits the largest
+            // regular flat-top hexagon inside the given size.
+
+            float radiusFromWidth = halfSize.x;
+            float radiusFromHeight = halfSize.y * 2f / Mathf.Sqrt(3f);
+
+            float radius = Mathf.Min(radiusFromWidth, radiusFromHeight);
+            float apothem = radius * Mathf.Sqrt(3f) * 0.5f;
+
+            // A regular flat-top hexagon can be represented by these 3 pairs of parallel edges:
+            //
+            // |y| <= apothem
+            // |sqrt(3)/2 * x + 1/2 * y| <= apothem
+            // |sqrt(3)/2 * x - 1/2 * y| <= apothem
+
+            const float sqrt3Over2 = 0.86602540378f;
+
+            float d1 = Mathf.Abs(direction.y);
+            float d2 = Mathf.Abs((sqrt3Over2 * direction.x) + (0.5f * direction.y));
+            float d3 = Mathf.Abs((sqrt3Over2 * direction.x) - (0.5f * direction.y));
+
+            float maxProjection = Mathf.Max(d1, d2, d3);
+
+            if (maxProjection <= 0.0001f)
+                return 0f;
+
+            return apothem / maxProjection;
+        }
+
+        private static bool TryRaySegmentIntersection(Vector2 rayOrigin, Vector2 rayDirection, Vector2 segmentA, Vector2 segmentB, out float rayDistance)
+        {
+            rayDistance = 0f;
+
+            Vector2 segmentDirection = segmentB - segmentA;
+
+            float denominator = Cross(rayDirection, segmentDirection);
+
+            if (Mathf.Abs(denominator) <= 0.0001f)
+                return false;
+
+            Vector2 difference = segmentA - rayOrigin;
+
+            float t = Cross(difference, segmentDirection) / denominator;
+            float u = Cross(difference, rayDirection) / denominator;
+
+            if (t >= 0f && u >= 0f && u <= 1f)
+            {
+                rayDistance = t;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static float Cross(Vector2 a, Vector2 b)
+        {
+            return (a.x * b.y) - (a.y * b.x);
+        }
+        
         private static Vector2 GetRectEdgePoint(Vector2 rectCenter, Vector2 rectSize, Vector2 direction, float padding = 0f)
         {
             Vector2 halfSize = new(Mathf.Abs(rectSize.x) * 0.5f, Mathf.Abs(rectSize.y) * 0.5f);
@@ -625,8 +812,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             get
             {
-                if (_triangleArrowHeadSprite == null)
-                    _triangleArrowHeadSprite = CreateTriangleArrowHeadSprite();
+                _triangleArrowHeadSprite ??= CreateTriangleArrowHeadSprite();
 
                 return _triangleArrowHeadSprite;
             }
@@ -668,10 +854,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             return Sprite.Create(texture, new(0f, 0f, width, height), new(0f, 0.5f), 100f);
         }
-        public record struct PositionData(Vector2 Position, Vector2 Size)
+        public record struct PositionData(Vector2 Position, Vector2 Size, NodeShape Shape)
         {
-            internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight)) { }
-            internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta) { }
+            internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight), node.Shape) { }
+            internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta, NodeShape.Square) { }
         }
         internal class CampaignMapNode(
             AccSaberCampaignMap map,
@@ -689,6 +875,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public readonly AccSaberCampaignMap Map = map;
             public readonly string Hash = mapHash;
             public readonly CampaignProgress.CampaignProgressValue Progress = progress;
+            public readonly NodeShape Shape = map.BorderShape switch
+            {
+                "square" => NodeShape.Square,
+                "diamond" => NodeShape.Diamond,
+                "circle" => NodeShape.Circle,
+                _ => NodeShape.Hexagon
+            };
 
             private readonly AccSaberCampaignFlow campaignFlow = flow;
             private readonly AccSaberCampaignViewController campaignController = campaignViewController;
@@ -731,21 +924,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIAction("#post-parse")]
             private void PostParse()
             {
-                NodeShape shape = Map.BorderShape switch
-                {
-                    "square" => NodeShape.Square,
-                    "diamond" => NodeShape.Diamond,
-                    "circle" => NodeShape.Circle,
-                    _ => NodeShape.Hexagon
-                };
-
-                BorderImage.sprite = GetBorderSprite(shape);
+                BorderImage.sprite = GetBorderSprite(Shape);
                 BorderImage.color = Map.BorderColor?.Color() ?? Color.white;
 
                 CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
 
                 CoverImage.transform.localScale *= 0.9f;
-                _ = CoverImage.LoadCoverImageWithMask(Hash, Map.CoverUrl, sprite => CreateMaskedCoverSprite(sprite, shape)!);
+                _ = CoverImage.LoadCoverImageWithMask(Hash, Map.CoverUrl, sprite => CreateMaskedCoverSprite(sprite, Shape)!);
 
 #if PRINT_DEBUG
                 Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
