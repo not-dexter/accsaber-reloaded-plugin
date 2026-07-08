@@ -12,6 +12,10 @@ using UnityEngine;
 using Zenject;
 using AccSaber.Consts;
 using AccSaber.Utils.Misc;
+using static AccSaber.Managers.CampaignProgress;
+using UnityEngine.UI;
+
+
 
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
@@ -28,12 +32,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private CategoryTab _currentTab;
         private bool _isLoading;
         private bool _inCampaign;
+        private bool _missionHasRewards;
+        private bool _missionLocked;
         private bool _inMap;
         private string _campaignTitle = null!;
         private string _campaignDescription = null!;
         private string _campaignCreator = null!;
         private string _missionSongName = null!;
         private string _missionSongAuthor = null!;
+        private string _missionRewards = null!;
         private string _missionSongNoteCount = null!;
         private string _missionSongNPS = null!;
         private string _missionSongNJS = null!;
@@ -65,11 +72,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIObject("CampaignMapContainer")]
         private readonly GameObject _campaignMapContainer = null!;
 
+
         [UIComponent("CampaignImage")]
         private readonly ImageView _campaignImage = null!;
 
         [UIComponent("MissionImage")]
         private readonly ImageView _missionImage = null!;
+
+        [UIComponent("MissionButton")]
+        private readonly Button _missionButton = null!;
 
         [UIComponent("campaign-list")]
         private readonly CustomCellListTableData _campaignList = null!;
@@ -92,7 +103,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
         [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
         [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
-#if V40
+#if V40 || NEW_VERSION
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
 #endif
         private CategoryTab CurrentTab
@@ -242,6 +253,36 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     field = value;
                     NotifyPropertyChanged();
                 }
+            }
+        }
+        [UIValue("MissionHasRewards")]
+        public bool MissionHasRewards
+        {
+            get => _missionHasRewards;
+            set
+            {
+                _missionHasRewards = value;
+                NotifyPropertyChanged(nameof(MissionHasRewards));
+            }
+        }
+        [UIValue("MissionLocked")]
+        public bool MissionLocked
+        {
+            get => _missionLocked;
+            set
+            {
+                _missionLocked = value;
+                NotifyPropertyChanged(nameof(MissionLocked));
+            }
+        }
+        [UIValue("MissionRewards")]
+        private string MissionRewards
+        {
+            get => _missionRewards;
+            set
+            {
+                _missionRewards = value;
+                NotifyPropertyChanged(nameof(MissionRewards));
             }
         }
 
@@ -498,6 +539,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Plugin.Log.Error(e);
             }
 
+            if (map.XP > 0)
+            {
+                MissionHasRewards = true;
+                MissionRewards = $"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>";
+            }
+            else
+                MissionHasRewards = false;
+
+
+            _missionButton.gameObject.SetActive(completion.Completion != CompletionStatus.Incomplete);
+            MissionLocked = completion.Completion == CompletionStatus.Incomplete;
+          
+
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
             MissionMapNPS = $"{nps:N2}";
@@ -511,11 +565,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             string objective = map.RequirementType switch
             {
-                AccSaberCampaignMap.CampaignRequirementType.ACC => $"Set at least <color={ColorUtils.OVERALL}>{map.RequirementValue * 100:N2}%</color> accuracy",
-                AccSaberCampaignMap.CampaignRequirementType.AP => $"Set a score worth <color={ColorUtils.OVERALL}>{map.RequirementValue:N0} AP</color> play",
-                AccSaberCampaignMap.CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.OVERALL}>#{map.RequirementValue:N0}</color> or better on the map",
-                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"Get <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> 115s in a row",
-                AccSaberCampaignMap.CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.OVERALL}>{map.RequirementValue:N0}</color> points or higher",
+                AccSaberCampaignMap.CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{map.RequirementValue * 100:N2}%</color> accuracy",
+                AccSaberCampaignMap.CampaignRequirementType.AP => $"Set a score worth <color={ColorUtils.RANK}>{map.RequirementValue:N0} AP</color>",
+                AccSaberCampaignMap.CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color> or better on the map",
+                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> 115s in a row",
+                AccSaberCampaignMap.CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> points or higher",
                 AccSaberCampaignMap.CampaignRequirementType.FC => $"Set a Full Combo",
                 _ => $"Get something with a requirement value of {map.RequirementValue:N0}"
             };

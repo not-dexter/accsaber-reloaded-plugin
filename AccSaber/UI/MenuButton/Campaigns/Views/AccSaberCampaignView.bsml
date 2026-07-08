@@ -36,40 +36,48 @@
         <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
       </vertical>
       <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' active='~in-campaign' />
-      <vertical preferred-width='50' preferred-height='70' bg='round-rect-panel' active='~in-map' pad ='4'>
-        <horizontal>
-          <img preserve-aspect='true' id='MissionImage' preferred-width='8' preferred-height='8' />
-          <vertical preferred-width='30'>
-            <text text='~MissionMapName' align='Left' overflow-mode='Ellipsis' italics='true' font-size='4' />
-            <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
-          </vertical>
-        </horizontal>
-        <horizontal>
-          <horizontal pref-width='6.3'>
-            <img src='#ClockIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
-            <text text='~MissionMapDuration' italics='true' font-size='2.5' />
+      <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map' pad ='4' pad-bottom='2'>
+		<vertical preferred-width='42' preferred-height='15' vertical-fit='PreferredSize' >
+          <horizontal>
+            <img preserve-aspect='true' id='MissionImage' preferred-width='8' preferred-height='8' />
+            <vertical preferred-width='30'>
+              <text text='~MissionMapName' align='Left' overflow-mode='Ellipsis' italics='true' font-size='4' />
+              <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
+            </vertical>
           </horizontal>
-          <horizontal pref-width='6.3'>
-            <img src='#NPSIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
-            <text text='~MissionMapNPS' italics='true' font-size='2.5' />
+          <horizontal>
+            <horizontal vertical-fit='PreferredSize' pref-height='3' pref-width='6.3'>
+              <img src='#ClockIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
+              <text text='~MissionMapDuration' italics='true' font-size='2.5' />
+            </horizontal>
+            <horizontal vertical-fit='PreferredSize' pref-height='3' pref-width='6.3'>
+              <img src='#NPSIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
+              <text text='~MissionMapNPS' italics='true' font-size='2.5' />
+            </horizontal>
+            <horizontal vertical-fit='PreferredSize' pref-height='3' pref-width='6.3'>
+              <img src='#GameNoteIcon' preserve-aspect='true' scale='0.8' pref-width='2.6' pref-height='2.6' />
+              <text text='~MissionMapNoteCount' italics='true' font-size='2.5' />
+            </horizontal>
+            <horizontal vertical-fit='PreferredSize' pref-height='3' pref-width='6.3'>
+              <img src='#FastNotesIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
+              <text text='~MissionMapNJS' italics='true' font-size='2.5' />
+            </horizontal>
           </horizontal>
-          <horizontal pref-width='6.3'>
-            <img src='#GameNoteIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
-            <text text='~MissionMapNoteCount' italics='true' font-size='2.5' />
-          </horizontal>
-          <horizontal pref-width='6.3'>
-            <img src='#FastNotesIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
-            <text text='~MissionMapNJS' italics='true' font-size='2.5' />
-          </horizontal>
-        </horizontal>
-        <vertical>
+		</vertical>
+		<vertical preferred-height='35'>
+        <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
+        <vertical pref-height='8' vertical-fit='PreferredSize'>
           <text text='Objective' font-size='4' align='Center' />
           <text text='~MissionObjective' word-wrapping='true' font-size='3' />
+        </vertical>	  
+		<vertical pref-height='8' vertical-fit='PreferredSize' active='~MissionHasRewards'>
+          <text text='XP Rewards' font-size='4' align='Center' />
+          <text text='~MissionRewards' align='Center' word-wrapping='true' font-size='3' />
         </vertical>
-        <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
-        <vertical pref-height='10' />
-        <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
       </vertical>
+        <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='4' active='~MissionLocked' />
+        <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
+	 </vertical>
     </horizontal>
   </vertical>
   <button text='Go Back' on-click='BackPressed' active='~in-campaign' />
