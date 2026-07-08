@@ -231,6 +231,8 @@ namespace AccSaber.Managers
         }
         public async Task<HashSet<Guid>> GetCampaignProgress(Guid campaignId)
         {
+            //Plugin.Log.Info(await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler) ?? "null");
+
             List<JObject>? campaign =
                 await APIHandler.CallAPI_Json<List<JObject>>(
                     string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler);

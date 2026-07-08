@@ -122,6 +122,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             Plugin.Log.Info($"minHeight = {minHeight}, maxHeight = {maxHeight}, minHeightMaxSize = {minHeightMaxSize}, maxHeightMaxSize = {maxHeightMaxSize}");
 #endif
 
+            Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
+
             LayoutElement scrollLayout = NodeContainer.GetComponent<LayoutElement>();
 
             scrollLayout.preferredWidth = width;
@@ -212,17 +214,92 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Dictionary<Guid, CampaignMapBarrier> barrierNodeIds = [with(campaignMapBarriers.Select(barrier => new KeyValuePair<Guid, CampaignMapBarrier>(barrier.Barrier.Id, barrier)))];
             Vector3 offsetRotaton = new(0f, 0f, 90f);
+            Quaternion offsetRotationQ = Quaternion.Euler(offsetRotaton);
 
             foreach (var (fromNode, toNode, go) in mapNodeArrows)
             {
-                if (barrierNodeIds.ContainsKey(fromNode))
-                    barrierNodeIds[fromNode].Rotation = Quaternion.Euler(barrierNodeIds[fromNode].Rotation.eulerAngles - go.transform.rotation.eulerAngles - offsetRotaton);
+                Vector3 arrowEuler = go.transform.rotation.eulerAngles;
 
-                if (barrierNodeIds.ContainsKey(toNode))
-                    barrierNodeIds[toNode].Rotation = Quaternion.Euler(barrierNodeIds[toNode].Rotation.eulerAngles - go.transform.rotation.eulerAngles);
+                bool fromBarrierExists = barrierNodeIds.TryGetValue(fromNode, out CampaignMapBarrier fromBarrier);
+                bool toBarrierExists = barrierNodeIds.TryGetValue(toNode, out CampaignMapBarrier toBarrier);
+
+                if (fromBarrierExists)
+                {
+                    fromBarrier.Rotation = Quaternion.Euler(
+                        fromBarrier.Rotation.eulerAngles - arrowEuler - offsetRotaton
+                    );
+                }
+
+                if (toBarrierExists)
+                {
+                    toBarrier.Rotation = Quaternion.Euler(
+                        toBarrier.Rotation.eulerAngles - arrowEuler
+                    );
+                }
+
+                // Recalculate the arrow after the barrier rotations have changed.
+                if (!knownPositions.TryGetValue(fromNode, out PositionData fromPositionData))
+                    continue;
+
+                if (!knownPositions.TryGetValue(toNode, out PositionData toPositionData))
+                    continue;
+
+                Quaternion fromRotation = fromBarrierExists ? fromBarrier.Rotation * offsetRotationQ : Quaternion.identity;
+
+                Quaternion toRotation = toBarrierExists ? toBarrier.Rotation : Quaternion.identity;
+
+                if (TryGetClippedArrowPoints(
+                        fromPositionData,
+                        fromRotation,
+                        toPositionData,
+                        toRotation,
+                        out Vector2 newStart,
+                        out Vector2 newEnd,
+                        padding: 0f))
+                {
+                    UpdateExistingArrow(go, newStart, newEnd);
+                }
             }
         }
+        private static void UpdateExistingArrow(GameObject arrow, Vector2 from, Vector2 to)
+        {
+            RectTransform arrowRect = arrow.GetComponent<RectTransform>();
 
+            Vector2 direction = to - from;
+            float length = direction.magnitude;
+
+            if (length <= 0.001f)
+            {
+                arrow.SetActive(false);
+                return;
+            }
+
+            arrow.SetActive(true);
+
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+            arrowRect.anchoredPosition = from;
+            arrowRect.localRotation = Quaternion.Euler(0f, 0f, angle);
+
+            Vector2 arrowSize = arrowRect.sizeDelta;
+            arrowSize.x = length;
+            arrowRect.sizeDelta = arrowSize;
+
+            RectTransform shaftRect = (arrow.transform.Find("Shaft") as RectTransform)!;
+            RectTransform headRect = (arrow.transform.Find("Head") as RectTransform)!;
+
+            if (headRect is null || shaftRect is null)
+                return;
+
+            float headLength = headRect.sizeDelta.x;
+            float shaftLength = Mathf.Max(0f, length - headLength);
+
+            Vector2 shaftSize = shaftRect.sizeDelta;
+            shaftSize.x = shaftLength;
+            shaftRect.sizeDelta = shaftSize;
+
+            headRect.anchoredPosition = new Vector2(shaftLength, 0f);
+        }
         public static GameObject? CreateArrow(Transform parent, PositionData from, PositionData to, Color color, float shaftThickness = 1f, float headLength = 4f, float headWidth = 4f, string name = "UI Arrow")
         {
             if (!TryGetClippedArrowPoints(from, to, out Vector2 fromPos, out Vector2 toPos))
@@ -313,6 +390,55 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return false;
 
             return true;
+        }
+        private static bool TryGetClippedArrowPoints(PositionData from, Quaternion fromRotation, PositionData to, Quaternion toRotation, out Vector2 arrowStart, out Vector2 arrowEnd, float padding = 0f)
+        {
+            arrowStart = from.Position;
+            arrowEnd = to.Position;
+
+            Vector2 delta = to.Position - from.Position;
+
+            if (delta.sqrMagnitude < 0.0001f)
+                return false;
+
+            Vector2 direction = delta.normalized;
+
+            arrowStart = GetRotatedRectEdgePoint(from.Position, from.Size, fromRotation, direction, padding);
+
+            arrowEnd = GetRotatedRectEdgePoint(to.Position, to.Size, toRotation, -direction, padding);
+
+            if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
+                return false;
+
+            return true;
+        }
+
+        private static Vector2 GetRotatedRectEdgePoint(Vector2 rectCenter, Vector2 rectSize, Quaternion rectRotation, Vector2 worldDirection, float padding = 0f)
+        {
+            Vector2 halfSize = new(Mathf.Abs(rectSize.x) * 0.5f, Mathf.Abs(rectSize.y) * 0.5f);
+
+            Vector3 localDirection3 = Quaternion.Inverse(rectRotation) * new Vector3(worldDirection.x, worldDirection.y, 0f);
+
+            Vector2 localDirection = new(localDirection3.x, localDirection3.y);
+
+            if (localDirection.sqrMagnitude < 0.0001f)
+                return rectCenter;
+
+            localDirection.Normalize();
+
+            float distanceToVerticalEdge =
+                Mathf.Abs(localDirection.x) > 0.0001f
+                    ? halfSize.x / Mathf.Abs(localDirection.x)
+                    : float.PositiveInfinity;
+
+            float distanceToHorizontalEdge =
+                Mathf.Abs(localDirection.y) > 0.0001f
+                    ? halfSize.y / Mathf.Abs(localDirection.y)
+                    : float.PositiveInfinity;
+
+            float distanceToEdge = Mathf.Min(distanceToVerticalEdge, distanceToHorizontalEdge);
+
+            return rectCenter + worldDirection.normalized * (distanceToEdge + padding);
         }
         private static Vector2 GetRectEdgePoint(Vector2 rectCenter, Vector2 rectSize, Vector2 direction, float padding = 0f)
         {
