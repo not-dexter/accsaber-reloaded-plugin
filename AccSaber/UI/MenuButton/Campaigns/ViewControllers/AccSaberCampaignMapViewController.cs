@@ -13,6 +13,7 @@ using SongCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -981,7 +982,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 campaignFlow.ShowLeaderboard(diff);
 
-                campaignController.SetMission(Map, diff, Completed);
+                campaignController.SetMission(Map, diff, Progress);
 #endif
             }
 

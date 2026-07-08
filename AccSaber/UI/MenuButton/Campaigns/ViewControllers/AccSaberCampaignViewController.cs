@@ -102,8 +102,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
         [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
+#if NEW_VERSION
         [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
-#if V40 || NEW_VERSION
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
 #endif
         private CategoryTab CurrentTab
@@ -513,7 +513,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
-        public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgress.CampaignProgressValue completion)
+        public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgress.CampaignProgressValue completion)
         {
             CurrentBeatMapLevel = beatmapLevel;
 #endif            
@@ -523,15 +523,25 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             try
             {
+#if NEW_VERSION
                 LoadBeatmapLevelDataResult mapInfo = await _beatmapLevelsModel.LoadBeatmapLevelDataAsync(beatmapLevel.levelID, BeatmapLevelDataVersion.Original, System.Threading.CancellationToken.None);
 
                 BeatmapDataBasicInfo? mapData = await _beatmapDataLoader.LoadBasicBeatmapDataAsync(mapInfo.beatmapLevelData!, beatmapKey);
+#else
+
+                IBeatmapDataBasicInfo mapData = await beatmapLevel.GetBeatmapDataBasicInfoAsync();
+#endif
 
                 if (mapData is not null)
                 {
                     noteCount = mapData.cuttableNotesCount;
+#if NEW_VERSION
                     nps = mapData.cuttableNotesCount / beatmapLevel.songDuration;
                     njs = beatmapLevel.GetDifficultyBeatmapData(beatmapKey.beatmapCharacteristic, beatmapKey.difficulty).noteJumpMovementSpeed;
+#else
+                    nps = noteCount / beatmapLevel.level.songDuration;
+                    njs = beatmapLevel.noteJumpMovementSpeed;
+#endif
                 }
             }
             catch (Exception e)
@@ -557,8 +567,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             MissionMapNPS = $"{nps:N2}";
             MissionMapNoteCount = noteCount.ToString();
             MissionMapNJS = $"{njs:N1}";
+#if NEW_VERSION
             TimeSpan Duration = TimeSpan.FromSeconds(beatmapLevel.songDuration);
-            
+#else
+            TimeSpan Duration = TimeSpan.FromSeconds(beatmapLevel.level.songDuration);
+#endif
+
 
             MissionMapDuration = string.Format("{0:D1}:{1:D2}", Duration.Minutes, Duration.Seconds);
 

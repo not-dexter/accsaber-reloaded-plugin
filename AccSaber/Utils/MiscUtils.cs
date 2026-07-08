@@ -301,7 +301,7 @@ namespace AccSaber.Utils
                     return null;
 
                 Texture2D t = await UnityMainThreadTaskScheduler.Factory
-                    .StartNew(() => Utilities.LoadImageAsync(data), ct)
+                    .StartNew(() => VersionUtils.LoadImageAsync(data), ct)
                     .Unwrap();
 
                 Sprite s = await UnityMainThreadTaskScheduler.Factory.StartNew(() =>
