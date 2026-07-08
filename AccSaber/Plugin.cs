@@ -11,6 +11,7 @@ using IPA.Loader;
 using Newtonsoft.Json.Linq;
 using SiraUtil.Zenject;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -80,14 +81,15 @@ namespace AccSaber
             MethodInfo counterInit = customCounterFeature.GetMethod("Initialize", BindingFlags.NonPublic | BindingFlags.Instance);
             MethodInfo counterAfterInit = customCounterFeature.GetMethod("AfterInit", BindingFlags.Public | BindingFlags.Instance, null, [typeof(PluginMetadata)], null);
 
-            PropertyInfo incompleteCounters = customCounterFeature.GetProperty("incompleteCustomCounters", BindingFlags.NonPublic | BindingFlags.Instance);
+            FieldInfo incompleteCounters = customCounterFeature.GetField("incompleteCustomCounters", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
 
             JObject counter = JObject.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.CAMPAIGN_COUNTER_FEATURE));
 
             counterInit.Invoke(counterFeature, [Metadata, counter]);
             counterAfterInit.Invoke(counterFeature, [Metadata]);
 
-            object customCounterInstance = ((Dictionary<PluginMetadata, object>)incompleteCounters.GetValue(counterFeature))[Metadata];
+            object counterDictionaryObject = incompleteCounters.GetValue(counterFeature);
+            object customCounterInstance = ((IDictionary)counterDictionaryObject)[Metadata];
 
             Type customCounterType = CounterAssembly.GetType("CountersPlus.Custom.CustomCounter");
             Type bsmlSettings = customCounterType.GetNestedType("BSMLSettings");

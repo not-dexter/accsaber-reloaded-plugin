@@ -1,9 +1,11 @@
 ﻿using AccSaber.Models;
 using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.Utils.Misc;
+using JetBrains.Annotations;
 using System;
 using System.Reflection;
 using TMPro;
+using UnityEngine;
 using Zenject;
 
 namespace AccSaber.Counter.Hosts
@@ -21,6 +23,7 @@ namespace AccSaber.Counter.Hosts
         private AccSaberBasicDifficulty DiffInfo = null!;
         private APCalc Calc = null!;
         [Inject] private readonly ScoreController sc = null!;
+        [Inject] private readonly ComboController cc = null!;
 
         private TMP_Text DisplayText = null!;
         private int max115Streak = 0, current115Streak = 0;
@@ -72,10 +75,18 @@ namespace AccSaber.Counter.Hosts
                     Calc = Plugin.Container.TryResolve<APCalc>();
                     sc.scoringForNoteFinishedEvent += ApCounter;
                     break;
+                case AccSaberCampaignMap.CampaignRequirementType.SCORE:
+                    sc.scoreDidChangeEvent += ScoreCounter;
+                    break;
                 case AccSaberCampaignMap.CampaignRequirementType.STREAK_115:
                     sc.scoringForNoteFinishedEvent += StreakCounter;
                     break;
-                default: // TODO: Add Rank, Score, and fc
+                case AccSaberCampaignMap.CampaignRequirementType.FC:
+                    UpdateColor(true);
+                    DisplayText.SetText("FC!");
+                    cc.comboBreakingEventHappenedEvent += FCCounter;
+                    break;
+                default: // TODO: Add Rank (or maybe just don't worry about that one)
                     campaignVC = null;
                     break;
             }
@@ -93,8 +104,14 @@ namespace AccSaber.Counter.Hosts
                 case AccSaberCampaignMap.CampaignRequirementType.AP:
                     sc.scoringForNoteFinishedEvent -= ApCounter;
                     break;
+                case AccSaberCampaignMap.CampaignRequirementType.SCORE:
+                    sc.scoreDidChangeEvent -= ScoreCounter;
+                    break;
                 case AccSaberCampaignMap.CampaignRequirementType.STREAK_115:
                     sc.scoringForNoteFinishedEvent -= StreakCounter;
+                    break;
+                case AccSaberCampaignMap.CampaignRequirementType.FC:
+                    cc.comboBreakingEventHappenedEvent -= FCCounter;
                     break;
             }
         }
@@ -103,15 +120,26 @@ namespace AccSaber.Counter.Hosts
         private void AccCounter(ScoringElement scoringElement)
         {
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore * 100f;
+            float goalAcc = Map.RequirementValue * 100f;
 
-            DisplayText.SetText($"{acc:N2}% / {Map.RequirementValue * 100f:N2}%");
+            UpdateColor(acc >= goalAcc);
+
+            DisplayText.SetText($"{acc:N2}% / {goalAcc:N2}%");
         }
         private void ApCounter(ScoringElement scoringElement)
         {
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore;
             float ap = Calc.GetAp(acc, DiffInfo.Complexity);
 
+            UpdateColor(ap >= Map.RequirementValue);
+
             DisplayText.SetText($"{ap:0.##} ap / {Map.RequirementValue:0.##} ap");
+        }
+        private void ScoreCounter(int multipliedScore, int modifiedScore)
+        {
+            UpdateColor(multipliedScore >= Map.RequirementValue);
+
+            DisplayText.SetText($"{multipliedScore:N0} / {Map.RequirementValue:N0} Score");
         }
         private void StreakCounter(ScoringElement scoringElement)
         {
@@ -129,7 +157,20 @@ namespace AccSaber.Counter.Hosts
                 current115Streak = 0;
             }
 
-            DisplayText.SetText($"{Math.Max(max115Streak, current115Streak)}x / {Map.RequirementValue:N0}x 115s");
+            int streak = Math.Max(max115Streak, current115Streak);
+            UpdateColor(streak >= (int)Map.RequirementValue);
+
+            DisplayText.SetText($"{streak}x / {Map.RequirementValue:N0}x 115 streak\n<size=70%><color=#BBB>(Current - {current115Streak}x)</color>");
+        }
+        private void FCCounter()
+        {
+            UpdateColor(false);
+        }
+
+
+        private void UpdateColor(bool success)
+        {
+            DisplayText.faceColor = success ? Color.green : Color.red;
         }
 
     }
