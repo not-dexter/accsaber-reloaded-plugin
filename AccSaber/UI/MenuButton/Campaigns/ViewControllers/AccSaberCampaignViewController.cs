@@ -90,7 +90,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
-#if NEW_VERSION
+        [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
+        [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
+#if V40
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
 #endif
         private CategoryTab CurrentTab
@@ -465,9 +467,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
 #if NEW_VERSION
-        public void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapkey, BeatmapLevel beatmapLevel, CampaignProgress.CampaignProgressValue completion)
+        public async void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgress.CampaignProgressValue completion)
         {
-            CurrentBeatMapKey = beatmapkey;
+            CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
         public void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgress.CampaignProgressValue completion)
@@ -477,7 +479,25 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             int noteCount = 0;
             float nps = 0;
             float njs = 0;
-            //(noteCount, nps, njs) = await GetMapData(beatmapLevel, beatmapkey);
+
+            try
+            {
+                LoadBeatmapLevelDataResult mapInfo = await _beatmapLevelsModel.LoadBeatmapLevelDataAsync(beatmapLevel.levelID, BeatmapLevelDataVersion.Original, System.Threading.CancellationToken.None);
+
+                BeatmapDataBasicInfo? mapData = await _beatmapDataLoader.LoadBasicBeatmapDataAsync(mapInfo.beatmapLevelData!, beatmapKey);
+
+                if (mapData is not null)
+                {
+                    noteCount = mapData.cuttableNotesCount;
+                    nps = mapData.cuttableNotesCount / beatmapLevel.songDuration;
+                    njs = beatmapLevel.GetDifficultyBeatmapData(beatmapKey.beatmapCharacteristic, beatmapKey.difficulty).noteJumpMovementSpeed;
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error(e);
+            }
+
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
             MissionMapNPS = $"{nps:N2}";

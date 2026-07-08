@@ -44,24 +44,24 @@
             <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
           </vertical>
         </horizontal>
-		<horizontal> 
-			<horizontal pref-width='6.3'>
-				<img src="#ClockIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
-                <text text='~MissionMapDuration' italics='true' font-size='2' />
-			</horizontal>
-			<horizontal pref-width='6.3'>
-				<img src="#NPSIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
-                <text text='~MissionMapNPS' italics='true' font-size='2' />
-			</horizontal>
-			<horizontal pref-width='6.3'>
-				<img src="#GameNoteIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
-                <text text='~MissionMapNoteCount' italics='true' font-size='2' />	
-			</horizontal>
-			<horizontal pref-width='6.3'>
-				<img src="#FastNotesIcon" preserve-aspect="true" pref-width="2.6" pref-height="2.6" />
-                <text text='~MissionMapNJS' italics='true' font-size='2' />
-			</horizontal>
-		</horizontal>
+        <horizontal>
+          <horizontal pref-width='6.3'>
+            <img src='#ClockIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
+            <text text='~MissionMapDuration' italics='true' font-size='2.5' />
+          </horizontal>
+          <horizontal pref-width='6.3'>
+            <img src='#NPSIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
+            <text text='~MissionMapNPS' italics='true' font-size='2.5' />
+          </horizontal>
+          <horizontal pref-width='6.3'>
+            <img src='#GameNoteIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
+            <text text='~MissionMapNoteCount' italics='true' font-size='2.5' />
+          </horizontal>
+          <horizontal pref-width='6.3'>
+            <img src='#FastNotesIcon' preserve-aspect='true' pref-width='2.6' pref-height='2.6' />
+            <text text='~MissionMapNJS' italics='true' font-size='2.5' />
+          </horizontal>
+        </horizontal>
         <vertical>
           <text text='Objective' font-size='4' align='Center' />
           <text text='~MissionObjective' word-wrapping='true' font-size='3' />

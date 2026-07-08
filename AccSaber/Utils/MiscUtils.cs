@@ -295,7 +295,7 @@ namespace AccSaber.Utils
 
                 byte[]? data = null;
 
-                await Task.Run(async () => (data, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct).ConfigureAwait(false), ct);
+                await Task.Run(async () => (data, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct), ct);
 
                 if (data is null)
                     return null;
