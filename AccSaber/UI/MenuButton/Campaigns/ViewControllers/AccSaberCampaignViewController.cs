@@ -97,6 +97,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
+        [Inject] private readonly Utils.Safety.MainThreadDispatcher _threadDispatcher = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
@@ -453,6 +454,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private void LevelFinished(StandardLevelScenesTransitionSetupDataSO transition, LevelCompletionResults results)
         {
             MapStarted = false;
+
+            if (_currentCampaign is not null)
+                _threadDispatcher.EnqueueAction(async () =>
+                {
+                    _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id);
+
+                    _campaignMapViewController.SetCampaign(_currentCampaign);
+
+                    SetMaps(_currentCampaign);
+                });
         }
 
 #pragma warning disable IDE0060

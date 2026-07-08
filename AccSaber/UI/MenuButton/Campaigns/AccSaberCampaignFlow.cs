@@ -44,13 +44,17 @@ namespace AccSaber.UI.MenuButton.Campaigns
 
 #if NEW_VERSION
         public void ShowLeaderboard(BeatmapKey beatmapkey)
-#else
-        public void ShowLeaderboard(IDifficultyBeatmap beatmapkey)
-#endif
         {
             _leaderboardController.SetData(beatmapkey);
             SetRightScreenViewController(_leaderboardController, ViewController.AnimationType.In);
         }
+#else
+        public void ShowLeaderboard(IDifficultyBeatmap beatmapkey)
+        {
+            SetRightScreenViewController(_leaderboardController, ViewController.AnimationType.In);
+            _leaderboardController.SetData(beatmapkey);
+        }
+#endif
         public void HideLeaderboard()
         {
             SetRightScreenViewController(null, ViewController.AnimationType.Out);
