@@ -2,12 +2,10 @@
 using AccSaber.Models;
 using AccSaber.Utils.Misc;
 using AccSaber.Utils.Safety;
-using BeatSaberMarkupLanguage;
 using HMUI;
 using IPA.Utilities.Async;
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -297,7 +295,7 @@ namespace AccSaber.Utils
 
             if (level is not null) 
             {
-                level.GetCoverImageAsync(ct);
+                Task<Sprite> task = level.GetCoverImageAsync(ct);
 
                 yield return task.WaitWithRoutine(result => s = result, e => Plugin.Log.Error(e), ct);
             }
@@ -373,8 +371,11 @@ namespace AccSaber.Utils
                     yield return null;
                 }
 
+#if NEW_VERSION
                 bool failed = request.result != UnityWebRequest.Result.Success;
-                //bool failed = request.isNetworkError || request.isHttpError;
+#else
+                bool failed = request.isNetworkError || request.isHttpError;
+#endif
 
                 if (failed)
                 {

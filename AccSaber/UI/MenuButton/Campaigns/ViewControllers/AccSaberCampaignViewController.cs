@@ -374,7 +374,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     _missionButton.SetButtonText("Play");
 
 
-                _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id);
+                _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
 
                 _campaignMapViewController.SetCampaign(_currentCampaign);
 
@@ -478,7 +478,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (_currentCampaign is not null)
                 _threadDispatcher.EnqueueAction(async () =>
                 {
-                    _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id);
+                    _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
 
                     _campaignMapViewController.SetCampaign(_currentCampaign);
 

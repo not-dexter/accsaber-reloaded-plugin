@@ -289,9 +289,9 @@ namespace AccSaber.Managers
             return newCampaignEntries;
         }
 
-        public async Task<AccSaberCampaign> GetCampaign(Guid id)
+        public async Task<AccSaberCampaign> GetCampaign(Guid id, bool overrideCache = false)
         {
-            if (_campaignCache.TryGetCachedItem(id, out AccSaberCampaign? item))
+            if (!overrideCache && _campaignCache.TryGetCachedItem(id, out AccSaberCampaign? item))
                 return item!;
 
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGN, id);

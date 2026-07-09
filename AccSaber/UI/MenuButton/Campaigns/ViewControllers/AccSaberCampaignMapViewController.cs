@@ -21,6 +21,10 @@ using UnityEngine.UI;
 using Zenject;
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 
+#if !NEW_VERSION
+using System.Threading;
+#endif
+
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     internal class AccSaberCampaignMapViewController
@@ -943,8 +947,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 try
                 {
                     BorderImage.sprite = GetBorderSprite(Shape);
-                    BorderImage.color = Map.BorderColor?.Color() ?? ColorUtils.RANK.Color();
                     BorderImage.raycastTarget = false;
+
+                    if (string.IsNullOrEmpty(Map.BorderColor))
+                    {
+                        APCategory category = serialUtils.CachedDifficulties[Map.MapDifficultyId].Category ?? APCategory.Overall;
+                        BorderImage.color = ColorUtils.GetColor(category).Color();
+                    }
+                    else BorderImage.color = Map.BorderColor!.Color();
 
                     ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
                     MaskImage.sprite = GetFillSprite(Shape);
@@ -958,6 +968,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
                     imageRoutine = threadDispatcher.StartCoroutine(CoverImage.LoadCoverImageRoutine(Hash, Map.CoverUrl));
 
+                    CompletionImage.raycastTarget = false;
+
+                    LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
+                    mainLayout.preferredWidth = NodeWidth;
+                    mainLayout.preferredHeight = NodeHeight;
+
 #if PRINT_DEBUG
                 Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
 #endif
@@ -966,6 +982,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         RectTransform transform = (CompletionImage.transform as RectTransform)!;
 
                         transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+
+#if !NEW_VERSION
+                        transform.anchorMin = new(0.75f, 0f);
+                        transform.anchorMax = new(1f, 0.25f);
+#endif
                     }
                 }
                 catch (Exception e)

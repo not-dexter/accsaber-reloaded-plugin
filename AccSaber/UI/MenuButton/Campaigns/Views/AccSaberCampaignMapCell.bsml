@@ -1,7 +1,7 @@
 <stack id='container' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='~NodeHeight' pref-width='~NodeWidth' anchor-pos-y='~NodeYPos' anchor-pos-x='~NodeXPos' ignore-layout='true'>
-  <bg id='coverContainer' scale='0.95'>
+  <vertical id='coverContainer' scale='0.95'>
     <clickable-image id='coverImage' on-click='OnClicked'/>
-  </bg>
+  </vertical>
   <image id='borderImage'/>
   <image id='completionImage' src='~CheckmarkSrc' anchor-min='0.75 0' anchor-max='1 0.25' ignore-layout='true' img-color='#0F0' active='~IsComplete'/>
 </stack>
