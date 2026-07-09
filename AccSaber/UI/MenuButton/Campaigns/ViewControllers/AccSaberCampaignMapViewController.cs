@@ -20,14 +20,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
-using System.ComponentModel;
-using IPA.Config.Data;
-using Oculus.Platform;
 using System.Runtime.CompilerServices;
-
-
-
-
 
 #if !NEW_VERSION
 using System.Threading;
@@ -350,12 +343,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
-        public void UpdateCampaign(AccSaberCampaign campaign)
+        public async void UpdateCampaign(AccSaberCampaign campaign)
         {
             if (currentCampaign is null || currentCampaign.Id != campaign.Id)
                 return;
 
             currentCampaign = campaign;
+            campaignProgress = await UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign.Id)).Unwrap();
+
             CurrentScaleFactor += 0.1f;
 
             UpdateScaling(CurrentScaleFactor - 0.1f);

@@ -17,7 +17,7 @@ namespace AccSaber.UI.BSML_Addons.Tags
             GameObject root = new(
             "2DScrollableContainer",
             typeof(RectTransform),
-            typeof(ScrollRect)
+            typeof(AxisFilteredScrollRect)
             );
 
             root.transform.SetParent(parent, false);
@@ -66,7 +66,7 @@ namespace AccSaber.UI.BSML_Addons.Tags
             contentRt.pivot = new Vector2(0.5f, 1f);
             contentRt.sizeDelta = new Vector2(200f, 200f);
 
-            ScrollRect scrollRect = root.GetComponent<ScrollRect>();
+            AxisFilteredScrollRect scrollRect = root.GetComponent<AxisFilteredScrollRect>();
             scrollRect.viewport = viewportRt;
             scrollRect.content = contentRt;
 
@@ -77,6 +77,7 @@ namespace AccSaber.UI.BSML_Addons.Tags
             scrollRect.inertia = true;
             scrollRect.decelerationRate = 0.135f;
             scrollRect.scrollSensitivity = 5f;
+            scrollRect.scrollInputMode = AxisFilteredScrollRect.ScrollInputMode.DominantAxis;
 
             AddScrollbars(scrollRect);
 
@@ -493,6 +494,71 @@ namespace AccSaber.UI.BSML_Addons.Tags
         private static bool IsFinite(Vector2 value)
         {
             return IsFinite(value.x) && IsFinite(value.y);
+        }
+    }
+
+    public class AxisFilteredScrollRect : ScrollRect
+    {
+        public enum ScrollInputMode
+        {
+            Both,
+            VerticalOnly,
+            HorizontalOnly,
+            DominantAxis
+        }
+
+        public ScrollInputMode scrollInputMode = ScrollInputMode.DominantAxis;
+
+        public float inputDeadzone = 0.01f;
+
+        public override void OnScroll(PointerEventData eventData)
+        {
+            Vector2 originalDelta = eventData.scrollDelta;
+            Vector2 filteredDelta = FilterScrollDelta(originalDelta);
+
+            if (filteredDelta.sqrMagnitude <= inputDeadzone * inputDeadzone)
+                return;
+
+            eventData.scrollDelta = filteredDelta;
+
+            base.OnScroll(eventData);
+
+            eventData.scrollDelta = originalDelta;
+
+            // Prevent leftover inertia on the axis we did not intend to scroll.
+            Vector2 newVelocity = velocity;
+
+            if (Mathf.Abs(filteredDelta.x) <= inputDeadzone)
+                newVelocity.x = 0f;
+
+            if (Mathf.Abs(filteredDelta.y) <= inputDeadzone)
+                newVelocity.y = 0f;
+
+            velocity = newVelocity;
+        }
+
+        private Vector2 FilterScrollDelta(Vector2 delta)
+        {
+            switch (scrollInputMode)
+            {
+                case ScrollInputMode.VerticalOnly:
+                    return new Vector2(0f, delta.y);
+
+                case ScrollInputMode.HorizontalOnly:
+                    return new Vector2(delta.x, 0f);
+
+                case ScrollInputMode.DominantAxis:
+                    {
+                        if (Mathf.Abs(delta.y) >= Mathf.Abs(delta.x))
+                            return new Vector2(0f, delta.y);
+
+                        return new Vector2(delta.x, 0f);
+                    }
+
+                case ScrollInputMode.Both:
+                default:
+                    return delta;
+            }
         }
     }
 }

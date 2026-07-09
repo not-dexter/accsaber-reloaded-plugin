@@ -506,6 +506,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             MapStarted = false;
 
             if (_currentCampaign is not null)
+            {
                 _threadDispatcher.EnqueueAction(async () =>
                 {
                     _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
@@ -514,6 +515,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     SetMaps(_currentCampaign);
                 });
+
+                _ = UpdateTabs();
+            }
         }
 
 #pragma warning disable IDE0060
@@ -705,10 +709,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 #endif
 
-    InMap = true;
+            InMap = true;
         }
 
-public void SetMaps(AccSaberCampaign campaign)
+        public void SetMaps(AccSaberCampaign campaign)
         {
             _diffCells.Clear();
 
