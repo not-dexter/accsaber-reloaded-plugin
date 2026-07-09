@@ -15,16 +15,19 @@ namespace AccSaber.UI.MenuButton.Campaigns
         private AccSaberCampaignViewController _campaignController = null!;
         private GameplaySetupViewController _gameplaySetupViewController = null!;
         private PlatformLeaderboardViewController _leaderboardController = null!;
+        private SongPreviewPlayer _songPreviewPlayer = null!;
         public bool disableLogo;
 
         [Inject]
         protected void Construct(AccSaberCampaignViewController campaignController, AccSaberMainFlowCoordinator parentCoordinator,
-            GameplaySetupViewController gameplaySetupViewController, PlatformLeaderboardViewController platformLeaderboardViewController)
+            GameplaySetupViewController gameplaySetupViewController, PlatformLeaderboardViewController platformLeaderboardViewController,
+            SongPreviewPlayer songPreviewPlayer)
         {
             _campaignController = campaignController;
             _parentFlow = parentCoordinator;
             _gameplaySetupViewController = gameplaySetupViewController;
             _leaderboardController = platformLeaderboardViewController;
+            _songPreviewPlayer = songPreviewPlayer;
         }
         protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
@@ -68,6 +71,7 @@ namespace AccSaber.UI.MenuButton.Campaigns
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
             disableLogo = false;
+            _songPreviewPlayer.CrossfadeToDefault();
             _parentFlow.DismissFlowCoordinator(this);
         }
     }

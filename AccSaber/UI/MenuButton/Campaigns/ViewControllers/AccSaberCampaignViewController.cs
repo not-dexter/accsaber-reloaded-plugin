@@ -1,22 +1,22 @@
-﻿using AccSaber.Managers;
+﻿using AccSaber.Consts;
+using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
+using AccSaber.Utils.Misc;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
+using IPA.Loader;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
-using Zenject;
-using AccSaber.Consts;
-using AccSaber.Utils.Misc;
-using static AccSaber.Managers.CampaignProgress;
 using UnityEngine.UI;
-using System.Reflection;
-using IPA.Loader;
-using BeatSaberMarkupLanguage;
+using Zenject;
+using static AccSaber.Managers.CampaignProgress;
 
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
@@ -86,6 +86,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
+        [Inject] private readonly SongPreviewPlayer _songPreviewPlayer = null!;
 #if NEW_VERSION
         [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
         [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
@@ -358,6 +359,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignFlow.HideLeaderboard();
             InCampaign = false;
             InMap = false;
+            _songPreviewPlayer.CrossfadeToDefault();
             _ = UpdateTabs();
             _diffCells.Clear();
         }
@@ -646,6 +648,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CurrentMap = map;
 
             CampaignProgressVal = completion;
+
+            AudioClip previewAudio = await CurrentBeatMapLevel.previewMediaData.GetPreviewAudioClip();
+
+            if(previewAudio is not null)
+            {
+                _songPreviewPlayer.CrossfadeTo(previewAudio, 1f, CurrentBeatMapLevel.previewStartTime, CurrentBeatMapLevel.previewDuration - CurrentBeatMapLevel.previewStartTime, null);
+            }
 
             InMap = true;
         }
