@@ -77,6 +77,10 @@
             <text text='Objective' font-size='4' align='Center' />
             <text text='~MissionObjective' word-wrapping='true' font-size='3' />
           </vertical>
+          <vertical pref-height='8' vertical-fit='PreferredSize'>
+            <text text='Current Progress' font-size='4' align='Center' />
+            <text text='~MissionProgress' align='Center' word-wrapping='false' font-size='3' />
+          </vertical>
           <vertical pref-height='8' vertical-fit='PreferredSize' active='~MissionHasRewards'>
             <text text='XP Rewards' font-size='4' align='Center' />
             <text text='~MissionRewards' align='Center' word-wrapping='true' font-size='3' />

@@ -260,6 +260,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
+
         [UIValue("MissionHasRewards")]
         public bool MissionHasRewards
         {
@@ -270,6 +271,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged();
             }
         }
+
         [UIValue("MissionLocked")]
         public bool MissionLocked
         {
@@ -280,6 +282,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged();
             }
         }
+
+        [UIValue("MissionProgress")]
+        private string MissionProgress
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
         [UIValue("MissionRewards")]
         private string MissionRewards
         {
@@ -576,12 +590,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
 #if NEW_VERSION
-        public async void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgress.CampaignProgressValue completion)
+        public async void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion)
         {
             CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
-        public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgress.CampaignProgressValue completion)
+        public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion)
         {
             CurrentBeatMapLevel = beatmapLevel;
 #endif            
@@ -617,20 +631,32 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Plugin.Log.Error(e);
             }
 
-            if (map.XP > 0)
-            {
-                MissionHasRewards = true;
+            MissionHasRewards = map.XP > 0;
+
+            if (MissionHasRewards)
                 MissionRewards = $"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>";
-            }
-            else
-                MissionHasRewards = false;
 
 
-            _missionButton.gameObject.SetActive(completion.Completion != CompletionStatus.Incomplete);
             MissionLocked = completion.Completion == CompletionStatus.Incomplete;
-          
+            _missionButton.gameObject.SetActive(!MissionLocked);
 
-            MissionMapName = map.SongName;
+            MissionProgress = map.RequirementType switch
+            {
+                //AccSaberCampaignMap.CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{completion.Progress * 100f:N2}%</color>",
+                //AccSaberCampaignMap.CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{completion.Progress:0.##}ap</color>",
+                //AccSaberCampaignMap.CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{completion.Progress:N0}</color>",
+                //AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{completion.Progress:N0}x</color>",
+                //AccSaberCampaignMap.CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{completion.Progress:N0}</color>",
+                AccSaberCampaignMap.CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{completion.Progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{map.RequirementValue * 100f:N2}%</color>",
+                AccSaberCampaignMap.CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{completion.Progress:0.##}ap</color> / <color={ColorUtils.AP}>{map.RequirementValue:0.##}ap</color>",
+                AccSaberCampaignMap.CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{completion.Progress:N0}</color> / <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color>",
+                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{completion.Progress:N0}x</color> / <color={ColorUtils.TECH}>{map.RequirementValue:N0}x</color>",
+                AccSaberCampaignMap.CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{completion.Progress:N0}</color> / <color={ColorUtils.GREY}>{map.RequirementValue:N0}</color>",
+                AccSaberCampaignMap.CampaignRequirementType.FC => $"<color=#F55>FC</color>",
+                _ => $"{completion.Progress}"
+            };
+
+        MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
             MissionMapNPS = $"{nps:N2}";
             MissionMapNoteCount = noteCount.ToString();
@@ -679,10 +705,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 #endif
 
-            InMap = true;
+    InMap = true;
         }
 
-        public void SetMaps(AccSaberCampaign campaign)
+public void SetMaps(AccSaberCampaign campaign)
         {
             _diffCells.Clear();
 
