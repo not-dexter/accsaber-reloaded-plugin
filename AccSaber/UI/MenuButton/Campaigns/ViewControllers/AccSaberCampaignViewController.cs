@@ -17,6 +17,9 @@ using UnityEngine.UI;
 
 
 
+
+
+
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
 #endif
@@ -35,7 +38,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private bool _missionHasRewards;
         private bool _missionLocked;
         private bool _inMap;
-        private string _campaignTitle = null!;
+        private bool _invalidateActive;
+        private string _campaignTitle = null!; 
+        private string _campaignCategory = null!;
         private string _campaignDescription = null!;
         private string _campaignCreator = null!;
         private string _missionSongName = null!;
@@ -169,6 +174,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 _campaignTitle = value;
                 NotifyPropertyChanged(nameof(CampaignTitle));
+            }
+        }
+        [UIValue("CampaignCategory")]
+        private string CampaignCategory
+        {
+            get => _campaignCategory;
+            set
+            {
+                _campaignCategory = value;
+                NotifyPropertyChanged(nameof(CampaignCategory));
             }
         }
 
@@ -364,12 +379,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (_currentCampaign is not null)
             {
                 if (!_activeCampaigns.Contains(_currentCampaign) && _currentCampaign.ProgressStatus != "IN_PROGRESS")
-                {
-                    if (false && await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
-                        Plugin.Log.Error("Failed to start campaign!");
-                    else
-                        _activeCampaigns.Add(await _accSaberStore.GetCampaign(_currentCampaign.Id));
-                }
+                    _missionButton.SetButtonText("Start Campaign");
+                else
+                    _missionButton.SetButtonText("Play");
+
 
                 _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id);
 
@@ -380,12 +393,27 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
         [UIAction("PlayMission")]
-        private void PlayMission()
+        private async void PlayMission()
         {
             if (CurrentBeatMapLevel is null)
             {
                 Plugin.Log.Error("The current beat map is null when the play button is shown!!!");
                 return;
+            }
+
+            if (_currentCampaign is not null)
+            {
+                if (!_activeCampaigns.Contains(_currentCampaign) && _currentCampaign.ProgressStatus != "IN_PROGRESS")
+                {
+                    if (await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
+                        Plugin.Log.Error("Failed to start campaign!");
+                    else
+                    {
+                        _invalidateActive = true;
+                        _activeCampaigns.Add(_currentCampaign);
+                        _missionButton.SetButtonText("Play");
+                    }
+                }
             }
 
             MapStarted = true;
@@ -479,6 +507,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignList.Data().Clear();
             _campaignList.TableView().ReloadData();
 
+            if (_invalidateActive)
+            {
+                _activeCampaigns = await _accSaberStore.GetActiveCampaigns();
+                _invalidateActive = false;
+            }
+
             List<AccSaberCampaign> tabCampaigns = CurrentTab switch
             {
                 CategoryTab.Active => _activeCampaigns,
@@ -507,14 +541,29 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         public async Task UpdateCampaign(AccSaberCampaign campaign)
         {
+            CampaignCategory = "";
             CampaignTitle = campaign.Name;
             CampaignCreator = campaign.CreatorName;
             CampaignDescription = campaign.Description;
+
+            if (campaign.Tags is not null)
+            {
+                foreach (var tag in campaign.Tags)
+                {
+                    if (tag.Kind != CampaignTags.CampaignTagKind.CATEGORY)
+                        continue;
+
+                    CampaignCategory = CampaignCategory == "" ? $"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color>" :
+                        CampaignCategory + $" | <color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color>";
+                }
+
+            }
 
             if ((campaign.IconUrl is not null &&campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
                 await _campaignImage.SetImageAsync("AccSaber.Resources.AccSaber.png", false);
             else
                 await _campaignImage.LoadImage(campaign.IconUrl);
+
 
         }
 
