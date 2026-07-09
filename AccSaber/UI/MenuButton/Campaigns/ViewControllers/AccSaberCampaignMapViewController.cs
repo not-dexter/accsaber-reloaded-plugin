@@ -469,6 +469,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 map.OffsetSize = offsetSize;
                 map.XOffset = xOffset; 
                 map.YOffset = yOffset;
+                map.Progress = campaignProgress.PlayerValues[map.Map.Id];
 
                 HandleArrows(map.Map, new(map));
             }
@@ -1036,7 +1037,28 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             public readonly AccSaberCampaignMap Map;
             public readonly string Hash;
-            public readonly CampaignProgress.CampaignProgressValue Progress;
+            public CampaignProgress.CampaignProgressValue Progress
+            {
+                get;
+                set
+                {
+                    field = value;
+
+                    CoverImage.DefaultColor = value.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
+
+                    if (value.Completion == CampaignProgress.CompletionStatus.Complete)
+                    {
+                        RectTransform transform = (CompletionImage.transform as RectTransform)!;
+
+                        transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+
+#if !NEW_VERSION
+                        transform.anchorMin = new(0.75f, 0f);
+                        transform.anchorMax = new(1f, 0.25f);
+#endif
+                    }
+                }
+            }
             public readonly NodeShape Shape;
 
             private bool postParse = false;
