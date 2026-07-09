@@ -21,6 +21,7 @@ using UnityEngine.UI;
 using Zenject;
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 using System.Runtime.CompilerServices;
+using AccSaber.Configuration;
 
 #if !NEW_VERSION
 using System.Threading;
@@ -35,13 +36,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly AccSaberStore store = null!;
+        [Inject] private readonly PluginConfig config = null!;
         [Inject] private readonly Utils.Safety.MainThreadDispatcher threadDispatcher = null!;
         [Inject] private readonly AccSaberCampaignFlow accCampaignFlow = null!;
         [Inject] private readonly AccSaberCampaignViewController acvc = null!;
 
-
         private bool parsed = false;
-        private CampaignProgress campaignProgress;
         private AccSaberCampaign? currentCampaign;
 
         private readonly List<CampaignMapNode> campaignMapNodes = [];
@@ -49,6 +49,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
 
         public float CurrentScaleFactor { get; private set; }
+        public CampaignProgress CampaignProgress { get; private set; }
+
+        public bool StickScrolling
+        {
+            get;
+            set
+            {
+                field = value;
+                ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>().scrollSensitivity = value ? 2f : 0f;
+            }
+        }
 
         [UIObject(nameof(ScrollContainer))]
         private readonly GameObject ScrollContainer = null!;
@@ -66,9 +77,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             if (!parsed)
                 parsed = true;
+
+            StickScrolling = config.StickScrolling;
         }
 
-        public async void SetCampaign(AccSaberCampaign campaign, float scaleFactor = 0.2f)
+        public async void SetCampaign(AccSaberCampaign campaign, float scaleFactor = 0.2f, bool resetScrollbars = true)
         {
             if (!parsed || campaign.Difficulties is null)
                 return;
@@ -146,8 +159,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             ScrollRect scrollableContainer = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
             scrollableContainer.content.sizeDelta = new(width, height);
-            scrollableContainer.horizontalScrollbar.value = 0;
-            scrollableContainer.verticalScrollbar.value = 0;
+
+            if (resetScrollbars)
+            {
+                scrollableContainer.horizontalScrollbar.value = 0;
+                scrollableContainer.verticalScrollbar.value = 0;
+            }
+
 
 #if PRINT_DEBUG
             Plugin.Log.Info("Width = " + width + ", Height = " + height);
@@ -167,8 +185,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #endif
             PreloadStandardSprites();
 
-            campaignProgress = await campaignProgressTask;
-
+            CampaignProgress = await campaignProgressTask;
 
             Dictionary<Guid, PositionData> knownPositions = [];
             Queue<(Guid prereq, Guid toNode)> neededPositions = [];
@@ -180,7 +197,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 foreach (Guid id in node.PrerequisiteIds)
                 {
                     if (knownPositions.TryGetValue(id, out PositionData from) &&
-                        CreateArrow(NodeContainer.transform, from, current, campaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey, scaleFactor) 
+                        CreateArrow(NodeContainer.transform, from, current, CampaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey, scaleFactor) 
                         is GameObject go)
                     {
                         go.transform.SetAsFirstSibling();
@@ -197,7 +214,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     CampaignMapBarrier barrierNode = new(
                         barrier: barrier,
                         parent: NodeContainer.transform,
-                        progress: campaignProgress.PlayerValues[barrier.Id],
+                        progress: CampaignProgress.PlayerValues[barrier.Id],
                         scaleFactor: scaleFactor,
                         xOffset: xOffset,
                         yOffset: yOffset,
@@ -213,7 +230,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 CampaignMapNode node = new(
                     map: map,
-                    progress: campaignProgress.PlayerValues[map.Id],
+                    progress: CampaignProgress.PlayerValues[map.Id],
                     mapHash: serialHandler.CachedDifficulties[map.MapDifficultyId].Hash,
                     scaleFactor: scaleFactor,
                     xOffset: xOffset,
@@ -241,7 +258,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     knownPositions.TryGetValue(toNode, out PositionData to) &&
                     CreateArrow(
                         NodeContainer.transform, from, to,
-                        campaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey, scaleFactor)
+                        CampaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey, scaleFactor)
                         is GameObject go)
                 {
                     go.transform.SetAsFirstSibling();
@@ -349,11 +366,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
 
             currentCampaign = campaign;
-            campaignProgress = await UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign.Id)).Unwrap();
+            CampaignProgress = await UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign.Id)).Unwrap();
 
             CurrentScaleFactor += 0.1f;
 
             UpdateScaling(CurrentScaleFactor - 0.1f);
+            //SetCampaign(campaign, CurrentScaleFactor);
         }
         public void UpdateScaling(float scaleFactor)
         {
@@ -442,7 +460,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 foreach (Guid id in node.PrerequisiteIds)
                 {
                     if (knownPositions.TryGetValue(id, out PositionData from) &&
-                        CreateArrow(NodeContainer.transform, from, current, campaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey, scaleFactor)
+                        CreateArrow(NodeContainer.transform, from, current, CampaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey, scaleFactor)
                         is GameObject go)
                     {
                         go.transform.SetAsFirstSibling();
@@ -469,7 +487,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 map.OffsetSize = offsetSize;
                 map.XOffset = xOffset; 
                 map.YOffset = yOffset;
-                map.Progress = campaignProgress.PlayerValues[map.Map.Id];
+                map.Progress = CampaignProgress.PlayerValues[map.Map.Id];
 
                 HandleArrows(map.Map, new(map));
             }
@@ -482,7 +500,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     knownPositions.TryGetValue(toNode, out PositionData to) &&
                     CreateArrow(
                         NodeContainer.transform, from, to,
-                        campaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey, scaleFactor)
+                        CampaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey, scaleFactor)
                         is GameObject go)
                 {
                     go.transform.SetAsFirstSibling();
@@ -1053,6 +1071,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     if (value.Completion == CampaignProgress.CompletionStatus.Complete)
                     {
+                        IsComplete = true;
+                        NotifyPropertyChanged(nameof(IsComplete));
+
                         RectTransform transform = (CompletionImage.transform as RectTransform)!;
 
                         transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
@@ -1152,7 +1173,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private const string CheckmarkSrc = ResourcePaths.CHECKMARK;
 
             [UIValue("IsComplete")]
-            private readonly bool IsComplete;
+            private bool IsComplete { get; set; }
 
 
 

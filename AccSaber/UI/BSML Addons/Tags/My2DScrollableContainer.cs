@@ -76,7 +76,7 @@ namespace AccSaber.UI.BSML_Addons.Tags
             scrollRect.movementType = ScrollRect.MovementType.Clamped;
             scrollRect.inertia = true;
             scrollRect.decelerationRate = 0.135f;
-            scrollRect.scrollSensitivity = 5f;
+            scrollRect.scrollSensitivity = 2f;
             scrollRect.scrollInputMode = AxisFilteredScrollRect.ScrollInputMode.DominantAxis;
 
             AddScrollbars(scrollRect);

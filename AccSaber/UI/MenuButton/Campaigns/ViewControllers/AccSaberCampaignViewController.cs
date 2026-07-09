@@ -1,4 +1,5 @@
-﻿using AccSaber.Consts;
+﻿using AccSaber.Configuration;
+using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
@@ -11,6 +12,7 @@ using IPA.Loader;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -23,12 +25,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Campaigns.Views.AccSaberCampaignView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberCampaignView.bsml")]
-    internal class AccSaberCampaignViewController : Utils.Safety.BSMLSafeAutomaticViewController, IInitializable
+    internal class AccSaberCampaignViewController : Utils.Safety.BSMLSafeAutomaticViewController, IInitializable, IDisposable
     {
         private static MethodInfo? RecordPlayMethod;
 
 //#pragma warning disable CS0414 // Field assigned to but never read.
-        private bool _parsed = false;
+        private bool _parsed = false, _updateOnFinish = false;
         private bool _invalidateActive;
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
@@ -81,7 +83,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
-        [Inject] private readonly Utils.Safety.MainThreadDispatcher _threadDispatcher = null!;
+        [Inject] private readonly PluginConfig _config = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
@@ -507,16 +509,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (_currentCampaign is not null)
             {
-                _threadDispatcher.EnqueueAction(async () =>
-                {
-                    _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
-
-                    _campaignMapViewController.UpdateCampaign(_currentCampaign);
-
-                    SetMaps(_currentCampaign);
-                });
-
                 _ = UpdateTabs();
+
+                if (_updateOnFinish)
+                {
+                    _updateOnFinish = false;
+                    UpdateCampaign();
+                }
             }
         }
 
@@ -660,7 +659,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _ => $"{completion.Progress}"
             };
 
-        MissionMapName = map.SongName;
+            MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
             MissionMapNPS = $"{nps:N2}";
             MissionMapNoteCount = noteCount.ToString();
@@ -722,8 +721,53 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         }
 
+        private void OnPlayerScore(AccSaberLeaderboardEntry score)
+        {
+            if (InCampaign && _currentCampaign is not null)
+            {
+                if (MapStarted)
+                    _updateOnFinish = true;
+                else
+                    UpdateCampaign();
+                    
+            }
+        }
+        private void UpdateCampaign()
+        {
+            if (_currentCampaign is not null)
+                _mainThreadDispatcher.EnqueueAction(async () =>
+                {
+                    //_currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
+
+                    _campaignMapViewController.UpdateCampaign(_currentCampaign);
+
+                    if (CurrentMap is not null)
+                        CampaignProgressVal = _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id];
+
+                    SetMaps(_currentCampaign);
+#if NEW_VERSION
+                    if (CurrentMap is not null && CurrentBeatMapLevel is not null)
+                        SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
+#else
+                            if (CurrentMap is not null && CurrentBeatMapLevel is not null)
+                                SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
+#endif
+                });
+        }
+        private void OnPluginConfigChanged(object sender, PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName.Equals(nameof(PluginConfig.StickScrolling)))
+            {
+                _campaignMapViewController.StickScrolling = _config.StickScrolling;
+            }
+        }
+
         public void Initialize()
         {
+            AccSaberStore.OnPlayerScoreUpdated += OnPlayerScore;
+
+            _config.PropertyChanged += OnPluginConfigChanged;
+
             if (RecordPlayMethod is not null)
                 return;
 
@@ -738,6 +782,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
             else
                 Plugin.Log.Info("Beatleader assembly not found.");
+        }
+        public void Dispose()
+        {
+            AccSaberStore.OnPlayerScoreUpdated -= OnPlayerScore;
+
+            _config.PropertyChanged -= OnPluginConfigChanged;
         }
 
         internal class CampaignCell(AccSaberCampaign campaign) : Utils.Safety.SafeNotifyPropertyChanged
