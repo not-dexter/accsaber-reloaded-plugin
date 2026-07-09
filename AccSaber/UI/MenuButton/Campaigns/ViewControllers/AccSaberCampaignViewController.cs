@@ -16,17 +16,8 @@ using static AccSaber.Managers.CampaignProgress;
 using UnityEngine.UI;
 using System.Reflection;
 using IPA.Loader;
-
-
-
-
-
-
-
-
-#if NEW_VERSION
 using BeatSaberMarkupLanguage;
-#endif
+
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
@@ -36,27 +27,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
     {
         private static MethodInfo? RecordPlayMethod;
 
-#pragma warning disable CS0414 // Field assigned to but never read.
+//#pragma warning disable CS0414 // Field assigned to but never read.
         private bool _parsed = false;
-        private CategoryTab _currentTab;
-        private bool _isLoading;
-        private bool _inCampaign;
-        private bool _missionHasRewards;
-        private bool _missionLocked;
-        private bool _inMap;
         private bool _invalidateActive;
-        private string _campaignTitle = null!; 
-        private string _campaignCategory = null!;
-        private string _campaignDescription = null!;
-        private string _campaignCreator = null!;
-        private string _missionSongName = null!;
-        private string _missionSongAuthor = null!;
-        private string _missionRewards = null!;
-        private string _missionSongNoteCount = null!;
-        private string _missionSongNPS = null!;
-        private string _missionSongNJS = null!;
-        private string _missionSongDuration = null!;
-        private string _missionObjective = null!;
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly List<CampaignMap> _diffCells = [];
@@ -120,32 +93,32 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #endif
         private CategoryTab CurrentTab
         {
-            get => _currentTab;
+            get;
             set
             {
-                _currentTab = value;
+                field = value;
                 _ = UpdateTabs();
             }
         }
+
         [UIValue("is-loading")]
         private bool IsLoading
         {
-            get => _isLoading;
+            get;
             set
             {
-                _isLoading = value;
+                field = value;
                 NotifyPropertyChanged(nameof(IsLoading));
                 NotifyPropertyChanged(nameof(IsNotLoading));
             }
         }
+
         [UIValue("campaign-selected")]
         private bool CampaignSelected
         {
             get;
             set
             {
-                if (value == field)
-                    return;
                 field = value;
                 NotifyPropertyChanged();
             }
@@ -154,115 +127,124 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("in-campaign")]
         private bool InCampaign
         {
-            get => _inCampaign;
+            get;
             set
             {
-                _inCampaign = value;
+                field = value;
                 NotifyPropertyChanged(nameof(InCampaign));
                 NotifyPropertyChanged(nameof(NotInCampaign));
             }
         }
+
         [UIValue("in-map")]
         public bool InMap
         {
-            get => _inMap;
+            get;
             set
             {
-                _inMap = value;
-                NotifyPropertyChanged(nameof(InMap));
+                field = value;
+                NotifyPropertyChanged();
             }
         }
+
         [UIValue("CampaignTitle")]
         private string CampaignTitle
         {
-            get => _campaignTitle;
+            get;
             set
             {
-                _campaignTitle = value;
-                NotifyPropertyChanged(nameof(CampaignTitle));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("CampaignCategory")]
         private string CampaignCategory
         {
-            get => _campaignCategory;
+            get;
             set
             {
-                _campaignCategory = value;
-                NotifyPropertyChanged(nameof(CampaignCategory));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
 
         [UIValue("MissionMapName")]
         private string MissionMapName
         {
-            get => _missionSongName;
+            get;
             set
             {
-                _missionSongName = value;
-                NotifyPropertyChanged(nameof(MissionMapName));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("MissionMapArtist")]
         private string MissionMapArtist
         {
-            get => _missionSongAuthor;
+            get;
             set
             {
-                _missionSongAuthor = value;
-                NotifyPropertyChanged(nameof(MissionMapArtist));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("MissionMapNPS")]
         private string MissionMapNPS
         {
-            get => _missionSongNPS;
+            get;
             set
             {
-                _missionSongNPS = value;
-                NotifyPropertyChanged(nameof(MissionMapNPS));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("MissionMapNoteCount")]
         private string MissionMapNoteCount
         {
-            get => _missionSongNoteCount;
+            get;
             set
             {
-                _missionSongNoteCount = value;
-                NotifyPropertyChanged(nameof(MissionMapNoteCount));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("MissionMapNJS")]
         private string MissionMapNJS
         {
-            get => _missionSongNJS;
+            get;
             set
             {
-                _missionSongNJS = value;
-                NotifyPropertyChanged(nameof(MissionMapNJS));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("MissionMapDuration")]
         private string MissionMapDuration
         {
-            get => _missionSongDuration;
+            get;
             set
             {
-                _missionSongDuration = value;
-                NotifyPropertyChanged(nameof(MissionMapDuration));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("MissionObjective")]
         private string MissionObjective
         {
-            get => _missionObjective;
+            get;
             set
             {
-                _missionObjective = value;
-                NotifyPropertyChanged(nameof(MissionObjective));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
 
         [UIValue("MissionComplete")]
         private bool MissionComplete
@@ -280,59 +262,61 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("MissionHasRewards")]
         public bool MissionHasRewards
         {
-            get => _missionHasRewards;
+            get;
             set
             {
-                _missionHasRewards = value;
-                NotifyPropertyChanged(nameof(MissionHasRewards));
+                field = value;
+                NotifyPropertyChanged();
             }
         }
         [UIValue("MissionLocked")]
         public bool MissionLocked
         {
-            get => _missionLocked;
+            get;
             set
             {
-                _missionLocked = value;
-                NotifyPropertyChanged(nameof(MissionLocked));
+                field = value;
+                NotifyPropertyChanged();
             }
         }
         [UIValue("MissionRewards")]
         private string MissionRewards
         {
-            get => _missionRewards;
+            get;
             set
             {
-                _missionRewards = value;
-                NotifyPropertyChanged(nameof(MissionRewards));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
 
         [UIValue("CampaignDescription")]
         private string CampaignDescription
         {
-            get => _campaignDescription;
+            get;
             set
             {
-                _campaignDescription = value;
-                NotifyPropertyChanged(nameof(CampaignDescription));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("CampaignCreator")]
         private string CampaignCreator
         {
-            get => _campaignCreator;
+            get;
             set
             {
-                _campaignCreator = value;
-                NotifyPropertyChanged(nameof(CampaignCreator));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
+
         [UIValue("not-in-campaign")]
-        private bool NotInCampaign => !_inCampaign;
+        private bool NotInCampaign => !InCampaign;
 
         [UIValue("is-not-loading")]
-        private bool IsNotLoading => !_isLoading;
+        private bool IsNotLoading => !IsLoading;
 
         [UIAction("#post-parse")]
         private async void Parsed()
