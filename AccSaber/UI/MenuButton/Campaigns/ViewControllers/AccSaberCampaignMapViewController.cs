@@ -9,11 +9,13 @@ using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
+using IPA.Utilities.Async;
 using SongCore;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -29,6 +31,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly AccSaberStore store = null!;
+        [Inject] private readonly Utils.Safety.MainThreadDispatcher threadDispatcher = null!;
         [Inject] private readonly AccSaberCampaignFlow accCampaignFlow = null!;
         [Inject] private readonly AccSaberCampaignViewController acvc = null!;
 
@@ -73,7 +76,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             campaignMapBarriers.Clear();
             mapNodeArrows.Clear();
 
-            campaignProgress = await store.GetCampaignProgress(campaign.Id);
+            Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign.Id)).Unwrap();
 
             int minHeight = int.MaxValue, maxHeight = int.MinValue, minWidth = int.MaxValue, maxWidth = int.MinValue;
             float minSize = float.MaxValue, maxSize = float.MinValue;
@@ -174,6 +177,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
 
+            PreloadStandardSprites();
+
+            campaignProgress = await campaignProgressTask;
+
             if (campaign.Barriers is not null)
                 foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
                 {
@@ -203,7 +210,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     flow: accCampaignFlow,
                     campaignViewController: acvc,
                     levelUtils: levelUtils,
-                    serialUtils: serialHandler
+                    serialUtils: serialHandler,
+                    threadDispatcher: threadDispatcher
                     );
 
                 campaignMapNodes.Add(node);
@@ -870,7 +878,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             AccSaberCampaignFlow flow,
             AccSaberCampaignViewController campaignViewController,
             LevelUtils levelUtils,
-            SerializationHandler serialUtils
+            SerializationHandler serialUtils,
+            Utils.Safety.MainThreadDispatcher threadDispatcher
             ) : IDisposable
         {
             public readonly AccSaberCampaignMap Map = map;
@@ -888,12 +897,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private readonly AccSaberCampaignViewController campaignController = campaignViewController;
             private readonly LevelUtils levelUtils = levelUtils;
             private readonly SerializationHandler serialUtils = serialUtils;
+            private readonly Utils.Safety.MainThreadDispatcher threadDispatcher = threadDispatcher;
+
+            private Coroutine? imageRoutine;
 
             [UIObject("container")]
             private readonly GameObject Container = null!;
 
             [UIComponent("borderImage")]
             private readonly ImageView BorderImage = null!;
+
+            [UIObject("coverContainer")]
+            private readonly GameObject CoverContainer = null!;
 
             [UIComponent("coverImage")]
             private readonly ClickableImage CoverImage = null!;
@@ -925,22 +940,37 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIAction("#post-parse")]
             private void PostParse()
             {
-                BorderImage.sprite = GetBorderSprite(Shape);
-                BorderImage.color = Map.BorderColor?.Color() ?? ColorUtils.RANK.Color();
+                try
+                {
+                    BorderImage.sprite = GetBorderSprite(Shape);
+                    BorderImage.color = Map.BorderColor?.Color() ?? ColorUtils.RANK.Color();
+                    BorderImage.raycastTarget = false;
 
-                CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
+                    ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
+                    MaskImage.sprite = GetFillSprite(Shape);
+                    MaskImage.color = Color.white;
+                    MaskImage.material = Utilities.ImageResources.NoGlowMat;
+                    MaskImage.raycastTarget = false;
 
-                CoverImage.transform.localScale *= 0.9f;
-                _ = CoverImage.LoadCoverImageWithMask(Hash, Map.CoverUrl, sprite => CreateMaskedCoverSprite(sprite, Shape)!);
+                    Mask m = CoverContainer.AddComponent<Mask>();
+                    m.showMaskGraphic = false;
+
+                    CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
+                    imageRoutine = threadDispatcher.StartCoroutine(CoverImage.LoadCoverImageRoutine(Hash, Map.CoverUrl));
 
 #if PRINT_DEBUG
                 Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
 #endif
-                if (Progress.Completion == CampaignProgress.CompletionStatus.Complete)
-                {
-                    RectTransform transform = (CompletionImage.transform as RectTransform)!;
+                    if (Progress.Completion == CampaignProgress.CompletionStatus.Complete)
+                    {
+                        RectTransform transform = (CompletionImage.transform as RectTransform)!;
 
-                    transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                        transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
                 }
             }
 
@@ -989,6 +1019,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public void Dispose()
             {
                 UnityEngine.Object.Destroy(Container);
+
+                if (imageRoutine is not null && CoverImage.sprite != Utilities.ImageResources.BlankSprite)
+                    threadDispatcher.StopCoroutine(imageRoutine);
             }
         }
 
@@ -1053,8 +1086,25 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
     public static class NodeShapeTextures
     {
-        private static readonly Dictionary<string, Sprite> _borderSpriteCache = [];
-        private static readonly Dictionary<string, Sprite> _maskedCoverSpriteCache = [];
+        private static readonly ConcurrentDictionary<string, Sprite> _borderSpriteCache = [];
+        private static readonly ConcurrentDictionary<string, Sprite> _fillSpriteCache = [];
+
+        private static bool _preloadedSprites = false;
+
+        public static void PreloadStandardSprites()
+        {
+            if (_preloadedSprites)
+                return;
+            _preloadedSprites = true;
+
+            NodeShape[] shapes = (NodeShape[])Enum.GetValues(typeof(NodeShape));
+
+            foreach (NodeShape shape in shapes)
+            {
+                GetBorderSprite(shape);
+                GetFillSprite(shape);
+            }
+        }
 
         public static Sprite GetBorderSprite(NodeShape shape, int size = 256, int borderPixels = 10)
         {
@@ -1067,25 +1117,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             Sprite sprite = CreateSprite(texture);
 
             _borderSpriteCache[key] = sprite;
-            return sprite;
-        }
-
-        public static Sprite? CreateMaskedCoverSprite(Sprite sourceSprite, NodeShape shape, int size = 256)
-        {
-            if (sourceSprite is null)
-                return null;
-
-            Texture2D sourceTexture = sourceSprite.texture;
-
-            string key = $"{sourceTexture.GetInstanceID()}_{sourceSprite.GetInstanceID()}_{shape}_{size}";
-
-            if (_maskedCoverSpriteCache.TryGetValue(key, out Sprite cached))
-                return cached;
-
-            Texture2D texture = CreateMaskedCoverTexture(sourceSprite, shape, size);
-            Sprite sprite = CreateSprite(texture);
-
-            _maskedCoverSpriteCache[key] = sprite;
             return sprite;
         }
 
@@ -1122,10 +1153,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             return texture;
         }
 
-        private static Texture2D CreateMaskedCoverTexture(Sprite sourceSprite, NodeShape shape, int size)
+        public static Sprite GetFillSprite(NodeShape shape, int size = 256)
         {
-            Texture2D sourceTexture = MakeReadableCopy(sourceSprite.texture);
+            string key = $"fill_{shape}_{size}";
 
+            if (_fillSpriteCache.TryGetValue(key, out Sprite cached))
+                return cached;
+
+            Texture2D texture = CreateFillTexture(shape, size);
+            Sprite sprite = CreateSprite(texture);
+
+            _fillSpriteCache[key] = sprite;
+            return sprite;
+        }
+        private static Texture2D CreateFillTexture(NodeShape shape, int size)
+        {
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
             {
                 wrapMode = TextureWrapMode.Clamp,
@@ -1134,21 +1176,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Color32[] pixels = new Color32[size * size];
 
-            Rect sourceRect = sourceSprite.rect;
-
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
-                    float u = (x + 0.5f) / size;
-                    float v = (y + 0.5f) / size;
-
                     float coverage = GetCoverage(x, y, size, shape, 1f);
+                    byte a = (byte)Mathf.RoundToInt(coverage * 255f);
 
-                    Color sourceColor = SampleSprite(sourceTexture, sourceRect, u, v);
-                    sourceColor.a *= coverage;
-
-                    pixels[y * size + x] = sourceColor;
+                    pixels[y * size + x] = new Color32(255, 255, 255, a);
                 }
             }
 

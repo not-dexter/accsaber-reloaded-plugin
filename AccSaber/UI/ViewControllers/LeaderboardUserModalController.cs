@@ -523,7 +523,7 @@ namespace AccSaber.UI.ViewControllers
                 if (_firstLoad)
                 {
                     if (userInfo.AvatarUrl is not null)
-                        await _profileImage.LoadImage(userInfo.AvatarUrl, ct);
+                        _mainThreadDispatcher.StartCoroutine(_profileImage.LoadImageRoutine(userInfo.AvatarUrl, ct));
 
                     _firstLoad = false;
                 }

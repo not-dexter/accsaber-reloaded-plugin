@@ -501,12 +501,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 yield return new WaitForEndOfFrame();
                 titleRoutine = userInfo.Items!.Set(this, _titleText);
             }
-			StartCoroutine(WaitThenUpdate());
+
+			if (gameObject.activeInHierarchy)
+				StartCoroutine(WaitThenUpdate());
 
             if (borderRoutine is not null)
                 StopCoroutine(borderRoutine);
 
-            borderRoutine = userInfo.Items!.Set(this, _playerImageBorder, _progressBarImage);
+			if (gameObject.activeInHierarchy)
+				borderRoutine = userInfo.Items!.Set(this, _playerImageBorder, _progressBarImage);
 
             const float barLen = 20f;
             _progressBar.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, barLen * userInfo.LevelData.ProgressPercent / 100f);

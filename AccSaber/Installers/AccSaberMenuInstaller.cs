@@ -1,5 +1,4 @@
 ﻿using AccSaber.Configuration;
-using AccSaber.Counter;
 using AccSaber.Managers;
 using AccSaber.UI;
 using AccSaber.UI.MenuButton;

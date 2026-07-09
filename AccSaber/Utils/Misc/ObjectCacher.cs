@@ -166,6 +166,9 @@ namespace AccSaber.Utils.Misc
                 {
                     cache.Remove(key);
 
+                    if (typeof(UnityEngine.Object).IsAssignableFrom(item.GetType()))
+                        UnityEngine.Object.Destroy(item as UnityEngine.Object);
+
                     if (expirationDateByKey.TryGetValue(key, out ExpirationPoint value))
                     {
                         expirationDateByDate.Remove(value);
@@ -194,6 +197,10 @@ namespace AccSaber.Utils.Misc
         {
             lock (cacheLock) 
             {
+                foreach (V item in cache.Values)
+                    if (typeof(UnityEngine.Object).IsAssignableFrom(item.GetType()))
+                        UnityEngine.Object.Destroy(item as UnityEngine.Object);
+
                 cache.Clear();
                 expirationDateByKey.Clear();
                 expirationDateByDate.Clear();
@@ -213,7 +220,13 @@ namespace AccSaber.Utils.Misc
                 expirationDateByDate.Remove(point);
                 expirationDateByKey.Remove(point.Key);
 
-                cache.Remove(point.Key);
+                if (cache.TryGetValue(point.Key, out V value))
+                {
+                    if (typeof(UnityEngine.Object).IsAssignableFrom(value.GetType()))
+                        UnityEngine.Object.Destroy(value as UnityEngine.Object);
+
+                    cache.Remove(point.Key);
+                }
             }
         }
 

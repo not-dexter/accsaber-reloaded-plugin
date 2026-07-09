@@ -86,8 +86,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
-        [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
 #if NEW_VERSION
+        [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
         [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
 #endif
@@ -551,10 +551,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             }
 
-            if ((campaign.IconUrl is not null &&campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
+            if ((campaign.IconUrl is not null && campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
                 await _campaignImage.SetImageAsync("AccSaber.Resources.AccSaber.png", false);
             else
-                await _campaignImage.LoadImage(campaign.IconUrl);
+                StartCoroutine(_campaignImage.LoadImageRoutine(campaign.IconUrl));
 
 
         }

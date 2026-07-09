@@ -1,10 +1,12 @@
 ﻿using AccSaber.API;
 using AccSaber.Models;
+using AccSaber.Utils.Misc;
 using AccSaber.Utils.Safety;
 using BeatSaberMarkupLanguage;
 using HMUI;
 using IPA.Utilities.Async;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +16,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.UI;
 
 namespace AccSaber.Utils
@@ -32,7 +35,9 @@ namespace AccSaber.Utils
         public const int SECONDS_WEEK = SECONDS_DAY * 7; // 604,800
         public const int SECONDS_YEAR = (int)(SECONDS_DAY * DAYS_YEAR); // 31,556,926
 
-        private static readonly ConcurrentDictionary<string, Texture2D> ImageCache = [];
+        private static readonly ObjectCacher<string, Texture2D> ImageCache = new(TimeSpan.FromMinutes(10));
+        private const int MaxConcurrentImageDownloads = 3;
+        private static int activeImageDownloads = 0;
 
         public static string ToRelativeTime(this DateTime dateTime, int layersDeep = 2, bool formatting = true)
         {
@@ -229,7 +234,7 @@ namespace AccSaber.Utils
         public static IEnumerable<T> MergeSortedLists<T>(params IEnumerable<IEnumerable<T>> lists) where T : IComparable<T> =>
             MergeSortedLists(Comparer<T>.Default, lists);
 
-        public static async Task LoadCoverImageWithMask(this Image image, string hash, string? coverUrl, Func<Sprite, Sprite>? applyMask, CancellationToken ct = default)
+        public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default)
         {
             try
             {
@@ -251,14 +256,11 @@ namespace AccSaber.Utils
                     return;
 
                 if (s is not null)
-                    image.sprite = applyMask is not null ? applyMask(s) : s;
+                    image.sprite = s;
 
                 else if (coverUrl is not null)
-                {
                     await LoadImage(image, coverUrl, ct);
-                    if (applyMask is not null)
-                        image.sprite = applyMask(image.sprite);
-                }
+
                 else
                     image.sprite = SongCore.Loader.defaultCoverImage;
             }
@@ -269,13 +271,55 @@ namespace AccSaber.Utils
                 image.sprite = SongCore.Loader.defaultCoverImage;
             }
         }
-        public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default) =>
-            await LoadCoverImageWithMask(image, hash, coverUrl, null, ct);
+        public static IEnumerator LoadCoverImageRoutine(this Image image, string hash, string? coverUrl, CancellationToken ct = default)
+        {
+            MainThreadDispatcher.AssertOnMainThread();
+
+            if (image is null)
+            {
+                Plugin.Log.Error("Cannot load cover image for null image.");
+                yield break;
+            }
+
+            Sprite? s = null;
+
+#if NEW_VERSION
+            BeatmapLevel? level = SongCore.Loader.GetLevelByHash(hash);
+
+            if (level is not null)
+            {
+                Task<Sprite> task = level.previewMediaData.GetCoverSpriteAsync();
+
+                yield return task.WaitWithRoutine(result => s = result, e => Plugin.Log.Error(e), ct);
+            }
+#else
+            CustomPreviewBeatmapLevel? level = SongCore.Loader.GetLevelByHash(hash);
+
+            if (level is not null) 
+            {
+                level.GetCoverImageAsync(ct);
+
+                yield return task.WaitWithRoutine(result => s = result, e => Plugin.Log.Error(e), ct);
+            }
+#endif
+
+            if (ct.IsCancellationRequested || image is null || !image.gameObject.activeInHierarchy)
+                yield break;
+
+            if (s is not null)
+                image.sprite = s;
+
+            else if (coverUrl is not null)
+                yield return LoadImageRoutine(image, coverUrl, ct);
+
+            else
+                image.sprite = SongCore.Loader.defaultCoverImage;
+        }
         public static async Task LoadImage(this Image image, string url, CancellationToken ct = default)
         {
             try
             {
-                Sprite? s = await GetImage(url, ct); 
+                Sprite? s = await GetImage(url, ct);
 
                 if (s is not null && image.gameObject.activeSelf)
                     image.sprite = s;
@@ -286,12 +330,97 @@ namespace AccSaber.Utils
                 Plugin.Log.Error($"There was an issue setting the image \"{url}\"!\n{e}");
             }
         }
+        public static IEnumerator LoadImageRoutine(this Image image, string url, CancellationToken ct = default)
+        {
+            MainThreadDispatcher.AssertOnMainThread();
+
+            if (image is null || string.IsNullOrEmpty(url))
+                yield break;
+
+            if (ImageCache.TryGetCachedItem(url, out Texture2D? val))
+            {
+                if (!ct.IsCancellationRequested && image != null && image.gameObject.activeInHierarchy)
+                    image.sprite = Sprite.Create(val, new(0, 0, val!.width, val.height), new Vector2(0.5f, 0.5f), val.width);
+
+                yield break;
+            }
+
+            // Limit concurrent downloads/decodes.
+            while (activeImageDownloads >= MaxConcurrentImageDownloads)
+            {
+                if (ct.IsCancellationRequested || image is null)
+                    yield break;
+
+                yield return null;
+            }
+
+            ++activeImageDownloads;
+
+            UnityWebRequest request = UnityWebRequestTexture.GetTexture(url, true);
+
+            try
+            {
+                UnityWebRequestAsyncOperation operation = request.SendWebRequest();
+
+                while (!operation.isDone)
+                {
+                    if (ct.IsCancellationRequested || image is null)
+                    {
+                        request.Abort();
+                        yield break;
+                    }
+
+                    yield return null;
+                }
+
+                bool failed = request.result != UnityWebRequest.Result.Success;
+                //bool failed = request.isNetworkError || request.isHttpError;
+
+                if (failed)
+                {
+                    Plugin.Log.Error($"Failed to load cover \"{url}\": {request.error}");
+                    yield break;
+                }
+
+                if (ct.IsCancellationRequested || image is null)
+                    yield break;
+
+                Texture2D texture = DownloadHandlerTexture.GetContent(request);
+
+                if (texture is null)
+                {
+                    Plugin.Log.Error($"Downloaded cover texture was null: {url}");
+                    yield break;
+                }
+
+                texture.wrapMode = TextureWrapMode.Clamp;
+                texture.filterMode = FilterMode.Bilinear;
+
+                Sprite sprite = Sprite.Create(
+                    texture,
+                    new Rect(0, 0, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f),
+                    texture.width
+                );
+
+                ImageCache.CacheItem(url, texture);
+
+                if (!ct.IsCancellationRequested && image is not null && image.gameObject.activeInHierarchy)
+                    image.sprite = sprite;
+            }
+            finally
+            {
+                --activeImageDownloads;
+
+                request.Dispose();
+            }
+        }
         public static async Task<Sprite?> GetImage(string url, CancellationToken ct = default)
         {
             try
             {
-                if (ImageCache.ContainsKey(url))
-                    return Utilities.LoadSpriteFromTexture(ImageCache[url]);
+                if (ImageCache.TryGetCachedItem(url, out Texture2D? val))
+                    return Sprite.Create(val, new(0, 0, val!.width, val.height), new Vector2(0.5f, 0.5f), val.width);
 
                 byte[]? data = null;
 
@@ -313,12 +442,12 @@ namespace AccSaber.Utils
                         t.width
                     );
 
-                    ImageCache.TryAdd(url, t);
+                    ImageCache.CacheItem(url, t);
 
                     return sprite;
                 }, ct);
 
-                ImageCache.TryAdd(url, t);
+                ImageCache.CacheItem(url, t);
 
                 return s;
             }
@@ -328,6 +457,27 @@ namespace AccSaber.Utils
                 Plugin.Log.Error($"There was an issue loading the image \"{url}\"!\n{e}");
             }
             return null;
+        }
+        public static IEnumerator WaitWithRoutine<T>(this Task<T> task, Action<T> onSuccess, Action<Exception>? onError = null, CancellationToken ct = default)
+        {
+            while (!task.IsCompleted)
+            {
+                if (ct.IsCancellationRequested)
+                    yield break;
+
+                yield return null;
+            }
+
+            if (task.IsCanceled)
+                yield break;
+
+            if (task.IsFaulted)
+            {
+                onError?.Invoke(task.Exception);
+                yield break;
+            }
+
+            onSuccess(task.Result);
         }
 
         public static bool Compare<T>(this T x, T y, string comp) where T : IComparable
