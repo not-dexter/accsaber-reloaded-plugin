@@ -15,6 +15,7 @@ namespace AccSaber.UI.MenuButton.Campaigns
         private AccSaberCampaignViewController _campaignController = null!;
         private GameplaySetupViewController _gameplaySetupViewController = null!;
         private PlatformLeaderboardViewController _leaderboardController = null!;
+        public bool disableLogo;
 
         [Inject]
         protected void Construct(AccSaberCampaignViewController campaignController, AccSaberMainFlowCoordinator parentCoordinator,
@@ -39,7 +40,8 @@ namespace AccSaber.UI.MenuButton.Campaigns
                     PlayerSettingsPanelController.PlayerSettingsPanelLayout.Singleplayer);
                 
                 ProvideInitialViewControllers(_campaignController, _gameplaySetupViewController, null);
-            } 
+            }
+            disableLogo = true;
         }
 
 #if NEW_VERSION
@@ -65,6 +67,7 @@ namespace AccSaber.UI.MenuButton.Campaigns
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
+            disableLogo = false;
             _parentFlow.DismissFlowCoordinator(this);
         }
     }

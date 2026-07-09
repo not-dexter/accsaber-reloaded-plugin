@@ -4,6 +4,7 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
 using AccSaber.UI.MenuButton;
+using AccSaber.UI.MenuButton.Campaigns;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
 using AccSaber.Utils.Safety;
@@ -41,17 +42,19 @@ namespace AccSaber.UI.ViewControllers
 		private AccSaberStore _accSaberStore = null!;
 		private TimeTweeningManager _timeTweeningManager = null!;
 		private AccSaberMainFlowCoordinator _mainFlowCoordinator = null!;
-		private AccsaberAPI _api = null!;
+        private AccSaberCampaignFlow _campaignFlowCoordinator = null!;
+        private AccsaberAPI _api = null!;
 		public event Action? OnSettingsClicked;
 
 		[Inject]
-		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, AccSaberMainFlowCoordinator accSaberMainFlowCoordinator, AccsaberAPI api)
+		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, AccSaberMainFlowCoordinator accSaberMainFlowCoordinator, AccsaberAPI api, AccSaberCampaignFlow accSaberCampaignFlow)
 		{
 			_log = siraLog;
 			_pluginConfig = pluginConfig;
 			_accSaberStore = accSaberStore;
 			_timeTweeningManager = timeTweeningManager;
 			_mainFlowCoordinator =	accSaberMainFlowCoordinator;
+			_campaignFlowCoordinator = accSaberCampaignFlow;
 			_api = api;
 		}
         
@@ -290,7 +293,7 @@ namespace AccSaber.UI.ViewControllers
 		[UIAction("logo-clicked")]
 		public void LogoClicked()
 		{
-			if (!_logoClickable)
+			if (!_logoClickable || _campaignFlowCoordinator.disableLogo)
 				return;
 
 			_mainFlowCoordinator.PresentFlowCoordinator();

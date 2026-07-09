@@ -27,9 +27,10 @@
       <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
         <horizontal preferred-width='100' horizontal-fit='PreferredSize'>
           <img preserve-aspect='true' id='CampaignImage' preferred-width='25' preferred-height='25' />
-          <vertical preferred-width='60' preferred-height='10' vertical-fit='PreferredSize'>
+          <vertical preferred-width='60' preferred-height='20' vertical-fit='PreferredSize'>
             <text text='~CampaignTitle' align='Left' font-size='6' />
             <text text='~CampaignCreator' align='Left' font-size='3.5' />
+            <text text='~CampaignCategory' align='Left' font-size='3.5' />
           </vertical>
         </horizontal>
         <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
