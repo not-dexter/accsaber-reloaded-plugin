@@ -1035,6 +1035,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         internal class CampaignMapNode : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
         {
+            private bool _parsed = false;
+
             public readonly AccSaberCampaignMap Map;
             public readonly string Hash;
             public CampaignProgress.CampaignProgressValue Progress
@@ -1043,6 +1045,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 set
                 {
                     field = value;
+
+                    if (!_parsed)
+                        return;
 
                     CoverImage.DefaultColor = value.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
 
@@ -1197,6 +1202,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 try
                 {
+                    _parsed = true;
+
+
                     BorderImage.sprite = GetBorderSprite(Shape);
                     BorderImage.raycastTarget = false;
 
