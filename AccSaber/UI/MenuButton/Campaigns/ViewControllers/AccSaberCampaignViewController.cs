@@ -353,6 +353,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _ = UpdateCampaign(_currentCampaign);
         }
 
+        [UIValue("ZoomIn")]
+        private void ZoomIn()
+        {
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentScaleFactor < 0.75f)
+                _campaignMapViewController.UpdateScaling(_campaignMapViewController.CurrentScaleFactor + 0.025f);
+        }
+
+        [UIValue("ZoomOut")]
+        private void ZoomOut()
+        {
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentScaleFactor > 0.025f)
+                _campaignMapViewController.UpdateScaling(_campaignMapViewController.CurrentScaleFactor - 0.025f);
+        }
+
         [UIAction("BackPressed")]
         private void BackPressed()
         {
@@ -482,7 +496,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 {
                     _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
 
-                    _campaignMapViewController.SetCampaign(_currentCampaign);
+                    _campaignMapViewController.UpdateCampaign(_currentCampaign);
 
                     SetMaps(_currentCampaign);
                 });
@@ -649,12 +663,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             CampaignProgressVal = completion;
 
+#if NEW_VERSION
             AudioClip previewAudio = await CurrentBeatMapLevel.previewMediaData.GetPreviewAudioClip();
 
             if(previewAudio is not null)
             {
                 _songPreviewPlayer.CrossfadeTo(previewAudio, 1f, CurrentBeatMapLevel.previewStartTime, CurrentBeatMapLevel.previewDuration - CurrentBeatMapLevel.previewStartTime, null);
             }
+#else
+            AudioClip previewAudio = CurrentBeatMapLevel.level.beatmapLevelData.audioClip;
+
+            if(previewAudio is not null)
+            {
+                _songPreviewPlayer.CrossfadeTo(previewAudio, 1f, CurrentBeatMapLevel.level.previewStartTime, CurrentBeatMapLevel.level.previewDuration - CurrentBeatMapLevel.level.previewStartTime, null);
+            }
+#endif
 
             InMap = true;
         }

@@ -36,9 +36,15 @@
         <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
         <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
       </vertical>
-      <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' active='~in-campaign' />
+      <vertical>
+        <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' active='~in-campaign' />
+        <horizontal>
+          <button text='Zoom In' on-click='ZoomIn' active='~in-campaign'/>
+          <button text='Zoom Out' on-click='ZoomOut' active='~in-campaign'/>
+        </horizontal>
+      </vertical>
       <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map' pad ='4' pad-bottom='2'>
-		<vertical preferred-width='42' preferred-height='15' vertical-fit='PreferredSize' >
+        <vertical preferred-width='42' preferred-height='15' vertical-fit='PreferredSize'>
           <horizontal>
             <img preserve-aspect='true' id='MissionImage' preferred-width='8' preferred-height='8' />
             <vertical preferred-width='30'>
@@ -64,21 +70,21 @@
               <text text='~MissionMapNJS' italics='true' font-size='2.5' />
             </horizontal>
           </horizontal>
-		</vertical>
-		<vertical preferred-height='35'>
-        <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
-        <vertical pref-height='8' vertical-fit='PreferredSize'>
-          <text text='Objective' font-size='4' align='Center' />
-          <text text='~MissionObjective' word-wrapping='true' font-size='3' />
-        </vertical>	  
-		<vertical pref-height='8' vertical-fit='PreferredSize' active='~MissionHasRewards'>
-          <text text='XP Rewards' font-size='4' align='Center' />
-          <text text='~MissionRewards' align='Center' word-wrapping='true' font-size='3' />
         </vertical>
-      </vertical>
+        <vertical preferred-height='35'>
+          <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
+          <vertical pref-height='8' vertical-fit='PreferredSize'>
+            <text text='Objective' font-size='4' align='Center' />
+            <text text='~MissionObjective' word-wrapping='true' font-size='3' />
+          </vertical>
+          <vertical pref-height='8' vertical-fit='PreferredSize' active='~MissionHasRewards'>
+            <text text='XP Rewards' font-size='4' align='Center' />
+            <text text='~MissionRewards' align='Center' word-wrapping='true' font-size='3' />
+          </vertical>
+        </vertical>
         <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='4' active='~MissionLocked' />
         <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
-	 </vertical>
+      </vertical>
     </horizontal>
   </vertical>
   <button text='Go Back' on-click='BackPressed' active='~in-campaign' />
