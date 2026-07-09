@@ -14,6 +14,10 @@ using AccSaber.Consts;
 using AccSaber.Utils.Misc;
 using static AccSaber.Managers.CampaignProgress;
 using UnityEngine.UI;
+using System.Reflection;
+using IPA.Loader;
+
+
 
 
 
@@ -25,8 +29,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     [ViewDefinition("AccSaber.UI.MenuButton.Campaigns.Views.AccSaberCampaignView.bsml")]
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberCampaignView.bsml")]
-    internal class AccSaberCampaignViewController : Utils.Safety.BSMLSafeAutomaticViewController
+    internal class AccSaberCampaignViewController : Utils.Safety.BSMLSafeAutomaticViewController, IInitializable
     {
+        private static MethodInfo? RecordPlayMethod;
+
 #pragma warning disable CS0414 // Field assigned to but never read.
         private bool _parsed = false;
         private CategoryTab _currentTab;
@@ -50,13 +56,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly List<CampaignMap> _diffCells = [];
 
-        private CampaignProgress.CampaignProgressValue CampaignProgressVal
+        private CampaignProgressValue CampaignProgressVal
         {
             get;
             set
             {
                 field = value;
-                MissionComplete = value.Completion == CampaignProgress.CompletionStatus.Complete;
+                MissionComplete = value.Completion == CompletionStatus.Complete;
             }
         }
 
@@ -390,6 +396,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             MapStarted = true;
 
+            RecordPlayMethod?.Invoke(null, null);
+
 #if V40
             _menuTransitionsHelper.StartStandardLevel(
                 gameMode: "Solo",
@@ -617,6 +625,24 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 _diffCells.Add(new CampaignMap(diff));
             }
+        }
+
+        public void Initialize()
+        {
+            if (RecordPlayMethod is not null)
+                return;
+
+            Assembly? beatleaderAssembly = PluginManager.GetPluginFromId("BeatLeader")?.Assembly;
+
+            if (beatleaderAssembly is not null)
+            {
+                Type recorderUtils = beatleaderAssembly.GetType("BeatLeader.Utils.RecorderUtils");
+                RecordPlayMethod = recorderUtils.GetMethod("OnActionButtonWasPressed", BindingFlags.Static | BindingFlags.NonPublic);
+
+                Plugin.Log.Info("Beatleader submission patched.");
+            }
+            else
+                Plugin.Log.Info("Beatleader assembly not found.");
         }
 
         internal class CampaignCell(AccSaberCampaign campaign) : Utils.Safety.SafeNotifyPropertyChanged

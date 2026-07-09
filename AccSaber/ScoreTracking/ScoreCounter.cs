@@ -248,7 +248,7 @@ namespace AccSaber.ScoreTracking
                     return;
                 }
 
-                if (!score.UncompletedMap!.Value)
+                if (!mapIncomplete)
                     aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score, true, TimeSpan.FromSeconds(7));
 
                 bool submitted = await api.SubmitScore(score);

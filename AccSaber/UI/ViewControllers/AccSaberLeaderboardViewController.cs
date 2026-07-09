@@ -835,13 +835,13 @@ namespace AccSaber.UI.ViewControllers
         }
 
         private async Task UpdateLoadingStateFromCache(
-            int version,
-            Guid difficultyId,
-            int requestedPage,
-            LeaderboardDisplayType displayType,
-            Func<AccSaberLeaderboardEntry, bool>? filter,
-            int relationLen
-        )
+                int version,
+                Guid difficultyId,
+                int requestedPage,
+                LeaderboardDisplayType displayType,
+                Func<AccSaberLeaderboardEntry, bool>? filter,
+                int relationLen
+            )
         {
             try
             {
