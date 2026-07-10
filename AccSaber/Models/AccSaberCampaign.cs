@@ -26,6 +26,9 @@ namespace AccSaber.Models
         [JsonProperty("summary")]
         public string Summary { get; set; } = null!;
 
+        [JsonProperty("official")]
+        public bool Official { get; set; }
+
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
 

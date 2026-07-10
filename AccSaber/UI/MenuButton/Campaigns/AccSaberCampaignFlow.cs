@@ -70,9 +70,16 @@ namespace AccSaber.UI.MenuButton.Campaigns
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
-            disableLogo = false;
-            _songPreviewPlayer.CrossfadeToDefault();
-            _parentFlow.DismissFlowCoordinator(this);
+            if (_campaignController.InCampaign)
+            {
+                _campaignController.BackPressed();
+            }
+            else
+            { 
+                disableLogo = false;
+                _songPreviewPlayer.CrossfadeToDefault();
+                _parentFlow.DismissFlowCoordinator(this); 
+            }
         }
     }
 }

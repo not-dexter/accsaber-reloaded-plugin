@@ -269,7 +269,7 @@ namespace AccSaber.Managers
             return new([with(diffValues.Concat(barrierValues))]);
         }
 
-        public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 10)
+        public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 100)
         {
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGNS_ACTIVE, page, size);
             AccSaberPagedContent<AccSaberCampaignPaged>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaignPaged>>(call, AccsaberAPI.Throttler);

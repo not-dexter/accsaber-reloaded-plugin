@@ -10,12 +10,14 @@
       <horizontal>
         <vertical pref-width='50' pref-height='70' pad='2' active='~not-in-campaign'>
           <custom-list id='campaign-list' contents='campaign-cells' cell-size='12'  clickable-cells='true' select-cell='campaign-selected' visible-cells='4' active='~not-in-campaign'>
-            <horizontal bg='round-rect-panel' pref-width='40' pad-left='0' pad ='2' pad-right='5'>
-              <vertical pad-left='0'>
+            <horizontal bg='round-rect-panel' pref-width='45' horizontal-fit='PreferredSize' pad ='2'>
+              <vertical pref-width='32.5'>
                 <text align='Left' text='~Name' font-size='3' />
                 <text align='Left' text='~Author' font-size='2.5' />
               </vertical>
-              <text text='~MapCount' align='Right' />
+			  <vertical pref-width='7.5'>
+                <text text='~Tags' align='Right' font-size='2.5' />
+			  </vertical>		
             </horizontal>
           </custom-list>
         </vertical>
@@ -25,17 +27,23 @@
         </vertical>
       </horizontal>
       <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
-        <horizontal preferred-width='100' horizontal-fit='PreferredSize'>
-          <img preserve-aspect='true' id='CampaignImage' preferred-width='25' preferred-height='25' />
-          <vertical preferred-width='60' preferred-height='20' vertical-fit='PreferredSize'>
-            <text text='~CampaignTitle' align='Left' font-size='6' />
-            <text text='~CampaignCreator' align='Left' font-size='3.5' />
-            <text text='~CampaignCategory' align='Left' font-size='3.5' />
-          </vertical>
-        </horizontal>
-        <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
-        <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
-      </vertical>
+		 <vertical preferred-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
+			 <text text='Welcome to AccSaber Reloaded Campaigns!' font-size='5' align='Center' word-wrapping='true' />
+			 <text text='Here you will find custom campaigns ranging in difficulty and categody made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber Reloaded website' font-size='3.5' align='Center' word-wrapping='true' />
+		 </vertical>
+		<vertical active='~CampaignIsSelected' preferred-width='100' horizontal-fit='PreferredSize'>
+          <horizontal preferred-width='100' horizontal-fit='PreferredSize'>
+            <img preserve-aspect='true' id='CampaignImage' preferred-width='25' preferred-height='25' />
+            <vertical preferred-width='60' preferred-height='20' vertical-fit='PreferredSize'>
+              <text text='~CampaignTitle' align='Left' font-size='6' />
+              <text text='~CampaignCreator' align='Left' font-size='3.5' />
+              <text text='~CampaignCategory' align='Left' font-size='3.5' />
+            </vertical>
+          </horizontal>
+          <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
+          <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
+        </vertical>
+	  </vertical>
       <vertical>
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' active='~in-campaign' />
         <horizontal>
@@ -91,5 +99,4 @@
       </vertical>
     </horizontal>
   </vertical>
-  <button text='Go Back' on-click='BackPressed' active='~in-campaign' />
 </bg>

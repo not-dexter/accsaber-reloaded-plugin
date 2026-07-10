@@ -88,6 +88,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
+        [Inject] private readonly SettingsManager _SettingsManager = null!;
         [Inject] private readonly SongPreviewPlayer _songPreviewPlayer = null!;
 #if NEW_VERSION
         [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
@@ -128,7 +129,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         } = false;
 
         [UIValue("in-campaign")]
-        private bool InCampaign
+        public bool InCampaign
         {
             get;
             set
@@ -149,6 +150,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged();
             }
         }
+
+        [UIValue("NoCampaignSelected")]
+        private bool NoCampaignSelected
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged(nameof(NoCampaignSelected));
+                NotifyPropertyChanged(nameof(CampaignIsSelected));
+            }
+        }
+
+        [UIValue("CampaignIsSelected")]
+        private bool CampaignIsSelected => !NoCampaignSelected;
 
         [UIValue("CampaignTitle")]
         private string CampaignTitle
@@ -346,7 +362,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_VIEW, _campaignMapContainer, _campaignMapViewController);
 
             _activeCampaigns = await _accSaberStore.GetActiveCampaigns();
-            
+
+            NoCampaignSelected = true;
             CurrentTab = 0;
             InCampaign = false;
             InMap = false;
@@ -361,7 +378,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _currentCampaign = cellObj.Data;
             else
                 return;
-
+            NoCampaignSelected = false;
             CampaignSelected = true;
 
             table.ClearSelection();
@@ -383,8 +400,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _campaignMapViewController.UpdateScaling(_campaignMapViewController.CurrentScaleFactor - 0.025f);
         }
 
-        [UIAction("BackPressed")]
-        private void BackPressed()
+       // [UIAction("BackPressed")]
+        public void BackPressed()
         {
             _campaignFlow.HideLeaderboard();
             InCampaign = false;
@@ -696,8 +713,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             AudioClip previewAudio = await CurrentBeatMapLevel.previewMediaData.GetPreviewAudioClip();
 
             if(previewAudio is not null)
-            {
-                _songPreviewPlayer.CrossfadeTo(previewAudio, 1f, CurrentBeatMapLevel.previewStartTime, CurrentBeatMapLevel.previewDuration - CurrentBeatMapLevel.previewStartTime, null);
+            { 
+                _songPreviewPlayer.CrossfadeTo(previewAudio, _SettingsManager.settings.audio.ambientVolumeScale, CurrentBeatMapLevel.previewStartTime, CurrentBeatMapLevel.previewDuration - CurrentBeatMapLevel.previewStartTime, null);
             }
 #else
             AudioClip previewAudio = CurrentBeatMapLevel.level.beatmapLevelData.audioClip;
@@ -794,9 +811,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             public readonly AccSaberCampaign Data = campaign;
 
+            string GetTags()
+            {
+                string temp = "";
+
+                if (Data.Status == AccSaberCampaign<AccSaberCampaignMap>.CampaignStatus.CURATED)
+                    temp = $"<color={ColorUtils.TRUE}>CURATED</color>";
+
+                if (Data.Official)
+                    temp = $"<color={ColorUtils.STANDARD}>OFFICIAL</color>";
+
+                return temp;
+            }
+
             [UIValue(nameof(Name))] private string Name => Data.Name;
             [UIValue(nameof(Author))] private string Author => Data.CreatorName;
-            [UIValue(nameof(MapCount))] private int MapCount => Data.DifficultyCount!.Value;
+            [UIValue(nameof(Tags))] private string Tags => GetTags();
 
         }
 
