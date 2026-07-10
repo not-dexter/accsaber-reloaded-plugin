@@ -1,5 +1,6 @@
 ﻿//#define PRINT_DEBUG
 
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
@@ -20,8 +21,8 @@ using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
-using System.Runtime.CompilerServices;
-using AccSaber.Configuration;
+using IPA.Config.Data;
+
 
 #if !NEW_VERSION
 using System.Threading;
@@ -31,8 +32,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     internal class AccSaberCampaignMapViewController
     {
-        public const float NODE_PADDING = 1f;
-
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly AccSaberStore store = null!;
@@ -48,7 +47,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
 
-        public float CurrentScaleFactor { get; private set; }
+        public AccSaberCampaignOffsetData? CurrentOffsetData { get; private set; }
         public CampaignProgress CampaignProgress { get; private set; }
 
         public bool StickScrolling
@@ -67,9 +66,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIObject(nameof(NodeContainer))]
         private readonly GameObject NodeContainer = null!;
 
-
-        [UIValue(nameof(NodeContainerPadding))]
-        public const int NodeContainerPadding = 5;
 
 
         [UIAction("#post-parse")]
@@ -96,93 +92,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             campaignMapBarriers.Clear();
             mapNodeArrows.Clear();
 
-            CurrentScaleFactor = scaleFactor;
             currentCampaign = campaign;
 
             Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign.Id)).Unwrap();
 
-            int minHeight = int.MaxValue, maxHeight = int.MinValue, minWidth = int.MaxValue, maxWidth = int.MinValue;
-            float minSize = float.MaxValue, maxSize = float.MinValue;
-            float minHeightMaxSize = 0f, maxHeightMaxSize = 0f, minWidthMaxSize = 0f, maxWidthMaxSize = 0f;
+            CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<AccSaberCampaignPositionable>().Concat(campaign.Barriers?.Cast<AccSaberCampaignPositionable>() ?? []));
 
-            foreach (AccSaberCampaignPositionable map in campaign.Difficulties)
-            {
-                float size = map.Size * scaleFactor;
+            UpdateContainerValues(resetScrollbars);
 
 
-                if (minHeight > map.PositionY)
-                {
-                    minHeight = map.PositionY;
-                    minHeightMaxSize = size;
-                }
-
-                if (maxHeight < map.PositionY)
-                {
-                    maxHeight = map.PositionY;
-                    maxHeightMaxSize = size;
-                }
-
-                if (minWidth > map.PositionX)
-                {
-                    minWidth = map.PositionX;
-                    minWidthMaxSize = size;
-                }
-
-                if (maxWidth < map.PositionX)
-                {
-                    maxWidth = map.PositionX;
-                    maxWidthMaxSize = size;
-                }
-
-                if (minSize > size)
-                    minSize = size;
-
-                if (maxSize < size)
-                    maxSize = size;
-            }
-
-            float offsetSize = minSize + NODE_PADDING;
-            float width = (maxWidth - minWidth) * offsetSize + minWidthMaxSize / 2f + maxWidthMaxSize / 2f + NodeContainerPadding * 2;
-            float height = (maxHeight - minHeight) * offsetSize + minHeightMaxSize / 2f + maxHeightMaxSize / 2f + NodeContainerPadding * 2;
-
-#if PRINT_DEBUG
-            Plugin.Log.Info($"minWidth = {minWidth}, maxWidth = {maxWidth}, minWidthMaxSize = {minWidthMaxSize}, maxWidthMaxSize = {maxWidthMaxSize}");
-            Plugin.Log.Info($"minHeight = {minHeight}, maxHeight = {maxHeight}, minHeightMaxSize = {minHeightMaxSize}, maxHeightMaxSize = {maxHeightMaxSize}");
-#endif
-
-            Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
-
-            LayoutElement scrollLayout = NodeContainer.GetComponent<LayoutElement>();
-
-            scrollLayout.preferredWidth = width;
-            scrollLayout.preferredHeight = height;
-
-            ScrollRect scrollableContainer = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
-            scrollableContainer.content.sizeDelta = new(width, height);
-
-            if (resetScrollbars)
-            {
-                scrollableContainer.horizontalScrollbar.value = 0;
-                scrollableContainer.verticalScrollbar.value = 0;
-            }
-
-
-#if PRINT_DEBUG
-            Plugin.Log.Info("Width = " + width + ", Height = " + height);
-#endif
-
-            float yShift = 0;
-            if (!Mathf.Approximately(minHeightMaxSize, maxHeightMaxSize))
-            {
-                float sign = minHeightMaxSize < maxHeightMaxSize ? -1f : 1f;
-                yShift = sign * (Mathf.Abs(minHeightMaxSize - maxHeightMaxSize) / 4f);
-            }
-
-            float xOffset = -(minWidth + maxWidth) / 2f * offsetSize, yOffset = -(minHeight + maxHeight) / 2f * offsetSize + yShift;
-
-#if PRINT_DEBUG
-            Plugin.Log.Info($"xOffset = {xOffset}, yOffset = {yOffset}, yShift = {yShift}, offsetSize = {offsetSize}");
-#endif
             PreloadStandardSprites();
 
             CampaignProgress = await campaignProgressTask;
@@ -215,10 +133,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         barrier: barrier,
                         parent: NodeContainer.transform,
                         progress: CampaignProgress.PlayerValues[barrier.Id],
-                        scaleFactor: scaleFactor,
-                        xOffset: xOffset,
-                        yOffset: yOffset,
-                        offsetSize: offsetSize
+                        offsetData: CurrentOffsetData
                     );
 
                     campaignMapBarriers.Add(barrierNode);
@@ -230,12 +145,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 CampaignMapNode node = new(
                     map: map,
-                    progress: CampaignProgress.PlayerValues[map.Id],
+                    parent: this,
                     mapHash: serialHandler.CachedDifficulties[map.MapDifficultyId].Hash,
-                    scaleFactor: scaleFactor,
-                    xOffset: xOffset,
-                    yOffset: yOffset,
-                    offsetSize: offsetSize,
+                    offsetData: CurrentOffsetData,
                     flow: accCampaignFlow,
                     campaignViewController: acvc,
                     levelUtils: levelUtils,
@@ -360,95 +272,64 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
-        public async void UpdateCampaign(AccSaberCampaign campaign)
+        private void UpdateContainerValues(bool resetScrollbars)
         {
-            if (currentCampaign is null || currentCampaign.Id != campaign.Id)
+            if (CurrentOffsetData is null)
                 return;
-
-            currentCampaign = campaign;
-            CampaignProgress = await UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign.Id)).Unwrap();
-
-            CurrentScaleFactor += 0.1f;
-
-            UpdateScaling(CurrentScaleFactor - 0.1f);
-            //SetCampaign(campaign, CurrentScaleFactor);
-        }
-        public void UpdateScaling(float scaleFactor)
-        {
-            if (!parsed || currentCampaign is null || Mathf.Approximately(scaleFactor, CurrentScaleFactor))
-                return;
-
-            foreach (var (_, _, go) in mapNodeArrows)
-                UnityEngine.Object.Destroy(go);
-
-            mapNodeArrows.Clear();
-
-            CurrentScaleFactor = scaleFactor;
-
-            int minHeight = int.MaxValue, maxHeight = int.MinValue, minWidth = int.MaxValue, maxWidth = int.MinValue;
-            float minSize = float.MaxValue, maxSize = float.MinValue;
-            float minHeightMaxSize = 0f, maxHeightMaxSize = 0f, minWidthMaxSize = 0f, maxWidthMaxSize = 0f;
-
-            foreach (AccSaberCampaignPositionable map in currentCampaign.Difficulties!)
-            {
-                float size = map.Size * scaleFactor;
-
-
-                if (minHeight > map.PositionY)
-                {
-                    minHeight = map.PositionY;
-                    minHeightMaxSize = size;
-                }
-
-                if (maxHeight < map.PositionY)
-                {
-                    maxHeight = map.PositionY;
-                    maxHeightMaxSize = size;
-                }
-
-                if (minWidth > map.PositionX)
-                {
-                    minWidth = map.PositionX;
-                    minWidthMaxSize = size;
-                }
-
-                if (maxWidth < map.PositionX)
-                {
-                    maxWidth = map.PositionX;
-                    maxWidthMaxSize = size;
-                }
-
-                if (minSize > size)
-                    minSize = size;
-
-                if (maxSize < size)
-                    maxSize = size;
-            }
-
-            float offsetSize = minSize + NODE_PADDING;
-            float width = (maxWidth - minWidth) * offsetSize + minWidthMaxSize / 2f + maxWidthMaxSize / 2f + NodeContainerPadding * 2;
-            float height = (maxHeight - minHeight) * offsetSize + minHeightMaxSize / 2f + maxHeightMaxSize / 2f + NodeContainerPadding * 2;
-
-            float yShift = 0;
-            if (!Mathf.Approximately(minHeightMaxSize, maxHeightMaxSize))
-            {
-                float sign = minHeightMaxSize < maxHeightMaxSize ? -1f : 1f;
-                yShift = sign * (Mathf.Abs(minHeightMaxSize - maxHeightMaxSize) / 4f);
-            }
-
-            float xOffset = -(minWidth + maxWidth) / 2f * offsetSize, yOffset = -(minHeight + maxHeight) / 2f * offsetSize + yShift;
 
             Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
 
             LayoutElement scrollLayout = NodeContainer.GetComponent<LayoutElement>();
 
-            scrollLayout.preferredWidth = width;
-            scrollLayout.preferredHeight = height;
+            scrollLayout.preferredWidth = CurrentOffsetData.ContainerSize.x;
+            scrollLayout.preferredHeight = CurrentOffsetData.ContainerSize.y;
 
             ScrollRect scrollableContainer = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
-            scrollableContainer.content.sizeDelta = new(width, height);
-            scrollableContainer.horizontalScrollbar.value = 0;
-            scrollableContainer.verticalScrollbar.value = 0;
+            scrollableContainer.content.sizeDelta = CurrentOffsetData.ContainerSize;
+
+            if (resetScrollbars)
+            {
+                scrollableContainer.horizontalScrollbar.value = 0;
+                scrollableContainer.verticalScrollbar.value = 0;
+            }
+        }
+        public async Task UpdateCampaign()
+        {
+            if (currentCampaign is null)
+                return;
+
+            currentCampaign = await store.GetCampaign(currentCampaign.Id, true);
+            CampaignProgress = await UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(currentCampaign.Id)).Unwrap();
+
+            UpdateDisplay();
+        }
+        public void UpdateScaling(float scaleFactor)
+        {
+            if (!parsed || currentCampaign is null || CurrentOffsetData is null || Mathf.Approximately(CurrentOffsetData.ScaleFactor, scaleFactor))
+                return;
+
+            CurrentOffsetData.RecalculateValuesWithScale(scaleFactor);
+            UpdateDisplay();
+        }
+        public void UpdateScalingDelta(float deltaScale)
+        {
+            if (!parsed || currentCampaign is null || CurrentOffsetData is null)
+                return;
+
+            CurrentOffsetData.RecalculateValuesWithScale(CurrentOffsetData.ScaleFactor + deltaScale);
+            UpdateDisplay();
+        }
+        public void UpdateDisplay()
+        {
+            if (!parsed || CurrentOffsetData is null)
+                return;
+
+            UpdateContainerValues(false);
+
+            foreach (var (_, _, go) in mapNodeArrows)
+                UnityEngine.Object.Destroy(go);
+
+            mapNodeArrows.Clear();
 
             Dictionary<Guid, PositionData> knownPositions = [];
             Queue<(Guid prereq, Guid toNode)> neededPositions = [];
@@ -460,7 +341,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 foreach (Guid id in node.PrerequisiteIds)
                 {
                     if (knownPositions.TryGetValue(id, out PositionData from) &&
-                        CreateArrow(NodeContainer.transform, from, current, CampaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey, scaleFactor)
+                        CreateArrow(NodeContainer.transform, from, current, CampaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey, CurrentOffsetData.ScaleFactor)
                         is GameObject go)
                     {
                         go.transform.SetAsFirstSibling();
@@ -473,22 +354,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             foreach (CampaignMapBarrier barrier in campaignMapBarriers)
             {
-                barrier.ScaleFactor = scaleFactor;
-                barrier.OffsetSize = offsetSize;
-                barrier.XOffset = xOffset;
-                barrier.YOffset = yOffset;
-
                 HandleArrows(barrier.Barrier, new(barrier));
             }
 
             foreach (CampaignMapNode map in campaignMapNodes)
             {
-                map.ScaleFactor = scaleFactor;
-                map.OffsetSize = offsetSize;
-                map.XOffset = xOffset; 
-                map.YOffset = yOffset;
-                map.Progress = CampaignProgress.PlayerValues[map.Map.Id];
-
                 HandleArrows(map.Map, new(map));
             }
 
@@ -500,7 +370,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     knownPositions.TryGetValue(toNode, out PositionData to) &&
                     CreateArrow(
                         NodeContainer.transform, from, to,
-                        CampaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey, scaleFactor)
+                        CampaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey, CurrentOffsetData.ScaleFactor)
                         is GameObject go)
                 {
                     go.transform.SetAsFirstSibling();
@@ -510,6 +380,52 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     Plugin.Log.Error("There is an invalid prereq!\n" + prereq + ", " + toNode);
             }
         }
+
+        public void MarkNodeAsComplete(Guid id)
+        {
+            if (currentCampaign is null || currentCampaign.Difficulties is null || !CampaignProgress.UnlockedItems.Contains(id))
+                return;
+
+            CampaignProgress.UnlockedItems.Remove(id);
+            CampaignProgress.CompletedItems.Add(id);
+
+            IEnumerable<AccSaberCampaignMap> relatedMaps = currentCampaign.Difficulties.Where(map => map.PrerequisiteIds.Contains(id));
+            HashSet<Guid> mapsToUpdate = [id];
+
+            foreach (AccSaberCampaignMap map in relatedMaps)
+            {
+                if (CampaignProgress.PlayerValues[map.Id].Completion != CampaignProgress.CompletionStatus.Incomplete)
+                    continue;
+
+                bool orMode = map.PrerequisiteMode == "OR";
+                bool success = false;
+
+                foreach (Guid prereqId in map.PrerequisiteIds)
+                {
+                    if (CampaignProgress.CompletedItems.Contains(prereqId))
+                    {
+                        if (orMode)
+                        {
+                            success = true;
+                            break;
+                        }
+                    }
+                    else if (!orMode)
+                        break;
+                }
+
+                if (success)
+                {
+                    CampaignProgress.PlayerValues[map.Id] = new(CampaignProgress.PlayerValues[map.Id].Progress, CampaignProgress.CompletionStatus.Unlocked);
+                    mapsToUpdate.Add(map.Id);
+                }
+            }
+
+            foreach (CampaignMapNode node in campaignMapNodes)
+                if (mapsToUpdate.Contains(node.Map.Id))
+                    node.UpdateProgress();
+        }
+
         private static bool TryGetPerpendicularBarrierRotation(List<Vector2> arrowDirections, out Quaternion rotation)
         {
             rotation = Quaternion.identity;
@@ -1053,92 +969,24 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         internal class CampaignMapNode : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
         {
-            private bool _parsed = false;
-
-            public readonly AccSaberCampaignMap Map;
-            public readonly string Hash;
-            public CampaignProgress.CampaignProgressValue Progress
-            {
-                get;
-                set
-                {
-                    field = value;
-
-                    if (!_parsed)
-                        return;
-
-                    CoverImage.DefaultColor = value.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
-
-                    if (value.Completion == CampaignProgress.CompletionStatus.Complete)
-                    {
-                        IsComplete = true;
-                        NotifyPropertyChanged(nameof(IsComplete));
-
-                        RectTransform transform = (CompletionImage.transform as RectTransform)!;
-
-                        transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-
-#if !NEW_VERSION
-                        transform.anchorMin = new(0.75f, 0f);
-                        transform.anchorMax = new(1f, 0.25f);
-#endif
-                    }
-                }
-            }
-            public readonly NodeShape Shape;
-
             private bool postParse = false;
-
-            public float ScaleFactor
-            {
-                get; 
-                set
-                {
-                    field = value;
-
-                    NotifyPropertyChanged(nameof(NodeWidth));
-                    NotifyPropertyChanged(nameof(NodeHeight));
-                } 
-            }
-            public float XOffset 
-            {
-                get;
-                set
-                {
-                    field = value;
-
-                    NotifyPropertyChanged(nameof(NodeXPos));
-                }
-            }
-            public float YOffset 
-            { 
-                get;
-                set
-                {
-                    field = value;
-
-                    NotifyPropertyChanged(nameof(NodeYPos));
-                }
-            }
-            public float OffsetSize
-            {
-                get;
-                set
-                {
-                    field = value;
-
-                    NotifyPropertyChanged(nameof(NodeXPos));
-                    NotifyPropertyChanged(nameof(NodeYPos));
-                }
-            }
+            private Coroutine? imageRoutine;
 
             private readonly AccSaberCampaignFlow campaignFlow;
+            private readonly AccSaberCampaignMapViewController parent;
             private readonly AccSaberCampaignViewController campaignController;
             private readonly LevelUtils levelUtils;
             private readonly SerializationHandler serialUtils;
             private readonly Utils.Safety.MainThreadDispatcher threadDispatcher;
 
-            private Coroutine? imageRoutine;
+
+            public readonly AccSaberCampaignMap Map;
+            public readonly string Hash;
+            public readonly AccSaberCampaignOffsetData OffsetData;
+            public readonly NodeShape Shape;
+
+            public CampaignProgress.CampaignProgressValue Progress => parent.CampaignProgress.PlayerValues[Map.Id];
+
 
             [UIObject("container")]
             private readonly GameObject Container = null!;
@@ -1157,34 +1005,40 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
             [UIValue("NodeWidth")]
-            public float NodeWidth => Map.Size * ScaleFactor;
+            public float NodeWidth => Map.Size * OffsetData.ScaleFactor;
 
             [UIValue("NodeHeight")]
-            public float NodeHeight => Map.Size * ScaleFactor;
+            public float NodeHeight => Map.Size * OffsetData.ScaleFactor;
 
             [UIValue("NodeXPos")]
-            public float NodeXPos => Map.PositionX * OffsetSize + XOffset;
+            public float NodeXPos => Map.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x;
 
             [UIValue("NodeYPos")]
-            public float NodeYPos => -Map.PositionY * OffsetSize - YOffset;
+            public float NodeYPos => -Map.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y;
 
 
             [UIValue("CheckmarkSrc")]
             private const string CheckmarkSrc = ResourcePaths.CHECKMARK;
 
             [UIValue("IsComplete")]
-            private bool IsComplete { get; set; }
+            private bool IsComplete 
+            {
+                get;
+                set
+                {
+                    field = value;
+                    NotifyPropertyChanged();
+                }
+
+            }
 
 
 
             public CampaignMapNode(
             AccSaberCampaignMap map,
-            CampaignProgress.CampaignProgressValue progress,
+            AccSaberCampaignMapViewController parent,
             string mapHash,
-            float scaleFactor,
-            float xOffset,
-            float yOffset,
-            float offsetSize,
+            AccSaberCampaignOffsetData offsetData,
             AccSaberCampaignFlow flow,
             AccSaberCampaignViewController campaignViewController,
             LevelUtils levelUtils,
@@ -1193,7 +1047,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             )
             {
                 Map = map;
-                Progress = progress;
+                this.parent = parent;
+                OffsetData = offsetData;
                 Hash = mapHash;
                 Shape = map.BorderShape switch
                 {
@@ -1208,12 +1063,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 this.levelUtils = levelUtils;
                 this.serialUtils = serialUtils;
                 this.threadDispatcher = threadDispatcher;
-                IsComplete = progress.Completion == CampaignProgress.CompletionStatus.Complete;
+                IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
 
-                XOffset = xOffset;
-                YOffset = yOffset;
-                ScaleFactor = scaleFactor;
-                OffsetSize = offsetSize;
+                offsetData.OnScaleChanged += OnOffsetDataChanged;
             }
 
 
@@ -1223,9 +1075,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 try
                 {
-                    _parsed = true;
-
-
                     BorderImage.sprite = GetBorderSprite(Shape);
                     BorderImage.raycastTarget = false;
 
@@ -1245,7 +1094,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     Mask m = CoverContainer.AddComponent<Mask>();
                     m.showMaskGraphic = false;
 
-                    CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
                     imageRoutine = threadDispatcher.StartCoroutine(CoverImage.LoadCoverImageRoutine(Hash, Map.CoverUrl));
 
                     CompletionImage.raycastTarget = false;
@@ -1254,28 +1102,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     mainLayout.preferredWidth = NodeWidth;
                     mainLayout.preferredHeight = NodeHeight;
 
+                    postParse = true;
+                    UpdateProgress();
 #if PRINT_DEBUG
                 Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
 #endif
-                    if (Progress.Completion == CampaignProgress.CompletionStatus.Complete)
-                    {
-                        RectTransform transform = (CompletionImage.transform as RectTransform)!;
-
-                        transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-
-#if !NEW_VERSION
-                        transform.anchorMin = new(0.75f, 0f);
-                        transform.anchorMax = new(1f, 0.25f);
-#endif
-                    }
                 }
                 catch (Exception e)
                 {
                     Plugin.Log.Error(e);
-                }
-                finally
-                {
-                    postParse = true;
                 }
             }
 
@@ -1321,26 +1156,46 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #endif
             }
 
-            public new void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
+            public void UpdateProgress()
             {
-                base.NotifyPropertyChanged(propertyName);
+                if (!postParse)
+                    return;
 
-                if (postParse && (propertyName.Equals(nameof(NodeWidth)) || propertyName.Equals(nameof(NodeHeight))))
+                CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
+
+                IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
+
+                if (IsComplete)
                 {
-                    (CompletionImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
 
-                    LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
+                    RectTransform transform = (CompletionImage.transform as RectTransform)!;
 
-                    if (propertyName.Equals(nameof(NodeWidth)))
-                        mainLayout.preferredWidth = NodeWidth;
-                    else
-                        mainLayout.preferredHeight = NodeHeight;
+                    transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+
+#if !NEW_VERSION
+                    transform.anchorMin = new(0.75f, 0f);
+                    transform.anchorMax = new(1f, 0.25f);
+#endif
                 }
+            }
+            private void OnOffsetDataChanged()
+            {
+                (CompletionImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+
+                LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
+                mainLayout.preferredWidth = NodeWidth;
+                mainLayout.preferredHeight = NodeHeight;
+
+                NotifyPropertyChanged(nameof(NodeWidth));
+                NotifyPropertyChanged(nameof(NodeHeight));
+                NotifyPropertyChanged(nameof(NodeXPos));
+                NotifyPropertyChanged(nameof(NodeYPos));
             }
 
             public void Dispose()
             {
                 UnityEngine.Object.Destroy(Container);
+                OffsetData.OnScaleChanged -= OnOffsetDataChanged;
 
                 if (imageRoutine is not null && CoverImage.sprite != Utilities.ImageResources.BlankSprite)
                     threadDispatcher.StopCoroutine(imageRoutine);
@@ -1352,10 +1207,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public const float WIDTH = 5f;
 
             public readonly AccSaberCampaignBarrier Barrier;
-            public readonly CampaignProgress.CampaignProgressValue Progress;
+            public readonly AccSaberCampaignOffsetData OffsetData;
             private readonly Transform Parent;
+            
 
             private readonly GameObject obj;
+
+            public CampaignProgress.CampaignProgressValue Progress
+            {
+                get;
+                set;
+            }
 
             public Quaternion Rotation { get => obj.transform.rotation; set => obj.transform.rotation = value; }
             public Vector2 SizeDelta 
@@ -1371,57 +1233,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
             public Vector2 Position => obj.transform.GetComponent<RectTransform>().anchoredPosition;
 
-            public float ScaleFactor 
-            { 
-                get;
-                set
-                {
-                    field = value;
 
-                    SizeDelta = new(WIDTH * value, Barrier.Size * value);
-                }
-            }
-            public float XOffset
-            {
-                get;
-                set
-                {
-                    field = value;
-
-                    RectTransform transform = (obj.transform as RectTransform)!;
-                    transform.anchoredPosition = new(Barrier.PositionX * OffsetSize + value, transform.anchoredPosition.y);
-                }
-            }
-            public float YOffset
-            {
-                get;
-                set
-                {
-                    field = value;
-
-                    RectTransform transform = (obj.transform as RectTransform)!;
-                    transform.anchoredPosition = new(transform.anchoredPosition.x, -Barrier.PositionY * OffsetSize - value);
-                }
-            }
-            public float OffsetSize
-            {
-                get;
-                set
-                {
-                    field = value;
-
-                    RectTransform transform = (obj.transform as RectTransform)!;
-                    transform.anchoredPosition = new(Barrier.PositionX * OffsetSize + XOffset, -Barrier.PositionY * OffsetSize - YOffset);
-                }
-            }
-
-
-
-            public CampaignMapBarrier(AccSaberCampaignBarrier barrier, Transform parent, CampaignProgress.CampaignProgressValue progress, float scaleFactor, float xOffset, float yOffset, float offsetSize)
+            public CampaignMapBarrier(AccSaberCampaignBarrier barrier, Transform parent, CampaignProgress.CampaignProgressValue progress, AccSaberCampaignOffsetData offsetData)
             {
                 Barrier = barrier;
-                Progress = progress;
+                OffsetData = offsetData;
                 Parent = parent;
+
+                Progress = progress;
 
                 obj = new("AccSaberCampaignBarrier");
                 obj.transform.SetParent(parent, false);
@@ -1444,19 +1263,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 image.type = Image.Type.Simple;
                 image.color = barrier.BorderColor?.Color() ?? Color.red;
 
-                ScaleFactor = scaleFactor;
-                OffsetSize = offsetSize;
-                XOffset = xOffset;
-                YOffset = yOffset;
+                OffsetData.OnScaleChanged += OnOffsetDataUpdate;
+                OnOffsetDataUpdate();
 
 #if PRINT_DEBUG
                 Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
 #endif
             }
 
+            private void OnOffsetDataUpdate()
+            {
+                RectTransform transform = (obj.transform as RectTransform)!;
+                transform.anchoredPosition = new(Barrier.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x, -Barrier.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y);
+
+                SizeDelta = new(WIDTH * OffsetData.ScaleFactor, Barrier.Size * OffsetData.ScaleFactor);
+            }
+
             public void Dispose()
             {
                 UnityEngine.Object.Destroy(obj);
+                OffsetData.OnScaleChanged -= OnOffsetDataUpdate;
             }
         }
     }

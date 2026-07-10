@@ -17,6 +17,8 @@ namespace AccSaber.ScoreTracking
 {
     internal class ScoreCounter : IInitializable, IDisposable
     {
+        public static event Action<AccSaberScore>? OnScoreSubmit;
+
         [Inject] private readonly IReadonlyBeatmapData beatmapData = null!;
 
         [Inject] private readonly GameplayModifiers mods = null!;
@@ -253,6 +255,8 @@ namespace AccSaber.ScoreTracking
 
                 bool submitted = await api.SubmitScore(score);
                 SerializationHandler.LastScoreTime = DateTime.UtcNow;
+
+                OnScoreSubmit?.Invoke(score);
 
                 if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
                     aslvc.ForceShowLeaderboard();

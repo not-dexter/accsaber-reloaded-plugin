@@ -481,6 +481,14 @@ namespace AccSaber.Utils
             onSuccess(task.Result);
         }
 
+        public static int MaxScoreForNotes(int notes)
+        {
+            if (notes <= 0) return 0;
+            if (notes < 6) return 115 * (notes * 2 - 1);
+            if (notes < 14) return 115 * ((notes - 5) * 4 + 9);
+            return 920 * (notes - 14) + 5635;
+        }
+
         public static bool Compare<T>(this T x, T y, string comp) where T : IComparable
         {
             int compVal = x.CompareTo(y);

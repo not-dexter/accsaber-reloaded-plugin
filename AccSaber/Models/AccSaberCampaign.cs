@@ -1,8 +1,13 @@
-﻿using AccSaber.Models.Base;
+﻿//#define PRINT_DEBUG
+
+using AccSaber.Models.Base;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 using System.Runtime.Serialization;
+using UnityEngine;
 
 namespace AccSaber.Models
 {
@@ -98,6 +103,9 @@ namespace AccSaber.Models
         [JsonIgnore]
         public string? ProgressStatus { get; set; }
 
+        [JsonIgnore]
+        public AccSaberCampaignOffsetData? OffsetData { get; set; }
+
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignStatus.java
         public enum CampaignStatus
@@ -112,6 +120,115 @@ namespace AccSaber.Models
         }
     }
     internal class AccSaberCampaign : AccSaberCampaign<AccSaberCampaignMap>;
+
+    internal class AccSaberCampaignOffsetData
+    {
+        public const float NODE_PADDING = 1f;
+        public const int NODE_CONTAINER_PADDING = 5;
+
+        public event Action? OnScaleChanged;
+
+        public Point MinPosition { get; }
+        public float MinRawSize { get; }
+
+        public Point MaxPosition { get; }
+        public float MaxRawSize { get; }
+        public Vector2 RawSizeAtMinEdge { get; }
+        public Vector2 RawSizeAtMaxEdge { get; }
+
+        public Point PositionDelta { get; }
+
+
+        public Vector2 ContainerSize { get; private set; }
+        public Vector2 Shift { get; private set; }
+        public Vector2 Offset { get; private set; }
+        public Vector2 SizeAtMinEdge { get; private set; }
+        public Vector2 SizeAtMaxEdge { get; private set; }
+        public float ScaleFactor { get; private set; }
+        public float OffsetSize { get; private set; }
+
+        public AccSaberCampaignOffsetData(float scaleFactor, IEnumerable<AccSaberCampaignPositionable> nodes)
+        {
+            if (nodes is null || !nodes.Any())
+                throw new ArgumentException("The node IEnumerable given must not be null and contain elements!");
+
+            int minHeight = int.MaxValue, maxHeight = int.MinValue, minWidth = int.MaxValue, maxWidth = int.MinValue;
+            float minSize = float.MaxValue, maxSize = float.MinValue;
+            float minHeightSize = 0f, maxHeightSize = 0f, minWidthSize = 0f, maxWidthSize = 0f;
+
+            foreach (AccSaberCampaignPositionable map in nodes)
+            {
+                if (minHeight > map.PositionY)
+                {
+                    minHeight = map.PositionY;
+                    minHeightSize = map.Size;
+                }
+
+                if (maxHeight < map.PositionY)
+                {
+                    maxHeight = map.PositionY;
+                    maxHeightSize = map.Size;
+                }
+
+                if (minWidth > map.PositionX)
+                {
+                    minWidth = map.PositionX;
+                    minWidthSize = map.Size;
+                }
+
+                if (maxWidth < map.PositionX)
+                {
+                    maxWidth = map.PositionX;
+                    maxWidthSize = map.Size;
+                }
+
+                if (minSize > map.Size)
+                    minSize = map.Size;
+
+                if (maxSize < map.Size)
+                    maxSize = map.Size;
+            }
+
+            MinPosition = new(minWidth, minHeight);
+            MinRawSize = minSize;
+            RawSizeAtMinEdge = new(minWidthSize, minHeightSize);
+
+            MaxPosition = new(maxWidth, maxHeight);
+            MaxRawSize = maxSize;
+            RawSizeAtMaxEdge = new(maxWidthSize, maxHeightSize);
+
+            PositionDelta = new(maxWidth - minWidth, maxHeight - minHeight);
+
+#if PRINT_DEBUG
+            Plugin.Log.Info($"MinPosition = {MinPosition}, MaxPosition = {MaxPosition}, MinRawSize = {MinRawSize}, MaxRawSize = {MaxRawSize}, MaxRawSizeAtMinEdge = {RawSizeAtMinEdge}, MaxRawSizeAtMaxEdge = {RawSizeAtMaxEdge}");
+#endif
+
+            RecalculateValuesWithScale(scaleFactor);
+        }
+
+        public void RecalculateValuesWithScale(float scaleFactor)
+        {
+            ScaleFactor = scaleFactor;
+            OffsetSize = MinRawSize * scaleFactor + NODE_PADDING;
+
+            SizeAtMinEdge = RawSizeAtMinEdge * scaleFactor;
+            SizeAtMaxEdge = RawSizeAtMaxEdge * scaleFactor;
+
+            float width = PositionDelta.X * OffsetSize + SizeAtMinEdge.x / 2f + SizeAtMaxEdge.x / 2f + NODE_CONTAINER_PADDING * 2;
+            float height = PositionDelta.Y * OffsetSize + SizeAtMinEdge.y / 2f + SizeAtMaxEdge.y / 2f + NODE_CONTAINER_PADDING * 2;
+            ContainerSize = new(width, height);
+
+            Shift = new((SizeAtMaxEdge.x - SizeAtMinEdge.x) / 4f, (SizeAtMaxEdge.y - SizeAtMinEdge.y) / 4f);
+            Offset = new(-(MinPosition.X + MaxPosition.X) / 2f * OffsetSize + Shift.x, -(MinPosition.Y + MaxPosition.Y) / 2f * OffsetSize - Shift.y);
+
+            OnScaleChanged?.Invoke();
+
+#if PRINT_DEBUG
+            Plugin.Log.Info($"ContainerSize = {ContainerSize}, Shift = {Shift}, Offset = {Offset}, MaxSizeAtMinEdge = {SizeAtMinEdge}, MaxSizeAtMaxEdge = {SizeAtMaxEdge}");
+            Plugin.Log.Info($"ScaleFactor = {ScaleFactor}, OffsetSize = {OffsetSize}");
+#endif
+        }
+    }
 
     internal class CampaignTags
     {

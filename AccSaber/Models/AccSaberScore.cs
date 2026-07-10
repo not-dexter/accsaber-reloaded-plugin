@@ -54,5 +54,9 @@ namespace AccSaber.Models
 
         [JsonProperty("partial")]
         public bool? UncompletedMap { get; set; } = null;
+
+
+        [JsonIgnore]
+        public int Mistakes => Misses + BadCuts + BombHits + WallHits;
     }
 }

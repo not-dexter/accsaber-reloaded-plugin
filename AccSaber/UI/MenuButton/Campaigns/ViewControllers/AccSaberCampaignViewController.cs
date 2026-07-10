@@ -1,5 +1,6 @@
 ﻿using AccSaber.Configuration;
 using AccSaber.Consts;
+using AccSaber.Counter;
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
@@ -32,6 +33,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 //#pragma warning disable CS0414 // Field assigned to but never read.
         private bool _parsed = false, _updateOnFinish = false;
         private bool _invalidateActive;
+        private DateTime _lastScoreSubmit = DateTime.MinValue, _lastUpdate = DateTime.MinValue;
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly List<CampaignMap> _diffCells = [];
@@ -53,6 +55,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public IDifficultyBeatmap? CurrentBeatMapLevel { get; set; }
 #endif
         public AccSaberCampaignMap? CurrentMap;
+        public int CurrentMaxNoteCount;
         public bool MapStarted { get; private set; } = false;
 
         [UIObject("CampaignMapContainer")]
@@ -81,6 +84,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             All
         }
 
+        [Inject] private readonly APCalc _calc = null!;
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly PluginConfig _config = null!;
@@ -88,9 +92,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
-        [Inject] private readonly SettingsManager _SettingsManager = null!;
         [Inject] private readonly SongPreviewPlayer _songPreviewPlayer = null!;
 #if NEW_VERSION
+        [Inject] private readonly SettingsManager _SettingsManager = null!;
         [Inject] private readonly BeatmapLevelsModel _beatmapLevelsModel = null!;
         [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
@@ -389,15 +393,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("ZoomIn")]
         private void ZoomIn()
         {
-            if (_currentCampaign is not null && _campaignMapViewController.CurrentScaleFactor < 0.75f)
-                _campaignMapViewController.UpdateScaling(_campaignMapViewController.CurrentScaleFactor + 0.025f);
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor < 0.75f)
+                _campaignMapViewController.UpdateScalingDelta(0.025f);
         }
 
         [UIValue("ZoomOut")]
         private void ZoomOut()
         {
-            if (_currentCampaign is not null && _campaignMapViewController.CurrentScaleFactor > 0.025f)
-                _campaignMapViewController.UpdateScaling(_campaignMapViewController.CurrentScaleFactor - 0.025f);
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor > 0.025f)
+                _campaignMapViewController.UpdateScalingDelta(-0.025f);
         }
 
        // [UIAction("BackPressed")]
@@ -610,16 +614,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
 #if NEW_VERSION
-        public async void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion)
+        public async void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
             CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
-        public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion)
+        public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
             CurrentBeatMapLevel = beatmapLevel;
 #endif            
-            int noteCount = 0;
             float nps = 0;
             float njs = 0;
 
@@ -636,12 +639,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 if (mapData is not null)
                 {
-                    noteCount = mapData.cuttableNotesCount;
+                    CurrentMaxNoteCount = mapData.cuttableNotesCount;
 #if NEW_VERSION
                     nps = mapData.cuttableNotesCount / beatmapLevel.songDuration;
                     njs = beatmapLevel.GetDifficultyBeatmapData(beatmapKey.beatmapCharacteristic, beatmapKey.difficulty).noteJumpMovementSpeed;
 #else
-                    nps = noteCount / beatmapLevel.level.songDuration;
+                    nps = CurrentMaxNoteCount / beatmapLevel.level.songDuration;
                     njs = beatmapLevel.noteJumpMovementSpeed;
 #endif
                 }
@@ -679,7 +682,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
             MissionMapNPS = $"{nps:N2}";
-            MissionMapNoteCount = noteCount.ToString();
+            MissionMapNoteCount = CurrentMaxNoteCount.ToString();
             MissionMapNJS = $"{njs:N1}";
 #if NEW_VERSION
             TimeSpan Duration = TimeSpan.FromSeconds(beatmapLevel.songDuration);
@@ -710,14 +713,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CampaignProgressVal = completion;
 
 #if NEW_VERSION
-            AudioClip previewAudio = await CurrentBeatMapLevel.previewMediaData.GetPreviewAudioClip();
+            AudioClip? previewAudio = withSound ? await CurrentBeatMapLevel.previewMediaData.GetPreviewAudioClip() : null;
 
             if(previewAudio is not null)
             { 
                 _songPreviewPlayer.CrossfadeTo(previewAudio, _SettingsManager.settings.audio.ambientVolumeScale, CurrentBeatMapLevel.previewStartTime, CurrentBeatMapLevel.previewDuration - CurrentBeatMapLevel.previewStartTime, null);
             }
 #else
-            AudioClip previewAudio = CurrentBeatMapLevel.level.beatmapLevelData.audioClip;
+            AudioClip? previewAudio = withSound ? CurrentBeatMapLevel.level.beatmapLevelData.audioClip : null;
 
             if(previewAudio is not null)
             {
@@ -740,13 +743,60 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         private void OnPlayerScore(AccSaberLeaderboardEntry score)
         {
-            if (InCampaign && _currentCampaign is not null)
+            if (InCampaign && _currentCampaign is not null && _lastScoreSubmit < _lastUpdate)
             {
                 if (MapStarted)
                     _updateOnFinish = true;
                 else
                     UpdateCampaign();
                     
+            }
+        }
+        private void OnPlayerScoreSubmit(AccSaberScore score)
+        {
+            DateTime now = DateTime.UtcNow;
+            _lastScoreSubmit = now;
+            if (InMap && CurrentMap is not null && _currentCampaign is not null && !(score.UncompletedMap ?? false))
+            {
+                float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
+
+                float val = CurrentMap.RequirementType switch
+                {
+                    AccSaberCampaignMap.CampaignRequirementType.ACC => acc,
+                    AccSaberCampaignMap.CampaignRequirementType.AP => _calc.GetAp(acc, _serialHandler.CachedDifficulties[score.MapDifficultyId].Complexity),
+                    AccSaberCampaignMap.CampaignRequirementType.SCORE => score.Score,
+                    AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => score.Streak115,
+                    AccSaberCampaignMap.CampaignRequirementType.FC => score.Mistakes,
+                    _ => -1f
+                };
+
+                if (val < 0f)
+                    return; // I can only handle certain types, those I can't will be updated once websocket sends score.
+
+                if (CampaignProgressVal.Progress >= val)
+                    return; // didn't beat old progress.
+
+                _lastUpdate = now;
+
+                bool completed = MissionComplete, completedNow = CurrentMap.RequirementValue <= val;
+                CampaignProgressVal = new(val, completedNow ? CompletionStatus.Complete : CompletionStatus.Unlocked);
+                _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id] = CampaignProgressVal;
+
+                if (!completed && completedNow)
+                {
+                    MissionComplete = true;
+                    _campaignMapViewController.MarkNodeAsComplete(CurrentMap.Id);
+                }
+
+                _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
+
+#if NEW_VERSION
+                if (CurrentMap is not null && CurrentBeatMapLevel is not null)
+                    SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
+#else
+                if (CurrentMap is not null && CurrentBeatMapLevel is not null)
+                    SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal);
+#endif
             }
         }
         private void UpdateCampaign()
@@ -756,18 +806,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 {
                     //_currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
 
-                    _campaignMapViewController.UpdateCampaign(_currentCampaign);
+                    _lastUpdate = DateTime.UtcNow;
+
+                    await _campaignMapViewController.UpdateCampaign();
 
                     if (CurrentMap is not null)
                         CampaignProgressVal = _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id];
 
-                    SetMaps(_currentCampaign);
 #if NEW_VERSION
                     if (CurrentMap is not null && CurrentBeatMapLevel is not null)
                         SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
 #else
-                            if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                                SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
+                    if (CurrentMap is not null && CurrentBeatMapLevel is not null)
+                        SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal);
 #endif
                 });
         }
@@ -782,6 +833,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void Initialize()
         {
             AccSaberStore.OnPlayerScoreUpdated += OnPlayerScore;
+            ScoreTracking.ScoreCounter.OnScoreSubmit += OnPlayerScoreSubmit;
 
             _config.PropertyChanged += OnPluginConfigChanged;
 
@@ -803,6 +855,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void Dispose()
         {
             AccSaberStore.OnPlayerScoreUpdated -= OnPlayerScore;
+            ScoreTracking.ScoreCounter.OnScoreSubmit -= OnPlayerScoreSubmit;
 
             _config.PropertyChanged -= OnPluginConfigChanged;
         }
