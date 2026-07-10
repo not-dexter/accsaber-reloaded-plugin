@@ -6,6 +6,7 @@
     <tab tags='tabs' tab-name='Active' />
     <tab tags='tabs' tab-name='Curated' />
     <tab tags='tabs' tab-name='All' />
+	<tab tags='tabs' tab-name='Completed'/>
     <horizontal pref-width='160' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
       <horizontal>
         <vertical pref-width='50' pref-height='70' pad='2' active='~not-in-campaign'>

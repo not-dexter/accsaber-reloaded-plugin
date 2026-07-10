@@ -10,6 +10,7 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
 using IPA.Loader;
+using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -32,7 +33,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 //#pragma warning disable CS0414 // Field assigned to but never read.
         private bool _parsed = false, _updateOnFinish = false;
-        private bool _invalidateActive;
+        private bool _invalidateActive = true;
         private DateTime _lastScoreSubmit = DateTime.MinValue, _lastUpdate = DateTime.MinValue;
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
@@ -81,7 +82,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             Active,
             Curated,
-            All
+            All,
+            Completed
         }
 
         [Inject] private readonly APCalc _calc = null!;
@@ -365,14 +367,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_VIEW, _campaignMapContainer, _campaignMapViewController);
 
-            _activeCampaigns = await _accSaberStore.GetActiveCampaigns();
-
             NoCampaignSelected = true;
             CurrentTab = 0;
             InCampaign = false;
             InMap = false;
-
-            _ = UpdateTabs();
         }
 
         [UIAction("campaign-selected")]
@@ -404,7 +402,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _campaignMapViewController.UpdateScalingDelta(-0.025f);
         }
 
-       // [UIAction("BackPressed")]
         public void BackPressed()
         {
             _campaignFlow.HideLeaderboard();
@@ -420,12 +417,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             InCampaign = true;
             if (_currentCampaign is not null)
-            {
-                if (!_activeCampaigns.Contains(_currentCampaign) && _currentCampaign.ProgressStatus != "IN_PROGRESS")
+            {                  
+                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != "IN_PROGRESS")
                     _missionButton.SetButtonText("Start Campaign");
                 else
                     _missionButton.SetButtonText("Play");
-
 
                 _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
 
@@ -446,14 +442,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (_currentCampaign is not null)
             {
-                if (!_activeCampaigns.Contains(_currentCampaign) && _currentCampaign.ProgressStatus != "IN_PROGRESS")
+                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != "IN_PROGRESS")
                 {
                     if (await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
                         Plugin.Log.Error("Failed to start campaign!");
                     else
                     {
                         _invalidateActive = true;
-                        _activeCampaigns.Add(_currentCampaign);
+                        _activeCampaigns.Add(await _accSaberStore.GetCampaign(_currentCampaign.Id));
                         _missionButton.SetButtonText("Play");
                     }
                 }
@@ -553,36 +549,44 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignList.Data().Clear();
             _campaignList.TableView().ReloadData();
 
-            if (_invalidateActive)
+            try
             {
-                _activeCampaigns = await _accSaberStore.GetActiveCampaigns();
-                _invalidateActive = false;
+                if (_invalidateActive)
+                {
+                    _invalidateActive = false;
+                    _activeCampaigns = await _accSaberStore.GetActiveCampaigns();
+                }
+
+                List<AccSaberCampaign> tabCampaigns = CurrentTab switch
+                {
+                    CategoryTab.Active => _activeCampaigns,
+                    CategoryTab.Curated => await _accSaberStore.GetCampaigns("CURATED"),
+                    CategoryTab.All => await _accSaberStore.GetCampaigns(),
+                    CategoryTab.Completed => _activeCampaigns,
+                    _ => throw new NotImplementedException(),
+                };
+
+                foreach (var campaign in tabCampaigns)
+                {
+                    if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != "IN_PROGRESS") || (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != "COMPLETED"))
+                        continue;
+
+                    _campaignCells.Add(new CampaignCell(campaign));
+                }
+
+                IEnumerator WaitThenUpdate()
+                {
+                    yield return new WaitForEndOfFrame();
+
+                    _campaignList.TableView().ReloadData();
+                    IsLoading = false;
+                }
+                StartCoroutine(WaitThenUpdate());
             }
-
-            List<AccSaberCampaign> tabCampaigns = CurrentTab switch
+            catch (Exception ex)
             {
-                CategoryTab.Active => _activeCampaigns,
-                CategoryTab.Curated => await _accSaberStore.GetCampaigns("CURATED"),
-                CategoryTab.All => await _accSaberStore.GetCampaigns(),
-                _ => throw new NotImplementedException(),
-            };
-
-            foreach (var campaign in tabCampaigns)
-            {
-                if (CurrentTab == CategoryTab.Active && campaign.ProgressStatus != "IN_PROGRESS")
-                    continue;
-
-                _campaignCells.Add(new CampaignCell(campaign));
+                Plugin.Log.Error(ex);
             }
-
-            IEnumerator WaitThenUpdate()
-            {
-                yield return new WaitForEndOfFrame();
-
-                _campaignList.TableView().ReloadData();
-                IsLoading = false;
-            }
-            StartCoroutine(WaitThenUpdate());
         }
 
         public async Task UpdateCampaign(AccSaberCampaign campaign)
