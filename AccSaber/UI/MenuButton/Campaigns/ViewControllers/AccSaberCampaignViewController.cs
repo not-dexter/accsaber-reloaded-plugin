@@ -724,7 +724,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if(previewAudio is not null)
             {
-                _songPreviewPlayer.CrossfadeTo(previewAudio, 1f, CurrentBeatMapLevel.level.previewStartTime, CurrentBeatMapLevel.level.previewDuration - CurrentBeatMapLevel.level.previewStartTime, null);
+                _songPreviewPlayer.CrossfadeTo(previewAudio, 0.5f, CurrentBeatMapLevel.level.previewStartTime, CurrentBeatMapLevel.level.previewDuration - CurrentBeatMapLevel.level.previewStartTime, null);
             }
 #endif
 
@@ -743,7 +743,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         private void OnPlayerScore(AccSaberLeaderboardEntry score)
         {
-            if (InCampaign && _currentCampaign is not null && _lastScoreSubmit < _lastUpdate)
+            if (InCampaign && _currentCampaign is not null && _lastScoreSubmit > _lastUpdate)
             {
                 if (MapStarted)
                     _updateOnFinish = true;
@@ -778,15 +778,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 _lastUpdate = now;
 
-                bool completed = MissionComplete, completedNow = CurrentMap.RequirementValue <= val;
-                CampaignProgressVal = new(val, completedNow ? CompletionStatus.Complete : CompletionStatus.Unlocked);
+                bool completed = CurrentMap.RequirementValue <= CampaignProgressVal.Progress, completedNow = CurrentMap.RequirementValue <= val;
+                CampaignProgressVal = new(val, CurrentMap.RequirementValue <= val ? CompletionStatus.Complete : CompletionStatus.Unlocked);
                 _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id] = CampaignProgressVal;
 
-                if (!completed && completedNow)
-                {
-                    MissionComplete = true;
+                if (!completed && MissionComplete)
                     _campaignMapViewController.MarkNodeAsComplete(CurrentMap.Id);
-                }
 
                 _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
 
@@ -795,7 +792,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
 #else
                 if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                    SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal);
+                    SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
 #endif
             }
         }

@@ -398,7 +398,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     continue;
 
                 bool orMode = map.PrerequisiteMode == "OR";
-                bool success = false;
+                bool success = !orMode;
 
                 foreach (Guid prereqId in map.PrerequisiteIds)
                 {
@@ -411,12 +411,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         }
                     }
                     else if (!orMode)
+                    {
+                        success = false;
                         break;
+                    }
                 }
 
                 if (success)
                 {
                     CampaignProgress.PlayerValues[map.Id] = new(CampaignProgress.PlayerValues[map.Id].Progress, CampaignProgress.CompletionStatus.Unlocked);
+                    CampaignProgress.UnlockedItems.Add(map.Id);
                     mapsToUpdate.Add(map.Id);
                 }
             }
