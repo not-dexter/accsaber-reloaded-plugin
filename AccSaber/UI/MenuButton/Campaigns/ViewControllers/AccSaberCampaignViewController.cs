@@ -10,7 +10,6 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
 using IPA.Loader;
-using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;

@@ -1,4 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  
+  <!-- Precompilier info -->
   <PropertyGroup>
     <ProductVersion>8.0.30703</ProductVersion>
     <ProjectGuid>{06B53B81-A8BD-4122-9224-B12A4ED6734A}</ProjectGuid>
@@ -25,7 +27,11 @@
     <DisableCopyToPlugins>True</DisableCopyToPlugins>
     <DisableZipRelease>True</DisableZipRelease>
   </PropertyGroup>
+  
+  <!-- Normal References below -->
   <ItemGroup>
+    
+    <!-- Beat Saber_Data/Managed References -->
     <Reference Include="AdditionalContentModel.Interfaces">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\AdditionalContentModel.Interfaces.dll</HintPath>
     </Reference>
@@ -36,61 +42,19 @@
 		<Reference Include="BeatSaber.Settings">
 		  <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.Settings.dll</HintPath>
 		</Reference>
-    <Reference Include="BGLib.AppFlow" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.AppFlow.dll</HintPath>
-    </Reference>
-    <Reference Include="BGLib.UnityExtension" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.UnityExtension.dll</HintPath>
-    </Reference>
-		<Reference Include="BGNet" Condition="$(DefineConstants.Contains('NEW_VERSION')) == false">
-		  <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGNet.dll</HintPath>
-		</Reference>
-    <Reference Include="BGNetCore" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGNetCore.dll</HintPath>
-		</Reference>
     <Reference Include="Colors">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Colors.dll</HintPath>
     </Reference>
-    <Reference Include="DataModels" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\DataModels.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="BeatSaber.ViewSystem" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.ViewSystem.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="GameplayCore">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\GameplayCore.dll</HintPath>
-    </Reference>
-    <Reference Include="Hive.Versioning">
-      <HintPath>$(BeatSaberDir)\Libs\Hive.Versioning.dll</HintPath>
-      <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
-    <Reference Include="Oculus.Platform" Condition="$(DefineConstants.Contains('NEW_VERSION')) == false">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Oculus.Platform.dll</HintPath>
-    </Reference>
-    <Reference Include="Oculus.Platform.Core" Condition="$(DefineConstants.Contains('V41')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\OculusStudios.Platform.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="SongCore">
-      <HintPath>$(BeatSaberDir)\Plugins\SongCore.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="LeaderboardCore">
-      <HintPath>$(BeatSaberDir)\Plugins\LeaderboardCore.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="mscorlib">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\mscorlib.dll</HintPath>
-    </Reference>
-    <Reference Include="0Harmony, Version=2.0.2.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(BeatSaberDir)\Libs\0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Main">
@@ -120,22 +84,14 @@
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
     </Reference>
-    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\System.IO.Compression.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System.IO.Compression.FileSystem">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\System.IO.Compression.FileSystem.dll</HintPath>
       <Private>False</Private>
       <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="Tweening" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Tweening.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="PlatformUserModel" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\PlatformUserModel.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="SegmentedControl" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\SegmentedControl.dll</HintPath>
     </Reference>
     <Reference Include="IPA.Loader">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\IPA.Loader.dll</HintPath>
@@ -186,15 +142,33 @@
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.VRModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Interactable" Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Interactable.dll</HintPath>
-    </Reference>
     <Reference Include="Zenject">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Zenject.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Zenject-usage">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Zenject-usage.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    
+    <!-- Libs References -->
+    <Reference Include="Hive.Versioning">
+      <HintPath>$(BeatSaberDir)\Libs\Hive.Versioning.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="0Harmony, Version=2.0.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>$(BeatSaberDir)\Libs\0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    
+    <!-- Plugin References -->
+    <Reference Include="SongCore">
+      <HintPath>$(BeatSaberDir)\Plugins\SongCore.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="LeaderboardCore">
+      <HintPath>$(BeatSaberDir)\Plugins\LeaderboardCore.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="SiraUtil">
@@ -205,7 +179,69 @@
       <HintPath>$(BeatSaberDir)\Plugins\BSML.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    
   </ItemGroup>
+  
+  <!-- 1.29.1 only references -->
+  <ItemGroup Condition="$(DefineConstants.Contains('NEW_VERSION')) == false">
+    <Reference Include="BGNet">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGNet.dll</HintPath>
+    </Reference>
+    <Reference Include="Oculus.Platform">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Oculus.Platform.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  
+  <!-- 1.34+ references -->
+  <ItemGroup Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
+    <Reference Include="DataModels">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\DataModels.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="BeatSaber.ViewSystem">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.ViewSystem.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="BGLib.AppFlow">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.AppFlow.dll</HintPath>
+    </Reference>
+    <Reference Include="BGLib.UnityExtension">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.UnityExtension.dll</HintPath>
+    </Reference>
+    <Reference Include="BGNetCore">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGNetCore.dll</HintPath>
+    </Reference>
+    <Reference Include="Tweening">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Tweening.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PlatformUserModel">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\PlatformUserModel.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="SegmentedControl">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\SegmentedControl.dll</HintPath>
+    </Reference>
+    <Reference Include="Interactable">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Interactable.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  
+  <!-- 1.40+ References -->
+  <ItemGroup Condition="$(DefineConstants.Contains('V40')) == true">
+    <Reference Include="BeatSaber.GameSettings">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.GameSettings.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  
+  <!-- 1.41+ References -->
+  <ItemGroup Condition="$(DefineConstants.Contains('V41')) == true">
+    <Reference Include="Oculus.Platform.Core">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\OculusStudios.Platform.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  
+  <!-- Packages - This should only be the beat saber modding tool and the publicizer -->
   <ItemGroup>
     <PackageReference Include="BeatSaberModdingTools.Tasks">
       <Version>1.4.2</Version>
@@ -217,11 +253,15 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  
+  <!-- User-side files, these will not be commited -->
   <ItemGroup>
     <None Include="Directory.Build.props" Condition="Exists('Directory.Build.props')" />
     <None Include="Directory.Build.targets" Condition="Exists('Directory.Build.targets')" />
     <None Include="AccSaber.csproj.user" Condition="Exists('AccSaber.csproj.user')" />
   </ItemGroup>
+  
+  <!-- Embedded Resource file folders -->
   <ItemGroup>
     <EmbeddedResource Include="manifest.json" />
     <EmbeddedResource Include="Resources\*.png" />
@@ -231,6 +271,8 @@
     <EmbeddedResource Include="UI\MenuButton\Views\*.bsml" />
     <EmbeddedResource Include="UI\MenuButton\Campaigns\Views\*.bsml" />
   </ItemGroup>
+  
+  <!-- 1.29 only cs files, this is for back patching some additions that are useful -->
   <ItemGroup Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
     <Compile Remove="Utils\OldVersion\*.cs" />
   </ItemGroup>
