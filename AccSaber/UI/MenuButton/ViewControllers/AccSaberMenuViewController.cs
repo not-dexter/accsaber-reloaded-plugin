@@ -557,7 +557,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 				try
 				{
-					IEnumerable<AccSaberPlayerScore> content = api.GetPlayerScores(PageNumber, 5, _categoryValue);
+					IEnumerable<AccSaberPlayerScore> content = await api.GetPlayerScores(PageNumber, 5, _categoryValue);
 
 					_maxPage = (int)Math.Ceiling((_categoryValue == APCategory.Overall ? serialHandler.PlayerScoreLength : serialHandler.CategoryPlayerScores[(int)_categoryValue].Count) / 5f);
 

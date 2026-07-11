@@ -424,7 +424,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
 
-                _campaignMapViewController.SetCampaign(_currentCampaign);
+                await _campaignMapViewController.SetCampaign(_currentCampaign);
 
                 SetMaps(_currentCampaign);
             }

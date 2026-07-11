@@ -122,7 +122,7 @@ namespace AccSaber.UI.ViewControllers
             }
         }
 
-        #endregion Instance Variables & Fields
+#endregion Instance Variables & Fields
 
         #region Injects
 
@@ -612,6 +612,9 @@ namespace AccSaber.UI.ViewControllers
 #if NEW_VERSION
             if (store.CurrentLevel is not null && store.CurrentKey != default)
                 return UpdateDiff(store.CurrentLevel, store.CurrentKey);
+#else
+            if (store.CurrentLevel is not null)
+                return UpdateDiff(store.CurrentLevel);
 #endif
             return false;
         }
@@ -1106,7 +1109,7 @@ namespace AccSaber.UI.ViewControllers
                 _ => 0 // At this point, we do not have the information needed to get the rank of any other display type.
             };
         }
-        #endregion
+#endregion
 
         private class TextSpacer : ICellDataSource
         {

@@ -987,8 +987,11 @@ namespace AccSaber.API
 
             return outp;
         }*/ // NOTE: Cache covers getting all scores, no need to do this anymore.
-        public IEnumerable<AccSaberPlayerScore> GetPlayerScores(int page, int pageLength, APCategory category = APCategory.Overall)
+        public async Task<IEnumerable<AccSaberPlayerScore>> GetPlayerScores(int page, int pageLength, APCategory category = APCategory.Overall)
         { // page is zero indexed.
+
+            await serialHandler.InitTask;
+
             // The cache should be sorted, so this should not be an issue.
             IEnumerable<AccSaberPlayerScore> filteredCache = serialHandler.PlayerScores;
             if (category == APCategory.Overall || serialHandler.CategoryPlayerScores[(int)category].Count >= 0)

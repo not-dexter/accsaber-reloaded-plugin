@@ -99,7 +99,7 @@ namespace AccSaber.Utils
         public static string ToProperColor(this string hex)
         {
             if (string.IsNullOrEmpty(hex) || hex.Length == 9)
-                return hex;
+                return hex.ToUpper();
 
             if (hex[0] == '#')
                 hex = hex[1..];
@@ -116,25 +116,79 @@ namespace AccSaber.Utils
 
             return outp;
         }
-        public static string DimColor(this string hex, int dimAmount)
+        public static string DimColor(this string hex, int dimAmount, bool dimAlpha = false)
         {
             static int ConvertCharFromHex(char c) => c > '9' ? char.ToUpper(c) - 'A' + 10 : c - '0';
 
+            if (Math.Abs(dimAmount) > 15)
+                throw new ArgumentException("Given dimAmount must be between [-15, 15], was given " + dimAmount + ".");
+
+            if (dimAmount < 0)
+                return BrightenColor(hex, -dimAmount, dimAlpha);
+
+            hex = hex.ToProperColor();
+
             bool hasHashtag = hex[0] == '#';
             if (hasHashtag) hex = hex[1..];
+
             int leadingZeros = 0;
             while (hex[leadingZeros] == '0')
                 leadingZeros++;
+
             int dimNum = 0;
-            for (int i = 0; i < hex.Length; i++)
+            for (int i = 0, len = dimAlpha ? hex.Length : Math.Min(6, hex.Length); i < len; i++)
             {
                 dimNum <<= 4;
+
                 int val = ConvertCharFromHex(hex[i]);
+
                 dimNum += Math.Min(val, dimAmount);
             }
+
+            if (!dimAlpha && hex.Length > 6)
+                dimNum <<= 4 * (hex.Length - 6);
+
             int givenNum = int.Parse(hex, System.Globalization.NumberStyles.HexNumber);
             string outp = new string('0', leadingZeros) + (givenNum - dimNum).ToString("X");
+
             if (outp.Length < hex.Length) outp = new string('0', hex.Length - outp.Length) + outp;
+            return (hasHashtag ? "#" : "") + outp;
+        }
+        public static string BrightenColor(this string hex, int brightenAmount, bool brightenAlpha = false)
+        {
+            static int ConvertCharFromHex(char c) => c > '9' ? char.ToUpper(c) - 'A' + 10 : c - '0';
+
+            if (Math.Abs(brightenAmount) > 15)
+                throw new ArgumentException("Given brightenAmount must be between [-15, 15], was given " + brightenAmount + ".");
+
+            if (brightenAmount < 0)
+                return DimColor(hex, -brightenAmount, brightenAlpha);
+
+            hex = hex.ToProperColor();
+
+            bool hasHashtag = hex[0] == '#';
+            if (hasHashtag) hex = hex[1..];
+
+            int trueBrightenAmount = 15 - brightenAmount;
+
+            int brightenNum = 0;
+            for (int i = 0, len = brightenAlpha ? hex.Length : Math.Min(6, hex.Length); i < len; i++)
+            {
+                brightenNum <<= 4;
+
+                int val = ConvertCharFromHex(hex[i]);
+
+                brightenNum += 15 - Math.Max(val, trueBrightenAmount);
+            }
+
+            if (!brightenAlpha && hex.Length > 6)
+                brightenNum <<= 4 * (hex.Length - 6);
+
+            int givenNum = int.Parse(hex, System.Globalization.NumberStyles.HexNumber);
+            string outp = (givenNum + brightenNum).ToString("X");
+
+            if (outp.Length < hex.Length) outp = new string('0', hex.Length - outp.Length) + outp;
+
             return (hasHashtag ? "#" : "") + outp;
         }
         public static VertexGradient ColorToGradient(this string hex, int dimBase = 4)

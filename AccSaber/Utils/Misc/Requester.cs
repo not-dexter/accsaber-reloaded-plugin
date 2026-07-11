@@ -100,4 +100,102 @@ namespace AccSaber.Utils.Misc
             }
         }
     }
+    public sealed class Requester<T>(Func<T, bool> fulfiller, MonoBehaviour host)
+    {
+        private readonly Func<T, bool> fulfiller = fulfiller;
+        private readonly MonoBehaviour host = host;
+
+        private bool requestActive;
+        private Coroutine? requestRoutine;
+        private int requestVersion;
+        private (int version, T input) requestInput;
+
+        public Requester(Action<T> fulfiller, MonoBehaviour host) : this(item => { fulfiller(item); return true; }, host) 
+        { }
+
+        public void Request(T input, bool attemptFulfill = true)
+        {
+            Safety.MainThreadDispatcher.AssertOnMainThread();
+
+            if (requestActive)
+                return;
+
+            requestActive = true;
+            requestVersion++;
+            requestInput = (requestVersion, input);
+
+            StopRequestRoutine();
+
+            if (attemptFulfill)
+                TryFulfillRequest();
+        }
+
+        public void CancelRequest()
+        {
+            Safety.MainThreadDispatcher.AssertOnMainThread();
+
+            if (!requestActive)
+                return;
+
+            requestActive = false;
+            requestVersion++;
+
+            StopRequestRoutine();
+        }
+
+        public void RequestIn(TimeSpan time, bool attemptFulfill = true)
+        {
+            Safety.MainThreadDispatcher.AssertOnMainThread();
+
+            if (requestActive)
+                return;
+
+            requestVersion++;
+            StopRequestRoutine();
+
+            if (time <= TimeSpan.Zero)
+                throw new ArgumentException("The given timespan must be greater than 0.", nameof(time));
+
+            int version = requestVersion;
+            requestRoutine = host.StartCoroutine(WaitThenRequest(version, time, attemptFulfill));
+        }
+
+        public void TryFulfillRequest()
+        {
+            Safety.MainThreadDispatcher.AssertOnMainThread();
+
+            if (!requestActive || requestInput.version != requestVersion)
+                return;
+
+            bool success = fulfiller(requestInput.input);
+
+            if (success)
+            {
+                requestActive = false;
+                requestVersion++;
+                StopRequestRoutine();
+            }
+        }
+
+        private IEnumerator WaitThenRequest(int version, TimeSpan length, bool attemptFulfill)
+        {
+            yield return new WaitForSecondsRealtime((float)length.TotalSeconds);
+
+            if (version != requestVersion)
+                yield break;
+
+            requestRoutine = null;
+
+            Request(requestInput.input, attemptFulfill);
+        }
+
+        private void StopRequestRoutine()
+        {
+            if (requestRoutine is not null)
+            {
+                host.StopCoroutine(requestRoutine);
+                requestRoutine = null;
+            }
+        }
+    }
 }
