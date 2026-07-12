@@ -1,6 +1,6 @@
-<vertical pref-width='100' pref-height='70' child-expand-width='false' child-expand-height='false' pad='2' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-  <vertical pref-width='100' pref-height='70'>
-    <scrollable-container-2d id='ScrollContainer' bg='round-rect-panel' viewport-width='100' viewport-height='70'>
+<vertical pref-width='~ViewportWidth' pref-height='~ViewportHeight' child-expand-width='false' child-expand-height='false' pad='2' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+  <vertical pref-width='~ViewportWidth' pref-height='~ViewportHeight'>
+    <scrollable-container-2d id='ScrollContainer' bg='round-rect-panel' viewport-width='~ViewportWidth' viewport-height='~ViewportHeight'>
       <vertical id='NodeContainer' pref-width='100' pref-height='100' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'/>
     </scrollable-container-2d>
   </vertical>

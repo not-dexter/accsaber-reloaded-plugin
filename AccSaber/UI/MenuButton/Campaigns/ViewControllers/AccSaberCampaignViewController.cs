@@ -276,11 +276,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             get;
             set
             {
-                if (value != field)
-                {
-                    field = value;
-                    NotifyPropertyChanged();
-                }
+                field = value;
+                NotifyPropertyChanged();
             }
         }
 
@@ -715,6 +712,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             CampaignProgressVal = completion;
 
+            _campaignMapViewController.ScrollToNode(map.Id);
+
 #if NEW_VERSION
             AudioClip? previewAudio = withSound ? await CurrentBeatMapLevel.previewMediaData.GetPreviewAudioClip() : null;
 
@@ -781,7 +780,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 _lastUpdate = now;
 
-                bool completed = CurrentMap.RequirementValue <= CampaignProgressVal.Progress, completedNow = CurrentMap.RequirementValue <= val;
+                bool completed = CurrentMap.RequirementValue <= CampaignProgressVal.Progress;
                 CampaignProgressVal = new(val, CurrentMap.RequirementValue <= val ? CompletionStatus.Complete : CompletionStatus.Unlocked);
                 _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id] = CampaignProgressVal;
 
@@ -792,7 +791,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 #if NEW_VERSION
                 if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                    SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
+                    SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal, false);
 #else
                 if (CurrentMap is not null && CurrentBeatMapLevel is not null)
                     SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal, false);

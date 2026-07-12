@@ -71,6 +71,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly GameObject NodeContainer = null!;
 
 
+        [UIValue(nameof(ViewportWidth))]
+        public const float ViewportWidth = 100f;
+
+        [UIValue(nameof(ViewportHeight))]
+        public const float ViewportHeight = 70f;
+
 
         [UIAction("#post-parse")]
         private void PostParse()
@@ -222,6 +228,45 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             UpdateContainerValues(false);
 
             RebuildArrows();
+        }
+        public void ScrollToNode(Guid nodeId)
+        {
+            CampaignMapNode? node = campaignMapNodes.FirstOrDefault(node => node.Map.Id == nodeId);
+
+            if (node is null)
+            {
+                Plugin.Log.Warn($"No node of id \"{nodeId}\" found.");
+                return;
+            }
+
+            ScrollRect scrollableContainer = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
+
+            Vector2 viewSize = new(ViewportWidth, ViewportHeight);
+            Vector2 actualSize = scrollableContainer.content.sizeDelta;
+            Vector2 trueNodePos = new(node.NodeXPos + actualSize.x / 2f, node.NodeYPos + actualSize.y / 2f);
+
+#if PRINT_DEBUG
+            Plugin.Log.Info($"viewSize = {viewSize}, actualSize = {actualSize}, node size = {trueNodePos}");
+#endif
+
+            if (trueNodePos.x >= actualSize.x - viewSize.x / 2f)
+                scrollableContainer.horizontalScrollbar.value = 1f;
+            else if (trueNodePos.x <= viewSize.x / 2f)
+                scrollableContainer.horizontalScrollbar.value = 0f;
+            else
+                scrollableContainer.horizontalScrollbar.value =
+                    (trueNodePos.x - viewSize.x / 2f) / (actualSize.x - viewSize.x);
+
+            if (trueNodePos.y >= actualSize.y - viewSize.y / 2f)
+                scrollableContainer.verticalScrollbar.value = 1f;
+            else if (trueNodePos.y <= viewSize.y / 2f)
+                scrollableContainer.verticalScrollbar.value = 0f;
+            else
+                scrollableContainer.verticalScrollbar.value =
+                    (trueNodePos.y - viewSize.y / 2f) / (actualSize.y - viewSize.y);
+#if PRINT_DEBUG
+            Plugin.Log.Info($"Final scroll percent = ({scrollableContainer.horizontalScrollbar.value * 100f:N2}%, {scrollableContainer.verticalScrollbar.value * 100f:N2}%)");
+#endif
         }
         private void RebuildArrows()
         {
@@ -389,8 +434,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         public void MarkNodeAsComplete(Guid id)
         {
-            if (currentCampaign is null || currentCampaign.Difficulties is null || !CampaignProgress.UnlockedItems.Contains(id))
+            if (currentCampaign is null || currentCampaign.Difficulties is null)
+            {
+                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete as the current campaign is null!");
+                Plugin.Log.Debug($"currentCampaign null? {currentCampaign is null}, currentCampaign.Difficulties null? {currentCampaign?.Difficulties is null}");
                 return;
+            }
+            if (!CampaignProgress.UnlockedItems.Contains(id))
+            {
+                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete, it is not marked as unlocked!");
+                if (CampaignProgress.PlayerValues.TryGetValue(id, out var value))
+                    Plugin.Log.Debug(value.ToString());
+                else
+                    Plugin.Log.Warn($"The id is also not found in the playerValues dictionary!");
+                return;
+            }
 
             CampaignProgress.UnlockedItems.Remove(id);
             CampaignProgress.CompletedItems.Add(id);
@@ -898,8 +956,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         internal class CampaignMapNode : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
         {
+            private static event Action? UpdateMapCovers;
+
             private bool postParse = false;
             private Coroutine? imageRoutine;
+            private readonly AsyncLock onClickLock = new();
 
             private readonly AccSaberCampaignFlow campaignFlow;
             private readonly AccSaberCampaignMapViewController parent;
@@ -993,6 +1054,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
 
                 offsetData.OnScaleChanged += OnOffsetDataChanged;
+                UpdateMapCovers += UpdateCover;
             }
 
 
@@ -1020,8 +1082,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     Mask m = CoverContainer.AddComponent<Mask>();
                     m.showMaskGraphic = false;
 
-                    imageRoutine = threadDispatcher.StartCoroutine(CoverImage.LoadCoverImageRoutine(Hash, Map.CoverUrl));
-
                     CompletionImage.raycastTarget = false;
 
                     LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
@@ -1029,6 +1089,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     mainLayout.preferredHeight = NodeHeight;
 
                     postParse = true;
+                    UpdateCover();
                     UpdateProgress();
 #if PRINT_DEBUG
                 Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
@@ -1043,43 +1104,63 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIAction("OnClicked")]
             private async void OnClicked()
             {
-#if NEW_VERSION
-                BeatmapLevel? level = Loader.GetLevelByHash(Hash);
-#else
-                IBeatmapLevel? level = (await Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(LevelUtils.header + Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
-#endif
+                AsyncLock.Releaser? locker = await onClickLock.TryLockAsync();
 
-                if (level is null)
+                if (locker is null)
+                    return;
+
+                using (locker.Value)
                 {
-                    Plugin.Log.Warn($"Cannot find level by hash \"{Hash}\", downloading...");
-                    level = await levelUtils.DownloadSong(serialUtils.CachedMaps[Hash]);
+#if NEW_VERSION
+                    BeatmapLevel? level = Loader.GetLevelByHash(Hash);
+#else
+                    IBeatmapLevel? level = (await Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(LevelUtils.header + Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
+#endif
 
                     if (level is null)
                     {
-                        Plugin.Log.Critical("Level cannot be downloaded!");
-                        return;
+                        Plugin.Log.Warn($"Cannot find level by hash \"{Hash}\", downloading...");
+
+                        level = await levelUtils.DownloadSong(serialUtils.CachedMaps[Hash]);
+
+                        UpdateMapCovers?.Invoke();
+
+                        if (level is null)
+                        {
+                            Plugin.Log.Critical("Level cannot be downloaded!");
+                            return;
+                        }
                     }
-                }
 
 #if NEW_VERSION
-                IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
+                    IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
+                    BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
+                    BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty)));
 
-                BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
+                    campaignFlow.ShowLeaderboard(key);
 
-                BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty)));
-                
-                campaignFlow.ShowLeaderboard(key);
-
-                campaignController.SetMission(Map, key, level, Progress);
+                    campaignController.SetMission(Map, key, level, Progress);
 #else
-                BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty));
-                IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
-                IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == mapDiff);
+                    BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty));
+                    IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
+                    IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == mapDiff);
 
-                campaignFlow.ShowLeaderboard(diff);
+                    campaignFlow.ShowLeaderboard(diff);
 
-                campaignController.SetMission(Map, diff, Progress);
+                    campaignController.SetMission(Map, diff, Progress);
 #endif
+                }
+            }
+
+            private void UpdateCover()
+            {
+                if (!postParse)
+                    return;
+
+                if (imageRoutine is not null)
+                    threadDispatcher.StopCoroutine(imageRoutine);
+
+                imageRoutine = threadDispatcher.StartCoroutine(CoverImage.LoadCoverImageRoutine(Hash, Map.CoverUrl));
             }
 
             public void UpdateProgress()
@@ -1121,6 +1202,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public void Dispose()
             {
                 OffsetData.OnScaleChanged -= OnOffsetDataChanged;
+                UpdateMapCovers -= UpdateCover;
 
                 if (imageRoutine is not null)
                 {
