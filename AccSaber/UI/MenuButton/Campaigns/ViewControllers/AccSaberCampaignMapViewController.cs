@@ -25,11 +25,6 @@ using UnityEngine.UI;
 using Zenject;
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 
-
-#if !NEW_VERSION
-using System.Threading;
-#endif
-
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     internal class AccSaberCampaignMapViewController : IDisposable
@@ -1204,11 +1199,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 OffsetData.OnScaleChanged -= OnOffsetDataChanged;
                 UpdateMapCovers -= UpdateCover;
 
-                if (imageRoutine is not null)
+                try
                 {
-                    threadDispatcher.StopCoroutine(imageRoutine);
-                    imageRoutine = null;
+                    if (imageRoutine is not null)
+                    {
+                        threadDispatcher.StopCoroutine(imageRoutine);
+                        imageRoutine = null;
+                    }
                 }
+                catch (Exception) { } // this is just in case the coroutine contains something that is null, to prevent the error from propagating.
 
                 UnityEngine.Object.Destroy(Container);
             }

@@ -10,9 +10,13 @@
     <vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-milestone-tab'>
       <tab-selector tab-tag='milestone-tabs' select-cell='milestone-tab-selected'/>
     </vertical>
+    <vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-events-tab'>
+      <tab-selector tab-tag='events-tabs' select-cell='events-tab-selected'/>
+    </vertical>
 
     <tab tags='category-tabs' tab-name='Missions'/>
     <tab tags='category-tabs' tab-name='Milestones'/>
+    <tab tags='category-tabs' tab-name='Events'/>
     
     <tab tags='milestone-tabs' tab-name='In Progress'/>
     <tab tags='milestone-tabs' tab-name='Completed'/>

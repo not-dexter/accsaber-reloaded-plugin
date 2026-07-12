@@ -1009,6 +1009,8 @@ namespace AccSaber.UI.ViewControllers
                         if (requestedDisplayType != DisplayType)
                             yield break;
 
+                        refreshRequester.CancelRequest();
+
                         currentPage = requestedPage;
                         nextPage = requestedPage + 1;
 

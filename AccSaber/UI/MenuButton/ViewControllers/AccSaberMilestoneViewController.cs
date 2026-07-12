@@ -32,6 +32,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private bool _isLoading;
 		private CategoryTab _currentTab;
         private MilestoneTab _currentMilestoneTab = 0;
+        private int _currentEventWeekTab = 0;
 
         private CategoryTab CurrentTab
         {
@@ -95,6 +96,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("is-mission-tab")]
         private bool IsMissionTab => CurrentTab == CategoryTab.Missions;
 
+        [UIValue("is-events-tab")]
+        private bool IsEventsTab => CurrentTab == CategoryTab.Events;
+
         [UIValue("container-offset")]
         private float ContainerOffset => CurrentTab == CategoryTab.Missions ? 7.5f : 0f;
 
@@ -105,7 +109,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private enum CategoryTab 
         {
             Missions,
-			Milestones
+			Milestones,
+            Events
 		}
         private enum MilestoneTab
         {
@@ -146,6 +151,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _currentMilestoneTab = (MilestoneTab)index;
 
             _ = SetMilestones(_currentMilestoneTab);
+        }
+
+        [UIAction("events-tab-selected")]
+        private void EventsTabSelected(SegmentedControl segmentedControl, int index)
+        {
+            _currentEventWeekTab = index;
         }
 
         [UIAction("milestone-selected")]
@@ -203,10 +214,17 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public void UpdateTabs()
         {
-            if (IsMilestoneTab)
-                _ = SetMilestones(_currentMilestoneTab);
-            else
-                mc.ShowMissions();
+            switch (CurrentTab)
+            {
+                case CategoryTab.Milestones:
+                    _ = SetMilestones(_currentMilestoneTab);
+                    break;
+                case CategoryTab.Missions:
+                    mc.ShowMissions();
+                    break;
+                case CategoryTab.Events:
+                    break;
+            }
         }
         public void StopTimer()
         {

@@ -388,14 +388,24 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private void ZoomIn()
         {
             if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor < 0.75f)
+            {
                 _campaignMapViewController.UpdateScalingDelta(0.025f);
+
+                if (InMap && CurrentMap is not null)
+                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
+            }
         }
 
         [UIValue("ZoomOut")]
         private void ZoomOut()
         {
             if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor > 0.025f)
+            {
                 _campaignMapViewController.UpdateScalingDelta(-0.025f);
+
+                if (InMap && CurrentMap is not null)
+                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
+            }
         }
 
         public void BackPressed()

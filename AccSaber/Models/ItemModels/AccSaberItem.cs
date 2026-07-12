@@ -72,4 +72,14 @@ namespace AccSaber.Models.ItemModels
         }
 
     }
+
+    [UsedImplicitly]
+    internal class AccSaberItemReference : IModel
+    {
+        [JsonProperty("id")]
+        public Guid Id { get; set; }
+
+        [JsonProperty("name")]
+        public string Name { get; set; } = null!;
+    }
 }
