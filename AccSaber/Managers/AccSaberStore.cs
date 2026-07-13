@@ -759,6 +759,20 @@ namespace AccSaber.Managers
 
             return nodes;
         }
+        public IEnumerable<Guid> NodesSortedByProgression()
+        {
+            List<(int distance, Guid id)> list = [with(UnlockedItems.Count)];
+
+            foreach (Guid id in UnlockedItems)
+                list.Add((DistanceToHead(id), id));
+
+            TupleComparer<int, Guid> comp = new();
+
+            list.Sort(comp);
+            list.Reverse();
+
+            return list.Select(val => val.id);
+        }
         private int DistanceToHead(Guid id)
         {
             Queue<(INode<Guid> node, int depth)> nodesToCheck = [];

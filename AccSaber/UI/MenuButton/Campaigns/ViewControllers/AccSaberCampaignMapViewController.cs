@@ -473,7 +473,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return null;
             }
 
-            HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkAsComplete(id, progress)];
+            HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkAsComplete(id, progress), id];
 
             foreach (CampaignMapNode node in campaignMapNodes)
                 if (mapsToUpdate.Contains(node.Map.Id))

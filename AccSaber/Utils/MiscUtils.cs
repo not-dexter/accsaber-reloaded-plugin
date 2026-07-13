@@ -600,4 +600,8 @@ namespace AccSaber.Utils
             return outp;
         }
     }
+    public class TupleComparer<T1, T2> : IComparer<(T1, T2)> where T1 : IComparable<T1>
+    {
+        public int Compare((T1, T2) x, (T1, T2) y) => x.Item1.CompareTo(y.Item1);
+    }
 }

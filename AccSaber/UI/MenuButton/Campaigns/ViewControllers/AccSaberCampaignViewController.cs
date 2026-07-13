@@ -450,7 +450,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 _nextGotoMapId.Clear();
                 HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
-                foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.MostProgressedNodes().Where(id => !barrierIds.Contains(id)))
+                foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.NodesSortedByProgression().Where(id => !barrierIds.Contains(id)))
                     _nextGotoMapId.Enqueue(unlockedIds);
 
                 SetMaps(_currentCampaign);
@@ -823,7 +823,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     _nextGotoMapId.Clear();
                     HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
-                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.MostProgressedNodes().Where(id => !barrierIds.Contains(id)))
+                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.NodesSortedByProgression().Where(id => !barrierIds.Contains(id)))
                         _nextGotoMapId.Enqueue(unlockedIds);
 
                     if (newVal is null)
@@ -856,7 +856,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     _nextGotoMapId.Clear();
                     HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
-                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.MostProgressedNodes().Where(id => !barrierIds.Contains(id)))
+                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.NodesSortedByProgression().Where(id => !barrierIds.Contains(id)))
                         _nextGotoMapId.Enqueue(unlockedIds);
 
                     if (CurrentMap is not null)
