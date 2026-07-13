@@ -194,30 +194,28 @@ namespace AccSaber.Managers
             return newNewsEntries;
         }
 
-        public async Task<List<AccSaberCampaign>> GetCampaigns(string status = "")
+        public async Task<List<AccSaberCampaign>> GetCampaigns()
         {
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(HelpfulPaths.APAPI_CAMPAIGNS_ALL, AccsaberAPI.Throttler);
 
-            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(status != "" ? string.Format(HelpfulPaths.APAPI_CAMPAIGNS, status) : HelpfulPaths.APAPI_CAMPAIGNS_ALL, AccsaberAPI.Throttler);
+            return HandlePagedCampaign(content);
+        }
+        public async Task<List<AccSaberCampaign>> GetCampaigns(AccSaberCampaign.CampaignStatus status)
+        {
+            AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(string.Format(HelpfulPaths.APAPI_CAMPAIGNS, status), AccsaberAPI.Throttler);
 
-            if (content is null)
-                return [];
-
-            List<AccSaberCampaign> newCampaignEntries = [];
-
-            foreach (AccSaberCampaign newsCampaign in content.Content!)
-            {
-                newCampaignEntries.Add(newsCampaign);
-            }
-
-            return newCampaignEntries;
+            return HandlePagedCampaign(content);
         }
         public async Task<List<AccSaberCampaign>> GetCampaignsPaged(string status, int page = 0, int size = 10)
         {
-
             string call = string.Format(HelpfulPaths.APAPI_CAMPAIGNS_STATUS, status, page, size);
 
             AccSaberPagedContent<AccSaberCampaign>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberCampaign>>(call, AccsaberAPI.Throttler);
 
+            return HandlePagedCampaign(content);
+        }
+        private List<AccSaberCampaign> HandlePagedCampaign(AccSaberPagedContent<AccSaberCampaign>? content)
+        {
             if (content is null)
                 return [];
 
@@ -230,13 +228,13 @@ namespace AccSaber.Managers
 
             return newCampaignEntries;
         }
-        public async Task<CampaignProgress> GetCampaignProgress(Guid campaignId)
+        public async Task<CampaignProgress> GetCampaignProgress(AccSaberCampaign campaign)
         {
             //Plugin.Log.Info(await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler) ?? "null");
 
             List<JObject>? campaignList =
                 await APIHandler.CallAPI_Json<List<JObject>>(
-                    string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler);
+                    string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler);
 
             if (campaignList is null)
                 return default;
@@ -266,7 +264,7 @@ namespace AccSaber.Managers
                          (bool)(barrier["satisfied"] ?? false)
                          ))));
 
-            return new([with(diffValues.Concat(barrierValues))]);
+            return new([with(diffValues.Concat(barrierValues))], campaign);
         }
 
         public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 100)
@@ -644,10 +642,14 @@ namespace AccSaber.Managers
     {
         public readonly Dictionary<Guid, CampaignProgressValue> PlayerValues;
         public readonly HashSet<Guid> CompletedItems, UnlockedItems;
+        public readonly AcyclicGraph<Guid> Nodes;
+        public readonly HashSet<Guid> AndNodes;
 
-        public CampaignProgress(Dictionary<Guid, CampaignProgressValue> playerValues)
+        public CampaignProgress(Dictionary<Guid, CampaignProgressValue> playerValues, AcyclicGraph<Guid> nodes, IEnumerable<Guid> andNodes)
         {
             PlayerValues = playerValues;
+            Nodes = nodes;
+            AndNodes = [.. andNodes];
 
             CompletedItems = [];
             UnlockedItems = [];
@@ -664,6 +666,121 @@ namespace AccSaber.Managers
                         CompletedItems.Add(kvp.Key);
                         continue;
                 }
+        }
+        internal CampaignProgress(Dictionary<Guid, CampaignProgressValue> playerValues, AccSaberCampaign campaign) :
+            this(playerValues, new(campaign.Difficulties.Cast<INode<Guid>>().Concat(campaign.Barriers)), campaign.Difficulties.Where(map => map.PrerequisiteMode != "OR").Select(map => map.Id))
+        { }
+
+        internal HashSet<Guid> MarkAsComplete(Guid id, float progess)
+        {
+            if (!UnlockedItems.Contains(id))
+            {
+                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete, it is not marked as unlocked!");
+                if (PlayerValues.TryGetValue(id, out var value))
+                    Plugin.Log.Debug(value.ToString());
+                else
+                    Plugin.Log.Warn($"The id is also not found in the playerValues dictionary!");
+                return [];
+            }
+
+            if (!Nodes.NodeIdToNode.TryGetValue(id, out AcyclicGraph<Guid>.Node node))
+            {
+                Plugin.Log.Warn($"Cannot update id \"{id}\", it is not part of the graph!");
+                return [];
+            }
+
+            PlayerValues[id] = new(progess, CompletionStatus.Complete);
+
+            UnlockedItems.Remove(id);
+            CompletedItems.Add(id);
+
+            HashSet<Guid> outp = [];
+
+            foreach (AcyclicGraph<Guid>.Node nodeToUpdate in node.NextNodes)
+                if (UpdateNode(nodeToUpdate))
+                    outp.Add(nodeToUpdate.Current.Id);
+
+            return outp;
+        }
+        private bool UpdateNode(AcyclicGraph<Guid>.Node node)
+        {
+            Guid id = node.Current.Id;
+
+            if (PlayerValues[id].Completion != CompletionStatus.Incomplete)
+                return false;
+
+            bool orMode = !AndNodes.Contains(id);
+            bool success = !orMode;
+
+            foreach (Guid prereqId in node.Current.InwardArrows)
+            {
+                if (CompletedItems.Contains(prereqId))
+                {
+                    if (orMode)
+                    {
+                        success = true;
+                        break;
+                    }
+                }
+                else if (!orMode)
+                {
+                    success = false;
+                    break;
+                }
+            }
+
+            if (success)
+            {
+                PlayerValues[id] = new(PlayerValues[id].Progress, CompletionStatus.Unlocked);
+                UnlockedItems.Add(id);
+            }
+
+            return success;
+        }
+        public IEnumerable<Guid> MostProgressedNodes()
+        {
+            int maxDistance = int.MinValue;
+            List<Guid> nodes = [];
+
+
+            foreach (Guid id in UnlockedItems)
+            {
+                int dist = DistanceToHead(id);
+
+                if (dist > maxDistance)
+                {
+                    maxDistance = dist;
+                    nodes.Clear();
+                }
+
+                if (dist >= maxDistance)
+                    nodes.Add(id);
+            }
+
+            return nodes;
+        }
+        private int DistanceToHead(Guid id)
+        {
+            Queue<(INode<Guid> node, int depth)> nodesToCheck = [];
+            IEnumerable<Guid> arrowIds = Nodes.NodeIdToNode[id].Current.InwardArrows;
+
+            foreach (Guid arrowId in arrowIds)
+                nodesToCheck.Enqueue((Nodes.NodeIdToNode[arrowId].Current, 1));
+
+            HashSet<Guid> heads = [.. Nodes.Heads.Select(n => n.Current.Id)];
+
+            while (nodesToCheck.Count > 0)
+            {
+                var (node, depth) = nodesToCheck.Dequeue();
+
+                if (heads.Contains(node.Id))
+                    return depth;
+
+                foreach (Guid arrowId in node.InwardArrows)
+                    nodesToCheck.Enqueue((Nodes.NodeIdToNode[arrowId].Current, depth + 1));
+            }
+
+            return -1;
         }
 
         public static CompletionStatus GetCompletionStatus(bool unlocked, bool complete)
@@ -690,5 +807,6 @@ namespace AccSaber.Managers
         }
 
         public record struct CampaignProgressValue(float Progress, CompletionStatus Completion);
+
     }
 }

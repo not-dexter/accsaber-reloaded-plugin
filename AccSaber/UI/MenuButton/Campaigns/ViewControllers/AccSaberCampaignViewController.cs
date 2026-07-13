@@ -14,6 +14,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -37,6 +38,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly List<CampaignMap> _diffCells = [];
+        private readonly Queue<Guid> _nextGotoMapId = [];
 
         private CampaignProgressValue CampaignProgressVal
         {
@@ -408,6 +410,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         }
 
+        [UIAction("GotoMap")]
+        private void GotoMap()
+        {
+            if (_currentCampaign is null || !InCampaign)
+                return;
+
+            Guid current = _nextGotoMapId.Dequeue();
+
+            _campaignMapViewController.ClickNode(current);
+
+            _nextGotoMapId.Enqueue(current);
+        }
+
         public void BackPressed()
         {
             _campaignFlow.HideLeaderboard();
@@ -424,7 +439,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             InCampaign = true;
             if (_currentCampaign is not null)
             {                  
-                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != "IN_PROGRESS")
+                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS)
                     _missionButton.SetButtonText("Start Campaign");
                 else
                     _missionButton.SetButtonText("Play");
@@ -432,6 +447,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
 
                 await _campaignMapViewController.SetCampaign(_currentCampaign);
+
+                _nextGotoMapId.Clear();
+                HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
+                foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.MostProgressedNodes().Where(id => !barrierIds.Contains(id)))
+                    _nextGotoMapId.Enqueue(unlockedIds);
 
                 SetMaps(_currentCampaign);
             }
@@ -448,7 +468,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (_currentCampaign is not null)
             {
-                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != "IN_PROGRESS")
+                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS)
                 {
                     if (await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
                         Plugin.Log.Error("Failed to start campaign!");
@@ -566,7 +586,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 List<AccSaberCampaign> tabCampaigns = CurrentTab switch
                 {
                     CategoryTab.Active => _activeCampaigns,
-                    CategoryTab.Curated => await _accSaberStore.GetCampaigns("CURATED"),
+                    CategoryTab.Curated => await _accSaberStore.GetCampaigns(AccSaberCampaign.CampaignStatus.CURATED),
                     CategoryTab.All => await _accSaberStore.GetCampaigns(),
                     CategoryTab.Completed => _activeCampaigns,
                     _ => throw new NotImplementedException(),
@@ -574,7 +594,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 foreach (var campaign in tabCampaigns)
                 {
-                    if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != "IN_PROGRESS") || (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != "COMPLETED"))
+                    if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS) ||
+                        (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.COMPLETED))
                         continue;
 
                     _campaignCells.Add(new CampaignCell(campaign));
@@ -783,19 +804,33 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 };
 
                 if (val < 0f)
+                {
+                    Plugin.Log.Warn("Cannot handle the campaign type that was completed.");
                     return; // I can only handle certain types, those I can't will be updated once websocket sends score.
+                }
 
                 if (CampaignProgressVal.Progress >= val)
+                {
+                    Plugin.Log.Info("Player did not beat old pb.");
                     return; // didn't beat old progress.
+                }
 
                 _lastUpdate = now;
 
-                bool completed = CurrentMap.RequirementValue <= CampaignProgressVal.Progress;
-                CampaignProgressVal = new(val, CurrentMap.RequirementValue <= val ? CompletionStatus.Complete : CompletionStatus.Unlocked);
-                _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id] = CampaignProgressVal;
+                if (CurrentMap.RequirementValue > CampaignProgressVal.Progress && CurrentMap.RequirementValue <= val)
+                {
+                    CampaignProgressValue? newVal = _campaignMapViewController.MarkNodeAsComplete(CurrentMap.Id, val);
 
-                if (!completed && MissionComplete)
-                    _campaignMapViewController.MarkNodeAsComplete(CurrentMap.Id);
+                    _nextGotoMapId.Clear();
+                    HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
+                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.MostProgressedNodes().Where(id => !barrierIds.Contains(id)))
+                        _nextGotoMapId.Enqueue(unlockedIds);
+
+                    if (newVal is null)
+                        Plugin.Log.Warn("Setting the campaign node to complete failed!");
+                    else
+                        CampaignProgressVal = newVal.Value;
+                }
 
                 _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
 
@@ -818,6 +853,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     _lastUpdate = DateTime.UtcNow;
 
                     await _campaignMapViewController.UpdateCampaign();
+
+                    _nextGotoMapId.Clear();
+                    HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
+                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.MostProgressedNodes().Where(id => !barrierIds.Contains(id)))
+                        _nextGotoMapId.Enqueue(unlockedIds);
 
                     if (CurrentMap is not null)
                         CampaignProgressVal = _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id];

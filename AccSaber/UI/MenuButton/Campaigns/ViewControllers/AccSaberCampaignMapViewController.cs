@@ -27,7 +27,7 @@ using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
-    internal class AccSaberCampaignMapViewController : IDisposable
+    internal class AccSaberCampaignMapViewController : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
     {
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
@@ -46,8 +46,24 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
 
-        public AccSaberCampaignOffsetData? CurrentOffsetData { get; private set; }
-        public CampaignProgress CampaignProgress { get; private set; }
+        public AccSaberCampaignOffsetData? CurrentOffsetData 
+        { 
+            get;
+            private set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            } 
+        }
+        public CampaignProgress CampaignProgress 
+        { 
+            get;
+            private set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        }
 
         public bool StickScrolling
         {
@@ -56,6 +72,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 field = value;
                 ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>().scrollSensitivity = value ? 2f : 0f;
+                NotifyPropertyChanged();
             }
         }
 
@@ -102,7 +119,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 currentCampaign = campaign;
 
-                Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign.Id)).Unwrap();
+                Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign)).Unwrap();
 
                 CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<AccSaberCampaignPositionable>().Concat(campaign.Barriers?.Cast<AccSaberCampaignPositionable>() ?? []));
 
@@ -194,8 +211,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (currentCampaign is null)
                 return;
 
-            currentCampaign = await store.GetCampaign(currentCampaign.Id, true);
-            CampaignProgress = await UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(currentCampaign.Id)).Unwrap();
+            async Task<(AccSaberCampaign campaign, CampaignProgress progress)> GetData()
+            {
+                AccSaberCampaign campaign = await store.GetCampaign(currentCampaign.Id, true);
+                return (campaign, await store.GetCampaignProgress(currentCampaign));
+            }
+
+            var data = await UnityMainThreadTaskScheduler.Factory.StartNew(GetData).Unwrap();
+
+            currentCampaign = data.campaign;
+            CampaignProgress = data.progress;
 
             UpdateDisplay();
         }
@@ -262,6 +287,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #if PRINT_DEBUG
             Plugin.Log.Info($"Final scroll percent = ({scrollableContainer.horizontalScrollbar.value * 100f:N2}%, {scrollableContainer.verticalScrollbar.value * 100f:N2}%)");
 #endif
+        }
+        public void ClickNode(Guid nodeId)
+        {
+            CampaignMapNode? node = campaignMapNodes.FirstOrDefault(node => node.Map.Id == nodeId);
+
+            if (node is null)
+            {
+                Plugin.Log.Warn($"No node of id \"{nodeId}\" found.");
+                return;
+            }
+
+            node.OnClick();
         }
         private void RebuildArrows()
         {
@@ -427,62 +464,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
-        public void MarkNodeAsComplete(Guid id)
+        public CampaignProgress.CampaignProgressValue? MarkNodeAsComplete(Guid id, float progress)
         {
             if (currentCampaign is null || currentCampaign.Difficulties is null)
             {
                 Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete as the current campaign is null!");
                 Plugin.Log.Debug($"currentCampaign null? {currentCampaign is null}, currentCampaign.Difficulties null? {currentCampaign?.Difficulties is null}");
-                return;
-            }
-            if (!CampaignProgress.UnlockedItems.Contains(id))
-            {
-                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete, it is not marked as unlocked!");
-                if (CampaignProgress.PlayerValues.TryGetValue(id, out var value))
-                    Plugin.Log.Debug(value.ToString());
-                else
-                    Plugin.Log.Warn($"The id is also not found in the playerValues dictionary!");
-                return;
+                return null;
             }
 
-            CampaignProgress.UnlockedItems.Remove(id);
-            CampaignProgress.CompletedItems.Add(id);
-
-            IEnumerable<AccSaberCampaignMap> relatedMaps = currentCampaign.Difficulties.Where(map => map.PrerequisiteIds.Contains(id));
-            HashSet<Guid> mapsToUpdate = [id];
-
-            foreach (AccSaberCampaignMap map in relatedMaps)
-            {
-                if (CampaignProgress.PlayerValues[map.Id].Completion != CampaignProgress.CompletionStatus.Incomplete)
-                    continue;
-
-                bool orMode = map.PrerequisiteMode == "OR";
-                bool success = !orMode;
-
-                foreach (Guid prereqId in map.PrerequisiteIds)
-                {
-                    if (CampaignProgress.CompletedItems.Contains(prereqId))
-                    {
-                        if (orMode)
-                        {
-                            success = true;
-                            break;
-                        }
-                    }
-                    else if (!orMode)
-                    {
-                        success = false;
-                        break;
-                    }
-                }
-
-                if (success)
-                {
-                    CampaignProgress.PlayerValues[map.Id] = new(CampaignProgress.PlayerValues[map.Id].Progress, CampaignProgress.CompletionStatus.Unlocked);
-                    CampaignProgress.UnlockedItems.Add(map.Id);
-                    mapsToUpdate.Add(map.Id);
-                }
-            }
+            HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkAsComplete(id, progress)];
 
             foreach (CampaignMapNode node in campaignMapNodes)
                 if (mapsToUpdate.Contains(node.Map.Id))
@@ -491,6 +482,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             foreach (CampaignMapBarrier node in campaignMapBarriers)
                 if (mapsToUpdate.Contains(node.Barrier.Id))
                     node.UpdateProgress();
+
+            return CampaignProgress.PlayerValues[id];
         }
 
         private static bool TryGetPerpendicularBarrierRotation(List<Vector2> arrowDirections, out Quaternion rotation)
@@ -1096,8 +1089,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
 
-            [UIAction("OnClicked")]
-            private async void OnClicked()
+            [UIAction("OnClick")]
+            internal async void OnClick()
             {
                 AsyncLock.Releaser? locker = await onClickLock.TryLockAsync();
 

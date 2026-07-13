@@ -45,11 +45,12 @@
           <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
         </vertical>
 	  </vertical>
-      <vertical>
-        <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' active='~in-campaign' />
+      <vertical active='~in-campaign'>
+        <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
         <horizontal>
-          <button text='Zoom In' on-click='ZoomIn' active='~in-campaign'/>
-          <button text='Zoom Out' on-click='ZoomOut' active='~in-campaign'/>
+          <button text='Zoom In' on-click='ZoomIn' />
+          <button text='Go To Map' on-click='GotoMap' />
+          <button text='Zoom Out' on-click='ZoomOut' />
         </horizontal>
       </vertical>
       <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map' pad ='4' pad-bottom='2'>

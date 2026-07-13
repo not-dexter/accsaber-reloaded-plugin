@@ -196,7 +196,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                             MilestoneCache.Add(cell.data.MilestoneId, milestone);
                     }
 
-                    if (milestone is null || milestone.QuerySpec.Having is null || milestone.QuerySpec.Having.Operator is null || !milestone.QuerySpec.From.Equals("scores", System.StringComparison.OrdinalIgnoreCase))
+                    if (milestone is null || milestone.QuerySpec.Having is null || milestone.QuerySpec.Having.Operator is null || !milestone.QuerySpec.From.Equals("scores", StringComparison.OrdinalIgnoreCase))
                     {
                         await levelUtils.LoadPlaylist(cell.data.Category, CloseMenu, cell.UpdateStatus);
                         return;

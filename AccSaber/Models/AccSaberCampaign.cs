@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace AccSaber.Models
 {
-    internal class AccSaberCampaign<T> : IModel
+    internal class AccSaberCampaign<T> : IModel where T : Utils.Misc.INode<Guid> 
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -92,7 +92,7 @@ namespace AccSaber.Models
         public List<CampaignTags>? Tags { get; set; }
 
         [JsonProperty("difficulties")]
-        public List<T>? Difficulties { get; set; }
+        public List<AccSaberCampaignMap>? Difficulties { get; set; }
 
         [JsonProperty("barriers")]
         public List<AccSaberCampaignBarrier>? Barriers { get; set; }
@@ -101,7 +101,7 @@ namespace AccSaber.Models
         public List<AccSaberCampaignText>? Texts { get; set; } 
 
         [JsonIgnore]
-        public string? ProgressStatus { get; set; }
+        public UserCampaignProgress? ProgressStatus { get; set; }
 
         [JsonIgnore]
         public AccSaberCampaignOffsetData? OffsetData { get; set; }
@@ -113,10 +113,18 @@ namespace AccSaber.Models
             DRAFT, PUBLISHED, EDITING, CURATED
         }
 
-        // From: 
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignCompletionMode.java
         public enum CampaignCompletionMode
         {
             TERMINAL, ALL
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/UserCampaignStatus.java
+        public enum UserCampaignProgress
+        {
+            IN_PROGRESS,
+            COMPLETED,
+            ABANDONED
         }
     }
     internal class AccSaberCampaign : AccSaberCampaign<AccSaberCampaignMap>;
@@ -288,13 +296,16 @@ namespace AccSaber.Models
                 Size = size;
         }
     }
-    internal class AccSaberCampaignPositionablePrereq : AccSaberCampaignPositionable
+    internal class AccSaberCampaignPositionablePrereq : AccSaberCampaignPositionable, Utils.Misc.INode<Guid>
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
 
         [JsonProperty("prerequisiteCampaignDifficultyIds")]
         public virtual List<Guid> PrerequisiteIds { get; set; } = [];
+
+        [JsonIgnore]
+        public IEnumerable<Guid> InwardArrows => PrerequisiteIds;
     }
 
     internal class AccSaberCampaignMap : AccSaberCampaignPositionablePrereq
@@ -461,7 +472,7 @@ namespace AccSaber.Models
         public string Effects { get; set; } = null!;
     }
 
-    internal class AccSaberCampaignPaged<T> : IModel
+    internal class AccSaberCampaignPaged<T> : IModel where T : Utils.Misc.INode<Guid>
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -481,7 +492,16 @@ namespace AccSaber.Models
         public AccSaberCampaign Campaign { get; set; } = null!;
 
         [JsonProperty("progressStatus")]
-        public string? ProgressStatus { get; set; }
+        public AccSaberCampaign.UserCampaignProgress? ProgressStatus { get; set; }
+
+        [JsonProperty("startedAt")]
+        public DateTime StartedAt { get; set; }
+
+        [JsonProperty("completedAt")]
+        public DateTime? CompletedAt { get; set; }
+
+        [JsonProperty("completedDifficulties")]
+        public int CompletedDifficulties { get; set; } = 0;
     }
 
     internal class AccSaberCampaignNode
