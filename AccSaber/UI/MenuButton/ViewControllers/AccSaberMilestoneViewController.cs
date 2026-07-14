@@ -30,7 +30,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		private bool _parsed;
 		private bool _isLoading;
-		private CategoryTab _currentTab;
+        private bool _showEvent;
+        private CategoryTab _currentTab;
         private MilestoneTab _currentMilestoneTab = 0;
         private int _currentEventWeekTab = 0;
 
@@ -44,6 +45,25 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 NotifyPropertyChanged(nameof(IsMissionTab));
                 NotifyPropertyChanged(nameof(ContainerOffset));
                 NotifyPropertyChanged(nameof(ContainerWidth));
+            }
+        }
+
+        protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+        {
+            base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
+
+            if (firstActivation)
+            {
+                //fix some elements being out of bounds and impossible to interact with
+                RectTransform rectTransform = this.GetComponent<RectTransform>();
+                rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                rectTransform.pivot = new Vector2(0.5f, 0.5f);
+                rectTransform.sizeDelta = new Vector2(140f, 75f);
+                rectTransform.ForceUpdateRectTransforms(); 
+                rectTransform.anchoredPosition = Vector2.zero;
+                rectTransform.localPosition = Vector3.zero;
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rectTransform);
             }
         }
 
@@ -66,7 +86,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIObject("content-container")]
         private readonly GameObject _contentContainer = null!;
 
-		[UIComponent("milestone-list")]
+        [UIComponent("milestone-list")]
 		private readonly CustomCellListTableData _milestonesList = null!;
 
 		[UIValue("milestone-cells")]
@@ -97,7 +117,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool IsMissionTab => CurrentTab == CategoryTab.Missions;
 
         [UIValue("is-events-tab")]
-        private bool IsEventsTab => CurrentTab == CategoryTab.Events;
+        public bool IsEventsTab => CurrentTab == CategoryTab.Events;
 
         [UIValue("container-offset")]
         private float ContainerOffset => CurrentTab == CategoryTab.Missions ? 7.5f : 0f;
@@ -131,6 +151,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (!_milestonesList.TableView().canSelectSelectedCell)
                 _milestonesList.TableView().SetField("_canSelectSelectedCell", true);
 
+            mc.IsInEvent = false;
             CurrentTab = 0;
 
             _ = SetMilestones(0);
@@ -156,7 +177,18 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("events-tab-selected")]
         private void EventsTabSelected(SegmentedControl segmentedControl, int index)
         {
+            mc.IsInEvent = true;
             _currentEventWeekTab = index;
+        }
+
+        [UIAction("missions-tab-selected")]
+        private void MissionsTabSelected(SegmentedControl segmentedControl, int index)
+        {
+            if (index == 0)
+                mc.IsInEvent = false;
+            else
+                mc.IsInEvent = true;
+
         }
 
         [UIAction("milestone-selected")]

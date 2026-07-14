@@ -1,31 +1,58 @@
 ﻿<bg id='container'>
-  <horizontal pad='2' spacing='1.5' child-expand-width='false' active='~is-not-loading'>
-    <vertical pref-width='65' child-expand-height='false' bg='panel-top' skew='0'>
-      <horizontal child-expand-width='false' pref-height='10'>
-        <horizontal pad-left='2' pref-width='25'>
-          <text text='Daily' align='Left' font-size='5'/>
-        </horizontal>
-        <horizontal pad-right='2' pref-width='45'>
-          <text text='~daily-time' align='Right' font-size='4' word-wrapping='false'/>
-        </horizontal>
-      </horizontal>
-      <vertical pref-height='35'>
-        <my-custom-list id='daily-list' contents='daily-cells' visible-cells='2' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
-      </vertical>
-    </vertical>
-    <vertical pref-width='65' child-expand-height='false' bg='panel-top' skew='0'>
-      <horizontal child-expand-width='false' pref-height='10'>
-        <horizontal pad-left='2' pref-width='25'>
-          <text text='Weekly' align='Left' font-size='5'/>
-        </horizontal>
-        <horizontal pad-right='2' pref-width='45'>
-          <text id='weekly-time-text' text='~weekly-time' align='Right' word-wrapping='false'/>
-        </horizontal>
-      </horizontal>
-      <vertical pref-height='35'>
-        <my-custom-list id='weekly-list' contents='weekly-cells' visible-cells='3' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
-      </vertical>
-    </vertical>
-  </horizontal>
+	<vertical active='~not-in-event'>
+		<horizontal pad='2' spacing='1.5' child-expand-width='false' active='~is-not-loading'>
+			<vertical pref-width='65' child-expand-height='false' bg='panel-top' skew='0'>
+				<horizontal child-expand-width='false' pref-height='10'>
+					<horizontal pad-left='2' pref-width='25'>
+						<text text='Daily' align='Left' font-size='5'/>
+					</horizontal>
+					<horizontal pad-right='2' pref-width='45'>
+						<text text='~daily-time' align='Right' font-size='4' word-wrapping='false'/>
+					</horizontal>
+				</horizontal>
+				<vertical pref-height='35'>
+					<my-custom-list id='daily-list' contents='daily-cells' visible-cells='2' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
+				</vertical>
+			</vertical>
+			<vertical pref-width='65' child-expand-height='false' bg='panel-top' skew='0'>
+				<horizontal child-expand-width='false' pref-height='10'>
+					<horizontal pad-left='2' pref-width='25'>
+						<text text='Weekly' align='Left' font-size='5'/>
+					</horizontal>
+					<horizontal pad-right='2' pref-width='45'>
+						<text id='weekly-time-text' text='~weekly-time' align='Right' word-wrapping='false'/>
+					</horizontal>
+				</horizontal>
+				<vertical pref-height='35'>
+					<my-custom-list id='weekly-list' contents='weekly-cells' visible-cells='3' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
+				</vertical>
+			</vertical>
+		</horizontal>
+	</vertical>
+	<vertical active ='~is-in-event'>
+		<horizontal pad='2' spacing='1.5' child-expand-width='false' active='~is-not-loading'>
+			<vertical pref-width='55' pad='2' pref-height='45' child-expand-height='false' bg='panel-top' skew='0'>
+				<text id='event-title' text='~event-title' font-size='6' align='Left'/>
+				<text text='~event-duration' font-size='4' color='#22c55e' align='Left'/>
+				<text text='~event-current-week' font-size='3' color='#5e5973' align='Left'/>
+				<text id='event-description' text='~event-description' word-wrapping='true' font-size='3.5' color='grey' align='Left'/>
+			</vertical>
+			<vertical pref-width='75' child-expand-height='false' bg='panel-top' skew='0'>
+				<horizontal>
+					<horizontal pad='2' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+						<text text='~week-current' align='Left' font-size='5'/>
+					</horizontal>
+					<horizontal pref-width='30' pref-height='10'  vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+						<page-button id='event-prev' direction='Left' pref-width='3.5' on-click='OnEventPrev'/>
+						<text text='~week-pagnation' font-size='4.5' align='Center'/>
+						<page-button id='event-next' direction='Right' pref-width='3.5' on-click='OnEventNext' />
+					</horizontal>
+				</horizontal>
+				<vertical pref-height='35'>	
+					<custom-list id='event-list' contents='event-cells' stick-scrolling='true' visible-cells='2' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
+				</vertical>
+			</vertical>
+		</horizontal>
+	</vertical>
   <loading preserve-aspect='true' pref-height='30' active='~is-loading'/>
 </bg>

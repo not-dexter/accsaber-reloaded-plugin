@@ -270,6 +270,21 @@
         public const string APAPI_CAMPAIGN_PROGRESS = APAPI + "campaigns/me/progress?ids={0}"; //campaign_id
 
 
+        /// <summary>
+        /// Retrieves all live event entries.
+        /// </summary>
+        public const string APAPI_EVENTS_LIVE = APAPI + "events?state=upcoming"; //no params
+
+        /// <summary>
+        /// Retrieves specified event.
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: event_id.
+        /// </remarks>
+        public const string APAPI_EVENT = APAPI + "events/{0}"; //event_id
+
+        public const string APAPI_EVENT_ME = APAPI + "events/{0}/missions/me"; //event_id
+
         public const string APAPI_CURVE_AP = APAPI + "curves/acc00000-0000-0000-0000-000000000001"; // param entered already
 
         public const string APAPI_CURVE_WEIGHT = APAPI + "curves/acc00000-0000-0000-0000-000000000002"; // param entered already

@@ -33,12 +33,18 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     {
         private bool _isLoading, _parsed = false;
         private string _dailyTime = null!, _weeklyTime = null!;
+        private string _eventTitle = null!, _eventDuration = null!, _eventCurrentWeek = null!, _eventDescription = null!, _weekCurrent = null!, _weekPagnation = null!;
+        private int _currentWeek = 1;
         private DateTime _dailyRefreshDate, _weeklyRefreshDate, _lastUpdate = DateTime.UtcNow;
         private IEnumerator? _updateTimeRoutine;
+        private bool _isInEvent;
+        private List<AccSaberEvent> _liveEvents = null!;
+        private AccSaberEventResponse? _currentEvent = null!;
 
         private CancellationTokenSource? TimeUpdaterCanceller = null;
 
         private readonly AsyncLock _missionLock = new();
+        private readonly AsyncLock _eventLock = new();
 
         [UIComponent("container")] 
         private readonly Backgroundable _container = null!;
@@ -57,6 +63,27 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [UIComponent("weekly-time-text")]
         private readonly TextMeshProUGUI _weeklyTimeText = null!;
+
+        [UIComponent("event-description")]
+        private readonly TextMeshProUGUI _eventDescriptionText = null!;
+
+        [UIComponent("event-title")]
+        private readonly TextMeshProUGUI _eventTitleText = null!;
+
+        [UIComponent("event-list")]
+        private readonly CustomCellListTableData _eventList = null!;
+
+        [UIValue("event-cells")]
+        private readonly List<ICellDataSource> _eventCells = [];
+
+        [UIComponent("event-time-text")]
+        private readonly TextMeshProUGUI _eventTimeText = null!;
+
+        [UIComponent("event-prev")]
+        private readonly PageButton _eventPrev = null!;
+
+        [UIComponent("event-next")]
+        private readonly PageButton _eventNext = null!;
 
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
@@ -79,6 +106,24 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
+        [UIValue("is-in-event")]
+        public bool IsInEvent
+        {
+            get => _isInEvent;
+            set
+            {
+                _isInEvent = value;
+
+                if (value == true)
+                    _ = SetEventInfo();
+
+                NotifyPropertyChanged(nameof(IsInEvent));
+                NotifyPropertyChanged(nameof(NotInEvent));
+            }
+        }
+
+        [UIValue("not-in-event")]
+        private bool NotInEvent => !_isInEvent;
 
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !_isLoading;
@@ -101,6 +146,69 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 _weeklyTime = value;
                 NotifyPropertyChanged(nameof(WeeklyTime));
+            }
+        }
+
+        [UIValue("event-title")]
+        private string EventTitle
+        {
+            get => _eventTitle;
+            set
+            {
+                _eventTitle = value;
+                NotifyPropertyChanged(nameof(EventTitle));
+            }
+        }
+        [UIValue("event-duration")]
+        private string EventDuration
+        {
+            get => _eventDuration;
+            set
+            {
+                _eventDuration = value;
+                NotifyPropertyChanged(nameof(EventDuration));
+            }
+        }
+        [UIValue("event-current-week")]
+        private string EventCurrentWeek
+        {
+            get => _eventCurrentWeek;
+            set
+            {
+                _eventCurrentWeek = value;
+                NotifyPropertyChanged(nameof(EventCurrentWeek));
+            }
+        }
+        [UIValue("event-description")]
+        private string EventDescription
+        {
+            get => _eventDescription;
+            set
+            {
+                _eventDescription = value;
+                NotifyPropertyChanged(nameof(EventDescription));
+            }
+        }
+
+        [UIValue("week-current")]
+        private string WeekCurrent
+        {
+            get => _weekCurrent;
+            set
+            {
+                _weekCurrent = value;
+                NotifyPropertyChanged(nameof(WeekCurrent));
+            }
+        }
+
+        [UIValue("week-pagnation")]
+        private string WeekPagnation
+        {
+            get => _weekPagnation;
+            set
+            {
+                _weekPagnation = value;
+                NotifyPropertyChanged(nameof(WeekPagnation));
             }
         }
 
@@ -131,8 +239,111 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PopupSuccess(data);
         }
 
+        private int WeekPage
+        {
+            get => _currentWeek;
+            set
+            {
+                _currentWeek = value;
+                WeekPagnation = $"{_currentWeek}/4";
+                WeekCurrent = $"Week {_currentWeek}";
+                _ = SetEventMissions();
+            }
+        }
+
+
+        [UIAction("OnEventPrev")]
+        private void OnEventPrev()
+        {
+            if (_currentEvent is not null)
+            {
+                _eventNext.enabled = true;
+
+                if (WeekPage > 1)
+                    WeekPage--;
+
+
+                if (WeekPage - 1 == 1)
+                    _eventPrev.enabled = false;
+
+                WeekPagnation = $"{WeekPage}/{4}";
+            }
+        }
+
+        [UIAction("OnEventNext")]
+        private void OnEventNext()
+        {
+            if (_currentEvent is not null)
+            {
+                _eventPrev.enabled = true;
+
+                if (WeekPage < _currentEvent.Event.TotalWeeks)
+                    WeekPage++;
+
+                if (WeekPage == _currentEvent.Event.TotalWeeks)
+                    _eventNext.enabled = false;
+
+
+                WeekPagnation = $"{WeekPage}/{4}";
+            }
+        }
+
+        public async Task SetEventInfo()
+        {
+            if (_currentEvent is not null)
+            {
+                EventTitle = _currentEvent.Event.Title;
+                EventDuration = $"Ends {MiscUtils.ToRelativeTime(_currentEvent.Event.EndsAt), 2}";
+                EventCurrentWeek = $"Week {_currentEvent.Event.CurrentWeek} of {_currentEvent.Event.TotalWeeks}";
+                EventDescription = _currentEvent.Event.Description;
+            } 
+        }
+
+        private async Task SetEventMissions()
+        {
+            if (_currentEvent is not null)
+            {
+                AsyncLock.Releaser? locker = await _eventLock.TryLockAsync();
+
+                if (locker is null)
+                    return;
+
+                using (locker.Value)
+                {
+                    _eventCells.Clear();
+
+                    await _playerData.LoadTask;
+
+                    try
+                    {
+                        var missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id);
+
+                        if (missions is null)
+                            return;
+
+                        foreach (var mission in missions)
+                        {
+
+                            if (mission.Mission.Week != WeekPage) 
+                                continue;
+
+                            AccSaberBasicDifficulty? targetDiff = mission.Current.TargetMapDifficultyId is null ?
+                            null : _serialHandler.CachedDifficulties[mission.Current.TargetMapDifficultyId.Value];
+
+                            _eventCells.Add(new MissionCell(mission.Current, targetDiff));
+                        }
+                        _eventList.Data = _weeklyCells; // no data to test with yet :(
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.Log.Error(ex);
+                    }
+                }
+            }
+        }
+
         [UIAction("#post-parse")]
-        private void PostParse()
+        private async void PostParse()
         {
             if (_parsed)
                 return;
@@ -141,7 +352,23 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _weeklyTimeText.fontSizeMin = 2.75f;
             _weeklyTimeText.fontSizeMax = 4f;
 
+            _eventTitleText.enableAutoSizing = true;
+            _eventTitleText.fontSizeMin = 2.75f;
+            _eventTitleText.fontSizeMax = 6f;
+
+            _eventDescriptionText.enableAutoSizing = true;
+            _eventDescriptionText.fontSizeMin = 2.75f;
+            _eventDescriptionText.fontSizeMax = 4f;
             _parsed = true;
+
+            _liveEvents = await _accSaberStore.GetEvents();
+
+            if (_liveEvents.Count > 0)
+            {
+                _currentEvent = await _accSaberStore.GetActiveEvent(_liveEvents.First().Id);
+                WeekPage = _currentEvent.Event.CurrentWeek + 1; // get rid of +1 whenever events are actually live
+            }
+
         }
 
         private void UpdateTimer()

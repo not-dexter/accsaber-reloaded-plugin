@@ -49,4 +49,94 @@ namespace AccSaber.Models
         [JsonProperty("totalWeeks")]
         public int TotalWeeks { get; set; }
     }
+
+    [UsedImplicitly]
+    internal class AccSaberEventMission : AccSaberMission
+    {
+        [JsonProperty("unlocksAt")]
+        public DateTime UnlocksAt { get; set; }
+
+        [JsonProperty("completableUntil")]
+        public DateTime CompletableUntil { get; set; }
+
+        [JsonProperty("week")]
+        public int Week { get; set; }
+
+        [JsonProperty("unlocked")]
+        public bool Unlocked { get; set; }
+
+        [JsonProperty("open")]
+        public bool Open { get; set; }
+
+        [JsonProperty("repeatable")]
+        public bool Repeatable { get; set; }
+
+        [JsonProperty("maxCompletions")]
+        public int MaxCompletions { get; set; }
+
+    }
+
+    [UsedImplicitly]
+    internal class EventMissionTargets
+    {
+        [JsonProperty("categoryId")]
+        public Guid CategoryId { get; set; }
+
+        [JsonProperty("mapDifficultyId")]
+        public Guid? MapDifficultyId { get; set; }
+
+        [JsonProperty("playerID")]
+        public string? PlayerID { get; set; } = null!;
+
+        [JsonProperty("acc")]
+        public float? Acc {  get; set; }
+
+        [JsonProperty("ap")]
+        public float? AP { get; set; }
+
+        [JsonProperty("score")]
+        public int? Score { get; set; }
+
+        [JsonProperty("count")]
+        public int? Count { get; set; }
+
+        [JsonProperty("xp")]
+        public int? XP { get; set; }
+
+        [JsonProperty("thresholdAP")]
+        public float? ThresholdAP { get; set; }
+
+        [JsonProperty("streak")]
+        public int? Streak { get; set; }
+    }
+
+
+    [UsedImplicitly]
+    internal class AccSaberEventResponse
+    {
+        [JsonProperty("event")]
+        public AccSaberEvent Event { get; set; } = null!;
+
+        [JsonProperty("missions")]
+        public List<AccSaberEventMission> Missions { get; set; } = null!;
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberEventMe
+    {
+        [JsonProperty("mission")]
+        public AccSaberEventMission Mission { get; set; } = null!;
+
+        [JsonProperty("current")]
+        public AccSaberEventMission Current {  get; set; } = null!;
+
+        [JsonProperty("completions")]
+        public int Completions {  get; set; }
+
+        [JsonProperty("completed")]
+        public bool Completed { get; set; }
+
+        [JsonProperty("weekLocked")]
+        public bool WeekLocked { get; set; }
+    }
 }

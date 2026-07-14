@@ -316,6 +316,50 @@ namespace AccSaber.Managers
             return Success;
         }
 
+        public async Task<List<AccSaberEvent>> GetEvents()
+        {
+            List<AccSaberEvent>? accSaberEvents = await APIHandler.CallAPI_Json<List<AccSaberEvent>>(HelpfulPaths.APAPI_EVENTS_LIVE, AccsaberAPI.Throttler);
+
+            if (accSaberEvents is null)
+            {
+                Plugin.Log.Debug("Events not found");
+                return [];
+            }
+
+            return accSaberEvents;
+        }
+
+        public async Task<AccSaberEventResponse> GetActiveEvent(Guid id)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_EVENT, id);
+
+            AccSaberEventResponse? accSaberEvent = await APIHandler.CallAPI_Json<AccSaberEventResponse>(call, AccsaberAPI.Throttler);
+
+            if (accSaberEvent is null)
+            {
+                Plugin.Log.Debug("Event not found");
+                return new AccSaberEventResponse();
+            }
+
+            return accSaberEvent;
+        }
+
+        public async Task<List<AccSaberEventMe>> GetEventMissions(Guid id)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_EVENT_ME, id);
+
+            List<AccSaberEventMe>? eventMissions = await APIHandler.CallAPI_Json<List<AccSaberEventMe>>(call, AccsaberAPI.Throttler);
+
+            if (eventMissions is null)
+            {
+                Plugin.Log.Debug("Missions not found");
+                return [];
+            }
+
+            return eventMissions;
+        }
+
+
         private async Task UpdateAccSaberInfo()
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();
