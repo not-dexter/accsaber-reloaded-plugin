@@ -44,6 +44,7 @@ namespace AccSaber.Installers
 
 			Container.BindInterfacesAndSelfTo<AccSaberCampaignViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberCampaignMapViewController>().AsSingle();
+			Container.Bind<AccSaberCampaignSettingsModalController>().AsSingle();
 			Container.Bind<AccSaberCampaignFlow>().FromNewComponentOnNewGameObject().AsSingle();
 
 			Container.Bind<AccSaberNewsViewController>().FromNewComponentAsViewController().AsSingle();

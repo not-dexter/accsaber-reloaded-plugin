@@ -45,6 +45,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapNode> campaignMapNodes = [];
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
+        private ScrollRect scrollRect = null!;
 
         public AccSaberCampaignOffsetData? CurrentOffsetData 
         { 
@@ -71,7 +72,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set
             {
                 field = value;
-                ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>().scrollSensitivity = value ? 2f : 0f;
+                scrollRect.scrollSensitivity = value ? ScrollSpeed : 0f;
+                NotifyPropertyChanged();
+            }
+        }
+        public float ScrollSpeed
+        {
+            get;
+            set
+            {
+                field = value;
+
+                if (StickScrolling)
+                    scrollRect.scrollSensitivity = value;
+
                 NotifyPropertyChanged();
             }
         }
@@ -96,6 +110,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (!parsed)
                 parsed = true;
 
+            scrollRect = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
+
+            ScrollSpeed = config.ScrollSpeed;
             StickScrolling = config.StickScrolling;
         }
 
@@ -197,13 +214,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             scrollLayout.preferredWidth = CurrentOffsetData.ContainerSize.x;
             scrollLayout.preferredHeight = CurrentOffsetData.ContainerSize.y;
 
-            ScrollRect scrollableContainer = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
-            scrollableContainer.content.sizeDelta = CurrentOffsetData.ContainerSize;
+            scrollRect.content.sizeDelta = CurrentOffsetData.ContainerSize;
 
             if (resetScrollbars)
             {
-                scrollableContainer.horizontalScrollbar.value = 0;
-                scrollableContainer.verticalScrollbar.value = 0;
+                scrollRect.horizontalScrollbar.value = 0;
+                scrollRect.verticalScrollbar.value = 0;
             }
         }
         public async Task UpdateCampaign()
@@ -251,6 +267,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         public void ScrollToNode(Guid nodeId)
         {
+            if (!parsed)
+            {
+                Plugin.Log.Warn("Cannot scroll to node before the map is loaded!");
+                return;
+            }
+
             CampaignMapNode? node = campaignMapNodes.FirstOrDefault(node => node.Map.Id == nodeId);
 
             if (node is null)
@@ -259,10 +281,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
             }
 
-            ScrollRect scrollableContainer = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
-
             Vector2 viewSize = new(ViewportWidth, ViewportHeight);
-            Vector2 actualSize = scrollableContainer.content.sizeDelta;
+            Vector2 actualSize = scrollRect.content.sizeDelta;
             Vector2 trueNodePos = new(node.NodeXPos + actualSize.x / 2f, node.NodeYPos + actualSize.y / 2f);
 
 #if PRINT_DEBUG
@@ -270,19 +290,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #endif
 
             if (trueNodePos.x >= actualSize.x - viewSize.x / 2f)
-                scrollableContainer.horizontalScrollbar.value = 1f;
+                scrollRect.horizontalScrollbar.value = 1f;
             else if (trueNodePos.x <= viewSize.x / 2f)
-                scrollableContainer.horizontalScrollbar.value = 0f;
+                scrollRect.horizontalScrollbar.value = 0f;
             else
-                scrollableContainer.horizontalScrollbar.value =
+                scrollRect.horizontalScrollbar.value =
                     (trueNodePos.x - viewSize.x / 2f) / (actualSize.x - viewSize.x);
 
             if (trueNodePos.y >= actualSize.y - viewSize.y / 2f)
-                scrollableContainer.verticalScrollbar.value = 1f;
+                scrollRect.verticalScrollbar.value = 1f;
             else if (trueNodePos.y <= viewSize.y / 2f)
-                scrollableContainer.verticalScrollbar.value = 0f;
+                scrollRect.verticalScrollbar.value = 0f;
             else
-                scrollableContainer.verticalScrollbar.value =
+                scrollRect.verticalScrollbar.value =
                     (trueNodePos.y - viewSize.y / 2f) / (actualSize.y - viewSize.y);
 #if PRINT_DEBUG
             Plugin.Log.Info($"Final scroll percent = ({scrollableContainer.horizontalScrollbar.value * 100f:N2}%, {scrollableContainer.verticalScrollbar.value * 100f:N2}%)");
@@ -1362,10 +1382,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private void UpdateTextPos()
             {
-                if (textRt == null || barrierRt == null)
-                {
+                if (textRt is null || barrierRt is null)
                     return;
-                }
 
                 Vector2 textSize = textRt.sizeDelta;
 

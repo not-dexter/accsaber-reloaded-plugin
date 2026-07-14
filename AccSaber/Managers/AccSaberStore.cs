@@ -666,6 +666,8 @@ namespace AccSaber.Managers
                         CompletedItems.Add(kvp.Key);
                         continue;
                 }
+
+            //Plugin.Log.Info(nodes.ToString());
         }
         internal CampaignProgress(Dictionary<Guid, CampaignProgressValue> playerValues, AccSaberCampaign campaign) :
             this(playerValues, new(campaign.Difficulties.Cast<INode<Guid>>().Concat(campaign.Barriers)), campaign.Difficulties.Where(map => map.PrerequisiteMode != "OR").Select(map => map.Id))
@@ -737,15 +739,25 @@ namespace AccSaber.Managers
 
             return success;
         }
-        public IEnumerable<Guid> MostProgressedNodes()
+        public IEnumerable<Guid> MostProgressedNodes(CompletionStatus status)
         {
             int maxDistance = int.MinValue;
             List<Guid> nodes = [];
 
-
-            foreach (Guid id in UnlockedItems)
+            IEnumerable<Guid> ids = status switch
             {
-                int dist = DistanceToHead(id);
+                CompletionStatus.Incomplete => PlayerValues.Keys,
+                CompletionStatus.Unlocked => UnlockedItems,
+                CompletionStatus.Complete => CompletedItems,
+                _ => throw new ArgumentException("Given argument is not valid!")
+            };
+
+            foreach (Guid id in ids)
+            {
+                if (!Nodes.NodeIdToNode.TryGetValue(id, out var value))
+                    continue;
+
+                int dist = value.DistanceToHead;
 
                 if (dist > maxDistance)
                 {
@@ -759,42 +771,27 @@ namespace AccSaber.Managers
 
             return nodes;
         }
-        public IEnumerable<Guid> NodesSortedByProgression()
+        public IEnumerable<Guid> NodesSortedByProgression(CompletionStatus status)
         {
-            List<(int distance, Guid id)> list = [with(UnlockedItems.Count)];
+            ICollection<Guid> ids = status switch
+            {
+                CompletionStatus.Incomplete => PlayerValues.Keys,
+                CompletionStatus.Unlocked => UnlockedItems,
+                CompletionStatus.Complete => CompletedItems,
+                _ => throw new ArgumentException("Given argument is not valid!")
+            };
 
-            foreach (Guid id in UnlockedItems)
-                list.Add((DistanceToHead(id), id));
 
-            TupleComparer<int, Guid> comp = new();
+            List<(int distance, Guid id)> list = [with(ids.Count)];
 
-            list.Sort(comp);
+            foreach (Guid id in ids)
+                if (Nodes.NodeIdToNode.TryGetValue(id, out var value))
+                    list.Add((value.DistanceToHead, id));
+
+            list.Sort();
             list.Reverse();
 
             return list.Select(val => val.id);
-        }
-        private int DistanceToHead(Guid id)
-        {
-            Queue<(INode<Guid> node, int depth)> nodesToCheck = [];
-            IEnumerable<Guid> arrowIds = Nodes.NodeIdToNode[id].Current.InwardArrows;
-
-            foreach (Guid arrowId in arrowIds)
-                nodesToCheck.Enqueue((Nodes.NodeIdToNode[arrowId].Current, 1));
-
-            HashSet<Guid> heads = [.. Nodes.Heads.Select(n => n.Current.Id)];
-
-            while (nodesToCheck.Count > 0)
-            {
-                var (node, depth) = nodesToCheck.Dequeue();
-
-                if (heads.Contains(node.Id))
-                    return depth;
-
-                foreach (Guid arrowId in node.InwardArrows)
-                    nodesToCheck.Enqueue((Nodes.NodeIdToNode[arrowId].Current, depth + 1));
-            }
-
-            return -1;
         }
 
         public static CompletionStatus GetCompletionStatus(bool unlocked, bool complete)

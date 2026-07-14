@@ -32,7 +32,7 @@ namespace AccSaber.UI.ViewControllers
         {
             if (!_parsed)
             {
-                VersionUtils.BSMLParser_Instance.Parse(Utilities.GetResourceContent(Assembly.GetExecutingAssembly(), ResourcePaths.LEADERBOARD_SETTINGS_MODAL), parentTransform.gameObject, this);
+                VersionUtils.Parse(ResourcePaths.LEADERBOARD_SETTINGS_MODAL, parentTransform.gameObject, this);
                 _modalView.name = "LeaderboardSettingsModalController";
                 
                 _parsed = true;

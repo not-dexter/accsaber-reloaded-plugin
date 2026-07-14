@@ -93,6 +93,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly PluginConfig _config = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
+        [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
         [Inject] private readonly SongPreviewPlayer _songPreviewPlayer = null!;
@@ -413,7 +414,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIAction("GotoMap")]
         private void GotoMap()
         {
-            if (_currentCampaign is null || !InCampaign)
+            if (_currentCampaign is null || !InCampaign || _nextGotoMapId.Count == 0)
                 return;
 
             Guid current = _nextGotoMapId.Dequeue();
@@ -421,6 +422,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignMapViewController.ClickNode(current);
 
             _nextGotoMapId.Enqueue(current);
+        }
+
+        [UIAction("ShowSettings")]
+        private void ShowSettings()
+        {
+            if (!_parsed)
+                return;
+
+            _campaignSettingsModalController.ShowModal(_campaignMapContainer.transform);
         }
 
         public void BackPressed()
@@ -448,10 +458,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 await _campaignMapViewController.SetCampaign(_currentCampaign);
 
-                _nextGotoMapId.Clear();
-                HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
-                foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.NodesSortedByProgression().Where(id => !barrierIds.Contains(id)))
-                    _nextGotoMapId.Enqueue(unlockedIds);
+                UpdateGoToMapButton();
 
                 SetMaps(_currentCampaign);
             }
@@ -569,6 +576,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CurrentTab = (CategoryTab)index;
         }
 #pragma warning restore IDE0060
+
+        private void UpdateGoToMapButton()
+        {
+            if (_currentCampaign is null)
+                return;
+
+            _nextGotoMapId.Clear();
+            HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
+            foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.NodesSortedByProgression(CompletionStatus.Unlocked).Where(id => !barrierIds.Contains(id)))
+                _nextGotoMapId.Enqueue(unlockedIds);
+        }
+
         public async Task UpdateTabs()
         {
             _campaignCells.Clear();
@@ -821,10 +840,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 {
                     CampaignProgressValue? newVal = _campaignMapViewController.MarkNodeAsComplete(CurrentMap.Id, val);
 
-                    _nextGotoMapId.Clear();
-                    HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
-                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.NodesSortedByProgression().Where(id => !barrierIds.Contains(id)))
-                        _nextGotoMapId.Enqueue(unlockedIds);
+                    UpdateGoToMapButton();
 
                     if (newVal is null)
                         Plugin.Log.Warn("Setting the campaign node to complete failed!");
@@ -854,10 +870,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     await _campaignMapViewController.UpdateCampaign();
 
-                    _nextGotoMapId.Clear();
-                    HashSet<Guid> barrierIds = [.. _currentCampaign.Barriers.Select(barrier => barrier.Id)];
-                    foreach (Guid unlockedIds in _campaignMapViewController.CampaignProgress.NodesSortedByProgression().Where(id => !barrierIds.Contains(id)))
-                        _nextGotoMapId.Enqueue(unlockedIds);
+                    UpdateGoToMapButton();
 
                     if (CurrentMap is not null)
                         CampaignProgressVal = _campaignMapViewController.CampaignProgress.PlayerValues[CurrentMap.Id];
@@ -873,9 +886,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         private void OnPluginConfigChanged(object sender, PropertyChangedEventArgs args)
         {
-            if (args.PropertyName.Equals(nameof(PluginConfig.StickScrolling)))
+            switch (args.PropertyName)
             {
-                _campaignMapViewController.StickScrolling = _config.StickScrolling;
+                case nameof(PluginConfig.StickScrolling):
+                    _campaignMapViewController.StickScrolling = _config.StickScrolling;
+                    break;
+                case nameof(PluginConfig.ScrollSpeed):
+                    _campaignMapViewController.ScrollSpeed = _config.ScrollSpeed;
+                    break;
             }
         }
 

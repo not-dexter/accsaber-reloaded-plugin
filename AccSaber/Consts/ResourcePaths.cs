@@ -66,6 +66,7 @@ namespace AccSaber.Consts
         public const string ACC_SABER_CAMPAIGN_VIEW = CAMPAIGN_BSML_PATH + ".AccSaberCampaignView.bsml";
         public const string ACC_SABER_CAMPAIGN_MAP_VIEW = CAMPAIGN_BSML_PATH + ".AccSaberCampaignMapView.bsml";
         public const string ACC_SABER_CAMPAIGN_MAP_CELL = CAMPAIGN_BSML_PATH + ".AccSaberCampaignMapCell.bsml";
+        public const string ACC_SABER_CAMPAIGN_SETTINGS_MODAL = CAMPAIGN_BSML_PATH + ".AccSaberCampaignSettingsModal.bsml";
 
         #endregion
         #region Data File Paths

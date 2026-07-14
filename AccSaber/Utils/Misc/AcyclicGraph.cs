@@ -58,15 +58,6 @@ namespace AccSaber.Utils.Misc
 
             List<Node> tailNodes = [with(tailIds.Count())];
 
-            foreach (T tailId in tailIds)
-            {
-                current = nodeIdToNodeInfo[tailId];
-
-                Node n = new(current, []);
-                nodeIdToNode.Add(tailId, n);
-                tailNodes.Add(n);
-            }
-
             while (idsToProcess.Count > 0)
             {
                 T currentId = idsToProcess.Dequeue();
@@ -92,25 +83,25 @@ namespace AccSaber.Utils.Misc
             List<Node> headNodes = [with(headIds.Count)];
 
             foreach (T headId in headIds)
-                headNodes.Add(CreateNode(headId, nodeNextNodes, nodeIdToNodeInfo));
+                headNodes.Add(CreateNode(headId, nodeNextNodes, nodeIdToNodeInfo, 0));
 
             Heads = headNodes;
 
-            return tailNodes;
+            return [.. tailIds.Select(id => nodeIdToNode.TryGetValue(id, out Node n) ? n : throw new Exception("Not all tail nodes were processed!"))];
         }
-        private Node CreateNode(T id, Dictionary<T, List<T>> nodeNextNodes, Dictionary<T, INode<T>> nodeIdToNodeInfo)
+        private Node CreateNode(T id, Dictionary<T, List<T>> nodeNextNodes, Dictionary<T, INode<T>> nodeIdToNodeInfo, int depth)
         {
             if (nodeIdToNode.TryGetValue(id, out Node outp))
                 return outp;
 
             if (!nodeNextNodes.TryGetValue(id, out List<T> nodes))
             {
-                outp = new(nodeIdToNodeInfo[id], []);
+                outp = new(nodeIdToNodeInfo[id], [], depth);
                 nodeIdToNode.Add(id, outp);
                 return outp;
             }
 
-            outp = new(nodeIdToNodeInfo[id], [.. nodes.Select(nodeId => CreateNode(nodeId, nodeNextNodes, nodeIdToNodeInfo))]);
+            outp = new(nodeIdToNodeInfo[id], [.. nodes.Select(nodeId => CreateNode(nodeId, nodeNextNodes, nodeIdToNodeInfo, depth + 1))], depth);
             nodeIdToNode.Add(id, outp);
             return outp;
         }
@@ -148,12 +139,12 @@ namespace AccSaber.Utils.Misc
             {
                 Stack<(Node node, int depth)> nodes = [with(heads[i].NextNodes.Select(node => (node, 1)))];
 
-                outp.AppendLine($"Head {i + 1}: {heads[i].Current.Id}");
+                outp.AppendLine($"Head {i + 1}: {heads[i].Current.Id}, depth = {heads[i].DistanceToHead}");
 
                 while (nodes.Count > 0)
                 {
                     var node = nodes.Pop();
-                    outp.AppendLine($"{new string('\t', node.depth)}Node: {node.node.Current.Id}");
+                    outp.AppendLine($"{new string('\t', node.depth)}Node: {node.node.Current.Id}, depth = {node.node.DistanceToHead}");
 
                     foreach (Node n in node.node.NextNodes)
                         nodes.Push((n, node.depth + 1));
@@ -169,7 +160,7 @@ namespace AccSaber.Utils.Misc
             Visited
         }
 
-        public record Node(INode<T> Current, IReadOnlyCollection<Node> NextNodes);
+        public record Node(INode<T> Current, IReadOnlyCollection<Node> NextNodes, int DistanceToHead);
     }
     public interface INode<T> where T : notnull, IEquatable<T>
     {

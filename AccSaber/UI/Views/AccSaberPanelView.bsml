@@ -1,4 +1,4 @@
-﻿<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
     <horizontal pref-width='87' anchor-pos-y='10.3' pref-height='7' horizontal-fit='PreferredSize' child-align='UpperLeft' child-expand-width='false' spacing='1'>
         <text text='~prompt-text' anchor-pos-x='0' anchor-pos-y='10' align='BottomLeft' font-size='3.5' italics='true' rich-text='true' />
         <loading-indicator active='~loading-active' preserve-aspect='true' pref-width='4' pref-height='4' />
@@ -16,5 +16,5 @@
             <text text='~map-complexity-text' font-size='3.25' italics='true' rich-text='true' />
         </vertical>
     </horizontal>
-	<clickable-image anchor-pos-x='35' src="#SettingsIcon" on-click="settings-clicked" preserve-aspect="true" size-delta-x="6" size-delta-y="6" pref-width="6" pref-height="6"/>
+	<clickable-image anchor-pos-x='35' src='#SettingsIcon' on-click='settings-clicked' preserve-aspect='true' size-delta-x='6' size-delta-y='6' pref-width='6' pref-height='6'/>
 </bg>
