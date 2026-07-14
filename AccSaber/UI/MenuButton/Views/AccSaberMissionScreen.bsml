@@ -48,8 +48,9 @@
 						<page-button id='event-next' direction='Right' pref-width='3.5' on-click='OnEventNext' />
 					</horizontal>
 				</horizontal>
-				<vertical pref-height='35'>	
-					<custom-list id='event-list' contents='event-cells' stick-scrolling='true' visible-cells='2' clickable-cells='true' cell-size='12' select-cell='on-cell-click' pref-width='65' pref-height='35'/>
+				<vertical pref-height='35' pref-width='65' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
+          <custom-list id='event-list' contents='event-cells' _children='~event-mission-list-content' stick-scrolling='true' show-scrollbar='true' clickable-cells='true' cell-size='12' visible-cells='3' select-cell='on-cell-click' list-width='65' active='~is-in-event'>
+          </custom-list>
 				</vertical>
 			</vertical>
 		</horizontal>

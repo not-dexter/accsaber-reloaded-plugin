@@ -51,7 +51,7 @@
           <button text='Zoom In' on-click='ZoomIn' />
           <button text='Go To Map' on-click='GotoMap' />
           <button text='Zoom Out' on-click='ZoomOut' />
-          <clickable-image src='#SettingsIcon' on-click='ShowSettings'/>
+          <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings'/>
         </horizontal>
       </vertical>
       <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map' pad ='4' pad-bottom='2'>

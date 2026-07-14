@@ -184,11 +184,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("missions-tab-selected")]
         private void MissionsTabSelected(SegmentedControl segmentedControl, int index)
         {
-            if (index == 0)
-                mc.IsInEvent = false;
-            else
-                mc.IsInEvent = true;
-
+            mc.IsInEvent = index == 1;
         }
 
         [UIAction("milestone-selected")]
