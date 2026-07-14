@@ -217,8 +217,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         } = null!;
 
-        [UIAction("on-cell-click")]
-        private void OnCellClick(TableView table, object data)
+        [UIAction("on-cell-click-event")]
+        private void OnCellClickEvent(TableView table, object data)
         {
             if (!PC.DisablePopups)
             {
@@ -244,6 +244,32 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 PopupSuccess(data);
         }
 
+        [UIAction("on-cell-click")]
+        private void OnCellClick(ICellDataSource data)
+        {
+            if (!PC.DisablePopups)
+            {
+                if (data is not MissionCell cell)
+                    return;
+
+                string prompt;
+
+                switch (cell.Data.Type)
+                {
+                    case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
+                        prompt = "Would you like to go to this map?";
+                        break;
+                    case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY or MissionType.PB_ABOVE_THRESHOLD or MissionType.XP_IN_WINDOW:
+                        prompt = "Would you like to go to this Playlist?";
+                        break;
+                    default: return;
+                }
+
+                _ = _asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator, prompt);
+            }
+            else
+                PopupSuccess(data);
+        }
         private int WeekPage
         {
             get;

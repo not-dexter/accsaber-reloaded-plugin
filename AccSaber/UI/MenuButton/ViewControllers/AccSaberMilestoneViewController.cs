@@ -59,7 +59,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                 rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 rectTransform.pivot = new Vector2(0.5f, 0.5f);
-                rectTransform.sizeDelta = new Vector2(140f, 75f);
+                rectTransform.sizeDelta = new Vector2(150f, 75f);
                 rectTransform.ForceUpdateRectTransforms(); 
                 rectTransform.anchoredPosition = Vector2.zero;
                 rectTransform.localPosition = Vector3.zero;
