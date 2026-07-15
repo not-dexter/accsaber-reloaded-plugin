@@ -359,19 +359,17 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         if (missions is null)
                             return;
 
-                        /*foreach (AccSaberEventMe mission in missions)
+                        foreach (AccSaberEventMe mission in missions)
                         {
 
-                            if (mission.Mission.Week != WeekPage) 
+                            if (mission.Mission.Week != WeekPage)
                                 continue;
 
-                            AccSaberBasicDifficulty? targetDiff = mission.Current.TargetMapDifficultyId is null ?
+                            AccSaberBasicDifficulty? targetDiff = mission.Current?.TargetMapDifficultyId is null ?
                             null : _serialHandler.CachedDifficulties[mission.Current.TargetMapDifficultyId.Value];
 
-                            _eventCells.Add(new MissionCell(mission.Current, targetDiff));
-                        }*/ // commented out until events are released
-                        _eventCells.AddRange(_weeklyCells); // temp until we have real missions
-                        _eventCells.AddRange(_weeklyCells); // temp until we have real missions
+                            _eventCells.Add(new MissionCell(mission.Current ?? mission.Mission, targetDiff));
+                        }
 
                         _eventList.TableView().ReloadData();
                     }

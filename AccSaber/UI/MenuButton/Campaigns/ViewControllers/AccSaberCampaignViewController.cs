@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,7 +34,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         private bool _parsed = false, _updateOnFinish = false;
         private bool _invalidateActive = true;
-        private DateTime _lastScoreSubmit = DateTime.MinValue, _lastUpdate = DateTime.MinValue;
+        private DateTime _lastScoreSubmit = DateTime.MinValue, _lastUpdate = DateTime.MinValue, _lastServerUpdate = DateTime.MinValue;
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly Queue<Guid> _nextGotoMapId = [];
@@ -864,13 +865,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         private void OnPlayerScore(AccSaberLeaderboardEntry score)
         {
+            _lastServerUpdate = DateTime.UtcNow;
             if (InCampaign && _currentCampaign is not null && _lastScoreSubmit > _lastUpdate)
             {
                 if (MapStarted)
                     _updateOnFinish = true;
                 else
                     UpdateCampaign();
-                    
             }
         }
         private void OnPlayerScoreSubmit(AccSaberScore score)
@@ -927,6 +928,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
 #endif
             }
+        }
+        public async Task WaitForServerUpdate(TimeSpan timeout = default)
+        {
+            if (timeout == default)
+                timeout = TimeSpan.FromSeconds(5);
+
+            DateTime now = DateTime.UtcNow;
+
+            if (_lastServerUpdate > _lastScoreSubmit && _lastServerUpdate > _lastUpdate)
+                return;
+
+            using CancellationTokenSource source = new();
+            source.CancelAfter(timeout);
+
+            try
+            {
+                while (_lastServerUpdate < now)
+                    await Task.Delay(500, source.Token);
+            }
+            catch (TaskCanceledException) when (source.IsCancellationRequested) { }
         }
         private void UpdateCampaign()
         {
