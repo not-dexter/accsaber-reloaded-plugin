@@ -1356,9 +1356,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 image.HighlightColor = (barrier.BorderColor ?? "#F00").BrightenColor(5).Color();
                 image.OnClickEvent += OnClick;
 
+
+#if V41
+                text = BeatSaberUI.CreateCurvedUIText(parent as RectTransform, "Hello");
+                text.alignment = TextAlignmentOptions.Center;
+                text.textWrappingMode = TextWrappingModes.NoWrap;
+#else
                 text = BeatSaberUI.CreateText(parent as RectTransform, "Hello", Vector2.zero);
                 text.alignment = TextAlignmentOptions.Center;
                 text.enableWordWrapping = false;
+#endif
 
                 textObj = text.gameObject;
                 textObj.name = "AccSaberCampaignBarrierText";

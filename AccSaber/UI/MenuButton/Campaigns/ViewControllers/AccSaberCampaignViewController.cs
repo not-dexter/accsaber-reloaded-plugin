@@ -492,7 +492,47 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             RecordPlayMethod?.Invoke(null, null);
 
-#if V40
+
+
+#if V44
+            _menuTransitionsHelper.StartStandardLevel(
+                gameMode: "Solo",
+                beatmapKey: CurrentBeatMapKey,
+                beatmapLevel: CurrentBeatMapLevel,
+                overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
+                playerOverrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                playerOverrideLightshowColors: _playerDataModel.playerData.colorSchemesSettings.ShouldOverrideLightshowColors(),
+                gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
+                playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
+                practiceSettings: null,
+                environmentsListModel: _environmentsListModel,
+                gameplayAdditionalInformation: new("buh"),
+                beforeSceneSwitchToGameplayCallback: null,
+                afterSceneSwitchToGameplayCallback: null,
+                levelFinishedCallback: LevelFinished,
+                levelRestartedCallback: null
+            );
+#elif V41
+            _menuTransitionsHelper.StartStandardLevel(
+                gameMode: "Solo",
+                beatmapKey: CurrentBeatMapKey,
+                beatmapLevel: CurrentBeatMapLevel,
+                overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
+                playerOverrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                playerOverrideLightshowColors: _playerDataModel.playerData.colorSchemesSettings.ShouldOverrideLightshowColors(),
+                gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
+                playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
+                practiceSettings: null,
+                environmentsListModel: _environmentsListModel,
+                backButtonText: "buh",
+                useTestNoteCutSoundEffects: false,
+                startPaused: false,
+                beforeSceneSwitchToGameplayCallback: null,
+                afterSceneSwitchToGameplayCallback: null,
+                levelFinishedCallback: LevelFinished,
+                levelRestartedCallback: null
+            );
+#elif V40
             _menuTransitionsHelper.StartStandardLevel(
                 gameMode: "Solo",
                 beatmapKey: CurrentBeatMapKey,
@@ -692,7 +732,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     CurrentMaxNoteCount = mapData.cuttableNotesCount;
 #if NEW_VERSION
                     nps = mapData.cuttableNotesCount / beatmapLevel.songDuration;
-                    njs = beatmapLevel.GetDifficultyBeatmapData(beatmapKey.beatmapCharacteristic, beatmapKey.difficulty).noteJumpMovementSpeed;
+                    njs = beatmapLevel.GetDifficultyBeatmapData(beatmapKey.beatmapCharacteristic, beatmapKey.difficulty)?.noteJumpMovementSpeed ?? 0f;
 #else
                     nps = CurrentMaxNoteCount / beatmapLevel.level.songDuration;
                     njs = beatmapLevel.noteJumpMovementSpeed;

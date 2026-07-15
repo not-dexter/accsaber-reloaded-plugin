@@ -34,7 +34,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     internal class AccSaberMissionScreen : SafeNotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
         private bool _parsed = false;
-        private string _dailyTime = null!, _weeklyTime = null!;
         private DateTime _dailyRefreshDate, _weeklyRefreshDate, _lastUpdate = DateTime.UtcNow;
         private IEnumerator? _updateTimeRoutine;
         private List<AccSaberEvent> _liveEvents = null!;
@@ -133,23 +132,23 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("daily-time")]
         private string DailyTime
         {
-            get => _dailyTime;
+            get;
             set
             {
-                _dailyTime = value;
-                NotifyPropertyChanged(nameof(DailyTime));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
         [UIValue("weekly-time")]
         private string WeeklyTime
         {
-            get => _weeklyTime;
+            get;
             set
             {
-                _weeklyTime = value;
-                NotifyPropertyChanged(nameof(WeeklyTime));
+                field = value;
+                NotifyPropertyChanged();
             }
-        }
+        } = null!;
 
         [UIValue("event-title")]
         private string EventTitle
@@ -217,6 +216,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         } = null!;
 
+#pragma warning disable IDE0060
         [UIAction("on-cell-click-event")]
         private void OnCellClickEvent(TableView table, object data)
         {
@@ -248,6 +248,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             else
                 PopupSuccess(data);
         }
+#pragma warning restore IDE0060
 
         [UIAction("on-cell-click")]
         private void OnCellClick(ICellDataSource data)

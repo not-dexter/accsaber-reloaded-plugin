@@ -13,6 +13,7 @@ using BeatSaberMarkupLanguage.FloatingScreen;
 
 #if V41
 using OculusStudios.Platform.Core;
+using System;
 #endif
 
 #if NEW_VERSION
