@@ -1304,6 +1304,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             // true  = Vector3.up end, aka flipped 180 degrees
             private bool textOnOppositeEnd;
 
+            public string ProgressText => text.text;
+
             public CampaignProgress.CampaignProgressValue Progress => parentVC.CampaignProgress.PlayerValues[Barrier.Id];
 
             public Quaternion Rotation
@@ -1625,7 +1627,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         $"Max streak\n<color={ColorUtils.TECH}>{Progress.Progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
 
                     AccSaberCampaignBarrier.BarrierConditionType.FC =>
-                        $"FC maps\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.ConditionValue:N0}</color>",
+                        $"FC maps\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
 
                     AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_RANK =>
                         $"Average Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:0.##}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:0.##}</color>",
@@ -1644,8 +1646,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private void OnClick(PointerEventData data)
             {
-                // TODO: Display barrier information here.
-                Plugin.Log.Info("Barrier clicked");
+                parentVC.acvc.SetBarrierInfo(this, Progress);
             }
 
             public void Dispose()

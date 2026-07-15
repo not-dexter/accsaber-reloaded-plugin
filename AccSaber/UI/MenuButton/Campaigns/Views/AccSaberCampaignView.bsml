@@ -54,8 +54,8 @@
           <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings'/>
         </horizontal>
       </vertical>
-      <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map' pad ='4' pad-bottom='2'>
-        <vertical preferred-width='42' preferred-height='15' vertical-fit='PreferredSize'>
+      <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2'>
+        <vertical preferred-width='42' preferred-height='15' vertical-fit='PreferredSize' active='~in-map'>
           <horizontal>
             <img preserve-aspect='true' id='MissionImage' preferred-width='8' preferred-height='8' />
             <vertical preferred-width='30'>

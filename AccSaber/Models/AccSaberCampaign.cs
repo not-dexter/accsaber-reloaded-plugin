@@ -404,7 +404,7 @@ namespace AccSaber.Models
         public float? CheckpointSize { get; set; }
 
         [JsonProperty("xp")]
-        public float Xp { get; set; }
+        public float XP { get; set; }
 
         [JsonProperty("affectedCampaignDifficultyIds")]
         public List<Guid> AffectedCampaignDifficultyIds { get; set; } = [];

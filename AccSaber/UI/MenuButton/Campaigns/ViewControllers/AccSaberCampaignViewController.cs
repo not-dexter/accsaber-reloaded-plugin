@@ -31,13 +31,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
     {
         private static MethodInfo? RecordPlayMethod;
 
-//#pragma warning disable CS0414 // Field assigned to but never read.
         private bool _parsed = false, _updateOnFinish = false;
         private bool _invalidateActive = true;
         private DateTime _lastScoreSubmit = DateTime.MinValue, _lastUpdate = DateTime.MinValue;
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
-        private readonly List<CampaignMap> _diffCells = [];
         private readonly Queue<Guid> _nextGotoMapId = [];
 
         private CampaignProgressValue CampaignProgressVal
@@ -155,7 +153,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set
             {
                 field = value;
-                NotifyPropertyChanged();
+                NotifyPropertyChanged(nameof(InMap));
+                NotifyPropertyChanged(nameof(InMapOrBarrier));
+            }
+        }
+
+        [UIValue("in-barrier")]
+        public bool InBarrier
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged(nameof(InBarrier));
+                NotifyPropertyChanged(nameof(InMapOrBarrier));
             }
         }
 
@@ -356,6 +367,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !IsLoading;
 
+        [UIValue("in-map-or-barrier")]
+        private bool InMapOrBarrier => InMap || InBarrier;
+
         [UIAction("#post-parse")]
         private async void Parsed()
         {
@@ -440,7 +454,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             InMap = false;
             _songPreviewPlayer.CrossfadeToDefault();
             _ = UpdateTabs();
-            _diffCells.Clear();
         }
 
         [UIAction("PlayCampaign")]
@@ -459,8 +472,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 await _campaignMapViewController.SetCampaign(_currentCampaign);
 
                 UpdateGoToMapButton();
-
-                SetMaps(_currentCampaign);
             }
         }
 
@@ -755,11 +766,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             MissionProgress = map.RequirementType switch
             {
-                //AccSaberCampaignMap.CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{completion.Progress * 100f:N2}%</color>",
-                //AccSaberCampaignMap.CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{completion.Progress:0.##}ap</color>",
-                //AccSaberCampaignMap.CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{completion.Progress:N0}</color>",
-                //AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{completion.Progress:N0}x</color>",
-                //AccSaberCampaignMap.CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{completion.Progress:N0}</color>",
                 AccSaberCampaignMap.CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{completion.Progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{map.RequirementValue * 100f:N2}%</color>",
                 AccSaberCampaignMap.CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{completion.Progress:0.##}ap</color> / <color={ColorUtils.AP}>{map.RequirementValue:0.##}ap</color>",
                 AccSaberCampaignMap.CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{completion.Progress:N0}</color> / <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color>",
@@ -819,18 +825,41 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _songPreviewPlayer.CrossfadeTo(previewAudio, 0.5f, CurrentBeatMapLevel.level.previewStartTime, CurrentBeatMapLevel.level.previewDuration - CurrentBeatMapLevel.level.previewStartTime, null);
             }
 #endif
-
+            InBarrier = false;
             InMap = true;
         }
-
-        public void SetMaps(AccSaberCampaign campaign)
+        public async void SetBarrierInfo(AccSaberCampaignMapViewController.CampaignMapBarrier barrier, CampaignProgressValue progress)
         {
-            _diffCells.Clear();
+            CurrentBeatMapLevel = null;
 
-            foreach (AccSaberCampaignMap diff in campaign.Difficulties!)
+            MissionObjective = barrier.Barrier.ConditionType switch
             {
-                _diffCells.Add(new CampaignMap(diff));
-            }
+                AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_ACC => $"Get an average accuracy of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue * 100f:N2}%</color>.",
+                AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_AP => $"Get an average ap of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:0.##}</color> AP.",
+                AccSaberCampaignBarrier.BarrierConditionType.AP_MAX => $"Get a score worth at least <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:0.##}</color> AP.",
+                AccSaberCampaignBarrier.BarrierConditionType.ACC_MAX => $"Get a score greater than or equal to <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue * 100f:N2}%</color>.",
+                AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_AVERAGE => $"Get an average 115 streak of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N1}x</color>.",
+                AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_MAX => $"Get a 115 streak greater than or equal to <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}x</color>.",
+                AccSaberCampaignBarrier.BarrierConditionType.FC => $"Full combo <color={ColorUtils.RANK}>{barrier.Barrier.AffectedCampaignDifficultyIds.Count:N0}</color> map(s).",
+                AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_RANK => $"Get an average rank of <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N1}</color>.",
+                AccSaberCampaignBarrier.BarrierConditionType.MAX_RANK => $"Get a rank greater than or equal to <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color>.",
+                AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT => $"Complete <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color> nodes.",
+                _ => $"Get something with a requirement value of {barrier.Barrier.ConditionValue:0.##}"
+            };
+
+            MissionProgress = barrier.ProgressText[(barrier.ProgressText.LastIndexOf('\n') + 1)..];
+            CampaignProgressVal = progress;
+
+            MissionHasRewards = barrier.Barrier.XP > 0;
+
+            if (MissionHasRewards)
+                MissionRewards = $"<color={ColorUtils.OVERALL}>+{barrier.Barrier.XP:N0}XP</color>";
+
+            MissionLocked = false;
+            _missionButton.gameObject.SetActive(false);
+
+            InMap = false;
+            InBarrier = true;
         }
 
         private void OnPlayerScore(AccSaberLeaderboardEntry score)
@@ -989,15 +1018,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIValue(nameof(Tags))] private string Tags => GetTags();
 
         }
-
-        internal class CampaignMap(AccSaberCampaignMap map) : Utils.Safety.SafeNotifyPropertyChanged
-        {
-            [UIValue(nameof(Name))] private string Name => map.SongName;
-            [UIValue(nameof(Author))] private string Author => map.SongAuthor;
-            [UIValue(nameof(MapCount))] private string MapCount => map.Difficulty;
-
-        }
-
 
     }
 }
