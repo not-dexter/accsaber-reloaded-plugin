@@ -36,6 +36,7 @@ namespace AccSaber.Consts
         public const string KOFI = RESOURCE_PATH + ".kofi.png";
         public const string GITHUB = RESOURCE_PATH + ".github.png";
         public const string CHECKMARK = RESOURCE_PATH + ".checkmark.png";
+        public const string CAMPAIGN_ALL = RESOURCE_PATH + ".campaignAll.png";
 
         #endregion
         #region BSML File Paths

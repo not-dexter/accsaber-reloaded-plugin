@@ -714,7 +714,11 @@ namespace AccSaber.Managers
             //Plugin.Log.Info(nodes.ToString());
         }
         internal CampaignProgress(Dictionary<Guid, CampaignProgressValue> playerValues, AccSaberCampaign campaign) :
-            this(playerValues, new(campaign.Difficulties.Cast<INode<Guid>>().Concat(campaign.Barriers)), campaign.Difficulties.Where(map => map.PrerequisiteMode != "OR").Select(map => map.Id))
+            this(
+                playerValues,
+                new(campaign.Difficulties.Cast<INode<Guid>>().Concat(campaign.Barriers)),
+                campaign.Difficulties.Where(map => map.PrerequisiteMode != "OR").Select(map => map.Id)
+                )
         { }
 
         internal HashSet<Guid> MarkAsComplete(Guid id, float progess)
@@ -742,18 +746,25 @@ namespace AccSaber.Managers
 
             HashSet<Guid> outp = [];
 
-            foreach (AcyclicGraph<Guid>.Node nodeToUpdate in node.NextNodes)
-                if (UpdateNode(nodeToUpdate))
-                    outp.Add(nodeToUpdate.Current.Id);
+            foreach (Guid nodeIdToUpdate in node.AffectedIdsOnUpdate)
+                if (UpdateNode(nodeIdToUpdate))
+                    outp.Add(nodeIdToUpdate);
 
             return outp;
+        }
+
+        private bool UpdateNode(Guid nodeId)
+        {
+            if (!Nodes.NodeIdToNode.TryGetValue(nodeId, out AcyclicGraph<Guid>.Node n))
+                throw new ArgumentException("The given node id does not exist! This should not be possible.");
+            return UpdateNode(n);
         }
         private bool UpdateNode(AcyclicGraph<Guid>.Node node)
         {
             Guid id = node.Current.Id;
 
             if (PlayerValues[id].Completion != CompletionStatus.Incomplete)
-                return false;
+                return node.Current is AccSaberCampaignBarrier; // Always update barriers, even if not unlocked.
 
             bool orMode = !AndNodes.Contains(id);
             bool success = !orMode;

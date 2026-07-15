@@ -32,7 +32,7 @@ namespace AccSaber.Utils.Misc
                 arrowIds.UnionWith(node.InwardArrows);
             }
 
-            List<T> lastNodes = [.. actualIds.Except(arrowIds).Where(id => nodeIdToNodeInfo[id].InwardArrows.Any())];
+            List<T> lastNodes = [.. actualIds.Except(arrowIds).Where(id => nodeIdToNodeInfo[id].InwardArrows.Count > 0)];
 
             if (!lastNodes.Any())
                 throw new ArgumentException("Must have at least one tail node!");
@@ -48,9 +48,10 @@ namespace AccSaber.Utils.Misc
             Tails = PopulateGraph(lastNodes, nodeIdToNodeInfo);
         }
         public AcyclicGraph(IEnumerable<INode<T>> nodes) : this([.. nodes]) { }
+
         private IReadOnlyCollection<Node> PopulateGraph(List<T> tailIds, Dictionary<T, INode<T>> nodeIdToNodeInfo)
         {
-            Dictionary<T, List<T>> nodeNextNodes = [];
+            Dictionary<T, List<T>> nodeNextNodes = [], nodeAffectedNodes = [];
             Queue<T> idsToProcess = [with(tailIds)];
             HashSet<T> headIds = [];
 
@@ -63,45 +64,59 @@ namespace AccSaber.Utils.Misc
                 T currentId = idsToProcess.Dequeue();
                 current = nodeIdToNodeInfo[currentId];
 
-                List<T> inwardArrows = [.. current.InwardArrows.Distinct()];
-
-                foreach (T id in inwardArrows)
+                if (current is INodeAffected<T> currentAffected)
                 {
-                    if (nodeNextNodes.TryGetValue(id, out List<T> nodes))
-                        nodes.Add(currentId);
-                    else
+                    foreach (T id in currentAffected.AffectedByIds.Distinct())
                     {
-                        nodeNextNodes.Add(id, [currentId]);
-                        idsToProcess.Enqueue(id);
+                        if (nodeAffectedNodes.TryGetValue(id, out List<T> nodes))
+                            nodes.Add(currentId);
+                        else
+                            nodeAffectedNodes.Add(id, [currentId]);
                     }
                 }
 
-                if (inwardArrows.Count == 0)
+                if (current.InwardArrows.Count == 0)
                     headIds.Add(currentId);
+                else
+                    foreach (T id in current.InwardArrows.Distinct())
+                    {
+                        if (nodeNextNodes.TryGetValue(id, out List<T> nodes))
+                            nodes.Add(currentId);
+                        else
+                        {
+                            nodeNextNodes.Add(id, [currentId]);
+                            idsToProcess.Enqueue(id);
+                        }
+                    }
             }
 
             List<Node> headNodes = [with(headIds.Count)];
 
             foreach (T headId in headIds)
-                headNodes.Add(CreateNode(headId, nodeNextNodes, nodeIdToNodeInfo, 0));
+                headNodes.Add(CreateNode(headId, nodeNextNodes, nodeAffectedNodes, nodeIdToNodeInfo, 0));
 
             Heads = headNodes;
 
             return [.. tailIds.Select(id => nodeIdToNode.TryGetValue(id, out Node n) ? n : throw new Exception("Not all tail nodes were processed!"))];
         }
-        private Node CreateNode(T id, Dictionary<T, List<T>> nodeNextNodes, Dictionary<T, INode<T>> nodeIdToNodeInfo, int depth)
+        private Node CreateNode(T id, Dictionary<T, List<T>> nodeNextNodes, Dictionary<T, List<T>> nodeAffectedNodes, Dictionary<T, INode<T>> nodeIdToNodeInfo, int depth)
         {
             if (nodeIdToNode.TryGetValue(id, out Node outp))
                 return outp;
 
+            if (!nodeAffectedNodes.TryGetValue(id, out List<T> affectedNodes))
+                affectedNodes = [];
+
             if (!nodeNextNodes.TryGetValue(id, out List<T> nodes))
             {
-                outp = new(nodeIdToNodeInfo[id], [], depth);
+                outp = new(nodeIdToNodeInfo[id], [], [.. affectedNodes], depth);
                 nodeIdToNode.Add(id, outp);
                 return outp;
             }
 
-            outp = new(nodeIdToNodeInfo[id], [.. nodes.Select(nodeId => CreateNode(nodeId, nodeNextNodes, nodeIdToNodeInfo, depth + 1))], depth);
+            IReadOnlyCollection<Node> nextNodes = [.. nodes.Select(nodeId => CreateNode(nodeId, nodeNextNodes, nodeAffectedNodes, nodeIdToNodeInfo, depth + 1))];
+
+            outp = new(nodeIdToNodeInfo[id], nextNodes, [.. nextNodes.Select(node => node.Current.Id).Union(affectedNodes)], depth);
             nodeIdToNode.Add(id, outp);
             return outp;
         }
@@ -160,11 +175,15 @@ namespace AccSaber.Utils.Misc
             Visited
         }
 
-        public record Node(INode<T> Current, IReadOnlyCollection<Node> NextNodes, int DistanceToHead);
+        public record Node(INode<T> Current, IReadOnlyCollection<Node> NextNodes, IReadOnlyCollection<T> AffectedIdsOnUpdate, int DistanceToHead);
     }
     public interface INode<T> where T : notnull, IEquatable<T>
     {
         public T Id { get; }
-        public IEnumerable<T> InwardArrows { get; }
+        public IReadOnlyCollection<T> InwardArrows { get; }
+    }
+    public interface INodeAffected<T> : INode<T> where T : notnull, IEquatable<T>
+    {
+        public IReadOnlyCollection<T> AffectedByIds { get; }
     }
 }

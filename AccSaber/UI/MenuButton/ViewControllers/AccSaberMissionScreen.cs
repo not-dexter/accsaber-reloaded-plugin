@@ -232,10 +232,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
                         prompt = "Would you like to go to this map?";
                         break;
-                    case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY or MissionType.PB_ABOVE_THRESHOLD or MissionType.XP_IN_WINDOW:
+                    case
+                        MissionType.PLAY_N_MAPS or
+                        MissionType.XP_IN_WINDOW or
+                        MissionType.PB_ABOVE_THRESHOLD or
+                        MissionType.STREAK_N_IN_CATEGORY or
+                        >= MissionType.SCORES_N and <= MissionType.PB_RANKED_BEFORE_N:
                         prompt = "Would you like to go to this Playlist?";
                         break;
-                    default: return;
+                    default: return; // ignore: CAMPAIGN_COMPLETE_N
                 }
 
                 _ = _asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator, prompt);
@@ -322,12 +327,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                     try
                     {
-                        var missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id);
+                        List<AccSaberEventMe>? missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id);
 
                         if (missions is null)
                             return;
 
-                        foreach (var mission in missions)
+                        /*foreach (AccSaberEventMe mission in missions)
                         {
 
                             if (mission.Mission.Week != WeekPage) 
@@ -337,7 +342,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                             null : _serialHandler.CachedDifficulties[mission.Current.TargetMapDifficultyId.Value];
 
                             _eventCells.Add(new MissionCell(mission.Current, targetDiff));
-                        }
+                        }*/ // commented out until events are released
                         _eventCells.AddRange(_weeklyCells); // temp until we have real missions
                         _eventCells.AddRange(_weeklyCells); // temp until we have real missions
 
@@ -469,9 +474,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 case MissionType.PB_ABOVE_THRESHOLD:
                     _ = _levelUtils.LoadPlaylistAp(cell.Data.Category, _playerData.PlayerID!, cell.Data.TargetThresholdAp!.Value, ComparisonType.GTE, CloseMenu, cell.UpdateStatus);
                     break;
-                case MissionType.XP_IN_WINDOW:
+                case MissionType.XP_IN_WINDOW or MissionType.STREAK_SUM_N or MissionType.AP_GAIN_OVERALL:
                     _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
                     break;
+                case MissionType.SNIPE_RIVAL_ANY_MAP:
+                    break;
+                case MissionType.BATCH_PLAY_N:
+                    break;
+                    //PB_RANKED_BEFORE_N (no idea what this one is), CAMPAIGN_COMPLETE_N (this one will do nothing)
             }
         }
 

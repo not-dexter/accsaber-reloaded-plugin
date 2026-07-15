@@ -15,6 +15,7 @@ using SongCore;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -175,7 +176,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         campaignViewController: acvc,
                         levelUtils: levelUtils,
                         serialUtils: serialHandler,
-                        threadDispatcher: threadDispatcher
+                        threadDispatcher: threadDispatcher,
+                        config: config
                     );
 
                     campaignMapNodes.Add(node);
@@ -976,12 +978,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private readonly LevelUtils levelUtils;
             private readonly SerializationHandler serialUtils;
             private readonly Utils.Safety.MainThreadDispatcher threadDispatcher;
+            private readonly PluginConfig config;
 
 
             public readonly AccSaberCampaignMap Map;
             public readonly string Hash;
             public readonly AccSaberCampaignOffsetData OffsetData;
             public readonly NodeShape Shape;
+            private readonly bool requiresAllPrereqs;
 
             public CampaignProgress.CampaignProgressValue Progress => parent.CampaignProgress.PlayerValues[Map.Id];
 
@@ -1001,6 +1005,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIComponent("completionImage")]
             private readonly ImageView CompletionImage = null!;
 
+            [UIComponent("requiresAllImage")]
+            private readonly ImageView RequiresAllImage = null!;
+
 
             [UIValue("NodeWidth")]
             public float NodeWidth => Map.Size * OffsetData.ScaleFactor;
@@ -1018,6 +1025,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIValue("CheckmarkSrc")]
             private const string CheckmarkSrc = ResourcePaths.CHECKMARK;
 
+            [UIValue("RequiresAllSrc")]
+            private const string RequiresAllSrc = ResourcePaths.CAMPAIGN_ALL;
+
             [UIValue("IsComplete")]
             private bool IsComplete 
             {
@@ -1030,6 +1040,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             }
 
+            [UIValue("ShowPrereqIndicator")]
+            private bool ShowPrereqIndicator
+            {
+                get;
+                set
+                {
+                    if (field == value)
+                        return;
+
+                    field = value;
+                    NotifyPropertyChanged();
+                }
+            }
+
             public CampaignMapNode(
             AccSaberCampaignMap map,
             AccSaberCampaignMapViewController parent,
@@ -1039,7 +1063,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             AccSaberCampaignViewController campaignViewController,
             LevelUtils levelUtils,
             SerializationHandler serialUtils,
-            Utils.Safety.MainThreadDispatcher threadDispatcher
+            Utils.Safety.MainThreadDispatcher threadDispatcher,
+            PluginConfig config
             )
             {
                 Map = map;
@@ -1059,10 +1084,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 this.levelUtils = levelUtils;
                 this.serialUtils = serialUtils;
                 this.threadDispatcher = threadDispatcher;
+                this.config = config;
+
                 IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
+                requiresAllPrereqs = map.PrerequisiteMode.Equals("AND");
+                ShowPrereqIndicator = config.ShowPrereqIndicator && requiresAllPrereqs;
 
                 offsetData.OnScaleChanged += OnOffsetDataChanged;
                 UpdateMapCovers += UpdateCover;
+                config.PropertyChanged += OnPluginUpdate;
             }
 
 
@@ -1095,6 +1125,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
                     mainLayout.preferredWidth = NodeWidth;
                     mainLayout.preferredHeight = NodeHeight;
+
+                    RectTransform transform = (RectTransform)RequiresAllImage.transform;
+                    transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+#if !NEW_VERSION
+                    transform.anchorMin = new(0.75f, 0.75f);
+                    transform.anchorMax = new(1f, 1f);
+#endif
 
                     postParse = true;
                     UpdateCover();
@@ -1160,6 +1197,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
 
+            private void OnPluginUpdate(object sender, PropertyChangedEventArgs args)
+            {
+                if (args.PropertyName.Equals(nameof(PluginConfig.ShowPrereqIndicator)))
+                    ShowPrereqIndicator = requiresAllPrereqs && config.ShowPrereqIndicator;
+            }
             private void UpdateCover()
             {
                 if (!postParse)
@@ -1196,6 +1238,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private void OnOffsetDataChanged()
             {
                 (CompletionImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                (RequiresAllImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
 
                 LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
                 mainLayout.preferredWidth = NodeWidth;
@@ -1211,6 +1254,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 OffsetData.OnScaleChanged -= OnOffsetDataChanged;
                 UpdateMapCovers -= UpdateCover;
+                config.PropertyChanged -= OnPluginUpdate;
 
                 try
                 {
@@ -1225,12 +1269,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 UnityEngine.Object.Destroy(Container);
             }
         }
+
         internal class CampaignMapBarrier : IDisposable
         {
             public const float WIDTH = 5f;
             public const float FONT_SIZE = 15f;
 
             private const float TEXT_MARGIN = 4f;
+
+            // Extra padding around text collision boxes.
+            // Increase this if labels are still visually too close.
+            private const float TEXT_COLLISION_PADDING = 2f;
+
+            private static readonly List<CampaignMapBarrier> ActiveBarriers = [];
+            private static bool resolvingTextCollisions;
 
             public readonly AccSaberCampaignBarrier Barrier;
             public readonly AccSaberCampaignOffsetData OffsetData;
@@ -1247,6 +1299,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private readonly LayoutElement textLayout;
 
             private readonly TextMeshProUGUI text;
+
+            // false = Vector3.down end
+            // true  = Vector3.up end, aka flipped 180 degrees
+            private bool textOnOppositeEnd;
 
             public CampaignProgress.CampaignProgressValue Progress => parentVC.CampaignProgress.PlayerValues[Barrier.Id];
 
@@ -1300,7 +1356,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 image.HighlightColor = (barrier.BorderColor ?? "#F00").BrightenColor(5).Color();
                 image.OnClickEvent += OnClick;
 
-                textObj = BeatSaberUI.CreateText(parent as RectTransform, "Hello", Vector2.zero).gameObject;
+                text = BeatSaberUI.CreateText(parent as RectTransform, "Hello", Vector2.zero);
+                text.alignment = TextAlignmentOptions.Center;
+                text.enableWordWrapping = false;
+
+                textObj = text.gameObject;
                 textObj.name = "AccSaberCampaignBarrierText";
 
                 textRt = (RectTransform)textObj.transform;
@@ -1310,21 +1370,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 textLayout = textObj.AddComponent<LayoutElement>();
                 textLayout.ignoreLayout = true;
 
-                text = textObj.GetComponent<TextMeshProUGUI>();
-                text.alignment = TextAlignmentOptions.Center;
-                text.enableWordWrapping = false;
-
                 // This is done so the text does not block clicking the barrier/map.
                 text.raycastTarget = false;
 
                 // Keep the label visually above the barrier.
                 textRt.SetAsLastSibling();
 
+                ActiveBarriers.Add(this);
+
                 OffsetData.OnScaleChanged += OnOffsetDataUpdate;
                 OnOffsetDataUpdate();
 
 #if PRINT_DEBUG
-                Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
+        Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
 #endif
             }
 
@@ -1357,9 +1415,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 text.fontSize = FONT_SIZE * OffsetData.ScaleFactor;
 
-                UpdateText();
-                UpdateTextSize();
-                UpdateTextPos();
+                UpdateProgress();
             }
 
             private void UpdateTextSize()
@@ -1380,25 +1436,33 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 textRt.sizeDelta = preferredSize;
             }
 
-            private void UpdateTextPos()
+            private void UpdateTextPos() => UpdateTextPos(resolveCollisions: true);
+
+            private void UpdateTextPos(bool resolveCollisions)
             {
                 if (textRt is null || barrierRt is null)
                     return;
 
+                ApplyTextPosition();
+
+                if (resolveCollisions && !resolvingTextCollisions)
+                    ResolveTextCollisions();
+            }
+
+            private void ApplyTextPosition()
+            {
                 Vector2 textSize = textRt.sizeDelta;
 
-                // Barrier is treated as a vertical rectangle:
-                // width  = SizeDelta.x
-                // length = SizeDelta.y
-                //
-                // Vector3.down means the label goes to one end of the barrier.
-                // If you want the opposite end, change Vector3.down to Vector3.up.
-                Vector3 endDirection3D = barrierRt.localRotation * Vector3.down;
+                // Default end is down. Opposite end is up.
+                // This flips the label placement direction 180 degrees without rotating the text itself.
+                Vector3 localEndDirection = textOnOppositeEnd ? Vector3.up : Vector3.down;
+
+                Vector3 endDirection3D = barrierRt.localRotation * localEndDirection;
                 Vector2 endDirection = new(endDirection3D.x, endDirection3D.y);
 
                 if (endDirection.sqrMagnitude < 0.0001f)
                 {
-                    endDirection = Vector2.down;
+                    endDirection = textOnOppositeEnd ? Vector2.up : Vector2.down;
                 }
                 else
                 {
@@ -1407,8 +1471,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 float barrierHalfLength = SizeDelta.y * 0.5f;
 
-                // The text itself remains unrotated/upright.
-                // Because of that, we need the axis-aligned half-extent of the text
+                // The text remains unrotated/upright.
+                // Because of that, we calculate the axis-aligned half extent of the text
                 // in the direction we are moving it.
                 float textHalfExtentInDirection =
                     Mathf.Abs(endDirection.x) * textSize.x * 0.5f +
@@ -1425,6 +1489,110 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 // Keep it above the barrier in the hierarchy.
                 textRt.SetAsLastSibling();
+            }
+
+            private static void ResolveTextCollisions()
+            {
+                if (resolvingTextCollisions)
+                    return;
+
+                resolvingTextCollisions = true;
+
+                try
+                {
+                    ActiveBarriers.RemoveAll(barrier => !IsValidBarrier(barrier));
+
+                    if (ActiveBarriers.Count <= 1)
+                        return;
+
+                    // Start from a deterministic layout:
+                    // every label goes back to its default end first.
+                    foreach (CampaignMapBarrier barrier in ActiveBarriers)
+                    {
+                        barrier.textOnOppositeEnd = false;
+                        barrier.UpdateTextPos(resolveCollisions: false);
+                    }
+
+                    // Iteratively resolve because flipping one label can create a new collision
+                    // with another label that was checked earlier.
+                    int maxIterations = ActiveBarriers.Count + 1;
+
+                    for (int iteration = 0; iteration < maxIterations; iteration++)
+                    {
+                        bool changedSomething = false;
+
+                        for (int i = 0; i < ActiveBarriers.Count; i++)
+                        {
+                            CampaignMapBarrier a = ActiveBarriers[i];
+
+                            for (int j = i + 1; j < ActiveBarriers.Count; j++)
+                            {
+                                CampaignMapBarrier b = ActiveBarriers[j];
+
+                                if (!TextRectsOverlap(a, b))
+                                    continue;
+
+                                // Collision found.
+                                // Move both colliding labels to the other end of their barriers.
+                                if (!a.textOnOppositeEnd)
+                                {
+                                    a.textOnOppositeEnd = true;
+                                    a.UpdateTextPos(resolveCollisions: false);
+                                    changedSomething = true;
+                                }
+
+                                if (!b.textOnOppositeEnd)
+                                {
+                                    b.textOnOppositeEnd = true;
+                                    b.UpdateTextPos(resolveCollisions: false);
+                                    changedSomething = true;
+                                }
+                            }
+                        }
+
+                        if (!changedSomething)
+                            break;
+                    }
+
+                    foreach (CampaignMapBarrier barrier in ActiveBarriers)
+                        barrier.textRt.SetAsLastSibling();
+                }
+                finally
+                {
+                    resolvingTextCollisions = false;
+                }
+            }
+
+            private static bool IsValidBarrier(CampaignMapBarrier barrier)
+            {
+                return barrier is not null &&
+                       barrier.obj is not null &&
+                       barrier.textObj is not null &&
+                       barrier.barrierRt is not null &&
+                       barrier.textRt is not null;
+            }
+
+            private static bool TextRectsOverlap(CampaignMapBarrier a, CampaignMapBarrier b)
+            {
+                Rect rectA = GetTextRect(a);
+                Rect rectB = GetTextRect(b);
+
+                return rectA.Overlaps(rectB);
+            }
+
+            private static Rect GetTextRect(CampaignMapBarrier barrier)
+            {
+                Vector2 pos = barrier.textRt.anchoredPosition;
+                Vector2 size = barrier.textRt.sizeDelta;
+
+                float padding = TEXT_COLLISION_PADDING * barrier.OffsetData.ScaleFactor;
+
+                return new Rect(
+                    pos.x - size.x * 0.5f - padding,
+                    pos.y - size.y * 0.5f - padding,
+                    size.x + padding * 2f,
+                    size.y + padding * 2f
+                );
             }
 
             private void UpdateText()
@@ -1458,6 +1626,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     AccSaberCampaignBarrier.BarrierConditionType.MAX_RANK =>
                         $"Max Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:N0}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:N0}</color>",
 
+                    AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT =>
+                        $"Nodes Completed\n<color={ColorUtils.GLOBAL}>{Progress.Progress:N0}</color> / <color={ColorUtils.GLOBAL}>{Barrier.ConditionValue:N0}</color>",
+
                     _ => "Unknown type"
                 };
 
@@ -1473,6 +1644,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public void Dispose()
             {
                 OffsetData.OnScaleChanged -= OnOffsetDataUpdate;
+
+                ActiveBarriers.Remove(this);
 
                 UnityEngine.Object.Destroy(obj);
                 UnityEngine.Object.Destroy(textObj);

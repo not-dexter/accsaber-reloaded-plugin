@@ -28,5 +28,6 @@ namespace AccSaber.Configuration
         public virtual string CustomPlaylistPath { get; set; } = "";
         public virtual bool StickScrolling { get; set; } = true;
         public virtual float ScrollSpeed { get; set; } = 2.0f;
+        public virtual bool ShowPrereqIndicator { get; set; } = true;
     }
 }

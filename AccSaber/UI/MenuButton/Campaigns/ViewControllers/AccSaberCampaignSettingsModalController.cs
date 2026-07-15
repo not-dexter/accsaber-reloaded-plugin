@@ -7,7 +7,7 @@ using HMUI;
 using UnityEngine;
 using Zenject;
 
-namespace AccSaber.UI.MenuButton.Campaigns
+namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     internal class AccSaberCampaignSettingsModalController
     {
@@ -32,6 +32,13 @@ namespace AccSaber.UI.MenuButton.Campaigns
         {
             get => config.ScrollSpeed;
             set => config.ScrollSpeed = value;
+        }
+
+        [UIValue(nameof(ShowPrereqIndicator))]
+        private bool ShowPrereqIndicator
+        {
+            get => config.ShowPrereqIndicator;
+            set => config.ShowPrereqIndicator = value;
         }
 
         private void Parse(Transform parent)

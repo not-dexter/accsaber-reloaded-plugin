@@ -60,8 +60,14 @@ namespace AccSaber.Utils
         STREAK_ON_MAP,
         PB_ABOVE_THRESHOLD,
         STREAK_N_IN_CATEGORY,
+        STREAK_SUM_N,
         COMEBACK_PB,
-        SCORES_N
+        SCORES_N,
+        SNIPE_RIVAL_ANY_MAP,
+        AP_GAIN_OVERALL,
+        BATCH_PLAY_N,
+        PB_RANKED_BEFORE_N,
+        CAMPAIGN_COMPLETE_N
     }
     // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/mission/MissionStatus.java
     public enum MissionStatus

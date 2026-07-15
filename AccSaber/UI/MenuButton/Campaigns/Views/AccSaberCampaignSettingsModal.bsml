@@ -1,6 +1,7 @@
-<modal id='modal' clickerino-offerino-closerino='true' size-delta='55 20' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+<modal id='modal' clickerino-offerino-closerino='true' size-delta='55 25' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical horizontal-fit='PreferredSize' pref-width='55' child-expand-width='false'>
-    <checkbox-setting text='Allow Stick Scrolling' apply-on-change='true' value='StickScrolling' scale='0.8'/>
+    <checkbox-setting text='Allow Stick Scrolling' apply-on-change='true' value='StickScrolling' scale='0.8' />
     <increment-setting text='Scroll Speed' apply-on-change='true' value='ScrollSpeed' min='0.25' max='10' increment='0.25' integer-only='false' scale='0.8' />
+    <checkbox-setting text='Show Prereq Indicator' hover-hint='Whether or not to show the asterisk on nodes' apply-on-change='true' value='ShowPrereqIndicator' scale='0.8' />
   </vertical>
 </modal>

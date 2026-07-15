@@ -305,7 +305,7 @@ namespace AccSaber.Models
         public virtual List<Guid> PrerequisiteIds { get; set; } = [];
 
         [JsonIgnore]
-        public IEnumerable<Guid> InwardArrows => PrerequisiteIds;
+        public IReadOnlyCollection<Guid> InwardArrows => PrerequisiteIds;
     }
 
     internal class AccSaberCampaignMap : AccSaberCampaignPositionablePrereq
@@ -371,7 +371,7 @@ namespace AccSaber.Models
             RANK
         }
     }
-    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionablePrereq
+    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionablePrereq, Utils.Misc.INodeAffected<Guid>
     {
         [JsonProperty("conditionType")]
         public BarrierConditionType ConditionType { get; set; }
@@ -412,11 +412,17 @@ namespace AccSaber.Models
         [JsonProperty("items")]
         public List<AccSaberCampaignItem> Items { get; set; } = [];
 
+        [JsonIgnore]
+        public IReadOnlyCollection<Guid> AffectedByIds { get; private set; } = null!;
+
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
             if (Size == default)
                 Size = 48;
+
+            AffectedByIds = [.. AffectedCampaignDifficultyIds.Union(PrerequisiteIds)];
         }
 
 
@@ -431,7 +437,8 @@ namespace AccSaber.Models
             STREAK_115_MAX,
             FC,
             AVERAGE_RANK,
-            MAX_RANK
+            MAX_RANK,
+            COMPLETION_COUNT
         }
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignLabelPosition.java

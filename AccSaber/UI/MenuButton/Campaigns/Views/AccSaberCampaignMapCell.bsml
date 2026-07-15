@@ -3,5 +3,6 @@
     <clickable-image id='coverImage' on-click='OnClick'/>
   </vertical>
   <image id='borderImage'/>
-  <image id='completionImage' src='~CheckmarkSrc' anchor-min='0.75 0' anchor-max='1 0.25' ignore-layout='true' img-color='#0F0' active='~IsComplete'/>
+  <image id='completionImage' src='~CheckmarkSrc' preserve-aspect='true' anchor-min='0.75 0' anchor-max='1 0.25' ignore-layout='true' img-color='#0F0' active='~IsComplete'/>
+  <image id='requiresAllImage' src='~RequiresAllSrc' preserve-aspect='true' anchor-min='0.75 0.75' anchor-max='1 1' ignore-layout='true' active='~ShowPrereqIndicator'/>
 </stack>
