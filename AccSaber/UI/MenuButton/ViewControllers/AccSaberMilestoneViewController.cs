@@ -30,7 +30,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		private bool _parsed;
 		private bool _isLoading;
-        private bool _showEvent;
         private CategoryTab _currentTab;
         private MilestoneTab _currentMilestoneTab = 0;
         private int _currentEventWeekTab = 0;

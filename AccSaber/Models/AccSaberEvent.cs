@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace AccSaber.Models
 {
     [UsedImplicitly]
-    internal class AccSaberEvent : IModel
+    internal class AccSaberEvent : IModel, IComparable<AccSaberEvent>
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -48,6 +48,9 @@ namespace AccSaber.Models
 
         [JsonProperty("totalWeeks")]
         public int TotalWeeks { get; set; }
+
+
+        public int CompareTo(AccSaberEvent other) => StartsAt.CompareTo(other.StartsAt);
     }
 
     [UsedImplicitly]

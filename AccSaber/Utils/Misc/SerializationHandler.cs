@@ -3,6 +3,7 @@ using AccSaber.Consts;
 using AccSaber.Counter;
 using AccSaber.Models;
 using AccSaber.Models.CacheModels;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +20,6 @@ namespace AccSaber.Utils.Misc
 
         private bool invalidateMissions = false;
         private bool invalidateEvents = false;
-        private Guid currentEvent;
         private readonly SelectComparer<AccSaberPlayerScore, float> PlayerScoreSorter, APScoreSorter;
 
         private readonly Dictionary<string, CacheInfo> cacheInfos;
@@ -50,6 +50,8 @@ namespace AccSaber.Utils.Misc
         public IReadOnlyList<AccSaberMission>? Missions => _missions?.Content;
         public IReadOnlyList<AccSaberEventMe>? EventMissions => _eventMissions?.Content;
 
+        public AccSaberEventResponse? CurrentEvent { get; private set; }
+
         public async Task RevalidateMissions(bool forceRefresh = false)
         {
             if (_missions is null || (!invalidateMissions && !forceRefresh && await ValidateMissionCache(_missions)))
@@ -66,18 +68,17 @@ namespace AccSaber.Utils.Misc
         }
         public void InvalidateMissionCache() => _missions?.LastUpdated = DateTime.MinValue;
 
-        public async Task RevalidateEvents(Guid id, bool forceRefresh = false)
+        public async Task RevalidateEvents(bool forceRefresh = false)
         {
             if (_eventMissions is null || (!invalidateEvents && !forceRefresh && await ValidateEventsCache(_eventMissions)))
                 return;
-
-            currentEvent = id;
 
             if (invalidateEvents)
                 invalidateEvents = false;
 
             AccSaberSerializedCache<AccSaberEventMe> newCache = ((await LoadEventsCache()) as AccSaberSerializedCache<AccSaberEventMe>)!;
 
+            _eventMissions.ExtraData = newCache.ExtraData;
             _eventMissions.LastUpdated = newCache.LastUpdated;
             _eventMissions.MaxLength = newCache.MaxLength;
             _eventMissions.Content = newCache.Content;
@@ -86,7 +87,7 @@ namespace AccSaber.Utils.Misc
 
         public SerializationHandler()
         {
-            cacheInfos = new(3)
+            cacheInfos = new(4)
             {
                 { ResourcePaths.MAP_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberBasicMap>), ValidateMapCache, LoadMapCache) },
                 { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, LoadPlayerScoreCache) },
@@ -142,12 +143,29 @@ namespace AccSaber.Utils.Misc
                     _missions = missionCache;
                 }
 
-                void HandleEventCache(AccSaberSerializedCache cache)
+                async Task HandleEventCache(AccSaberSerializedCache cache)
                 {
                     if (cache is not AccSaberSerializedCache<AccSaberEventMe> eventCache)
                         return;
 
                     _eventMissions = eventCache;
+                    
+                    if (CurrentEvent is null)
+                    {
+                        if (_eventMissions.ExtraData is not null && _eventMissions.ExtraData.Count > 0 && _eventMissions.ExtraData[0] is JObject obj)
+                            CurrentEvent = obj.ToObject<AccSaberEventResponse>();
+
+                        if (CurrentEvent is null)
+                        {
+                            AccSaberEventResponse? maybeCurrentEvent = await LoadCurrentEvent();
+
+                            if (maybeCurrentEvent is not null)
+                            {
+                                _eventMissions.ExtraData = [maybeCurrentEvent];
+                                CurrentEvent = maybeCurrentEvent;
+                            }
+                        }
+                    }
                 }
 
                 foreach (AccSaberSerializedCache cache in serializerUtils.Caches)
@@ -164,7 +182,7 @@ namespace AccSaber.Utils.Misc
                             HandleMissionCache(cache);
                             break;
                         case ResourcePaths.EVENTS_CACHE_NAME:
-                            HandleEventCache(cache);
+                            await HandleEventCache(cache);
                             break;
                     }
                 }
@@ -375,7 +393,7 @@ namespace AccSaber.Utils.Misc
             {
                 LastUpdated = DateTime.UtcNow,
                 MaxLength = scores.Count,
-                ExtraData = [new int[3] { 0, 0, 0 }],
+                ExtraData = [new int[3] { 0, 0, 0 }], //Note: The length is based off of the number of categories currently used.
                 Content = scores
             };
         }
@@ -412,17 +430,19 @@ namespace AccSaber.Utils.Misc
         private async Task<bool> ValidateEventsCache(AccSaberSerializedCache cache) => cache.LastUpdated > DateTime.UtcNow;
         private async Task<AccSaberSerializedCache> LoadEventsCache()
         {
+            AccSaberEventResponse? currentEvent = await LoadCurrentEvent();
+
+            if (currentEvent is null)
+                goto ExitBad;
+
             await playerInfo.LoadTask;
 
-            var call = string.Format(HelpfulPaths.APAPI_EVENT_ME, currentEvent);
+            string call = string.Format(HelpfulPaths.APAPI_EVENT_ME, currentEvent.Event.Id);
 
             List<AccSaberEventMe>? eventMissions = await APIHandler.CallAPI_Json<List<AccSaberEventMe>>(call, AccsaberAPI.Throttler);
 
             if (eventMissions is null)
-                return new AccSaberSerializedCache<AccSaberEventMe>()
-                {
-                    LastUpdated = DateTime.MinValue
-                };
+                goto ExitBad;
             
             DateTime now = DateTime.UtcNow;
             for (int i = eventMissions.Count - 1; i >= 0; --i)
@@ -434,10 +454,35 @@ namespace AccSaber.Utils.Misc
 
             return new AccSaberSerializedCache<AccSaberEventMe>()
             {
+                ExtraData = [currentEvent],
                 LastUpdated = eventMissions.Aggregate(DateTime.MaxValue, (total, current) => MiscUtils.Min(total, current.Mission.CompletableUntil)),
                 MaxLength = eventMissions.Count,
                 Content = eventMissions
             };
+        ExitBad:
+            return new AccSaberSerializedCache<AccSaberEventMe>()
+            {
+                LastUpdated = DateTime.MinValue
+            };
+        }
+        private async Task<AccSaberEventResponse?> LoadCurrentEvent()
+        {
+            List<AccSaberEvent>? liveEvents = await APIHandler.CallAPI_Json<List<AccSaberEvent>>(HelpfulPaths.APAPI_EVENTS_LIVE, AccsaberAPI.Throttler);
+
+            if (liveEvents is null || liveEvents.Count == 0)
+            {
+                Plugin.Log.Warn("There are no live events currently.");
+                return null;
+            }
+
+            AccSaberEvent currentEvent = liveEvents.Aggregate(MiscUtils.Min);
+
+            CurrentEvent = await APIHandler.CallAPI_Json<AccSaberEventResponse>(string.Format(HelpfulPaths.APAPI_EVENT, currentEvent.Id), AccsaberAPI.Throttler);
+
+            if (CurrentEvent is null)
+                Plugin.Log.Warn("There are no event missions currently.");
+
+            return CurrentEvent;
         }
 
         public record struct CacheInfo(Type CacheType,

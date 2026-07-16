@@ -36,8 +36,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool _parsed = false;
         private DateTime _dailyRefreshDate, _weeklyRefreshDate, _lastUpdate = DateTime.UtcNow;
         private IEnumerator? _updateTimeRoutine;
-        private List<AccSaberEvent> _liveEvents = null!;
-        private AccSaberEventResponse? _currentEvent = null!;
 
         private CancellationTokenSource? TimeUpdaterCanceller = null;
 
@@ -77,9 +75,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("event-mission-list-content")]
         private readonly string eventMissionListContent = Utilities.GetResourceContent(System.Reflection.Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_MISSION_CELL);
 
-        [UIComponent("event-time-text")]
-        private readonly TextMeshProUGUI _eventTimeText = null!;
-
         [UIComponent("event-prev")]
         private readonly PageButton _eventPrev = null!;
 
@@ -94,6 +89,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly PlayerSocialLife _playerData = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly AccSaberLeaderboardViewController _leaderboardViewController = null!;
+
+        private AccSaberEventResponse? CurrentEvent => _serialHandler.CurrentEvent;
 
         [UIValue("is-loading")]
         private bool IsLoading
@@ -307,7 +304,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("OnEventPrev")]
         private void OnEventPrev()
         {
-            if (_currentEvent is not null)
+            if (CurrentEvent is not null)
             {
                 _eventNext.enabled = true;
 
@@ -325,14 +322,14 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("OnEventNext")]
         private void OnEventNext()
         {
-            if (_currentEvent is not null)
+            if (CurrentEvent is not null)
             {
                 _eventPrev.enabled = true;
 
-                if (WeekPage < _currentEvent.Event.TotalWeeks)
+                if (WeekPage < CurrentEvent.Event.TotalWeeks)
                     WeekPage++;
 
-                if (WeekPage == _currentEvent.Event.TotalWeeks)
+                if (WeekPage == CurrentEvent.Event.TotalWeeks)
                     _eventNext.enabled = false;
 
 
@@ -342,18 +339,18 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         public async Task SetEventInfo()
         {
-            if (_currentEvent is not null)
+            if (CurrentEvent is not null)
             {
-                EventTitle = _currentEvent.Event.Title;
-                EventDuration = $"Ends {MiscUtils.ToRelativeTime(_currentEvent.Event.EndsAt), 2}";
-                EventCurrentWeek = $"Week {_currentEvent.Event.CurrentWeek} of {_currentEvent.Event.TotalWeeks}";
-                EventDescription = _currentEvent.Event.Description;
+                EventTitle = CurrentEvent.Event.Title;
+                EventDuration = $"Ends {MiscUtils.ToRelativeTime(CurrentEvent.Event.EndsAt, 2)}";
+                EventCurrentWeek = $"Week {CurrentEvent.Event.CurrentWeek} of {CurrentEvent.Event.TotalWeeks}";
+                EventDescription = CurrentEvent.Event.Description;
             } 
         }
 
         private async Task SetEventMissions(bool forceNewContent)
         {
-            if (_currentEvent is not null)
+            if (CurrentEvent is not null)
             {
                 AsyncLock.Releaser? locker = await _eventLock.TryLockAsync();
 
@@ -374,17 +371,17 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     {
                         DateTime expiration = ((MissionCell?)_eventCells.FirstOrDefault())?.Data.ExpiresAt ?? DateTime.MinValue;
 
-                        List<AccSaberEventMe> missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id, WeekPage, false, overrideCache: _lastUpdate < SerializationHandler.LastScoreTime);
+                        List<AccSaberEventMe> missions = await _accSaberStore.GetEventMissions(WeekPage, false, overrideCache: _lastUpdate < SerializationHandler.LastScoreTime);
 
                         _lastUpdate = DateTime.UtcNow;
 
                         while (forceNewContent && missions.First(mission => mission.Mission.Week == WeekPage).Mission.CompletableUntil <= expiration)
                         {
                             await Task.Delay(15000);
-                            missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id, WeekPage, false);
+                            missions = await _accSaberStore.GetEventMissions(WeekPage, false);
                         }
 
-                       // List<AccSaberEventMe>? missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id, WeekPage, false);
+                       // List<AccSaberEventMe>? missions = await _accSaberStore.GetEventMissions(CurrentEvent.Event.Id, WeekPage, false);
 
                         if (missions is null)
                             return;
@@ -433,13 +430,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _eventDescriptionText.fontSizeMax = 4f;
             _parsed = true;
 
-            _liveEvents = await _accSaberStore.GetEvents();
-
-            if (_liveEvents.Count > 0)
-            {
-                _currentEvent = await _accSaberStore.GetActiveEvent(_liveEvents.First().Id);
-                WeekPage = _currentEvent.Event.CurrentWeek + 1; // get rid of +1 whenever events are actually live
-            }
+            if (CurrentEvent is not null)
+                WeekPage = Math.Max(1, CurrentEvent.Event.CurrentWeek);
 
             if (!_eventList.TableView().canSelectSelectedCell)
                 _eventList.TableView().SetField("_canSelectSelectedCell", true);

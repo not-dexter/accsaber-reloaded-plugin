@@ -316,37 +316,9 @@ namespace AccSaber.Managers
             return Success;
         }
 
-        public async Task<List<AccSaberEvent>> GetEvents()
+        public async Task<List<AccSaberEventMe>> GetEventMissions(int week, bool allWeeks = true, bool overrideCache = false)
         {
-            List<AccSaberEvent>? accSaberEvents = await APIHandler.CallAPI_Json<List<AccSaberEvent>>(HelpfulPaths.APAPI_EVENTS_LIVE, AccsaberAPI.Throttler);
-
-            if (accSaberEvents is null)
-            {
-                Plugin.Log.Debug("Events not found");
-                return [];
-            }
-
-            return accSaberEvents;
-        }
-
-        public async Task<AccSaberEventResponse> GetActiveEvent(Guid id)
-        {
-            string call = string.Format(HelpfulPaths.APAPI_EVENT, id);
-
-            AccSaberEventResponse? accSaberEvent = await APIHandler.CallAPI_Json<AccSaberEventResponse>(call, AccsaberAPI.Throttler);
-
-            if (accSaberEvent is null)
-            {
-                Plugin.Log.Debug("Event not found");
-                return new AccSaberEventResponse();
-            }
-
-            return accSaberEvent;
-        }
-
-        public async Task<List<AccSaberEventMe>> GetEventMissions(Guid id, int week, bool allWeeks = true, bool overrideCache = false)
-        {
-            await _serialHandler.RevalidateEvents(id, overrideCache);
+            await _serialHandler.RevalidateEvents(overrideCache);
 
             if (_serialHandler.EventMissions is null)
             {
@@ -359,10 +331,9 @@ namespace AccSaber.Managers
                 }
             }
 
-            List<AccSaberEventMe> outp = [.. _serialHandler.EventMissions];
-
-            if (!allWeeks)
-                outp = [.. outp.Where(mission => mission.Mission.Week == week)];
+            List<AccSaberEventMe> outp = allWeeks ?
+                [.. _serialHandler.EventMissions] :
+                [.. _serialHandler.EventMissions.Where(mission => mission.Mission.Week == week)];
 
             return outp;
         }
