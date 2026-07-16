@@ -230,7 +230,7 @@ namespace AccSaber.Managers
         }
         public async Task<CampaignProgress> GetCampaignProgress(AccSaberCampaign campaign)
         {
-            //Plugin.Log.Info(await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaignId), AccsaberAPI.Throttler) ?? "null");
+            //Plugin.Log.Info(await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler) ?? "null");
 
             List<JObject>? campaignList =
                 await APIHandler.CallAPI_Json<List<JObject>>(
@@ -725,7 +725,7 @@ namespace AccSaber.Managers
             this(
                 playerValues,
                 new(campaign.Difficulties.Cast<INode<Guid>>().Concat(campaign.Barriers)),
-                campaign.Difficulties.Where(map => map.PrerequisiteMode != "OR").Select(map => map.Id)
+                campaign.Difficulties.Where(map => map.PrerequisiteMode.Equals("AND")).Select(map => map.Id)
                 )
         { }
 

@@ -13,6 +13,7 @@ using HMUI;
 using IPA.Utilities.Async;
 using SongCore;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -497,15 +498,42 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkAsComplete(id, progress), id];
 
-            foreach (CampaignMapNode node in campaignMapNodes)
-                if (mapsToUpdate.Contains(node.Map.Id))
-                    node.UpdateProgress();
+            List<CampaignMapBarrier> barriersToUpdate = [.. campaignMapBarriers.Where(node => mapsToUpdate.Contains(node.Barrier.Id))];
 
-            foreach (CampaignMapBarrier node in campaignMapBarriers)
-                if (mapsToUpdate.Contains(node.Barrier.Id))
-                    node.UpdateProgress();
+            if (barriersToUpdate.Count > 0)
+                FetchProgressThenUpdate(barriersToUpdate);
+            else
+            {
+                foreach (CampaignMapNode node in campaignMapNodes)
+                    if (mapsToUpdate.Contains(node.Map.Id))
+                        node.UpdateProgress();
+            }
 
             return CampaignProgress.PlayerValues[id];
+        }
+        private async void FetchProgressThenUpdate(List<CampaignMapBarrier> barriers)
+        {
+            AccSaberCampaign? current = currentCampaign;
+
+            await acvc.WaitForServerUpdate();
+
+            if (currentCampaign is null || !currentCampaign.Equals(current) || !acvc.InCampaign)
+                return;
+
+            CampaignProgress = await store.GetCampaignProgress(currentCampaign);
+
+            IEnumerator WaitThenUpdate()
+            {
+                yield return new WaitForEndOfFrame();
+
+                if (!acvc.InCampaign)
+                    yield break;
+
+                foreach (CampaignMapBarrier barrier in barriers)
+                    barrier.UpdateProgress();
+            }
+
+            threadDispatcher.StartCoroutine(WaitThenUpdate());
         }
 
         private static bool TryGetPerpendicularBarrierRotation(List<Vector2> arrowDirections, out Quaternion rotation)
@@ -1397,9 +1425,23 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             public void UpdateProgress()
             {
+                RecalculateFCProgress();
                 UpdateText();
                 UpdateTextSize();
                 UpdateTextPos();
+            }
+            private void RecalculateFCProgress()
+            {
+                if (Barrier.ConditionType != AccSaberCampaignBarrier.BarrierConditionType.FC)
+                    return;
+
+                List<float> values = [.. Barrier.AffectedCampaignDifficultyIds
+                    .Select(id => parentVC.CampaignProgress.PlayerValues[id])
+                    .Where(val => val.Completion == CampaignProgress.CompletionStatus.Complete)
+                    .Select(val => val.Progress)];
+
+                CampaignProgress.CampaignProgressValue progess = parentVC.CampaignProgress.PlayerValues[Barrier.Id];
+                parentVC.CampaignProgress.PlayerValues[Barrier.Id] = new(values.Count, progess.Completion);
             }
 
             private static void SetupManualRectTransform(RectTransform rt)

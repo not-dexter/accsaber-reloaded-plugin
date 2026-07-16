@@ -49,7 +49,7 @@
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
         <horizontal>
           <button text='Zoom In' on-click='ZoomIn' />
-          <button text='Go To Map' on-click='GotoMap' />
+          <button text='Go To Furthest Map' on-click='GotoMap' />
           <button text='Zoom Out' on-click='ZoomOut' />
           <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings'/>
         </horizontal>

@@ -128,7 +128,7 @@ namespace AccSaber.Models
         public AccSaberEventMission Mission { get; set; } = null!;
 
         [JsonProperty("current")]
-        public AccSaberEventMission Current {  get; set; } = null!;
+        public AccSaberEventMission? Current { get; set; } = null;
 
         [JsonProperty("completions")]
         public int Completions {  get; set; }
