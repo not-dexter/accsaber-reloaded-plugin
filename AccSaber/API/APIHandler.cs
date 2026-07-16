@@ -109,7 +109,13 @@ namespace AccSaber.API
                     if (status >= 400 && status < 500)
                     {
                         if (!quiet)
+                        {
                             Plugin.Log.Error("API request failed, skipping retries due to error code (" + status + ").\nPath: " + request.RequestUri);
+
+                            string errorContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                            Plugin.Log.Debug($"API failure reason: {Newtonsoft.Json.Linq.JObject.Parse(errorContent)["message"]}");
+                        }
                         break;
                     }
                     response.EnsureSuccessStatusCode();
