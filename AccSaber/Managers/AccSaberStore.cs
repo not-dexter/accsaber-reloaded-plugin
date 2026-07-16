@@ -56,6 +56,7 @@ namespace AccSaber.Managers
 #else
         public IDifficultyBeatmap CurrentLevel { get; private set; } = null!;
 #endif
+        public string CurrentHash { get; private set; } = null!;
 
         private AccSaberPlayer? _currentUser;
         private readonly ObjectCacher<Guid, AccSaberCampaign> _campaignCache = new();
@@ -94,6 +95,40 @@ namespace AccSaber.Managers
 			}
 		}
 		public AccSaberPlayer? CurrentUser => _currentUser;
+
+        public async Task<AccSaberBasicDifficulty?> GetCurrentMap()
+        {
+            if (_currentRankedMap is not null)
+                return _currentRankedMap;
+
+            try
+            {
+                AccSaberRankedMap? map = await APIHandler.CallAPI_Json<AccSaberRankedMap>(string.Format(HelpfulPaths.APAPI_HASH, CurrentHash), AccsaberAPI.Throttler);
+
+                if (map is null)
+                    return null;
+
+                _serialHandler.CachedMaps.Add(CurrentHash, map);
+
+                AccSaberBasicDifficulty? outp = null;
+
+                foreach (AccSaberBasicDifficulty diff in map.Difficulties)
+                {
+                    if (diff.Difficulty == CurrentKey.difficulty)
+                        outp = diff;
+
+                    _serialHandler.CachedDifficulties.Add(diff.DifficultyId, diff);
+                }
+
+                return outp;
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error($"Issue URL: {string.Format(HelpfulPaths.APAPI_HASH, CurrentHash)}");
+                Plugin.Log.Error("There was an error getting map information: " + ex);
+                return null;
+            }
+        }
 
 		public async Task<List<AccSaberMilestone>> GetUserMilestones(bool completed)
 		{
@@ -376,6 +411,7 @@ namespace AccSaber.Managers
 		}
 		public void SetMapFromBasicInfo(string hash, BeatmapDifficulty difficulty)
 		{
+            CurrentHash = hash;
             CurrentRankedMap = _api.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
         }
 #if NEW_VERSION

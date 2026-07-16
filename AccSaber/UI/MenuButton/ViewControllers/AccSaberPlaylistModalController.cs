@@ -10,7 +10,6 @@ using HMUI;
 using System;
 using System.Collections;
 using System.Linq;
-using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TMPro;
@@ -100,7 +99,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
-        private static readonly Regex FilenameEscapeRegex = new(@"[ \/]+");
+        internal static readonly Regex FilenameEscapeRegex = new(@"[ \/]+");
 
         [UIAction("batchSelected")]
         private void BatchSelected(BatchCell cell)

@@ -252,7 +252,20 @@ namespace AccSaber.Utils.Misc
 
         }
 
-        public void OnPlayerScoreUpdated(AccSaberLeaderboardEntry entry)
+        public async Task<AccSaberBasicDifficulty?> GetDiffById(Guid id)
+        {
+            if (CachedDifficulties.TryGetValue(id, out AccSaberBasicDifficulty diff))
+                return diff;
+
+            AccSaberDifficulty? fullDiff = await APIHandler.CallAPI_Json<AccSaberDifficulty>(string.Format(HelpfulPaths.APAPI_DIFF_ID, id), AccsaberAPI.Throttler);
+
+            if (fullDiff is null)
+                return null;
+
+            CachedDifficulties.Add(id, fullDiff);
+            return fullDiff;
+        }
+        internal void OnPlayerScoreUpdated(AccSaberLeaderboardEntry entry)
         {
             InvalidateMissionCache();
             InvalidatEventsCache();
@@ -316,9 +329,12 @@ namespace AccSaber.Utils.Misc
             PlayerScores.Clear();
             PlayerScores.AddRange(MiscUtils.MergeSortedLists(PlayerScoreSorter, playerCategoryScores)); // Since all the weights below the score have changed, resort the scores.
         }
-        public (AccSaberBasicMap map, AccSaberBasicDifficulty diff)? GetMapWithDifficulty(Guid difficultyId)
+        public async Task<(AccSaberBasicMap map, AccSaberBasicDifficulty diff)?> GetMapWithDifficulty(Guid difficultyId)
         {
-            AccSaberBasicDifficulty diff = CachedDifficulties[difficultyId];
+            AccSaberBasicDifficulty? diff = await GetDiffById(difficultyId);
+
+            if (diff is null)
+                return null;
 
             return (CachedMaps[diff.Hash], diff);
         }

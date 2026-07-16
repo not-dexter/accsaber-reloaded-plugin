@@ -168,10 +168,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 foreach (AccSaberCampaignMap map in campaign.Difficulties)
                 {
+                    AccSaberBasicDifficulty? diff = await serialHandler.GetDiffById(map.MapDifficultyId);
+
+                    if (diff is null)
+                    {
+                        Plugin.Log.Warn($"There was an error loading map with id \"{map.MapDifficultyId}\"");
+                        continue;
+                    }
+
                     CampaignMapNode node = new(
                         map: map,
                         parent: this,
-                        mapHash: serialHandler.CachedDifficulties[map.MapDifficultyId].Hash,
+                        mapHash: diff.Hash,
                         offsetData: CurrentOffsetData,
                         flow: accCampaignFlow,
                         campaignViewController: acvc,
@@ -331,7 +339,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             mapNodeArrows.Clear();
 
             Dictionary<Guid, PositionData> knownPositions = [];
-            Queue<(Guid prereq, Guid toNode)> neededPositions = [];
+            Queue<(AccSaberCampaignPrereq prereq, Guid toNode)> neededPositions = [];
 
             void HandleArrows(AccSaberCampaignPositionablePrereq node, PositionData current)
             {
@@ -341,23 +349,23 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     return;
                 }
 
-                foreach (Guid id in node.PrerequisiteIds)
+                foreach (AccSaberCampaignPrereq prereq in node.PrerequisiteInfos)
                 {
-                    if (knownPositions.TryGetValue(id, out PositionData from) &&
+                    if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
                         CreateArrow(
                             NodeContainer.transform,
                             from,
                             current,
-                            CampaignProgress.CompletedItems.Contains(id) ? Color.white : Color.grey,
+                            (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
                             CurrentOffsetData!.ScaleFactor)
                         is GameObject go)
                     {
                         go.transform.SetAsFirstSibling();
-                        mapNodeArrows.Add((id, node.Id, go));
+                        mapNodeArrows.Add((prereq.Id, node.Id, go));
                     }
                     else
                     {
-                        neededPositions.Enqueue((id, node.Id));
+                        neededPositions.Enqueue((prereq, node.Id));
                     }
                 }
             }
@@ -372,18 +380,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 var (prereq, toNode) = neededPositions.Dequeue();
 
-                if (knownPositions.TryGetValue(prereq, out PositionData from) &&
+                if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
                     knownPositions.TryGetValue(toNode, out PositionData to) &&
                     CreateArrow(
                         NodeContainer.transform,
                         from,
                         to,
-                        CampaignProgress.CompletedItems.Contains(prereq) ? Color.white : Color.grey,
+                        (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
                         CurrentOffsetData!.ScaleFactor)
                     is GameObject go)
                 {
                     go.transform.SetAsFirstSibling();
-                    mapNodeArrows.Add((prereq, toNode, go));
+                    mapNodeArrows.Add((prereq.Id, toNode, go));
                 }
                 else
                 {
@@ -1134,6 +1142,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     if (string.IsNullOrEmpty(Map.BorderColor))
                     {
+                        // Fetching from cache is ok because the map will have been loaded at this point
                         APCategory category = serialUtils.CachedDifficulties[Map.MapDifficultyId].Category ?? APCategory.Overall;
                         BorderImage.color = ColorUtils.GetColor(category).Color();
                     }
@@ -1194,6 +1203,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     {
                         Plugin.Log.Warn($"Cannot find level by hash \"{Hash}\", downloading...");
 
+                        // Map should be loaded at this point.
                         level = await levelUtils.DownloadSong(serialUtils.CachedMaps[Hash]);
 
                         UpdateMapCovers?.Invoke();

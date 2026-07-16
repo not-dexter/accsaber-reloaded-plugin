@@ -1,6 +1,8 @@
 ﻿//#define PRINT_DEBUG
 
 using AccSaber.Models.Base;
+using AccSaber.Utils;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -11,6 +13,8 @@ using UnityEngine;
 
 namespace AccSaber.Models
 {
+
+    [UsedImplicitly]
     internal class AccSaberCampaign<T> : IModel where T : Utils.Misc.INode<Guid> 
     {
         [JsonProperty("id")]
@@ -238,6 +242,7 @@ namespace AccSaber.Models
         }
     }
 
+    [UsedImplicitly]
     internal class CampaignTags
     {
         [JsonProperty("id")]
@@ -263,7 +268,8 @@ namespace AccSaber.Models
         }
     }
 
-    internal class AccSaberCampaignItem
+    [UsedImplicitly]
+    internal class AccSaberCampaignItem : IModel
     {
         [JsonProperty("itemId")]
         public Guid ItemId { get; set; }
@@ -275,7 +281,8 @@ namespace AccSaber.Models
         public int Quantity { get; set; }
     }
 
-    internal class AccSaberCampaignPositionable
+    [UsedImplicitly]
+    internal class AccSaberCampaignPositionable : IModel
     {
         [JsonProperty("size")]
         public string SizeStr { get; set; } = "0";
@@ -296,22 +303,46 @@ namespace AccSaber.Models
                 Size = size;
         }
     }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignPrereq
+    {
+        [JsonProperty("comesFromCampaignDifficultyId")]
+        public Guid Id { get; set; }
+
+        [JsonProperty("color")]
+        public string Color { get; set; } = "#FFF";
+
+        [JsonIgnore]
+        public string DimmedColor { get; set; } = null!;
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            DimmedColor = Color.DimColor(5);
+        }
+    }
+
+    [UsedImplicitly]
     internal class AccSaberCampaignPositionablePrereq : AccSaberCampaignPositionable, Utils.Misc.INode<Guid>
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
 
-        [JsonProperty("prerequisiteCampaignDifficultyIds")]
-        public virtual List<Guid> PrerequisiteIds { get; set; } = [];
+        [JsonProperty("prerequisites")]
+        public virtual List<AccSaberCampaignPrereq> PrerequisiteInfos { get; set; } = [];
 
         [JsonIgnore]
-        public IReadOnlyCollection<Guid> InwardArrows => PrerequisiteIds;
+        public IReadOnlyCollection<Guid> InwardArrows => [.. PrerequisiteInfos.Select(prereq => prereq.Id)];
     }
 
+    [UsedImplicitly]
     internal class AccSaberCampaignMap : AccSaberCampaignPositionablePrereq
     {
         [JsonProperty("mapDifficultyId")]
         public Guid MapDifficultyId { get; set; }
+
+        // categoryId?, complexity?, beatsaverCode?, maxScore?
 
         [JsonProperty("mapAuthor")]
         public string MapAuthor { get; set; } = null!;
@@ -371,6 +402,8 @@ namespace AccSaber.Models
             RANK
         }
     }
+
+    [UsedImplicitly]
     internal class AccSaberCampaignBarrier : AccSaberCampaignPositionablePrereq, Utils.Misc.INodeAffected<Guid>
     {
         [JsonProperty("conditionType")]
@@ -422,7 +455,7 @@ namespace AccSaber.Models
             if (Size == default)
                 Size = 48;
 
-            AffectedByIds = [.. AffectedCampaignDifficultyIds.Union(PrerequisiteIds)];
+            AffectedByIds = [.. AffectedCampaignDifficultyIds.Union(InwardArrows)];
         }
 
 
@@ -452,7 +485,8 @@ namespace AccSaber.Models
         }
     }
 
-    internal class AccSaberCampaignText
+    [UsedImplicitly]
+    internal class AccSaberCampaignText : IModel
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }

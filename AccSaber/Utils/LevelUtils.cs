@@ -505,7 +505,7 @@ namespace AccSaber.Utils
                 AccSaberBasicDifficulty? cachedDiff = null;
                 string? hash = null;
 
-                var mapData = _serialHandler.GetMapWithDifficulty(diffId);
+                var mapData = await _serialHandler.GetMapWithDifficulty(diffId);
 
                 if (mapData is null)
                 {

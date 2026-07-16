@@ -13,13 +13,7 @@
 	<vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-mission-tab'>
 		<tab-selector id='mission-tab-selector' tab-tag='mission-tabs' select-cell='missions-tab-selected'/>
 	</vertical>
-    <!--<vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-events-tab'>
-      <tab-selector tab-tag='events-tabs' select-cell='events-tab-selected'/>
-    </vertical>
-	
-	
-    <tab tags='category-tabs' tab-name='Events'/>
--->
+
     <tab tags='category-tabs' tab-name='Missions'/>
     <tab tags='category-tabs' tab-name='Milestones'/>
 	  

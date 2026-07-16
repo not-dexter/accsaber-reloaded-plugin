@@ -1,4 +1,5 @@
-﻿using AccSaber.Configuration;
+﻿using AccSaber.API;
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
@@ -84,6 +85,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator _parentFlowCoordinator = null!;
         [Inject] private readonly LevelUtils _levelUtils = null!;
+        [Inject] private readonly PlaylistUtils _playlistUtils = null!;
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly AccSaberNotificationModal _asnm = null!;
         [Inject] private readonly PlayerSocialLife _playerData = null!;
@@ -249,7 +251,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         MissionType.XP_IN_WINDOW or
                         MissionType.PB_ABOVE_THRESHOLD or
                         MissionType.STREAK_N_IN_CATEGORY or
-                        >= MissionType.SCORES_N and <= MissionType.PB_RANKED_BEFORE_N:
+                        MissionType.SCORES_N or
+                        > MissionType.SNIPE_RIVAL_ANY_MAP and < MissionType.PB_RANKED_BEFORE_N: // SNIPE_RIVAL_ANY_MAP and PB_RANKED_BEFORE_N are not implemented
                         prompt = "Would you like to go to this Playlist?";
                         break;
                     default: return; // ignore: CAMPAIGN_COMPLETE_N
@@ -350,63 +353,59 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         private async Task SetEventMissions(bool forceNewContent)
         {
-            if (CurrentEvent is not null)
+            AsyncLock.Releaser? locker = await _eventLock.TryLockAsync();
+
+            if (locker is null)
+                return;
+
+            using (locker.Value)
             {
-                AsyncLock.Releaser? locker = await _eventLock.TryLockAsync();
+                if (!IsEventLoading)
+                    IsEventLoading = true;
 
-                if (locker is null)
-                    return;
+                _eventCells.Clear();
+                _eventList.Data().Clear();
 
-                using (locker.Value)
+                await _playerData.LoadTask;
+                await _serialHandler.InitTask;
+
+                try
                 {
-                    if (!IsEventLoading)
-                        IsEventLoading = true;
+                    DateTime expiration = ((MissionCell?)_eventCells.FirstOrDefault())?.Data.ExpiresAt ?? DateTime.MinValue;
 
-                    _eventCells.Clear();
-                    _eventList.Data().Clear();
+                    List<AccSaberEventMe> missions = await _accSaberStore.GetEventMissions(WeekPage, false, overrideCache: _lastUpdate < SerializationHandler.LastScoreTime);
 
-                    await _playerData.LoadTask;
+                    _lastUpdate = DateTime.UtcNow;
 
-                    try
+                    while (forceNewContent && missions.First(mission => mission.Mission.Week == WeekPage).Mission.CompletableUntil <= expiration)
                     {
-                        DateTime expiration = ((MissionCell?)_eventCells.FirstOrDefault())?.Data.ExpiresAt ?? DateTime.MinValue;
+                        await Task.Delay(15000);
+                        missions = await _accSaberStore.GetEventMissions(WeekPage, false);
+                    }
 
-                        List<AccSaberEventMe> missions = await _accSaberStore.GetEventMissions(WeekPage, false, overrideCache: _lastUpdate < SerializationHandler.LastScoreTime);
+                    if (missions is null)
+                        return;
 
-                        _lastUpdate = DateTime.UtcNow;
+                    foreach (AccSaberEventMe mission in missions)
+                    {
+                        if (mission.Mission.Week != WeekPage) 
+                            continue;
 
-                        while (forceNewContent && missions.First(mission => mission.Mission.Week == WeekPage).Mission.CompletableUntil <= expiration)
-                        {
-                            await Task.Delay(15000);
-                            missions = await _accSaberStore.GetEventMissions(WeekPage, false);
-                        }
+                        AccSaberBasicDifficulty? targetDiff = mission.Mission.TargetMapDifficultyId is null ?
+                        null : _serialHandler.CachedDifficulties[mission.Mission.TargetMapDifficultyId.Value];
 
-                       // List<AccSaberEventMe>? missions = await _accSaberStore.GetEventMissions(CurrentEvent.Event.Id, WeekPage, false);
-
-                        if (missions is null)
-                            return;
-
-                        foreach (AccSaberEventMe mission in missions)
-                        {
-                            if (mission.Mission.Week != WeekPage) 
-                                continue;
-
-                            AccSaberBasicDifficulty? targetDiff = mission.Mission.TargetMapDifficultyId is null ?
-                            null : _serialHandler.CachedDifficulties[mission.Mission.TargetMapDifficultyId.Value];
-
-                            _eventCells.Add(new MissionCell(mission.Current ?? mission.Mission, targetDiff)); // change this to current when live
-                        }
+                        _eventCells.Add(new MissionCell(mission.Current ?? mission.Mission, targetDiff)); // change this to current when live
+                    }
                     
-                        _eventList.TableView().ReloadData();
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.Log.Error(ex);
-                    }
-                    finally
-                    {
-                        IsEventLoading = false;
-                    }
+                    _eventList.TableView().ReloadData();
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Error(ex);
+                }
+                finally
+                {
+                    IsEventLoading = false;
                 }
             }
         }
@@ -430,13 +429,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _eventDescriptionText.fontSizeMax = 4f;
             _parsed = true;
 
-            if (CurrentEvent is not null)
-                WeekPage = Math.Max(1, CurrentEvent.Event.CurrentWeek);
+            WeekPage = Math.Max(1, CurrentEvent?.Event.CurrentWeek ?? 0);
 
             if (!_eventList.TableView().canSelectSelectedCell)
                 _eventList.TableView().SetField("_canSelectSelectedCell", true);
 
-        }
+            }
 
         private void UpdateTimer()
         {
@@ -528,10 +526,30 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.SNIPE_RIVAL_ANY_MAP:
+                    // Cannot be done really at all, would have to load 1000s of scores even if a player has like 2 rivals.
+                    _ = _levelUtils.LoadPlaylist(APCategory.Overall, CloseMenu, cell.UpdateStatus);
                     break;
                 case MissionType.BATCH_PLAY_N:
+                    async Task LoadBatch()
+                    {
+                        AccSaberPagedContent<AccSaberBatch>? batchData = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberBatch>>(string.Format(HelpfulPaths.APAPI_BATCHES, 0, 1) + "&sort=releasedAt,desc", AccsaberAPI.Throttler);
+
+                        if (batchData is null || batchData.Content is null)
+                            return;
+
+                        AccSaberBatch batch = batchData.Content.First();
+
+                        string filename = $"accsaber-reloaded-{AccSaberPlaylistModalController.FilenameEscapeRegex.Replace(batch.Name, "-")}";
+                        string playlistName = $"Accsaber {batch.Name}";
+
+                        await _levelUtils.LoadPlaylist(filename, playlistName, _playlistUtils.GetPlaylistData(batch.Difficulties.Select(diff => diff.DifficultyId)), null, CloseMenu, cell.UpdateStatus);
+                    }
+                    _ = LoadBatch();
                     break;
-                    //PB_RANKED_BEFORE_N (no idea what this one is), CAMPAIGN_COMPLETE_N (this one will do nothing)
+                case MissionType.PB_RANKED_BEFORE_N:
+                    // Cannot be done until there is an easy way to get all maps ranked before a time.
+                    break;
+                    //CAMPAIGN_COMPLETE_N (cannot generate a playlist for a campaign)
             }
         }
 

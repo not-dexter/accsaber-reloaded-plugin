@@ -62,6 +62,8 @@
 
         public const string APAPI_DIFF = APAPI + "maps/difficulties?status={0}&page={1}&size={2}"; // status (QUEUE, QUALIFIED, RANK), page (zero indexed), size 
 
+        public const string APAPI_DIFF_ID = APAPI + "maps/difficulties/{0}"; // diffId
+
 
         /// <summary>
         /// Retrieves a user's profile by ID.

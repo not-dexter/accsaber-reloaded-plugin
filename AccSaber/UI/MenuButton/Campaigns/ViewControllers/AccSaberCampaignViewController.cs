@@ -733,7 +733,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             try
             {
 #if NEW_VERSION
-                LoadBeatmapLevelDataResult mapInfo = await _beatmapLevelsModel.LoadBeatmapLevelDataAsync(beatmapLevel.levelID, BeatmapLevelDataVersion.Original, System.Threading.CancellationToken.None);
+                LoadBeatmapLevelDataResult mapInfo = await _beatmapLevelsModel.LoadBeatmapLevelDataAsync(beatmapLevel.levelID, BeatmapLevelDataVersion.Original, CancellationToken.None);
 
                 BeatmapDataBasicInfo? mapData = await _beatmapDataLoader.LoadBasicBeatmapDataAsync(mapInfo.beatmapLevelData!, beatmapKey);
 #else
@@ -805,7 +805,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             };
 
             MissionObjective = objective;
-            _ = _missionImage.LoadCoverImage(_serialHandler.CachedDifficulties[map.MapDifficultyId].Hash, map.CoverUrl);
+
+            AccSaberBasicDifficulty? mapDiff = await _serialHandler.GetDiffById(map.MapDifficultyId);
+
+            if (mapDiff is not null)
+                _ = _missionImage.LoadCoverImage(mapDiff.Hash, map.CoverUrl);
 
             CurrentMap = map;
 
@@ -876,7 +880,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     UpdateCampaign();
             }
         }
-        private void OnPlayerScoreSubmit(AccSaberScore score)
+        private async void OnPlayerScoreSubmit(AccSaberScore score)
         {
             DateTime now = DateTime.UtcNow;
             _lastScoreSubmit = now;
@@ -884,10 +888,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
 
+                AccSaberBasicDifficulty? diff = await _serialHandler.GetDiffById(score.MapDifficultyId);
+
+                if (diff is null)
+                {
+                    Plugin.Log.Warn("Difficulty for score not found!");
+                    return;
+                }
+
                 float val = CurrentMap.RequirementType switch
                 {
                     AccSaberCampaignMap.CampaignRequirementType.ACC => acc,
-                    AccSaberCampaignMap.CampaignRequirementType.AP => _calc.GetAp(acc, _serialHandler.CachedDifficulties[score.MapDifficultyId].Complexity),
+                    AccSaberCampaignMap.CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
                     AccSaberCampaignMap.CampaignRequirementType.SCORE => score.Score,
                     AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => score.Streak115,
                     AccSaberCampaignMap.CampaignRequirementType.FC => score.Mistakes,

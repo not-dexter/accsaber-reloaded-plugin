@@ -27,6 +27,8 @@ namespace AccSaber.Counter.Hosts
         private TMP_Text DisplayText = null!;
         private int max115Streak = 0, current115Streak = 0;
 
+        private float requiredVal;
+
         static CampaignCounter()
         {
             CanvasUtilityType = Plugin.CounterAssembly?.GetType("CountersPlus.Utils.CanvasUtility");
@@ -55,6 +57,8 @@ namespace AccSaber.Counter.Hosts
 
                 Map = campaignVC.CurrentMap!;
                 DiffInfo = Plugin.Container.TryResolve<SerializationHandler>().CachedDifficulties[Map.MapDifficultyId];
+
+                requiredVal = Map.RequirementValue - 0.005f;
             }
             catch (Exception e)
             {
@@ -119,7 +123,7 @@ namespace AccSaber.Counter.Hosts
         private void AccCounter(ScoringElement scoringElement)
         {
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore * 100f;
-            float goalAcc = Map.RequirementValue * 100f;
+            float goalAcc = requiredVal * 100f;
 
             UpdateColor(acc >= goalAcc);
 
@@ -130,13 +134,13 @@ namespace AccSaber.Counter.Hosts
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore;
             float ap = Calc.GetAp(acc, DiffInfo.Complexity);
 
-            UpdateColor(ap >= Map.RequirementValue);
+            UpdateColor(ap >= requiredVal);
 
             DisplayText.SetText($"{ap:0.##} ap / {Map.RequirementValue:0.##} ap");
         }
         private void ScoreCounter(int multipliedScore, int modifiedScore)
         {
-            UpdateColor(multipliedScore >= Map.RequirementValue);
+            UpdateColor(multipliedScore >= requiredVal);
 
             DisplayText.SetText($"{multipliedScore:N0} / {Map.RequirementValue:N0} Score");
         }

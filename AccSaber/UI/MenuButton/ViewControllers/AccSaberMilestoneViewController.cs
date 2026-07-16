@@ -32,7 +32,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		private bool _isLoading;
         private CategoryTab _currentTab;
         private MilestoneTab _currentMilestoneTab = 0;
-        private int _currentEventWeekTab = 0;
 
         private CategoryTab CurrentTab
         {
@@ -115,9 +114,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIValue("is-mission-tab")]
         private bool IsMissionTab => CurrentTab == CategoryTab.Missions;
 
-        [UIValue("is-events-tab")]
-        public bool IsEventsTab => CurrentTab == CategoryTab.Events;
-
         [UIValue("container-offset")]
         private float ContainerOffset => CurrentTab == CategoryTab.Missions ? 7.5f : 0f;
 
@@ -128,8 +124,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private enum CategoryTab 
         {
             Missions,
-			Milestones,
-            Events
+			Milestones
 		}
         private enum MilestoneTab
         {
@@ -171,13 +166,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _currentMilestoneTab = (MilestoneTab)index;
 
             _ = SetMilestones(_currentMilestoneTab);
-        }
-
-        [UIAction("events-tab-selected")]
-        private void EventsTabSelected(SegmentedControl segmentedControl, int index)
-        {
-            mc.IsInEvent = true;
-            _currentEventWeekTab = index;
         }
 
         [UIAction("missions-tab-selected")]
@@ -248,8 +236,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     break;
                 case CategoryTab.Missions:
                     mc.ShowMissions();
-                    break;
-                case CategoryTab.Events:
                     break;
             }
         }

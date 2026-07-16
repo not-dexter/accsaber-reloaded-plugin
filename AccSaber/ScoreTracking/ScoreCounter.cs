@@ -2,6 +2,7 @@
 using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Patches;
+using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
@@ -44,7 +45,7 @@ namespace AccSaber.ScoreTracking
 
         private bool AtEndsOfMap => notes == 0 || notes == totalNotes;
 
-        public void Initialize()
+        public async void Initialize()
         {
             SubmissionPatch.EnableSubmissions();
 
@@ -69,13 +70,21 @@ namespace AccSaber.ScoreTracking
             }
 
             //Plugin.Log.Info($"current map null? {store.CurrentRankedMap is null}");
-            if (store.CurrentRankedMap is null)
+            if (store.CurrentRankedMap is null && (!Plugin.Container.TryResolve<AccSaberCampaignViewController>()?.MapStarted ?? true))
                 return;
+
+            AccSaberBasicDifficulty? currentMap = store.CurrentRankedMap ?? await store.GetCurrentMap();
+
+            if (currentMap is null)
+            {
+                Plugin.Log.Warn("Somehow the current map is null after null checks happened. This is a bug.");
+                return;
+            }
 
             score = new()
             {
-                MapDifficultyId = store.CurrentRankedMap!.DifficultyId,
-                Headset = store.GetCurrentUserAsync().GetAwaiter().GetResult().Headset,
+                MapDifficultyId = currentMap.DifficultyId,
+                Headset = (await store.GetCurrentUserAsync()).Headset,
             };
 
             totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);

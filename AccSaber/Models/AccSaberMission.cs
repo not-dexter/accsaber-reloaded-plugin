@@ -76,6 +76,12 @@ namespace AccSaber.Models
         [JsonProperty("targetStreak")]
         public int? TargetStreak { get; set; }
 
+        [JsonProperty("targetRankedBefore")]
+        public DateTime? TargetRankedBefore { get; set; }
+
+        [JsonProperty("targetCuratedOnly")]
+        public bool? TargetCuratedOnly { get; set; }
+
         [JsonProperty("progressCount")]
         public int ProgressCount { get; set; }
 
