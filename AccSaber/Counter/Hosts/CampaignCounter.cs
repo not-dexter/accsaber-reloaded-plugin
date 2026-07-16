@@ -58,7 +58,7 @@ namespace AccSaber.Counter.Hosts
                 Map = campaignVC.CurrentMap!;
                 DiffInfo = Plugin.Container.TryResolve<SerializationHandler>().CachedDifficulties[Map.MapDifficultyId];
 
-                requiredVal = Map.RequirementValue - 0.005f;
+                requiredVal = Map.RequirementValue - 0.00005f;
             }
             catch (Exception e)
             {
