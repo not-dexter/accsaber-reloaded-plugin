@@ -10,7 +10,7 @@
     <vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-milestone-tab'>
       <tab-selector tab-tag='milestone-tabs' select-cell='milestone-tab-selected'/>
     </vertical>
-	<vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-mission-tab'>
+	<vertical vertical-fit='PreferredSize' pref-height='8' pad='1' active='~is-mission-tab-events'>
 		<tab-selector id='mission-tab-selector' tab-tag='mission-tabs' select-cell='missions-tab-selected'/>
 	</vertical>
 

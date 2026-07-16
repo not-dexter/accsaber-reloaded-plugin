@@ -41,6 +41,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 _currentTab = value;
                 NotifyPropertyChanged(nameof(IsMilestoneTab));
                 NotifyPropertyChanged(nameof(IsMissionTab));
+                NotifyPropertyChanged(nameof(IsMissionEventsTab));
                 NotifyPropertyChanged(nameof(ContainerOffset));
                 NotifyPropertyChanged(nameof(ContainerWidth));
             }
@@ -75,8 +76,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
+        [Inject] private readonly SerializationHandler _serialHandler = null!;
 
-		private List<AccSaberMilestone> _milestones = null!;
+        private List<AccSaberMilestone> _milestones = null!;
+        private AccSaberEventResponse? CurrentEvent => _serialHandler.CurrentEvent;
 
         [UIObject("container")]
         private readonly GameObject _container = null!;
@@ -112,7 +115,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool IsMilestoneTab => CurrentTab == CategoryTab.Milestones;
 
         [UIValue("is-mission-tab")]
-        private bool IsMissionTab => CurrentTab == CategoryTab.Missions;
+        private bool IsMissionTab => (CurrentTab == CategoryTab.Missions);
+
+        [UIValue("is-mission-tab-events")]
+        private bool IsMissionEventsTab => (CurrentTab == CategoryTab.Missions && CurrentEvent is not null);
 
         [UIValue("container-offset")]
         private float ContainerOffset => CurrentTab == CategoryTab.Missions ? 7.5f : 0f;
