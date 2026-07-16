@@ -37,7 +37,7 @@
 				<text text='~event-current-week' font-size='3' color='#5e5973' align='Left'/>
 				<text id='event-description' text='~event-description' word-wrapping='true' font-size='3.5' color='grey' align='Left'/>
 			</vertical>
-			<vertical pref-width='75' child-expand-height='false' bg='panel-top' skew='0'>
+			<vertical pref-width='75' child-expand-height='false' bg='panel-top' skew='0' active='~event-begun'>
 				<horizontal>
 					<horizontal pad='2' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
 						<text text='~week-current' align='Left' font-size='5'/>
@@ -55,6 +55,12 @@
 				<horizontal pref-height='35' pref-width='70' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-event-loading'>
 					<loading preserve-aspect='true' pref-height='5' horizontal-fit='PreferredSize'/>
 				</horizontal>
+			</vertical>
+			<vertical  pref-width='75' child-expand-height='false' bg='panel-top' skew='0' active='~event-not-begun'>
+				<vertical pref-height='35' pref-width='65'>
+					<text id='begin-event-status' align='Center' word-wrapping='true' font-size='4' text='Click here to begin the event and access your missions!'/>
+					<button text='Begin!' on-click='on-event-begin' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
+				</vertical>
 			</vertical>
 		</horizontal>
 	</vertical>

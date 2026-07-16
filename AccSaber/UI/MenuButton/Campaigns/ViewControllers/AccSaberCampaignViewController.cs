@@ -81,6 +81,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private enum CategoryTab
         {
             Active,
+            Official,
             Curated,
             All,
             Completed
@@ -659,6 +660,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 List<AccSaberCampaign> tabCampaigns = CurrentTab switch
                 {
                     CategoryTab.Active => _activeCampaigns,
+                    CategoryTab.Official => await _accSaberStore.GetCampaigns(AccSaberCampaign.CampaignStatus.CURATED),
                     CategoryTab.Curated => await _accSaberStore.GetCampaigns(AccSaberCampaign.CampaignStatus.CURATED),
                     CategoryTab.All => await _accSaberStore.GetCampaigns(),
                     CategoryTab.Completed => _activeCampaigns,
@@ -668,7 +670,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 foreach (var campaign in tabCampaigns)
                 {
                     if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS) ||
-                        (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.COMPLETED))
+                        (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.COMPLETED) ||
+                        (CurrentTab == CategoryTab.Official && campaign.Official != true))
                         continue;
 
                     _campaignCells.Add(new CampaignCell(campaign));

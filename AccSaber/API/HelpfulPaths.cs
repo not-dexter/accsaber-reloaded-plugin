@@ -285,7 +285,17 @@
         /// </remarks>
         public const string APAPI_EVENT = APAPI + "events/{0}"; //event_id
 
-        public const string APAPI_EVENT_ME = APAPI + "events/{0}/missions/me"; //event_id
+        public const string APAPI_EVENT_MISSIONS_ME = APAPI + "events/{0}/missions/me"; //event_id
+
+        public const string APAPI_EVENT_ME = APAPI + "events/{0}/me"; //event_id
+
+        /// <summary>
+        /// Activates specified event.
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: id.
+        /// </remarks>
+        public const string APAPI_START_EVENT = APAPI + "events/{0}/begin";
 
         public const string APAPI_CURVE_AP = APAPI + "curves/acc00000-0000-0000-0000-000000000001"; // param entered already
 

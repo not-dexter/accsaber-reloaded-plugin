@@ -373,6 +373,32 @@ namespace AccSaber.Managers
             return outp;
         }
 
+        public async Task<AccSaberEventBegun> GetEventBegun(Guid id)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_EVENT_ME, id);
+
+
+            AccSaberEventBegun? content = await APIHandler.CallAPI_Json<AccSaberEventBegun>(call, AccsaberAPI.Throttler);
+
+            if (content is null)
+            {
+                Plugin.Log.Debug("Event not found");
+                return new AccSaberEventBegun();
+            }
+
+            return content;
+        }
+
+        public async Task<bool> StartEvent(Guid id)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_START_EVENT, id);
+
+            HttpRequestMessage request = new(HttpMethod.Post, call);
+
+            var (Success, _) = await APIHandler.CallAPI(request, AccsaberAPI.Throttler, maxRetries: 1).ConfigureAwait(false);
+
+            return Success;
+        }
 
         private async Task UpdateAccSaberInfo()
 		{

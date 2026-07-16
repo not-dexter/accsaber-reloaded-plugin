@@ -453,7 +453,7 @@ namespace AccSaber.Utils.Misc
 
             await playerInfo.LoadTask;
 
-            string call = string.Format(HelpfulPaths.APAPI_EVENT_ME, currentEvent.Event.Id);
+            string call = string.Format(HelpfulPaths.APAPI_EVENT_MISSIONS_ME, currentEvent.Event.Id);
 
             List<AccSaberEventMe>? eventMissions = await APIHandler.CallAPI_Json<List<AccSaberEventMe>>(call, AccsaberAPI.Throttler);
 

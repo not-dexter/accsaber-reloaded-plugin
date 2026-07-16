@@ -142,4 +142,11 @@ namespace AccSaber.Models
         [JsonProperty("weekLocked")]
         public bool WeekLocked { get; set; }
     }
+
+    [UsedImplicitly]
+    internal class AccSaberEventBegun
+    {
+        [JsonProperty("begun")]
+        public bool Begun { get; set; }
+    }
 }

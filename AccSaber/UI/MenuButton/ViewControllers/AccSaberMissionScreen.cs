@@ -67,6 +67,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIComponent("event-title")]
         private readonly TextMeshProUGUI _eventTitleText = null!;
 
+        [UIComponent("begin-event-status")]
+        private readonly TextMeshProUGUI _eventBeginStatus = null!;
+
         [UIComponent("event-list")]
         private readonly CustomCellListTableData _eventList = null!;
 
@@ -136,6 +139,22 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [UIValue("not-in-event")]
         private bool NotInEvent => !IsInEvent;
+
+        [UIValue("event-begun")]
+        public bool IsEventBegun
+        {
+            get;
+            set
+            {
+                field = value;
+
+                NotifyPropertyChanged(nameof(IsEventBegun));
+                NotifyPropertyChanged(nameof(IsEventNotBegun));
+            }
+        }
+
+        [UIValue("event-not-begun")]
+        private bool IsEventNotBegun => !IsEventBegun;
 
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !IsLoading;
@@ -291,6 +310,21 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             else
                 PopupSuccess(data);
         }
+
+        [UIAction("on-event-begin")]
+        private async void BeginEvent()
+        {
+            if (CurrentEvent is null)
+                return;
+
+            if (await _accSaberStore.StartEvent(CurrentEvent.Event.Id))
+                IsEventBegun = true;
+            else
+                _eventBeginStatus.SetText("There was an error starting the event!");
+
+        }
+
+
         private int WeekPage
         {
             get;
@@ -430,6 +464,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _parsed = true;
 
             WeekPage = Math.Max(1, CurrentEvent?.Event.CurrentWeek ?? 0);
+
+            if (CurrentEvent is not null)
+            {
+                var eventInfo = await _accSaberStore.GetEventBegun(CurrentEvent.Event.Id);
+                IsEventBegun = eventInfo.Begun;
+            }
 
             if (!_eventList.TableView().canSelectSelectedCell)
                 _eventList.TableView().SetField("_canSelectSelectedCell", true);
