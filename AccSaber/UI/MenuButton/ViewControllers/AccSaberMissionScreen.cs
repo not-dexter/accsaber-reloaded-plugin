@@ -107,6 +107,18 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
+        [UIValue("is-event-loading")]
+        private bool IsEventLoading
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged(nameof(IsEventLoading));
+                NotifyPropertyChanged(nameof(IsEventNotLoading));
+            }
+        }
+
         [UIValue("is-in-event")]
         public bool IsInEvent
         {
@@ -128,6 +140,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [UIValue("is-not-loading")]
         private bool IsNotLoading => !IsLoading;
+
+        [UIValue("is-event-not-loading")]
+        private bool IsEventNotLoading => !IsEventLoading;
 
         [UIValue("daily-time")]
         private string DailyTime
@@ -284,7 +299,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 field = value;
                 WeekPagnation = $"{value}/4";
                 WeekCurrent = $"Week {value}";
-                _ = SetEventMissions();
+                _ = SetEventMissions(false);
             }
         }
 
@@ -336,7 +351,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             } 
         }
 
-        private async Task SetEventMissions()
+        private async Task SetEventMissions(bool forceNewContent)
         {
             if (_currentEvent is not null)
             {
@@ -347,6 +362,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                 using (locker.Value)
                 {
+                    if (!IsEventLoading)
+                        IsEventLoading = true;
+
                     _eventCells.Clear();
                     _eventList.Data().Clear();
 
@@ -354,30 +372,43 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
                     try
                     {
-                        List<AccSaberEventMe>? missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id);
+                        DateTime expiration = ((MissionCell?)_eventCells.FirstOrDefault())?.Data.ExpiresAt ?? DateTime.MinValue;
+
+                        List<AccSaberEventMe> missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id, WeekPage, false, overrideCache: _lastUpdate < SerializationHandler.LastScoreTime);
+
+                        _lastUpdate = DateTime.UtcNow;
+
+                        while (forceNewContent && missions.First(mission => mission.Mission.Week == WeekPage).Mission.CompletableUntil <= expiration)
+                        {
+                            await Task.Delay(15000);
+                            missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id, WeekPage, false);
+                        }
+
+                       // List<AccSaberEventMe>? missions = await _accSaberStore.GetEventMissions(_currentEvent.Event.Id, WeekPage, false);
 
                         if (missions is null)
                             return;
 
-                        /*foreach (AccSaberEventMe mission in missions)
+                        foreach (AccSaberEventMe mission in missions)
                         {
-
                             if (mission.Mission.Week != WeekPage) 
                                 continue;
 
-                            AccSaberBasicDifficulty? targetDiff = mission.Current.TargetMapDifficultyId is null ?
-                            null : _serialHandler.CachedDifficulties[mission.Current.TargetMapDifficultyId.Value];
+                            AccSaberBasicDifficulty? targetDiff = mission.Mission.TargetMapDifficultyId is null ?
+                            null : _serialHandler.CachedDifficulties[mission.Mission.TargetMapDifficultyId.Value];
 
-                            _eventCells.Add(new MissionCell(mission.Current, targetDiff));
-                        }*/ // commented out until events are released
-                        _eventCells.AddRange(_weeklyCells); // temp until we have real missions
-                        _eventCells.AddRange(_weeklyCells); // temp until we have real missions
+                            _eventCells.Add(new MissionCell(mission.Mission, targetDiff)); // change this to current when live
+                        }
 
                         _eventList.TableView().ReloadData();
                     }
                     catch (Exception ex)
                     {
                         Plugin.Log.Error(ex);
+                    }
+                    finally
+                    {
+                        IsEventLoading = false;
                     }
                 }
             }

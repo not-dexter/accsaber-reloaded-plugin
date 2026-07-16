@@ -18,6 +18,8 @@ namespace AccSaber.Utils.Misc
         [Inject] private readonly APCalc calc = null!;
 
         private bool invalidateMissions = false;
+        private bool invalidateEvents = false;
+        private Guid currentEvent;
         private readonly SelectComparer<AccSaberPlayerScore, float> PlayerScoreSorter, APScoreSorter;
 
         private readonly Dictionary<string, CacheInfo> cacheInfos;
@@ -43,7 +45,10 @@ namespace AccSaber.Utils.Misc
 
 
         private AccSaberSerializedCache<AccSaberMission>? _missions = null;
+        private AccSaberSerializedCache<AccSaberEventMe>? _eventMissions = null;
+
         public IReadOnlyList<AccSaberMission>? Missions => _missions?.Content;
+        public IReadOnlyList<AccSaberEventMe>? EventMissions => _eventMissions?.Content;
 
         public async Task RevalidateMissions(bool forceRefresh = false)
         {
@@ -61,6 +66,23 @@ namespace AccSaber.Utils.Misc
         }
         public void InvalidateMissionCache() => _missions?.LastUpdated = DateTime.MinValue;
 
+        public async Task RevalidateEvents(Guid id, bool forceRefresh = false)
+        {
+            if (_eventMissions is null || (!invalidateEvents && !forceRefresh && await ValidateEventsCache(_eventMissions)))
+                return;
+
+            currentEvent = id;
+
+            if (invalidateEvents)
+                invalidateEvents = false;
+
+            AccSaberSerializedCache<AccSaberEventMe> newCache = ((await LoadEventsCache()) as AccSaberSerializedCache<AccSaberEventMe>)!;
+
+            _eventMissions.LastUpdated = newCache.LastUpdated;
+            _eventMissions.MaxLength = newCache.MaxLength;
+            _eventMissions.Content = newCache.Content;
+        }
+        public void InvalidatEventsCache() => _eventMissions?.LastUpdated = DateTime.MinValue;
 
         public SerializationHandler()
         {
@@ -68,7 +90,8 @@ namespace AccSaber.Utils.Misc
             {
                 { ResourcePaths.MAP_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberBasicMap>), ValidateMapCache, LoadMapCache) },
                 { ResourcePaths.PLAYER_SCORE_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberPlayerScore>), ValidatePlayerScoreCache, LoadPlayerScoreCache) },
-                { ResourcePaths.MISSION_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberMission>), ValidateMissionCache, LoadMissionCache) }
+                { ResourcePaths.MISSION_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberMission>), ValidateMissionCache, LoadMissionCache) },
+                { ResourcePaths.EVENTS_CACHE_NAME, new(typeof(AccSaberSerializedCache<AccSaberEventMe>), ValidateEventsCache, LoadEventsCache) }
             };
 
             InitTask = Task.Run(() =>
@@ -119,6 +142,14 @@ namespace AccSaber.Utils.Misc
                     _missions = missionCache;
                 }
 
+                void HandleEventCache(AccSaberSerializedCache cache)
+                {
+                    if (cache is not AccSaberSerializedCache<AccSaberEventMe> eventCache)
+                        return;
+
+                    _eventMissions = eventCache;
+                }
+
                 foreach (AccSaberSerializedCache cache in serializerUtils.Caches)
                 {
                     switch (cache.Name)
@@ -131,6 +162,9 @@ namespace AccSaber.Utils.Misc
                             break;
                         case ResourcePaths.MISSION_CACHE_NAME:
                             HandleMissionCache(cache);
+                            break;
+                        case ResourcePaths.EVENTS_CACHE_NAME:
+                            HandleEventCache(cache);
                             break;
                     }
                 }
@@ -203,6 +237,7 @@ namespace AccSaber.Utils.Misc
         public void OnPlayerScoreUpdated(AccSaberLeaderboardEntry entry)
         {
             InvalidateMissionCache();
+            InvalidatEventsCache();
 
             int categoryIndex = (int)EnumUtils.ReloadedCategoryIdToCategory(entry.CategoryId);
             List<AccSaberPlayerScore> categoryScores = playerCategoryScores[categoryIndex];
@@ -328,6 +363,7 @@ namespace AccSaber.Utils.Misc
             }
 
             invalidateMissions = !valid;
+            invalidateEvents = !valid;
 
             return valid;
         }
@@ -372,6 +408,38 @@ namespace AccSaber.Utils.Misc
                 Content = missions
             };
         }
+
+        private async Task<bool> ValidateEventsCache(AccSaberSerializedCache cache) => cache.LastUpdated > DateTime.UtcNow;
+        private async Task<AccSaberSerializedCache> LoadEventsCache()
+        {
+            await playerInfo.LoadTask;
+
+            var call = string.Format(HelpfulPaths.APAPI_EVENT_ME, currentEvent);
+
+            List<AccSaberEventMe>? eventMissions = await APIHandler.CallAPI_Json<List<AccSaberEventMe>>(call, AccsaberAPI.Throttler);
+
+            if (eventMissions is null)
+                return new AccSaberSerializedCache<AccSaberEventMe>()
+                {
+                    LastUpdated = DateTime.MinValue
+                };
+            
+            DateTime now = DateTime.UtcNow;
+            for (int i = eventMissions.Count - 1; i >= 0; --i)
+                if (eventMissions[i].Mission.CompletableUntil < now)
+                {
+                    Plugin.Log.Critical("There is a bug with the events/missions/me endpoint! Please report this on Discord.");
+                    eventMissions.RemoveAt(i);
+                }
+
+            return new AccSaberSerializedCache<AccSaberEventMe>()
+            {
+                LastUpdated = eventMissions.Aggregate(DateTime.MaxValue, (total, current) => MiscUtils.Min(total, current.Mission.CompletableUntil)),
+                MaxLength = eventMissions.Count,
+                Content = eventMissions
+            };
+        }
+
         public record struct CacheInfo(Type CacheType,
             Func<AccSaberSerializedCache, Task<bool>> Validate,
             Func<Task<AccSaberSerializedCache>>? Load);

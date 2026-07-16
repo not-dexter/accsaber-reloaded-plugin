@@ -498,7 +498,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     }
                 }
             }
-
+            var colorScheme = _playerDataModel.playerData.colorSchemesSettings.overrideDefaultColors
+            ? _playerDataModel.playerData.colorSchemesSettings.GetSelectedColorScheme()
+            : null;
             MapStarted = true;
 
             RecordPlayMethod?.Invoke(null, null);
@@ -549,7 +551,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 beatmapKey: CurrentBeatMapKey,
                 beatmapLevel: CurrentBeatMapLevel,
                 overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
-                playerOverrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                playerOverrideColorScheme: colorScheme,
                 playerOverrideLightshowColors: _playerDataModel.playerData.colorSchemesSettings.ShouldOverrideLightshowColors(),
                 beatmapOverrideColorScheme: CurrentBeatMapLevel.GetColorScheme(CurrentBeatMapKey.beatmapCharacteristic, CurrentBeatMapKey.difficulty),
                 gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
@@ -570,7 +572,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 beatmapKey: CurrentBeatMapKey,
                 beatmapLevel: CurrentBeatMapLevel,
                 overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
-                overrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                overrideColorScheme: colorScheme,
                 beatmapOverrideColorScheme: CurrentBeatMapLevel.GetColorScheme(CurrentBeatMapKey.beatmapCharacteristic, CurrentBeatMapKey.difficulty),
                 gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
                 playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
@@ -590,7 +592,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 difficultyBeatmap: CurrentBeatMapLevel,
                 previewBeatmapLevel: CurrentBeatMapLevel.level,
                 overrideEnvironmentSettings: _playerDataModel.playerData.overrideEnvironmentSettings,
-                overrideColorScheme: _playerDataModel.playerData.colorSchemesSettings.GetOverrideColorScheme(),
+                overrideColorScheme: colorScheme,
                 gameplayModifiers: _playerDataModel.playerData.gameplayModifiers,
                 playerSpecificSettings: _playerDataModel.playerData.playerSpecificSettings,
                 practiceSettings: null,

@@ -122,7 +122,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberEventMe
+    internal class AccSaberEventMe : IModel
     {
         [JsonProperty("mission")]
         public AccSaberEventMission Mission { get; set; } = null!;

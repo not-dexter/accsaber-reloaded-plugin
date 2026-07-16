@@ -344,19 +344,27 @@ namespace AccSaber.Managers
             return accSaberEvent;
         }
 
-        public async Task<List<AccSaberEventMe>> GetEventMissions(Guid id)
+        public async Task<List<AccSaberEventMe>> GetEventMissions(Guid id, int week, bool allWeeks = true, bool overrideCache = false)
         {
-            string call = string.Format(HelpfulPaths.APAPI_EVENT_ME, id);
+            await _serialHandler.RevalidateEvents(id, overrideCache);
 
-            List<AccSaberEventMe>? eventMissions = await APIHandler.CallAPI_Json<List<AccSaberEventMe>>(call, AccsaberAPI.Throttler);
-
-            if (eventMissions is null)
+            if (_serialHandler.EventMissions is null)
             {
-                Plugin.Log.Debug("Missions not found");
-                return [];
+                //Plugin.Log.Warn("Missions are null, waiting for init task...");
+                await _serialHandler.InitTask;
+                if (_serialHandler.EventMissions is null)
+                {
+                    Plugin.Log.Error("For some reason, the Missions screen is unable to load the event missions correctly!");
+                    return [];
+                }
             }
 
-            return eventMissions;
+            List<AccSaberEventMe> outp = [.. _serialHandler.EventMissions];
+
+            if (!allWeeks)
+                outp = [.. outp.Where(mission => mission.Mission.Week == week)];
+
+            return outp;
         }
 
 

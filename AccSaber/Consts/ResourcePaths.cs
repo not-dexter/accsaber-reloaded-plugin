@@ -79,6 +79,7 @@ namespace AccSaber.Consts
         public const string PLAYER_SCORE_CACHE_NAME = "PlayerScoreCache";
         public const string MAP_CACHE_NAME = "MapCache";
         public const string MISSION_CACHE_NAME = "MissionCache";
+        public const string EVENTS_CACHE_NAME = "EventsCache";
 
         public static readonly string ACC_SABER_DATA_FOLDER = Path.Combine(Environment.CurrentDirectory, "UserData", FOLDER_NAME);
 
