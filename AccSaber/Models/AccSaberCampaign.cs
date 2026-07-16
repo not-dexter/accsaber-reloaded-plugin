@@ -319,7 +319,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            DimmedColor = Color.DimColor(5);
+            DimmedColor = Color.DimColor(5, dimAlpha: true);
         }
     }
 

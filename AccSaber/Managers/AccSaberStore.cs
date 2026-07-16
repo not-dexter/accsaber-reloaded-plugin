@@ -114,8 +114,13 @@ namespace AccSaber.Managers
 
                 foreach (AccSaberBasicDifficulty diff in map.Difficulties)
                 {
+#if NEW_VERSION
                     if (diff.Difficulty == CurrentKey.difficulty)
                         outp = diff;
+#else
+                    if (diff.Difficulty == CurrentLevel.difficulty)
+                        outp = diff;
+#endif
 
                     _serialHandler.CachedDifficulties.Add(diff.DifficultyId, diff);
                 }

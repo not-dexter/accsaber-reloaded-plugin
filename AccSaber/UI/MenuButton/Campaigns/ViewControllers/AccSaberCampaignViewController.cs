@@ -453,6 +453,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             _campaignFlow.HideLeaderboard();
             InCampaign = false;
+            InBarrier = false;
             InMap = false;
             _songPreviewPlayer.CrossfadeToDefault();
             _ = UpdateTabs();
