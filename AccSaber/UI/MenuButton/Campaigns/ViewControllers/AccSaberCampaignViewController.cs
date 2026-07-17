@@ -342,6 +342,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         } = null!;
 
+        [UIValue("CampaignRewards")]
+        private string CampaignRewards
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
         [UIValue("CampaignDescription")]
         private string CampaignDescription
         {
@@ -701,6 +712,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CampaignTitle = campaign.Name;
             CampaignCreator = campaign.CreatorName;
             CampaignDescription = campaign.Description;
+            CampaignRewards = "";
+
+            if (campaign.Items is not null && campaign.Items.Count > 0 && campaign.Status == AccSaberCampaign<AccSaberCampaignMap>.CampaignStatus.CURATED)
+            {
+                string items = string.Empty;
+
+                try
+                {
+                    foreach (var item in campaign.Items)
+                    {
+                        items += $"{item.Quantity}x {item.ItemName} ";
+                    }
+                }
+                finally
+                {
+                    CampaignRewards = "Campaign Rewards: " + items;
+                }
+
+            }
+
 
             if (campaign.Tags is not null)
             {

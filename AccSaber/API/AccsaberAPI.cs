@@ -1030,9 +1030,9 @@ namespace AccSaber.API
 
             string content = loginState switch
             {
-                LoginState.InProgress => "Logging in to AccSaber Reloaded...",
-                LoginState.Success => "Logged in to AccSaber Reloaded!",
-                LoginState.Failed => "Failed to Log in to AccSaber Reloaded",
+                LoginState.InProgress => "Logging in to AccSaber...",
+                LoginState.Success => "Logged in to AccSaber!",
+                LoginState.Failed => "Failed to Log in to AccSaber",
                 _ => ""
             };
 

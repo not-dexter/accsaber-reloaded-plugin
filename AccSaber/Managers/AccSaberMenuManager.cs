@@ -16,7 +16,7 @@ namespace AccSaber.Managers
         {
             _mainFlowCoordinator = mainFlowCoordinator;
             _accsaberFlowCoordinator = accsaberFlowCoordinator;
-            _menuButton = new MenuButton("Accsaber Reloaded", PresentFlowCoordinator);
+            _menuButton = new MenuButton("AccSaber", PresentFlowCoordinator);
         }
 
         public void Initialize()

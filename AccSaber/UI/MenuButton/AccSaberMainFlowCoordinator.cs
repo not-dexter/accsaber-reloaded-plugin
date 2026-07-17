@@ -39,7 +39,7 @@ namespace AccSaber.UI.MenuButton
             if (firstActivation)
             {
                 // Sets the title text in the top bar
-                SetTitle("Accsaber Reloaded");
+                SetTitle("Accsaber");
                 showBackButton = true;
                 ProvideInitialViewControllers(_accSaberMenuViewController, _accSaberRelationsViewController, _accSaberMilestoneViewController);
                 OnHubDeactivated += OnDismiss;

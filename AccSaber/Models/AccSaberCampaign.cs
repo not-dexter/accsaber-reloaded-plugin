@@ -83,6 +83,9 @@ namespace AccSaber.Models
         [JsonProperty("submittedAt")]
         public DateTime SubmittedAt { get; set; }
 
+        [JsonProperty("completionItems")]
+        public List<AccSaberCampaignItem>? Items { get; set; }
+
         [JsonProperty("playlistExportEnabled")]
         public bool PlaylistExportEnabled { get; set; }
 
