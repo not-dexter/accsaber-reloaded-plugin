@@ -92,6 +92,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly PluginConfig _config = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
+        [Inject] private readonly AccSaberMainFlowCoordinator _mainFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
@@ -452,6 +453,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void BackPressed()
         {
             _campaignFlow.HideLeaderboard();
+            _mainFlow.MenuShown();
             InCampaign = false;
             InBarrier = false;
             InMap = false;

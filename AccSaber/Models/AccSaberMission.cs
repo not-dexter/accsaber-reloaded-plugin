@@ -1,4 +1,5 @@
 ﻿using AccSaber.Models.Base;
+using AccSaber.Models.ItemModels;
 using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
@@ -88,11 +89,8 @@ namespace AccSaber.Models
         [JsonProperty("xpReward")]
         public int? XpReward { get; set; }
 
-        [JsonProperty("itemRewardId")]
-        public string? ItemRewardId { get; set; }
-
-        [JsonProperty("itemRewardName")]
-        public string? ItemRewardName { get; set; }
+        [JsonProperty("itemReward")]
+        public AccSaberItemReference? ItemReward { get; set; }
 
         [JsonProperty("assignedAt")]
         public DateTime AssignedAt { get; set; }

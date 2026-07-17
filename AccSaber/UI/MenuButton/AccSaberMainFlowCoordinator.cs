@@ -90,5 +90,7 @@ namespace AccSaber.UI.MenuButton
             if (ParentFlowCoordinator is SoloFreePlayFlowCoordinator)
                 _mainFlowCoordinator.DismissFlowCoordinator(ParentFlowCoordinator, immediately: true);
         }
+
+        internal void MenuShown() => OnHubActivated?.Invoke();
     }
 }
