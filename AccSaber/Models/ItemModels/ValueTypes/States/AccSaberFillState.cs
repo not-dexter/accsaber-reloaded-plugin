@@ -36,13 +36,14 @@ namespace AccSaber.Models.ItemModels.ValueTypes.States
 
             Gradient g = new();
 
-            switch (Fill.Type)
+            switch (Fill.FillType)
             {
                 case FillType.solid:
                     g.colorKeys = [new GradientColorKey(Fill.Color!.Color(), 0f)];
                     g.alphaKeys = [new GradientAlphaKey(1f, 0f)];
                     break;
 
+                case FillType.radial: // check for radial later
                 case FillType.linear:
 
                     if (Fill.Stops is null)

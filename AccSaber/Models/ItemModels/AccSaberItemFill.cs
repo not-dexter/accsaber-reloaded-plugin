@@ -10,7 +10,10 @@ namespace AccSaber.Models.ItemModels
     internal class AccSaberItemFill : IEquatable<AccSaberItemFill>
     {
         [JsonProperty("type")]
-        public FillType Type { get; set; }
+        public string? Type { get; set; }
+
+        [JsonIgnore]
+        public FillType? FillType { get; set; }
 
         [JsonProperty("hex")]
         public string? Color { get; set; }
@@ -38,7 +41,7 @@ namespace AccSaber.Models.ItemModels
             if (Stops is not null)
             {
 
-                if (!Type.Equals(other.Type) || other.Stops is null || Stops.Count != other.Stops.Count)
+                if (FillType is null || !FillType.Equals(other.FillType) || other.Stops is null || Stops.Count != other.Stops.Count)
                     return false;
 
                 for (int i = 0, len = Stops.Count; i < len; ++i)
@@ -56,11 +59,14 @@ namespace AccSaber.Models.ItemModels
         {
             if (Base is not null && Color is null)
                 Color = Base;
+
+            if (Type is not null && Enum.TryParse(typeof(FillType), Type, out object obj))
+                FillType = (FillType)obj;
         }
     }
 
     internal enum FillType
     {
-        solid, linear, pixel_metal
+        solid, linear, pixel_metal, radial
     }
 }

@@ -52,13 +52,29 @@ namespace AccSaber.Models.ItemModels
         }
         public Coroutine Set(MonoBehaviour host, Image borderImage)
         {
-            return host.StartCoroutine(SetValueUsingStates(model => ApplyGradient(borderImage, model.GetGradient(), angle: model.GradientRotation),
+            void Setter(AccSaberFillState model)
+            {
+                if (model.Fill.FillType is not null && model.Fill.FillType == FillType.radial)
+                    ApplyRadialGradient(borderImage, model.GetGradient());
+                else
+                    ApplyGradient(borderImage, model.GetGradient(), angle: model.GradientRotation);
+            }
+
+            return host.StartCoroutine(SetValueUsingStates(Setter,
                 (model, degree) => ApplyGradient(borderImage, model.GetGradient(), angle: degree),
                 ProfileBorderColor.Item.Value.States, Title.Item.Value.DurationMs / 1000f));
         }
         public Coroutine Set(MonoBehaviour host, params IEnumerable<Image> images)
         {
-            return host.StartCoroutine(SetValueUsingStates(model => ApplyGradient(images, model.GetGradient(), angle: model.GradientRotation),
+            void Setter(AccSaberFillState model)
+            {
+                if (model.Fill.FillType is not null && model.Fill.FillType == FillType.radial)
+                    ApplyRadialGradient(images, model.GetGradient());
+                else
+                    ApplyGradient(images, model.GetGradient(), angle: model.GradientRotation);
+            }
+
+            return host.StartCoroutine(SetValueUsingStates(Setter,
                 (model, degree) => ApplyGradient(images, model.GetGradient(), angle: degree),
                 ProfileBorderColor.Item.Value.States, Title.Item.Value.DurationMs / 1000f));
         }
@@ -230,7 +246,49 @@ namespace AccSaber.Models.ItemModels
             texture.Apply();
             return texture;
         }
-        public static Sprite GetGradientSprite(Gradient gradient, int width = 128, int height = 128, float angle = 0f)
+        public static Texture2D CreateRadialGradientTexture(Gradient gradient, int size = 128, Vector2? centerOverride = null)
+        {
+            Texture2D tex = new(size, size, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+
+            Vector2 center = centerOverride ?? new Vector2(0.5f, 0.5f);
+
+            // Distance from center to farthest corner, so the gradient reaches the corners.
+            float maxDistance = 0f;
+
+            Vector2[] corners = [new(0f, 0f), new(1f, 0f), new(0f, 1f), new(1f, 1f)];
+
+            foreach (Vector2 corner in corners)
+                maxDistance = Mathf.Max(maxDistance, Vector2.Distance(center, corner));
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float u = x / (float)(size - 1);
+                    float v = y / (float)(size - 1);
+
+                    Vector2 uv = new(u, v);
+
+                    float distance = Vector2.Distance(uv, center);
+                    float t = Mathf.Clamp01(distance / maxDistance);
+
+                    Color color = gradient.Evaluate(t);
+                    tex.SetPixel(x, y, color);
+                }
+            }
+
+            tex.Apply();
+            return tex;
+        }
+        public static Sprite GetGradientSprite(Gradient gradient, int width = 128, int height = 128, float angle = 0f) =>
+            GetGradientSprite(gradient, (grad, ang) => CreateGradientTexture(grad, width, height, ang), angle);
+        public static Sprite GetGradientSprite(Gradient gradient, int size = 128) =>
+            GetGradientSprite(gradient, (grad, ang) => CreateRadialGradientTexture(grad, size));
+        public static Sprite GetGradientSprite(Gradient gradient, Func<Gradient, float, Texture2D> textureGenerator, float angle = 0f)
         {
             if (angle < 0f)
             {
@@ -242,8 +300,8 @@ namespace AccSaber.Models.ItemModels
             if (TextureBuffer.TryGetCachedItem(gradient, out Sprite[]? arr) && arr![degreesInt] is not null)
                 return arr[degreesInt];
 
-            Texture2D tex = CreateGradientTexture(gradient, width, height, angle);
-            Sprite outp = Sprite.Create(tex, new(0, 0, width, height), new(0.5f, 0.5f));
+            Texture2D tex = textureGenerator(gradient, angle);
+            Sprite outp = Sprite.Create(tex, new(0, 0, tex.width, tex.height), new(0.5f, 0.5f));
 
             if (!TextureBuffer.ContainsKey(gradient))
                 TextureBuffer.CacheItem(gradient, new Sprite[360]);
@@ -254,9 +312,18 @@ namespace AccSaber.Models.ItemModels
         }
         public static void ApplyGradient(Image image, Gradient gradient, int width = 128, int height = 128, float angle = 0f) =>
             image.sprite = GetGradientSprite(gradient, width, height, angle);
+        public static void ApplyRadialGradient(Image image, Gradient gradient, int size = 128) =>
+            image.sprite = GetGradientSprite(gradient, size);
         public static void ApplyGradient(IEnumerable<Image> images, Gradient gradient, int width = 128, int height = 128, float angle = 0f)
         {
             Sprite sprite = GetGradientSprite(gradient, width, height, angle);
+
+            foreach (Image image in images)
+                image.sprite = sprite;
+        }
+        public static void ApplyRadialGradient(IEnumerable<Image> images, Gradient gradient, int size = 128)
+        {
+            Sprite sprite = GetGradientSprite(gradient, size);
 
             foreach (Image image in images)
                 image.sprite = sprite;
