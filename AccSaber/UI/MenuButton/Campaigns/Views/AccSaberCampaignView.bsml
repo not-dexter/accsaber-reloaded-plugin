@@ -42,7 +42,10 @@
               <text text='~CampaignCategory' align='Left' font-size='3.5' />
             </vertical>
           </horizontal>
-		  <text text='~CampaignRewards' align='Left' font-size='4'/>
+			<vertical active='~campaign-curated'>
+				<text text='Completion Rewards' font-size='5'/>
+		        <text text='~CampaignRewards' align='Center' font-size='4'/>
+		    </vertical>
           <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
           <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
         </vertical>

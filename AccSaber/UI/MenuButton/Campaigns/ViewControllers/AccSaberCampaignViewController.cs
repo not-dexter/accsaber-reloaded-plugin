@@ -137,6 +137,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         } = false;
 
+        [UIValue("campaign-curated")]
+        private bool CampaignCurated
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = false;
         [UIValue("in-campaign")]
         public bool InCampaign
         {
@@ -713,23 +723,28 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CampaignCreator = campaign.CreatorName;
             CampaignDescription = campaign.Description;
             CampaignRewards = "";
+            CampaignCurated = false;
 
-            if (campaign.Items is not null && campaign.Items.Count > 0 && campaign.Status == AccSaberCampaign<AccSaberCampaignMap>.CampaignStatus.CURATED)
+            if (campaign.Status == AccSaberCampaign<AccSaberCampaignMap>.CampaignStatus.CURATED)
             {
                 string items = string.Empty;
 
-                try
+                if (campaign.Items is not null)
                 {
                     foreach (var item in campaign.Items)
                     {
-                        items += $"{item.Quantity}x {item.ItemName} ";
+                        items += $"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>\n";
+
                     }
                 }
-                finally
-                {
-                    CampaignRewards = "Campaign Rewards: " + items;
-                }
+                
+                if (campaign.CompletionXp != 0)
+                    items += $"<color={ColorUtils.AP}>+{campaign.CompletionXp} XP</color>";
 
+                CampaignRewards = items;
+
+                if ((campaign.Items is not null && campaign.Items.Count > 0) || campaign.CompletionXp != 0)
+                    CampaignCurated = true;
             }
 
 
