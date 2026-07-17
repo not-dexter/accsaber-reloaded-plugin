@@ -818,10 +818,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 StringBuilder str = new();
 
-                str.AppendLine($"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>");
-
                 foreach (AccSaberCampaignItem item in map.Items)
                     str.AppendLine($"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>");
+
+                str.AppendLine($"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>");
 
                 MissionRewards = str.ToString();
             }
@@ -929,10 +929,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 StringBuilder str = new();
 
-                str.AppendLine($"<color={ColorUtils.OVERALL}>+{barrier.Barrier.XP:N0}XP</color>");
-
                 foreach (AccSaberCampaignItem item in barrier.Barrier.Items)
                     str.AppendLine($"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>");
+
+                str.AppendLine($"<color={ColorUtils.OVERALL}>+{barrier.Barrier.XP:N0}XP</color>");
 
                 MissionRewards = str.ToString();
             }

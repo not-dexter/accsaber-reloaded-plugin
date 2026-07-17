@@ -59,7 +59,7 @@
           <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
         </horizontal>
       </vertical>
-      <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2'>
+      <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2' child-expand-height='false'>
         <vertical preferred-width='42' preferred-height='15' vertical-fit='PreferredSize' active='~in-map'>
           <horizontal>
             <img preserve-aspect='true' id='MissionImage' preferred-width='8' preferred-height='8' />
@@ -87,7 +87,7 @@
             </horizontal>
           </horizontal>
         </vertical>
-        <vertical preferred-height='35'>
+        <vertical preferred-height='45'>
           <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
           <vertical pref-height='8' vertical-fit='PreferredSize'>
             <text text='Objective' font-size='4' align='Center' />
@@ -97,13 +97,15 @@
             <text text='Current Progress' font-size='4' align='Center' />
             <text text='~MissionProgress' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
-          <vertical pref-height='8' vertical-fit='PreferredSize' active='~MissionHasRewards'>
+          <vertical pref-height='16' vertical-fit='PreferredSize' active='~MissionHasRewards'>
             <text text='Rewards' font-size='4' align='Center' />
-            <text text='~MissionRewards' align='Center' word-wrapping='false' font-size='2' />
+            <text text='~MissionRewards' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
         </vertical>
-        <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='4' active='~MissionLocked' />
-        <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
+        <vertical preferred-height='5'>
+          <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='4' active='~MissionLocked' />
+          <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
+        </vertical>
       </vertical>
     </horizontal>
   </vertical>
