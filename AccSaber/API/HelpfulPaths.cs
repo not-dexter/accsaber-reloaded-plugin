@@ -278,7 +278,7 @@
         /// <summary>
         /// Retrieves all live event entries.
         /// </summary>
-        public const string APAPI_EVENTS_LIVE = APAPI + "events?state=upcoming"; //no params // change state to live when event is live
+        public const string APAPI_EVENTS_LIVE = APAPI + "events?state=live"; //no params
 
         /// <summary>
         /// Retrieves specified event.

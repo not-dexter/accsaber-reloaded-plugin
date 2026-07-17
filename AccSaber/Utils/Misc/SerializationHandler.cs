@@ -410,6 +410,9 @@ namespace AccSaber.Utils.Misc
 
         private async Task<bool> ValidateMapCache(AccSaberSerializedCache cache)
         {
+            if (cache is AccSaberSerializedCache<AccSaberBasicMap> mapCache && mapCache.Content.Any(map => map.Difficulties.Any(diff => diff.RankedAt == default)))
+                return false;
+
             int mapCount = cache.MaxLength;
 
             if (TotalMaps > -1)

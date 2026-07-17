@@ -5,7 +5,7 @@
 			<modifier-container pref-width='65' child-expand-width='false' horizontal-fit='PreferredSize'>
 				<toggle-setting scale='0.8' apply-on-change='true' value='CombineRelations' text='Combine Friends &amp; Rivals'/>
 				<toggle-setting scale='0.8' apply-on-change='true' value='ShowCombo' text='Show FC/Mistakes'/>
-				<toggle-setting scale='0.8' apply-on-change='true' value='ShowStreak' text='Show 115 sreak'/>
+				<toggle-setting scale='0.8' apply-on-change='true' value='ShowStreak' text='Show 115 streak'/>
 				<increment-setting scale='0.8' word-wrapping='false' apply-on-change='true' value='AccDecimals' text='Acc Decimals' integer-only='true' min='1' max='4' increment='1'/>
 				<increment-setting scale='0.8' word-wrapping='false' apply-on-change='true' value='TimePlaces' text='Time Units' integer-only='true' min='1' max='10' increment='1'/>
 				<toggle-setting scale='0.8' apply-on-change='true' value='DisablePopups' text='Disable Confirmation Popups'/>

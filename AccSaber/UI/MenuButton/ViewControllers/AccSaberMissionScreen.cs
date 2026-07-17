@@ -253,34 +253,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("on-cell-click-event")]
         private void OnCellClickEvent(TableView table, object data)
         {
-            if (!PC.DisablePopups)
-            {
-                if (data is not MissionCell cell)
-                    return;
-
-                string prompt;
-
-                switch (cell.Data.Type)
-                {
-                    case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
-                        prompt = "Would you like to go to this map?";
-                        break;
-                    case
-                        MissionType.PLAY_N_MAPS or
-                        MissionType.XP_IN_WINDOW or
-                        MissionType.PB_ABOVE_THRESHOLD or
-                        MissionType.STREAK_N_IN_CATEGORY or
-                        MissionType.SCORES_N or
-                        > MissionType.SNIPE_RIVAL_ANY_MAP and < MissionType.PB_RANKED_BEFORE_N: // SNIPE_RIVAL_ANY_MAP and PB_RANKED_BEFORE_N are not implemented
-                        prompt = "Would you like to go to this Playlist?";
-                        break;
-                    default: return; // ignore: CAMPAIGN_COMPLETE_N
-                }
-
-                _ = _asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator, prompt);
-            }
-            else
-                PopupSuccess(data);
+            if (data is MissionCell cell)
+                OnCellClick(cell);
         }
 #pragma warning restore IDE0060
 
@@ -299,10 +273,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     case >= MissionType.ACC_ON_MAP and <= MissionType.STREAK_ON_MAP or MissionType.COMEBACK_PB:
                         prompt = "Would you like to go to this map?";
                         break;
-                    case MissionType.PLAY_N_MAPS or MissionType.SCORES_N or MissionType.STREAK_N_IN_CATEGORY or MissionType.PB_ABOVE_THRESHOLD or MissionType.XP_IN_WINDOW:
+                    case
+                        MissionType.PLAY_N_MAPS or
+                        MissionType.XP_IN_WINDOW or
+                        MissionType.PB_ABOVE_THRESHOLD or
+                        MissionType.STREAK_N_IN_CATEGORY or
+                        MissionType.SCORES_N or
+                        > MissionType.SNIPE_RIVAL_ANY_MAP and <= MissionType.PB_RANKED_BEFORE_N: // SNIPE_RIVAL_ANY_MAP is not implemented
                         prompt = "Would you like to go to this Playlist?";
                         break;
-                    default: return;
+                    default: return; // ignore: CAMPAIGN_COMPLETE_N
                 }
 
                 _ = _asnm.ShowModal(_container.transform, this, data, _parentFlowCoordinator, prompt);
@@ -323,7 +303,6 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 _eventBeginStatus.SetText("There was an error starting the event!");
 
         }
-
 
         private int WeekPage
         {
@@ -463,18 +442,19 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             _eventDescriptionText.fontSizeMax = 4f;
             _parsed = true;
 
+            if (!_eventList.TableView().canSelectSelectedCell)
+                _eventList.TableView().SetField("_canSelectSelectedCell", true);
+
+            await _serialHandler.InitTask;
+
             WeekPage = Math.Max(1, CurrentEvent?.Event.CurrentWeek ?? 0);
 
             if (CurrentEvent is not null)
             {
-                var eventInfo = await _accSaberStore.GetEventBegun(CurrentEvent.Event.Id);
+                AccSaberEventBegun eventInfo = await _accSaberStore.GetEventBegun(CurrentEvent.Event.Id);
                 IsEventBegun = eventInfo.Begun;
             }
-
-            if (!_eventList.TableView().canSelectSelectedCell)
-                _eventList.TableView().SetField("_canSelectSelectedCell", true);
-
-            }
+        }
 
         private void UpdateTimer()
         {
@@ -544,10 +524,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         public void PopupSuccess(object cell)
         {
             if (cell is MissionCell missionCell)
-                GoToMission(missionCell);
+                _ = GoToMission(missionCell);
         }
 
-        internal void GoToMission(MissionCell cell)
+        internal async Task GoToMission(MissionCell cell)
         {
             void CloseMenu() => _parentFlowCoordinator.CloseToMainMenu();
 
@@ -587,7 +567,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _ = LoadBatch();
                     break;
                 case MissionType.PB_RANKED_BEFORE_N:
-                    // Cannot be done until there is an easy way to get all maps ranked before a time.
+                    DateTime before = cell.Data.TargetRankedBefore!.Value;
+                    string beforeStr = $"{before.Day}-{before.Month}-{before.Year}";
+
+                    _ = _levelUtils.LoadPlaylist($"accsaber-reloaded-{beforeStr}", $"Maps Ranked Before {beforeStr}", 
+                        _playlistUtils.GetPlaylistData(_serialHandler.CachedDifficulties.Where(diff => diff.RankedAt < before && diff.RankedAt != default).Select(diff => diff.DifficultyId)), null,
+                        CloseMenu, cell.UpdateStatus);
                     break;
                     //CAMPAIGN_COMPLETE_N (cannot generate a playlist for a campaign)
             }

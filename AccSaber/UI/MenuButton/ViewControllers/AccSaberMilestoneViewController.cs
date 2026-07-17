@@ -54,7 +54,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (firstActivation)
             {
                 //fix some elements being out of bounds and impossible to interact with
-                RectTransform rectTransform = this.GetComponent<RectTransform>();
+                RectTransform rectTransform = GetComponent<RectTransform>();
                 rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                 rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 rectTransform.pivot = new Vector2(0.5f, 0.5f);
@@ -115,10 +115,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool IsMilestoneTab => CurrentTab == CategoryTab.Milestones;
 
         [UIValue("is-mission-tab")]
-        private bool IsMissionTab => (CurrentTab == CategoryTab.Missions);
+        private bool IsMissionTab => CurrentTab == CategoryTab.Missions;
 
         [UIValue("is-mission-tab-events")]
-        private bool IsMissionEventsTab => (CurrentTab == CategoryTab.Missions && CurrentEvent is not null);
+        private bool IsMissionEventsTab => CurrentTab == CategoryTab.Missions && CurrentEvent is not null;
 
         [UIValue("container-offset")]
         private float ContainerOffset => CurrentTab == CategoryTab.Missions ? 7.5f : 0f;
@@ -155,6 +155,15 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             CurrentTab = 0;
 
             _ = SetMilestones(0);
+
+            async Task UpdateEventTab()
+            {
+                await _serialHandler.InitTask;
+                NotifyPropertyChanged(nameof(IsMissionEventsTab));
+                _container.SetActive(true);
+            }
+
+            _ = UpdateEventTab();
         }
 
 #pragma warning disable IDE0060 // index is needed for this function to be called correctly.
@@ -278,6 +287,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 }
 
                 _milestonesList.TableView().ReloadData();
+
                 IsLoading = false;
             }
         }

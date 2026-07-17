@@ -81,8 +81,8 @@ namespace AccSaber.Models
         //[JsonProperty("blLeaderboardId")]
         //public string? BlLeaderboardId { get; set; }
 
-        [JsonProperty("dateRanked")]
-        public DateTime DateRanked { get; set; }
+        [JsonProperty("rankedAt")]
+        public DateTime RankedAt { get; set; }
 
         [JsonIgnore]
         public AccSaberBasicMap? ParentInfo { get; set; }
@@ -103,7 +103,7 @@ namespace AccSaber.Models
         }
 
         public bool Equals(AccSaberBasicDifficulty other) => DifficultyId.Equals(other.DifficultyId);
-        public virtual int CompareTo(AccSaberBasicDifficulty other) => DateRanked.CompareTo(other.DateRanked);
+        public virtual int CompareTo(AccSaberBasicDifficulty other) => RankedAt.CompareTo(other.RankedAt);
 
         public override bool Equals(object obj) => obj is AccSaberBasicDifficulty other && Equals(other);
         public int CompareTo(object obj) => obj is AccSaberBasicDifficulty other ? CompareTo(other) : 1;

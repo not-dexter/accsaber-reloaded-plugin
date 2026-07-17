@@ -207,6 +207,8 @@ namespace AccSaber.Utils
 
             if (!CheckForCustomPlaylist(filename))
                 _playlistUtils.LoadPlaylist(filename, playlistName, maps, customSyncData, StatusTextChanged, endEvent);
+            else if (endEvent)
+                StatusTextChanged?.Invoke(null);
 
             if (closeMenu is not null)
                 await GoToPlaylist(filename, closeMenu);
