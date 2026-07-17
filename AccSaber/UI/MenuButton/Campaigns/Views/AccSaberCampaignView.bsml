@@ -4,10 +4,10 @@
       <tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected' />
     </vertical>
     <tab tags='tabs' tab-name='Active' />
-	<tab tags='tabs' tab-name='Official' />
+    <tab tags='tabs' tab-name='Official' />
     <tab tags='tabs' tab-name='Curated' />
     <tab tags='tabs' tab-name='All' />
-	<tab tags='tabs' tab-name='Completed'/>
+    <tab tags='tabs' tab-name='Completed' />
     <horizontal pref-width='160' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
       <horizontal>
         <vertical pref-width='50' pref-height='70' pad='2' active='~not-in-campaign'>
@@ -17,9 +17,9 @@
                 <text align='Left' text='~Name' font-size='3' />
                 <text align='Left' text='~Author' font-size='2.5' />
               </vertical>
-			  <vertical pref-width='7.5'>
+              <vertical pref-width='7.5'>
                 <text text='~Tags' align='Right' font-size='2.5' />
-			  </vertical>		
+              </vertical>
             </horizontal>
           </custom-list>
         </vertical>
@@ -29,11 +29,11 @@
         </vertical>
       </horizontal>
       <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
-		 <vertical preferred-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
-			 <text text='Welcome to AccSaber Campaigns!' font-size='5' align='Center' word-wrapping='true' />
-			 <text text='Here you will find custom campaigns ranging in difficulty and category made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber website' font-size='3.5' align='Center' word-wrapping='true' />
-		 </vertical>
-		<vertical active='~CampaignIsSelected' preferred-width='100' horizontal-fit='PreferredSize'>
+        <vertical preferred-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
+          <text text='Welcome to AccSaber Campaigns!' font-size='5' align='Center' word-wrapping='true' />
+          <text text='Here you will find custom campaigns ranging in difficulty and category made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber website' font-size='3.5' align='Center' word-wrapping='true' />
+        </vertical>
+        <vertical active='~CampaignIsSelected' preferred-width='100' horizontal-fit='PreferredSize'>
           <horizontal preferred-width='100' horizontal-fit='PreferredSize'>
             <img preserve-aspect='true' id='CampaignImage' preferred-width='25' preferred-height='25' />
             <vertical preferred-width='60' preferred-height='20' vertical-fit='PreferredSize'>
@@ -42,21 +42,21 @@
               <text text='~CampaignCategory' align='Left' font-size='3.5' />
             </vertical>
           </horizontal>
-			<vertical active='~campaign-curated'>
-				<text text='Completion Rewards' font-size='5'/>
-		        <text text='~CampaignRewards' align='Center' font-size='4'/>
-		    </vertical>
+          <vertical active='~campaign-curated' preferred-height='20' vertical-fit='PreferredSize' child-expand-height='false' spacing='-1'>
+            <text text='Completion Rewards' font-size='5' />
+            <text text='~CampaignRewards' align='Center' font-size='3' />
+          </vertical>
           <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
           <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
         </vertical>
-	  </vertical>
+      </vertical>
       <vertical active='~in-campaign'>
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
         <horizontal>
           <button text='Zoom In' on-click='ZoomIn' />
           <button text='Go To Furthest Map' on-click='GotoMap' />
           <button text='Zoom Out' on-click='ZoomOut' />
-          <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings'/>
+          <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
         </horizontal>
       </vertical>
       <vertical preferred-width='50' spacing='5' preferred-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2'>

@@ -771,7 +771,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue("showExtraText")] public bool ShowExtraText => ExtraText.Length > 0;
 
-            [UIValue("missionXP")] public string MissionXP =  $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>" + (data.ItemReward is null ? "" : $" | <size=75%><color={ColorUtils.RANK}>1x {data.ItemReward.Name}</color>");
+            [UIValue("missionXP")] public string MissionXP =  $"<color={ColorUtils.AP}>+{data.XpReward} XP</color>" + (data.ItemReward is null ? "" : $" <color=#888>|</color> <size=75%><color={ColorUtils.RANK}>1x {data.ItemReward.Name}</color>");
 
             [UIValue("exactProgress")]
             public string ExactProgress => ShowProgress ? $"<color={ColorUtils.GREY}>({Data.ProgressCount} / {Data.TargetCount ?? Data.TargetXp}{(Data.TargetXp is null ? "" : " XP")})</color>" : "";

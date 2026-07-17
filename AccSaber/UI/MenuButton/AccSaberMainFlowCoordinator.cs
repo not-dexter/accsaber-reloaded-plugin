@@ -91,6 +91,10 @@ namespace AccSaber.UI.MenuButton
                 _mainFlowCoordinator.DismissFlowCoordinator(ParentFlowCoordinator, immediately: true);
         }
 
-        internal void MenuShown() => OnHubActivated?.Invoke();
+        internal void MenuShown()
+        {
+            OnHubActivated?.Invoke();
+            _accSaberMilestoneViewController.UpdateTabs();
+        }
     }
 }
