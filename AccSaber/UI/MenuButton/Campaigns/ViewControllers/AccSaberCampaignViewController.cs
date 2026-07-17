@@ -9,6 +9,7 @@ using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
+using IPA.Config.Data;
 using IPA.Loader;
 using System;
 using System.Collections;
@@ -16,6 +17,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -810,10 +812,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Plugin.Log.Error(e);
             }
 
-            MissionHasRewards = map.XP > 0;
+            MissionHasRewards = map.XP > 0 || map.Items.Count > 0;
 
             if (MissionHasRewards)
-                MissionRewards = $"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>";
+            {
+                StringBuilder str = new();
+
+                str.AppendLine($"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>");
+
+                foreach (AccSaberCampaignItem item in map.Items)
+                    str.AppendLine($"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>");
+
+                MissionRewards = str.ToString();
+            }
 
 
             MissionLocked = completion.Completion == CompletionStatus.Incomplete;
@@ -912,10 +923,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             MissionProgress = barrier.ProgressText[(barrier.ProgressText.LastIndexOf('\n') + 1)..];
             CampaignProgressVal = progress;
 
-            MissionHasRewards = barrier.Barrier.XP > 0;
+            MissionHasRewards = barrier.Barrier.XP > 0 || barrier.Barrier.Items.Count > 0;
 
             if (MissionHasRewards)
-                MissionRewards = $"<color={ColorUtils.OVERALL}>+{barrier.Barrier.XP:N0}XP</color>";
+            {
+                StringBuilder str = new();
+
+                str.AppendLine($"<color={ColorUtils.OVERALL}>+{barrier.Barrier.XP:N0}XP</color>");
+
+                foreach (AccSaberCampaignItem item in barrier.Barrier.Items)
+                    str.AppendLine($"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>");
+
+                MissionRewards = str.ToString();
+            }
 
             MissionLocked = false;
             _missionButton.gameObject.SetActive(false);

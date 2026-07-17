@@ -385,7 +385,10 @@ namespace AccSaber.Models
 
         [JsonProperty("xp")]
         public float XP { get; set; }
-        
+
+        [JsonProperty("items")]
+        public List<AccSaberCampaignItem> Items { get; set; } = [];
+
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)

@@ -60,8 +60,8 @@ namespace AccSaber.Models.ItemModels
             if (Base is not null && Color is null)
                 Color = Base;
 
-            if (Type is not null && Enum.TryParse(typeof(FillType), Type, out object obj))
-                FillType = (FillType)obj;
+            if (Type is not null && Enum.TryParse(Type, out FillType obj))
+                FillType = obj;
         }
     }
 
