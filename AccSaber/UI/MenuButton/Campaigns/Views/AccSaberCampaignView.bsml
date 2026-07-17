@@ -31,7 +31,7 @@
       <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
 		 <vertical preferred-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
 			 <text text='Welcome to AccSaber Reloaded Campaigns!' font-size='5' align='Center' word-wrapping='true' />
-			 <text text='Here you will find custom campaigns ranging in difficulty and categody made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber Reloaded website' font-size='3.5' align='Center' word-wrapping='true' />
+			 <text text='Here you will find custom campaigns ranging in difficulty and category made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber Reloaded website' font-size='3.5' align='Center' word-wrapping='true' />
 		 </vertical>
 		<vertical active='~CampaignIsSelected' preferred-width='100' horizontal-fit='PreferredSize'>
           <horizontal preferred-width='100' horizontal-fit='PreferredSize'>
