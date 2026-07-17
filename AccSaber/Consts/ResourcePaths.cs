@@ -37,6 +37,7 @@ namespace AccSaber.Consts
         public const string GITHUB = RESOURCE_PATH + ".github.png";
         public const string CHECKMARK = RESOURCE_PATH + ".checkmark.png";
         public const string CAMPAIGN_ALL = RESOURCE_PATH + ".campaignAll.png";
+        public const string LOCK = RESOURCE_PATH + ".lock.png";
 
         #endregion
         #region BSML File Paths

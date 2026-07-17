@@ -34,6 +34,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     [HotReload(RelativePathToLayout = @"..\Views\AccSaberMissionScreen.bsml")]
     internal class AccSaberMissionScreen : SafeNotifyPropertyChanged, AccSaberNotificationModal.IPopup
     {
+#pragma warning disable CS0414
+
         private bool _parsed = false;
         private DateTime _dailyRefreshDate, _weeklyRefreshDate, _lastUpdate = DateTime.UtcNow;
         private IEnumerator? _updateTimeRoutine;
@@ -78,6 +80,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
         [UIValue("event-mission-list-content")]
         private readonly string eventMissionListContent = Utilities.GetResourceContent(System.Reflection.Assembly.GetExecutingAssembly(), ResourcePaths.ACC_SABER_MISSION_CELL);
+
+        [UIValue("lockImg")]
+        private readonly string LockImg = ResourcePaths.LOCK;
 
         [UIComponent("event-prev")]
         private readonly PageButton _eventPrev = null!;
@@ -238,6 +243,17 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         } = null!;
 
+        [UIValue("show-lock")]
+        private bool ShowLock
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = false;
+
         [UIValue("week-pagnation")]
         private string WeekPagnation
         {
@@ -332,6 +348,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _eventPrev.enabled = false;
 
                 WeekPagnation = $"{WeekPage}/{4}";
+                ShowLock = WeekPage > CurrentEvent.Event.CurrentWeek;
             }
         }
 
@@ -350,6 +367,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 
                 WeekPagnation = $"{WeekPage}/{4}";
+                ShowLock = WeekPage > CurrentEvent.Event.CurrentWeek;
             }
         }
 

@@ -39,8 +39,9 @@
 			</vertical>
 			<vertical pref-width='75' child-expand-height='false' bg='panel-top' skew='0' active='~event-begun'>
 				<horizontal>
-					<horizontal pad='2' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+					<horizontal pad='2' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' child-expand-width='false' spacing='-1'>
 						<text text='~week-current' align='Left' font-size='5'/>
+            <img src='~lockImg' preserve-aspect='true' img-color='#AAA' active='~show-lock'/>
 					</horizontal>
 					<horizontal pref-width='30' pref-height='10'  vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
 						<page-button id='event-prev' direction='Left' pref-width='3.5' on-click='OnEventPrev'/>
