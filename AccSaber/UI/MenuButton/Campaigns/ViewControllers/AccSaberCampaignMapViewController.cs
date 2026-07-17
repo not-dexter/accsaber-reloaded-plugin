@@ -168,7 +168,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 foreach (AccSaberCampaignMap map in campaign.Difficulties)
                 {
-                    AccSaberBasicDifficulty? diff = await serialHandler.GetDiffById(map.MapDifficultyId);
+                    AccSaberBasicDifficulty? diff = await serialHandler.GetDiffByIdAsync(map.MapDifficultyId);
 
                     if (diff is null)
                     {
@@ -1143,7 +1143,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     if (string.IsNullOrEmpty(Map.BorderColor))
                     {
                         // Fetching from cache is ok because the map will have been loaded at this point
-                        APCategory category = serialUtils.CachedDifficulties[Map.MapDifficultyId].Category ?? APCategory.Overall;
+                        APCategory category = serialUtils.GetDiffById(Map.MapDifficultyId)?.Category ?? APCategory.Overall;
                         BorderImage.color = ColorUtils.GetColor(category).Color();
                     }
                     else BorderImage.color = Map.BorderColor!.Color();
@@ -1204,7 +1204,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         Plugin.Log.Warn($"Cannot find level by hash \"{Hash}\", downloading...");
 
                         // Map should be loaded at this point.
-                        level = await levelUtils.DownloadSong(serialUtils.CachedMaps[Hash]);
+                        level = await levelUtils.DownloadSong(serialUtils.GetMapByHash(Hash)!);
 
                         UpdateMapCovers?.Invoke();
 
@@ -1689,6 +1689,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT =>
                         $"Nodes Completed\n<color={ColorUtils.GLOBAL}>{Progress.Progress:N0}</color> / <color={ColorUtils.GLOBAL}>{Barrier.ConditionValue:N0}</color>",
+
+                    AccSaberCampaignBarrier.BarrierConditionType.PASS =>
+                        $"Nodes Passed\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
 
                     _ => "Unknown type"
                 };

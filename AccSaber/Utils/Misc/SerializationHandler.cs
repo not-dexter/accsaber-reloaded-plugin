@@ -29,8 +29,11 @@ namespace AccSaber.Utils.Misc
         private readonly object initLock = new();
 
         public int TotalMaps { get; private set; } = -1;
-        public Dictionary<string, AccSaberBasicMap> CachedMaps = null!;
-        public Dictionary<Guid, AccSaberBasicDifficulty> CachedDifficulties = null!;
+        private Dictionary<string, AccSaberBasicMap> cachedMaps = null!;
+        private Dictionary<Guid, AccSaberBasicDifficulty> cachedDifficulties = null!;
+
+        public IReadOnlyCollection<AccSaberBasicMap> CachedMaps => cachedMaps.Values;
+        public IReadOnlyCollection<AccSaberBasicDifficulty> CachedDifficulties => cachedDifficulties.Values;
 
         private AccSaberSerializedCache<AccSaberPlayerScore> _playerCache = null!;
         private readonly List<AccSaberPlayerScore>[] playerCategoryScores;
@@ -116,8 +119,8 @@ namespace AccSaber.Utils.Misc
                     if (cache is not AccSaberSerializedCache<AccSaberBasicMap> mapCache)
                         return;
 
-                    CachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
-                    CachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
+                    cachedMaps = [with(mapCache.Content.Select(map => new KeyValuePair<string, AccSaberBasicMap>(map.Hash, map)))];
+                    cachedDifficulties = [with(mapCache.Content.SelectMany(map => map.Difficulties)
                         .Select(diff => new KeyValuePair<Guid, AccSaberBasicDifficulty>(diff.DifficultyId, diff)))];
 
                     if (_playerCache is not null)
@@ -131,7 +134,7 @@ namespace AccSaber.Utils.Misc
 
                     _playerCache = playerCache;
 
-                    if (CachedDifficulties is not null)
+                    if (cachedDifficulties is not null)
                         SetPlayerScoreCache();
                 }
 
@@ -220,7 +223,7 @@ namespace AccSaber.Utils.Misc
 
                 if (score.PersonalRank < 0)
                 {
-                    AccSaberBasicDifficulty diff = CachedDifficulties[score.DifficultyId];
+                    AccSaberBasicDifficulty diff = cachedDifficulties[score.DifficultyId];
 
                     categoryIndex = (int)diff.Category!.Value;
                     score.PersonalRank = playerCategoryScores[categoryIndex].Count;
@@ -252,9 +255,9 @@ namespace AccSaber.Utils.Misc
 
         }
 
-        public async Task<AccSaberBasicDifficulty?> GetDiffById(Guid id)
+        public async Task<AccSaberBasicDifficulty?> GetDiffByIdAsync(Guid id)
         {
-            if (CachedDifficulties.TryGetValue(id, out AccSaberBasicDifficulty diff))
+            if (cachedDifficulties.TryGetValue(id, out AccSaberBasicDifficulty diff))
                 return diff;
 
             AccSaberDifficulty? fullDiff = await APIHandler.CallAPI_Json<AccSaberDifficulty>(string.Format(HelpfulPaths.APAPI_DIFF_ID, id), AccsaberAPI.Throttler);
@@ -262,9 +265,75 @@ namespace AccSaber.Utils.Misc
             if (fullDiff is null)
                 return null;
 
-            CachedDifficulties.Add(id, fullDiff);
-            return fullDiff;
+            await GetMapByMapIdOrSongNameAsync(fullDiff.MapId, fullDiff.SongName);
+
+            return cachedDifficulties[fullDiff.DifficultyId];
         }
+        public AccSaberBasicDifficulty? GetDiffById(Guid id) => cachedDifficulties[id];
+
+        public void SetDiffWithId(Guid id, AccSaberBasicDifficulty diff) => cachedDifficulties[id] = diff;
+
+        public async Task<AccSaberBasicMap?> GetMapByHashAsync(string hash)
+        {
+            if (cachedMaps.TryGetValue(hash, out AccSaberBasicMap map))
+                return map;
+
+            AccSaberRankedMap? fullMap = await APIHandler.CallAPI_Json<AccSaberRankedMap>(string.Format(HelpfulPaths.APAPI_HASH, hash), AccsaberAPI.Throttler);
+
+            if (fullMap is null)
+                return null;
+
+            cachedMaps[hash] = fullMap;
+
+            foreach (AccSaberBasicDifficulty diff in fullMap.Difficulties)
+                cachedDifficulties[diff.DifficultyId] = diff;
+
+            return fullMap;
+        }
+        public async Task<AccSaberBasicMap?> GetMapByMapIdOrSongNameAsync(Guid id, string songName)
+        {
+            AccSaberBasicMap? map = CachedMaps.FirstOrDefault(map => songName.Equals(map.SongName));
+
+            if (map is not null)
+                return map;
+
+            AccSaberRankedMap? fullMap = await APIHandler.CallAPI_Json<AccSaberRankedMap>(string.Format(HelpfulPaths.APAPI_MAP_ID, id), AccsaberAPI.Throttler);
+
+            if (fullMap is null)
+                return null;
+
+            cachedMaps[fullMap.Hash] = fullMap;
+
+            foreach (AccSaberBasicDifficulty diff in fullMap.Difficulties)
+                cachedDifficulties[diff.DifficultyId] = diff;
+
+            return fullMap;
+        }
+        public async Task<AccSaberBasicMap?> GetMapByDiffIdAsync(Guid id)
+        {
+            AccSaberBasicDifficulty? diff = await GetDiffByIdAsync(id);
+
+            if (diff is null)
+                return null;
+
+            return await GetMapByHashAsync(diff.Hash);
+        }
+
+        public AccSaberBasicMap? GetMapByHash(string hash) => cachedMaps[hash];
+        public bool TryGetMapByHash(string hash, out AccSaberBasicMap map) => cachedMaps.TryGetValue(hash, out map);
+
+        public AccSaberBasicMap? GetMapByDiffId(Guid id)
+        {
+            AccSaberBasicDifficulty? diff = GetDiffById(id);
+
+            if (diff is null)
+                return null;
+
+            return GetMapByHash(diff.Hash);
+        }
+
+        public void SetMapWithHash(string hash, AccSaberBasicMap map) => cachedMaps[hash] = map;
+
         internal void OnPlayerScoreUpdated(AccSaberLeaderboardEntry entry)
         {
             InvalidateMissionCache();
@@ -331,12 +400,12 @@ namespace AccSaber.Utils.Misc
         }
         public async Task<(AccSaberBasicMap map, AccSaberBasicDifficulty diff)?> GetMapWithDifficulty(Guid difficultyId)
         {
-            AccSaberBasicDifficulty? diff = await GetDiffById(difficultyId);
+            AccSaberBasicDifficulty? diff = await GetDiffByIdAsync(difficultyId);
 
             if (diff is null)
                 return null;
 
-            return (CachedMaps[diff.Hash], diff);
+            return (cachedMaps[diff.Hash], diff);
         }
 
         private async Task<bool> ValidateMapCache(AccSaberSerializedCache cache)

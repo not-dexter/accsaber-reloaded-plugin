@@ -399,7 +399,8 @@ namespace AccSaber.Models
             SCORE,
             STREAK_115,
             FC,
-            RANK
+            RANK,
+            PASS
         }
     }
 
@@ -471,7 +472,8 @@ namespace AccSaber.Models
             FC,
             AVERAGE_RANK,
             MAX_RANK,
-            COMPLETION_COUNT
+            COMPLETION_COUNT,
+            PASS
         }
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignLabelPosition.java

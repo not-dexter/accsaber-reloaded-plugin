@@ -426,7 +426,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                             continue;
 
                         AccSaberBasicDifficulty? targetDiff = mission.Mission.TargetMapDifficultyId is null ?
-                        null : _serialHandler.CachedDifficulties[mission.Mission.TargetMapDifficultyId.Value];
+                        null : _serialHandler.GetDiffById(mission.Mission.TargetMapDifficultyId.Value);
 
                         _eventCells.Add(new MissionCell(mission.Current ?? mission.Mission, targetDiff)); // change this to current when live
                     }
@@ -637,7 +637,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                         if (_parsed)
                         {
                             AccSaberBasicDifficulty? targetDiff = post.TargetMapDifficultyId is null ?
-                                null : _serialHandler.CachedDifficulties[post.TargetMapDifficultyId.Value];
+                                null : _serialHandler.GetDiffById(post.TargetMapDifficultyId.Value);
 
                             switch (post.MissionPool)
                             {

@@ -510,7 +510,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
 
-#if V44
+#if V42
             _menuTransitionsHelper.StartStandardLevel(
                 gameMode: "Solo",
                 beatmapKey: CurrentBeatMapKey,
@@ -778,7 +778,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 AccSaberCampaignMap.CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{completion.Progress:N0}</color> / <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color>",
                 AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{completion.Progress:N0}x</color> / <color={ColorUtils.TECH}>{map.RequirementValue:N0}x</color>",
                 AccSaberCampaignMap.CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{completion.Progress:N0}</color> / <color={ColorUtils.GREY}>{map.RequirementValue:N0}</color>",
-                AccSaberCampaignMap.CampaignRequirementType.FC => $"<color=#F55>FC</color>",
+                AccSaberCampaignMap.CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                AccSaberCampaignMap.CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
                 _ => $"{completion.Progress}"
             };
 
@@ -804,13 +805,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 AccSaberCampaignMap.CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color> or better on the map",
                 AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> 115s in a row",
                 AccSaberCampaignMap.CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> points or higher",
-                AccSaberCampaignMap.CampaignRequirementType.FC => $"Set a Full Combo",
+                AccSaberCampaignMap.CampaignRequirementType.FC => "Set a Full Combo",
+                AccSaberCampaignMap.CampaignRequirementType.PASS => "Pass the map without no fail",
                 _ => $"Get something with a requirement value of {map.RequirementValue:N0}"
             };
 
             MissionObjective = objective;
 
-            AccSaberBasicDifficulty? mapDiff = await _serialHandler.GetDiffById(map.MapDifficultyId);
+            AccSaberBasicDifficulty? mapDiff = await _serialHandler.GetDiffByIdAsync(map.MapDifficultyId);
 
             if (mapDiff is not null)
                 _ = _missionImage.LoadCoverImage(mapDiff.Hash, map.CoverUrl);
@@ -855,6 +857,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_RANK => $"Get an average rank of <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N1}</color>.",
                 AccSaberCampaignBarrier.BarrierConditionType.MAX_RANK => $"Get a rank greater than or equal to <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color>.",
                 AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT => $"Complete <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color> nodes.",
+                AccSaberCampaignBarrier.BarrierConditionType.PASS => $"Pass <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color> nodes (without no fail).",
                 _ => $"Get something with a requirement value of {barrier.Barrier.ConditionValue:0.##}"
             };
 
@@ -892,7 +895,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
 
-                AccSaberBasicDifficulty? diff = await _serialHandler.GetDiffById(score.MapDifficultyId);
+                AccSaberBasicDifficulty? diff = await _serialHandler.GetDiffByIdAsync(score.MapDifficultyId);
 
                 if (diff is null)
                 {
@@ -907,6 +910,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     AccSaberCampaignMap.CampaignRequirementType.SCORE => score.Score,
                     AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => score.Streak115,
                     AccSaberCampaignMap.CampaignRequirementType.FC => score.Mistakes,
+                    AccSaberCampaignMap.CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
                     _ => -1f
                 };
 

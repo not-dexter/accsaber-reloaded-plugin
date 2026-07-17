@@ -34,6 +34,7 @@ namespace AccSaber.ScoreTracking
         private static readonly HashSet<string> AllowedModes = [ "Solo", "Multiplayer" ];
 
         private AccSaberScore score = null!;
+        private AccSaberBasicDifficulty? currentMap;
         private AccsaberAPI api = null!;
         private AccSaberLeaderboardViewController aslvc = null!;
         private Configuration.PluginConfig config = null!;
@@ -73,7 +74,7 @@ namespace AccSaber.ScoreTracking
             if (store.CurrentRankedMap is null && (!Plugin.Container.TryResolve<AccSaberCampaignViewController>()?.MapStarted ?? true))
                 return;
 
-            AccSaberBasicDifficulty? currentMap = store.CurrentRankedMap ?? await store.GetCurrentMap();
+            currentMap = store.CurrentRankedMap ?? await store.GetCurrentMap();
 
             if (currentMap is null)
             {
@@ -102,7 +103,7 @@ namespace AccSaber.ScoreTracking
         }
         public void Dispose()
         {
-            if (store?.CurrentRankedMap is null)
+            if (currentMap is null)
                 return;
 
             transition.didFinishEvent -= OnTransitionSetupOnDidFinishEvent;

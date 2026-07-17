@@ -89,7 +89,7 @@ namespace AccSaber.Models.CacheModels
             SetWeight(calc);
         }
         internal void SetValues(SerializationHandler handler, APCalc calc) => 
-            SetValues(handler.CachedDifficulties[DifficultyId], calc);
+            SetValues(handler.GetDiffById(DifficultyId)!, calc);
         
         internal void SetValues()
         {

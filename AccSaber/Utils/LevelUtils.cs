@@ -90,8 +90,8 @@ namespace AccSaber.Utils
             HashSet<Guid> playerScoreDiffIds = [.. (type == APCategory.Overall ? _serialHandler.PlayerScores : _serialHandler.CategoryPlayerScores[(int)type])
                 .Select(score => score.DifficultyId)];
 
-            IEnumerable<AccSaberBasicDifficulty> diffs = type == APCategory.Overall ? _serialHandler.CachedDifficulties.Values :
-                _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category is not null && diff.Category.Value == type);
+            IEnumerable<AccSaberBasicDifficulty> diffs = type == APCategory.Overall ? _serialHandler.CachedDifficulties :
+                _serialHandler.CachedDifficulties.Where(diff => diff.Category is not null && diff.Category.Value == type);
 
             return GetMapsUnplayed_Internal(type, diffs.Where(diff => playerScoreDiffIds.Contains(diff.DifficultyId)));
         }
@@ -101,9 +101,9 @@ namespace AccSaber.Utils
             IEnumerable<AccSaberBasicDifficulty> diffs;
 
             if (type == APCategory.Overall)
-                diffs = _serialHandler.CachedDifficulties.Values.Where(diff => !playerDiffSet.Contains(diff));
+                diffs = _serialHandler.CachedDifficulties.Where(diff => !playerDiffSet.Contains(diff));
             else
-                diffs = _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category is not null && diff.Category.Value == type && !playerDiffSet.Contains(diff));
+                diffs = _serialHandler.CachedDifficulties.Where(diff => diff.Category is not null && diff.Category.Value == type && !playerDiffSet.Contains(diff));
 
             return _playlistUtils.GetPlaylistData(diffs.Select(diff => diff.DifficultyId));
         }
@@ -126,7 +126,7 @@ namespace AccSaber.Utils
             if ((comp & ComparisonType.LT) != 0)
             {
                 HashSet<Guid> idSet = [.. ids];
-                ids = _serialHandler.CachedDifficulties.Values.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId);
+                ids = _serialHandler.CachedDifficulties.Where(diff => diff.Category == type && !idSet.Contains(diff.DifficultyId)).Select(diff => diff.DifficultyId);
             }
 
             List<PlaylistUtils.PlaylistMapInfo> outp = _playlistUtils.GetPlaylistData(ids);

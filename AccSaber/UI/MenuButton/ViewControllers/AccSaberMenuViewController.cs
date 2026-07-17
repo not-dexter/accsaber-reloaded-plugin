@@ -565,7 +565,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 					foreach (AccSaberPlayerScore score in content)
 					{
-						_scoreCells.Add(new ScoreCell(score, serialHandler.CachedDifficulties[score.DifficultyId].Hash));
+						_scoreCells.Add(new ScoreCell(score, serialHandler.GetDiffById(score.DifficultyId)?.Hash ?? throw new Exception("Given diff id was not in cache!")));
 					}
 
                     _topScoresList.Data = _scoreCells;

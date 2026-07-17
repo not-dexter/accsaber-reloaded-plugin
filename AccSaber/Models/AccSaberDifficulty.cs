@@ -11,6 +11,9 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal sealed class AccSaberDifficulty : AccSaberBasicDifficulty
     {
+        [JsonProperty("mapId")]
+        public Guid MapId { get; set; }
+
 		[JsonProperty("beatsaverCode")]
 		public string? BeatsaverCode { get; set; }
 
@@ -18,7 +21,7 @@ namespace AccSaber.Models
         public string? BlLeaderboardId { get; set; }
 
         [JsonProperty("categoryId")]
-        public Guid CategoryId { get; set; }
+        public Guid? CategoryId { get; set; }
 
         [JsonProperty("characteristic")]
         public string Characteristic { get; set; } = null!;
@@ -46,13 +49,16 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberBasicDifficulty : IModel, IEquatable<AccSaberBasicDifficulty>
+    internal class AccSaberBasicDifficulty : IModel, IEquatable<AccSaberBasicDifficulty>, IComparable<AccSaberBasicDifficulty>, IComparable
     {
         [JsonProperty("id")]
         public Guid DifficultyId { get; set; }
 
         [JsonProperty("songHash")]
         public string Hash { get; set; } = null!;
+
+        [JsonProperty("songName")]
+        public string SongName { get; set; } = null!;
 
         [JsonProperty("difficulty")]
         public ReloadedDifficulty ReloadedDifficulty { get; set; }
@@ -75,6 +81,9 @@ namespace AccSaber.Models
         //[JsonProperty("blLeaderboardId")]
         //public string? BlLeaderboardId { get; set; }
 
+        [JsonProperty("dateRanked")]
+        public DateTime DateRanked { get; set; }
+
         [JsonIgnore]
         public AccSaberBasicMap? ParentInfo { get; set; }
 
@@ -94,7 +103,10 @@ namespace AccSaber.Models
         }
 
         public bool Equals(AccSaberBasicDifficulty other) => DifficultyId.Equals(other.DifficultyId);
+        public virtual int CompareTo(AccSaberBasicDifficulty other) => DateRanked.CompareTo(other.DateRanked);
+
         public override bool Equals(object obj) => obj is AccSaberBasicDifficulty other && Equals(other);
+        public int CompareTo(object obj) => obj is AccSaberBasicDifficulty other ? CompareTo(other) : 1;
         public override int GetHashCode() => DifficultyId.GetHashCode();
     }
 }

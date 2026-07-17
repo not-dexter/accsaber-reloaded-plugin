@@ -12,17 +12,18 @@
     {
         // Category ID: b0000000-0000-0000-0000-000000000003 for Tech, 2 = Standard, 1 = True, 5 = overall.
         // Examples:
-        // Score endpoint example: https://api.accsaberreloaded.com/v1/users/76561198306905129/scores/by-hash/2a579bb1a3efa58af7640f9663c972ee84fea44a?difficulty=EXPERT&characteristic=Standard
-        // Diff endpoint example: https://api.accsaberreloaded.com/v1/maps/hash/2A579BB1A3EFA58AF7640F9663C972EE84FEA44A?difficulty=EXPERT
-        // Page example: https://api.accsaberreloaded.com/v1/maps/difficulties/6af8724c-4cbd-4b8e-90c2-34b34a0a5d73/scores?page=0&size=10
-        // Player example: https://api.accsaberreloaded.com/v1/users/76561198306905129?statistics=true
-        // Milestone example: https://api.accsaberreloaded.com/v1/users/76561198306905129/milestones?page=0&size=10
+        // Score endpoint example: https://api.accsaber.com/v1/users/76561198306905129/scores/by-hash/2a579bb1a3efa58af7640f9663c972ee84fea44a?difficulty=EXPERT&characteristic=Standard
+        // Diff endpoint example: https://api.accsaber.com/v1/maps/hash/2A579BB1A3EFA58AF7640F9663C972EE84FEA44A?difficulty=EXPERT
+        // Page example: https://api.accsaber.com/v1/maps/difficulties/6af8724c-4cbd-4b8e-90c2-34b34a0a5d73/scores?page=0&size=10
+        // Player example: https://api.accsaber.com/v1/users/76561198306905129?statistics=true
+        // Milestone example: https://api.accsaber.com/v1/users/76561198306905129/milestones?page=0&size=10
+
+        public const string APAPI_DOMAIN = "api.accsaber.com";
 
         /// <summary>
         /// Base API URL for AccSaber Reloaded (version 1).
         /// </summary>
-        public const string APAPI = "https://api.accsaberreloaded.com/v1/";
-        public const string APAPI_DOMAIN = "api.accsaberreloaded.com";
+        public const string APAPI = "https://" + APAPI_DOMAIN + "/v1/";
 
         /// <summary>
         /// Health check endpoint (no parameters).
@@ -133,6 +134,8 @@
         /// Format parameters: hash.
         /// </remarks>
         public const string APAPI_HASH = APAPI + "maps/hash/{0}"; //hash
+
+        public const string APAPI_MAP_ID = APAPI + "maps/{0}"; //map_id
 
         /// <summary>
         /// Retrieves map data by hash filtered to a specific difficulty.

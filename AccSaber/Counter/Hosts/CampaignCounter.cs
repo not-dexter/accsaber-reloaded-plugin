@@ -2,6 +2,7 @@
 using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.Utils.Misc;
 using System;
+using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace AccSaber.Counter.Hosts
         private APCalc Calc = null!;
         [Inject] private readonly ScoreController sc = null!;
         [Inject] private readonly ComboController cc = null!;
+        private GameEnergyCounter energy = null!;
 
         private TMP_Text DisplayText = null!;
         private int max115Streak = 0, current115Streak = 0;
@@ -56,7 +58,7 @@ namespace AccSaber.Counter.Hosts
                     return;
 
                 Map = campaignVC.CurrentMap!;
-                DiffInfo = Plugin.Container.TryResolve<SerializationHandler>().CachedDifficulties[Map.MapDifficultyId];
+                DiffInfo = Plugin.Container.TryResolve<SerializationHandler>().GetDiffByIdAsync(Map.MapDifficultyId).GetAwaiter().GetResult()!;
 
                 requiredVal = Map.RequirementValue - 0.00005f;
             }
@@ -89,6 +91,12 @@ namespace AccSaber.Counter.Hosts
                     DisplayText.SetText("FC!");
                     cc.comboBreakingEventHappenedEvent += FCCounter;
                     break;
+                case AccSaberCampaignMap.CampaignRequirementType.PASS:
+                    UpdateColor(true);
+                    DisplayText.SetText("Pass!");
+                    energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
+                    energy.gameEnergyDidReach0Event += FCCounter;
+                    break;
                 default: // TODO: Add Rank (or maybe just don't worry about that one)
                     campaignVC = null;
                     break;
@@ -115,6 +123,9 @@ namespace AccSaber.Counter.Hosts
                     break;
                 case AccSaberCampaignMap.CampaignRequirementType.FC:
                     cc.comboBreakingEventHappenedEvent -= FCCounter;
+                    break;
+                case AccSaberCampaignMap.CampaignRequirementType.PASS:
+                    energy.gameEnergyDidReach0Event -= FCCounter;
                     break;
             }
         }

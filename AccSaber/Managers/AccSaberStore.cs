@@ -108,7 +108,7 @@ namespace AccSaber.Managers
                 if (map is null)
                     return null;
 
-                _serialHandler.CachedMaps.Add(CurrentHash, map);
+                _serialHandler.SetMapWithHash(CurrentHash, map);
 
                 AccSaberBasicDifficulty? outp = null;
 
@@ -122,7 +122,7 @@ namespace AccSaber.Managers
                         outp = diff;
 #endif
 
-                    _serialHandler.CachedDifficulties.Add(diff.DifficultyId, diff);
+                    _serialHandler.SetDiffWithId(diff.DifficultyId, diff);
                 }
 
                 return outp;

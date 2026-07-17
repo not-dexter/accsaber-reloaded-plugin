@@ -680,7 +680,7 @@ namespace AccSaber.API
         public async Task<AccSaberLeaderboardEntry?> GetScoreData(string userId, string hash, BeatmapDifficulty diff, CancellationToken ct = default)
         {
             AccSaberBasicDifficulty? selectedDiff = null;
-            if (serialHandler.CachedMaps.TryGetValue(hash, out AccSaberBasicMap map))
+            if (serialHandler.TryGetMapByHash(hash, out AccSaberBasicMap map))
             {
                 selectedDiff = map.Difficulties?.FirstOrDefault(currentDiff => currentDiff.Difficulty == diff);
                 if (selectedDiff is not null && scoreInfoCacher.TryGetCachedItem(selectedDiff.DifficultyId, out ScoreCache val) && val.UserIds.Contains(userId))
@@ -702,7 +702,7 @@ namespace AccSaber.API
             if (ct.IsCancellationRequested) 
                 return null;
 
-            if (serialHandler.CachedMaps.TryGetValue(hash.ToLower(), out AccSaberBasicMap? map))
+            if (serialHandler.TryGetMapByHash(hash.ToLower(), out AccSaberBasicMap? map))
                 return map;
 
             // Note: This function will no longer fetch the map of a given hash. It will assume any map not loaded in the cache is unranked.

@@ -239,7 +239,7 @@ namespace AccSaber.Utils
             }
         }
 
-        public void DeleteCustomPlaylists(bool overrideSettings = false)
+        public void DeleteCustomPlaylists()
         {
             if (playlistLib is null)
             {
@@ -442,7 +442,7 @@ namespace AccSaber.Utils
 
             PlaylistMapInfo[] maps = new PlaylistMapInfo[idSet.Count];
 
-            foreach (AccSaberBasicMap map in serialHandler.CachedMaps.Values)
+            foreach (AccSaberBasicMap map in serialHandler.CachedMaps)
             {
                 AccSaberBasicDifficulty? basicDiff = map.Difficulties.FirstOrDefault(diff => idSet.ContainsKey(diff.DifficultyId));
 
