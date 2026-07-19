@@ -41,6 +41,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.ShowPrereqIndicator = value;
         }
 
+        [UIValue(nameof(BGBrightness))]
+        private float BGBrightness
+        {
+            get => config.CampaignBackgroundBrightness;
+            set => config.CampaignBackgroundBrightness = value;
+        }
+
+        [UIValue(nameof(BGAlpha))]
+        private float BGAlpha
+        {
+            get => config.CampaignBackgroundAlpha;
+            set => config.CampaignBackgroundAlpha = value;
+        }
+
         private void Parse(Transform parent)
         {
             if (!parsed)

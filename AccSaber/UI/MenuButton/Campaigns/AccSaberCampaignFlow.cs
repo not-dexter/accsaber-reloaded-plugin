@@ -11,7 +11,7 @@ namespace AccSaber.UI.MenuButton.Campaigns
     // Based off: https://github.com/HypersonicSharkz/SmartSongSuggest/blob/master/TaohSongSuggest/UI/TSSFlowCoordinator.cs unused for now
     internal class AccSaberCampaignFlow : FlowCoordinator
     {
-        private FlowCoordinator _parentFlow = null!;
+        private AccSaberMainFlowCoordinator _parentFlow = null!;
         private AccSaberCampaignViewController _campaignController = null!;
         private GameplaySetupViewController _gameplaySetupViewController = null!;
         private PlatformLeaderboardViewController _leaderboardController = null!;
@@ -77,6 +77,7 @@ namespace AccSaber.UI.MenuButton.Campaigns
             else
             { 
                 disableLogo = false;
+                _parentFlow.MenuShown();
                 _songPreviewPlayer.CrossfadeToDefault();
                 _parentFlow.DismissFlowCoordinator(this); 
             }

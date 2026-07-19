@@ -1,5 +1,6 @@
 ﻿using AccSaber.Utils.Misc;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
 using System.Net.Http;
@@ -112,9 +113,14 @@ namespace AccSaber.API
                         {
                             Plugin.Log.Error("API request failed, skipping retries due to error code (" + status + ").\nPath: " + request.RequestUri);
 
-                            string errorContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            string errorContentStr = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                            
+                            if (!string.IsNullOrEmpty(errorContentStr))
+                            {
+                                JObject errorContent = JObject.Parse(errorContentStr);
 
-                            Plugin.Log.Debug($"API failure reason: {Newtonsoft.Json.Linq.JObject.Parse(errorContent)["message"]}");
+                                Plugin.Log.Debug($"API failure reason: {errorContent["message"]}");
+                            }
                         }
                         break;
                     }

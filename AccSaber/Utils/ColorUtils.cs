@@ -95,6 +95,19 @@ namespace AccSaber.Utils
             Plugin.Log.Warn($"The color \"{hex}\" could not be parsed!");
             return default;
         }
+        public static Color Color(this string hex, int red = -255, int green = -255, int blue = -255, int alpha = -255) =>
+            Color(hex, red / 255f, green / 255f, blue / 255f, alpha / 255f);
+        public static Color Color(this string hex, float red = -1f, float green = -1f, float blue = -1f, float alpha = -1f)
+        {
+            Color c = hex.Color();
+
+            return new(
+                red >= 0f ? red : c.r,
+                green >= 0f ? green : c.g,
+                blue >= 0f ? blue : c.b,
+                alpha >= 0f ? alpha : c.a
+            );
+        }
         public static string Color(this Color color) => $"#{(int)(color.r * 255):X2}{(int)(color.g * 255):X2}{(int)(color.b * 255):X2}{(int)(color.a * 255):X2}";
         public static string ToProperColor(this string hex)
         {

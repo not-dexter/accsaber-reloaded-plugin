@@ -9,7 +9,6 @@ using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
-using IPA.Config.Data;
 using IPA.Loader;
 using System;
 using System.Collections;
@@ -94,7 +93,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly PluginConfig _config = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
-        [Inject] private readonly AccSaberMainFlowCoordinator _mainFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
@@ -476,7 +474,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void BackPressed()
         {
             _campaignFlow.HideLeaderboard();
-            _mainFlow.MenuShown();
             InCampaign = false;
             InBarrier = false;
             InMap = false;
@@ -697,7 +694,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 {
                     if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS) ||
                         (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.COMPLETED) ||
-                        (CurrentTab == CategoryTab.Official && campaign.Official != true))
+                        (CurrentTab == CategoryTab.Official && !campaign.Official))
                         continue;
 
                     _campaignCells.Add(new CampaignCell(campaign));
@@ -915,8 +912,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 AccSaberCampaignBarrier.BarrierConditionType.FC => $"Full combo <color={ColorUtils.RANK}>{barrier.Barrier.AffectedCampaignDifficultyIds.Count:N0}</color> map(s).",
                 AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_RANK => $"Get an average rank of <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N1}</color>.",
                 AccSaberCampaignBarrier.BarrierConditionType.MAX_RANK => $"Get a rank greater than or equal to <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color>.",
-                AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT => $"Complete <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color> nodes.",
-                AccSaberCampaignBarrier.BarrierConditionType.PASS => $"Pass <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color> nodes (without no fail).",
+                AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT => $"Complete <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}</color> nodes.",
+                AccSaberCampaignBarrier.BarrierConditionType.PASS => $"Pass <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}</color> nodes (without no fail).",
                 _ => $"Get something with a requirement value of {barrier.Barrier.ConditionValue:0.##}"
             };
 
@@ -944,6 +941,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             InBarrier = true;
         }
 
+        private IEnumerable<AccSaberCampaignMap> GetAllMapsOfDiffId(Guid diffId)
+        {
+            if (_currentCampaign is null)
+                return [];
+
+            return _currentCampaign.Difficulties
+                   .Where(map =>
+                       map.MapDifficultyId == diffId &&
+                       _campaignMapViewController.CampaignProgress.PlayerValues.TryGetValue(map.Id, out CampaignProgressValue progress) &&
+                       progress.Completion != CompletionStatus.Incomplete
+                   );
+        }
+
         private void OnPlayerScore(AccSaberLeaderboardEntry score)
         {
             _lastServerUpdate = DateTime.UtcNow;
@@ -955,69 +965,86 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     UpdateCampaign();
             }
         }
-        private async void OnPlayerScoreSubmit(AccSaberScore score)
+        private async void OnPlayerScoreSubmit(AccSaberScore score, bool scoreBeaten)
+        {
+            if (CurrentMap is not null && _currentCampaign is not null && _currentCampaign.Difficulties is not null)
+            {
+                List<AccSaberCampaignMap> otherMaps = [.. GetAllMapsOfDiffId(score.MapDifficultyId).Where(map => map.Id != CurrentMap.Id)];
+
+                _ = OnPlayerScoreSubmit(score, scoreBeaten, CurrentMap, doUpdates: otherMaps.Count > 0);
+
+                for (int i = 0; i < otherMaps.Count; i++)
+                    _ = OnPlayerScoreSubmit(score, scoreBeaten, otherMaps[i], setMap: false, doUpdates: i == otherMaps.Count - 1);
+            }
+        }
+        private async Task OnPlayerScoreSubmit(AccSaberScore score, bool scoreBeaten, AccSaberCampaignMap currentMap, bool setMap = true, bool doUpdates = true)
         {
             DateTime now = DateTime.UtcNow;
             _lastScoreSubmit = now;
-            if (InMap && CurrentMap is not null && _currentCampaign is not null && !(score.UncompletedMap ?? false))
+
+            if (!scoreBeaten)
+                _lastServerUpdate = now; // if the score was not a pb, then the server is updated instantly.
+
+            if (!InMap || (score.UncompletedMap ?? true))
+                return;
+
+            float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
+
+            AccSaberBasicDifficulty? diff = await _serialHandler.GetDiffByIdAsync(score.MapDifficultyId);
+
+            if (diff is null)
             {
-                float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
+                Plugin.Log.Warn("Difficulty for score not found!");
+                return;
+            }
 
-                AccSaberBasicDifficulty? diff = await _serialHandler.GetDiffByIdAsync(score.MapDifficultyId);
+            float val = currentMap.RequirementType switch
+            {
+                AccSaberCampaignMap.CampaignRequirementType.ACC => acc,
+                AccSaberCampaignMap.CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
+                AccSaberCampaignMap.CampaignRequirementType.SCORE => score.Score,
+                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => score.Streak115,
+                AccSaberCampaignMap.CampaignRequirementType.FC => score.Mistakes,
+                AccSaberCampaignMap.CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
+                _ => -1f
+            };
 
-                if (diff is null)
-                {
-                    Plugin.Log.Warn("Difficulty for score not found!");
-                    return;
-                }
+            if (val < 0f)
+            {
+                Plugin.Log.Warn("Cannot handle the campaign type that was completed.");
+                return; // I can only handle certain types, those I can't will be updated once the websocket sends the score.
+            }
 
-                float val = CurrentMap.RequirementType switch
-                {
-                    AccSaberCampaignMap.CampaignRequirementType.ACC => acc,
-                    AccSaberCampaignMap.CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
-                    AccSaberCampaignMap.CampaignRequirementType.SCORE => score.Score,
-                    AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => score.Streak115,
-                    AccSaberCampaignMap.CampaignRequirementType.FC => score.Mistakes,
-                    AccSaberCampaignMap.CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
-                    _ => -1f
-                };
+            if (CampaignProgressVal.Progress >= val)
+            {
+                Plugin.Log.Info("Player did not beat old pb.");
+                return; // didn't beat old progress.
+            }
 
-                if (val < 0f)
-                {
-                    Plugin.Log.Warn("Cannot handle the campaign type that was completed.");
-                    return; // I can only handle certain types, those I can't will be updated once websocket sends score.
-                }
+            _lastUpdate = now;
 
-                if (CampaignProgressVal.Progress >= val)
-                {
-                    Plugin.Log.Info("Player did not beat old pb.");
-                    return; // didn't beat old progress.
-                }
+            if (currentMap.RequirementValue > CampaignProgressVal.Progress && currentMap.RequirementValue <= val)
+            {
+                CampaignProgressValue? newVal = await _campaignMapViewController.MarkNodeAsComplete(currentMap.Id, val);
 
-                _lastUpdate = now;
-
-                if (CurrentMap.RequirementValue > CampaignProgressVal.Progress && CurrentMap.RequirementValue <= val)
-                {
-                    CampaignProgressValue? newVal = _campaignMapViewController.MarkNodeAsComplete(CurrentMap.Id, val);
-
+                if (doUpdates)
                     UpdateGoToMapButton();
 
-                    if (newVal is null)
-                        Plugin.Log.Warn("Setting the campaign node to complete failed!");
-                    else
-                        CampaignProgressVal = newVal.Value;
-                }
+                if (newVal is null)
+                    Plugin.Log.Warn("Setting the campaign node to complete failed!");
+                else
+                    CampaignProgressVal = newVal.Value;
+            }
 
+            if (doUpdates)
                 _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
 
+            if (setMap && currentMap is not null && CurrentBeatMapLevel is not null)
 #if NEW_VERSION
-                if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                    SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal, false);
+                SetMission(currentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal, false);
 #else
-                if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                    SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
+                SetMission(currentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
 #endif
-            }
         }
         public async Task WaitForServerUpdate(TimeSpan timeout = default)
         {
@@ -1026,7 +1053,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             DateTime now = DateTime.UtcNow;
 
-            if (_lastServerUpdate > _lastScoreSubmit && _lastServerUpdate > _lastUpdate)
+            if (_lastServerUpdate >= _lastScoreSubmit && _lastServerUpdate >= _lastUpdate)
                 return;
 
             using CancellationTokenSource source = new();
@@ -1074,6 +1101,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 case nameof(PluginConfig.ScrollSpeed):
                     _campaignMapViewController.ScrollSpeed = _config.ScrollSpeed;
                     break;
+                case nameof(PluginConfig.CampaignBackgroundBrightness):
+                    _campaignMapViewController.BackgroundBrightness = _config.CampaignBackgroundBrightness;
+                    break;
+                case nameof(PluginConfig.CampaignBackgroundAlpha):
+                    _campaignMapViewController.BackgroundAlpha = _config.CampaignBackgroundAlpha;
+                    break;
             }
         }
 
@@ -1097,7 +1130,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Plugin.Log.Info("Beatleader submission patched.");
             }
             else
-                Plugin.Log.Info("Beatleader assembly not found.");
+                Plugin.Log.Warn("Beatleader assembly not found.");
         }
         public void Dispose()
         {
@@ -1111,11 +1144,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             public readonly AccSaberCampaign Data = campaign;
 
-            string GetTags()
+            private string GetTags()
             {
                 string temp = "";
 
-                if (Data.Status == AccSaberCampaign<AccSaberCampaignMap>.CampaignStatus.CURATED)
+                if (Data.Status == AccSaberCampaign.CampaignStatus.CURATED)
                     temp = $"<color={ColorUtils.TRUE}>CURATED</color>";
 
                 if (Data.Official)

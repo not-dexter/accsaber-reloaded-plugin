@@ -423,34 +423,32 @@ namespace AccSaber.Utils
                 if (ImageCache.TryGetCachedItem(url, out Texture2D? val))
                     return Sprite.Create(val, new(0, 0, val!.width, val.height), new Vector2(0.5f, 0.5f), val.width);
 
-                byte[]? data = null;
+                Sprite? outp = null;
 
-                await Task.Run(async () => (data, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct), ct);
-
-                if (data is null)
-                    return null;
-
-                Texture2D t = await UnityMainThreadTaskScheduler.Factory
-                    .StartNew(() => VersionUtils.LoadImageAsync(data), ct)
-                    .Unwrap();
-
-                Sprite s = await UnityMainThreadTaskScheduler.Factory.StartNew(() =>
+                IEnumerator GetImageRoutine()
                 {
-                    Sprite sprite = Sprite.Create(
-                        t,
-                        new Rect(0, 0, t.width, t.height),
-                        new Vector2(0.5f, 0.5f),
-                        t.width
-                    );
+                    byte[]? data = null;
+
+                    yield return Task.Run(async () => { var (bytes, _) = await APIHandler.CallAPI_Bytes(url, null, ct: ct); return bytes; }, ct).WaitWithRoutine(bytes => data = bytes);
+
+                    if (data is null)
+                        yield break;
+
+                    Texture2D? t = null;
+
+                    yield return VersionUtils.LoadImageAsync(data).WaitWithRoutine(tex => t = tex);
+
+                    if (t is null)
+                        yield break;
+
+                    outp = Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), t.width);
 
                     ImageCache.CacheItem(url, t);
+                }
 
-                    return sprite;
-                }, ct);
+                await Coroutines.AsTask(GetImageRoutine());
 
-                ImageCache.CacheItem(url, t);
-
-                return s;
+                return outp;
             }
             catch (TaskCanceledException) when (ct.IsCancellationRequested) { }
             catch (Exception e)
@@ -459,7 +457,7 @@ namespace AccSaber.Utils
             }
             return null;
         }
-        public static IEnumerator WaitWithRoutine<T>(this Task<T> task, Action<T> onSuccess, Action<Exception>? onError = null, CancellationToken ct = default)
+        public static IEnumerator WaitWithRoutine<T>(this Task<T> task, Action<T>? onSuccess = null, Action<Exception>? onError = null, CancellationToken ct = default)
         {
             while (!task.IsCompleted)
             {
@@ -478,7 +476,7 @@ namespace AccSaber.Utils
                 yield break;
             }
 
-            onSuccess(task.Result);
+            onSuccess?.Invoke(task.Result);
         }
 
         public static int MaxScoreForNotes(int notes)

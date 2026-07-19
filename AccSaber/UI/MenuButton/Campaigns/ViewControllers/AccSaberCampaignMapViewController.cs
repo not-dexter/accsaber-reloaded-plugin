@@ -6,6 +6,7 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
+using AccsaberLeaderboard.UI.Components;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
@@ -42,12 +43,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private bool parsed = false;
         private int setCampaignVersion = 0;
         private bool disposed = false;
-        private AccSaberCampaign? currentCampaign;
+
+        private AccSaberCampaign? CurrentCampaign
+        {
+            get;
+            set
+            {
+                field = value;
+                OnCampaignSet();
+            }
+        }
 
         private readonly List<CampaignMapNode> campaignMapNodes = [];
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
         private ScrollRect scrollRect = null!;
+        private Color currentBgColor;
 
         public AccSaberCampaignOffsetData? CurrentOffsetData 
         { 
@@ -91,6 +102,38 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged();
             }
         }
+        public float BackgroundBrightness
+        {
+            get;
+            set
+            {
+                field = Mathf.Clamp01(value);
+
+                if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
+                {
+                    float dim = 1f - field;
+                    image.color = currentBgColor - new Color(dim, dim, dim, 1f - BackgroundAlpha);
+                }
+
+                NotifyPropertyChanged();
+            }
+        }
+        public float BackgroundAlpha
+        {
+            get;
+            set
+            {
+                field = Mathf.Clamp01(value);
+
+                if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
+                {
+                    float dim = 1f - BackgroundBrightness;
+                    image.color = currentBgColor - new Color(dim, dim, dim, 1f - field);
+                }
+
+                NotifyPropertyChanged();
+            }
+        }
 
         [UIObject(nameof(ScrollContainer))]
         private readonly GameObject ScrollContainer = null!;
@@ -116,6 +159,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             ScrollSpeed = config.ScrollSpeed;
             StickScrolling = config.StickScrolling;
+            BackgroundBrightness = config.CampaignBackgroundBrightness;
+            BackgroundAlpha = config.CampaignBackgroundAlpha;
         }
 
         public void Dispose()
@@ -136,7 +181,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 ClearDisplay();
 
-                currentCampaign = campaign;
+                CurrentCampaign = campaign;
 
                 Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign)).Unwrap();
 
@@ -201,6 +246,63 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Plugin.Log.Error(e);
             }
         }
+        private void OnCampaignSet()
+        {
+            if (!parsed)
+                return;
+
+            Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
+
+            Backgroundable bg;
+            CustomBackground customBg;
+
+            if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null))
+            {
+                if (!ScrollContainer.TryGetComponent(out bg))
+                {
+                    if (ScrollContainer.TryGetComponent(out customBg))
+                        UnityEngine.Object.Destroy(customBg);
+
+                    UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
+
+                    bg = ScrollContainer.AddComponent<Backgroundable>();
+                }
+
+                bg.ApplyBackground("round-rect-panel");
+                return;
+            }
+
+            if (ScrollContainer.TryGetComponent(out bg))
+                UnityEngine.Object.DestroyImmediate(bg);
+
+            if (!ScrollContainer.TryGetComponent(out customBg))
+                customBg = ScrollContainer.AddComponent<CustomBackground>();
+
+            UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
+
+            void SetColor(float dim)
+            {
+                currentBgColor = CurrentCampaign.BackgroundColor!.Color();
+                customBg.Background?.color = currentBgColor - new Color(currentBgColor.r * dim, currentBgColor.g * dim, currentBgColor.b * dim, 1f - BackgroundAlpha);
+            }
+                
+            void SetDim() =>
+                customBg.Background?.color = new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, BackgroundAlpha);
+
+            bool bgColorExists = CurrentCampaign.BackgroundColor is not null;
+
+            if (CurrentCampaign.BackgroundUrl is not null)
+            {
+                Task imgTask = customBg.ApplyUrl(CurrentCampaign.BackgroundUrl);
+
+                if (bgColorExists)
+                    imgTask.ContinueWith(task => { if (task.IsCompletedSuccessfully) SetColor(1f - BackgroundBrightness); }, UnityMainThreadTaskScheduler.Default);
+                else
+                    imgTask.ContinueWith(task => { if (task.IsCompletedSuccessfully) SetDim(); }, UnityMainThreadTaskScheduler.Default);
+            }
+            else if (bgColorExists)
+                SetColor(0f);
+        }
         private void ClearDisplay()
         {
             foreach (IDisposable node in campaignMapNodes.Cast<IDisposable>().Concat(campaignMapBarriers))
@@ -235,25 +337,25 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         public async Task UpdateCampaign()
         {
-            if (currentCampaign is null)
+            if (CurrentCampaign is null)
                 return;
 
             async Task<(AccSaberCampaign campaign, CampaignProgress progress)> GetData()
             {
-                AccSaberCampaign campaign = await store.GetCampaign(currentCampaign.Id, true);
-                return (campaign, await store.GetCampaignProgress(currentCampaign));
+                AccSaberCampaign campaign = await store.GetCampaign(CurrentCampaign.Id, true);
+                return (campaign, await store.GetCampaignProgress(CurrentCampaign));
             }
 
             var data = await UnityMainThreadTaskScheduler.Factory.StartNew(GetData).Unwrap();
 
-            currentCampaign = data.campaign;
+            CurrentCampaign = data.campaign;
             CampaignProgress = data.progress;
 
             UpdateDisplay();
         }
         public void UpdateScaling(float scaleFactor)
         {
-            if (!parsed || currentCampaign is null || CurrentOffsetData is null || Mathf.Approximately(CurrentOffsetData.ScaleFactor, scaleFactor))
+            if (!parsed || CurrentCampaign is null || CurrentOffsetData is null || Mathf.Approximately(CurrentOffsetData.ScaleFactor, scaleFactor))
                 return;
 
             CurrentOffsetData.RecalculateValuesWithScale(scaleFactor);
@@ -261,7 +363,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         public void UpdateScalingDelta(float deltaScale)
         {
-            if (!parsed || currentCampaign is null || CurrentOffsetData is null)
+            if (!parsed || CurrentCampaign is null || CurrentOffsetData is null)
                 return;
 
             CurrentOffsetData.RecalculateValuesWithScale(CurrentOffsetData.ScaleFactor + deltaScale);
@@ -495,53 +597,40 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
-        public CampaignProgress.CampaignProgressValue? MarkNodeAsComplete(Guid id, float progress)
+        public async Task<CampaignProgress.CampaignProgressValue?> MarkNodeAsComplete(Guid id, float progress)
         {
-            if (currentCampaign is null || currentCampaign.Difficulties is null)
+            if (CurrentCampaign is null || CurrentCampaign.Difficulties is null)
             {
                 Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete as the current campaign is null!");
-                Plugin.Log.Debug($"currentCampaign null? {currentCampaign is null}, currentCampaign.Difficulties null? {currentCampaign?.Difficulties is null}");
+                Plugin.Log.Debug($"CurrentCampaign null? {CurrentCampaign is null}, CurrentCampaign.Difficulties null? {CurrentCampaign?.Difficulties is null}");
                 return null;
             }
 
             HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkAsComplete(id, progress), id];
 
-            List<CampaignMapBarrier> barriersToUpdate = [.. campaignMapBarriers.Where(node => mapsToUpdate.Contains(node.Barrier.Id))];
+            if (campaignMapBarriers.Any(node => mapsToUpdate.Contains(node.Barrier.Id)))
+                await FetchProgress();
 
-            if (barriersToUpdate.Count > 0)
-                FetchProgressThenUpdate(barriersToUpdate);
-            else
-            {
-                foreach (CampaignMapNode node in campaignMapNodes)
-                    if (mapsToUpdate.Contains(node.Map.Id))
-                        node.UpdateProgress();
-            }
+            foreach (CampaignMapBarrier node in campaignMapBarriers)
+                if (mapsToUpdate.Contains(node.Barrier.Id))
+                    node.UpdateProgress();
+
+            foreach (CampaignMapNode node in campaignMapNodes)
+                if (mapsToUpdate.Contains(node.Map.Id))
+                    node.UpdateProgress();
 
             return CampaignProgress.PlayerValues[id];
         }
-        private async void FetchProgressThenUpdate(List<CampaignMapBarrier> barriers)
+        private async Task FetchProgress()
         {
-            AccSaberCampaign? current = currentCampaign;
+            AccSaberCampaign? current = CurrentCampaign;
 
             await acvc.WaitForServerUpdate();
 
-            if (currentCampaign is null || !currentCampaign.Equals(current) || !acvc.InCampaign)
+            if (CurrentCampaign is null || !CurrentCampaign.Equals(current) || !acvc.InCampaign)
                 return;
 
-            CampaignProgress = await store.GetCampaignProgress(currentCampaign);
-
-            IEnumerator WaitThenUpdate()
-            {
-                yield return new WaitForEndOfFrame();
-
-                if (!acvc.InCampaign)
-                    yield break;
-
-                foreach (CampaignMapBarrier barrier in barriers)
-                    barrier.UpdateProgress();
-            }
-
-            threadDispatcher.StartCoroutine(WaitThenUpdate());
+            CampaignProgress = await store.GetCampaignProgress(CurrentCampaign);
         }
 
         private static bool TryGetPerpendicularBarrierRotation(List<Vector2> arrowDirections, out Quaternion rotation)

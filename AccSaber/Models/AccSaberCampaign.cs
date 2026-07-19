@@ -32,11 +32,10 @@ namespace AccSaber.Models
         [JsonProperty("name")]
         public string Name { get; set; } = null!;
 
+        // slug
+
         [JsonProperty("summary")]
         public string Summary { get; set; } = null!;
-
-        [JsonProperty("official")]
-        public bool Official { get; set; }
 
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
@@ -47,6 +46,9 @@ namespace AccSaber.Models
         [JsonProperty("seekingCuration")]
         public bool SeekingCuration { get; set; }
 
+        [JsonProperty("official")]
+        public bool Official { get; set; }
+
         [JsonProperty("progressionAgnostic")]
         public bool ProgressionAgnostic { get; set; }
 
@@ -55,6 +57,21 @@ namespace AccSaber.Models
 
         [JsonProperty("legacy")]
         public bool Legacy { get; set; }
+
+        [JsonProperty("completionXp")]
+        public float CompletionXp { get; set; }
+
+        [JsonProperty("playlistExportEnabled")]
+        public bool PlaylistExportEnabled { get; set; }
+
+        [JsonProperty("backgroundUrl")]
+        public string? BackgroundUrl { get; set; }
+
+        [JsonProperty("backgroundColor")]
+        public string? BackgroundColor { get; set; }
+
+        [JsonProperty("iconUrl")]
+        public string? IconUrl { get; set; }
 
         [JsonProperty("verified")]
         public bool Verified { get; set; }
@@ -65,17 +82,8 @@ namespace AccSaber.Models
         [JsonProperty("totalDifficulties")]
         public int? TotalDifficulties { get; set; }
 
-        [JsonProperty("iconUrl")]
-        public string? IconUrl { get; set; }
-
-        [JsonProperty("completionXp")]
-        public float CompletionXp { get; set; }
-
         [JsonProperty("curatorNotes")]
         public string CuratorNotes { get; set; } = null!;
-
-        [JsonProperty("backgroundUrl")]
-        public string BackgroundUrl { get; set; } = null!;
 
         [JsonProperty("completedDifficulties")]
         public int? CompletedDifficulties { get; set; }
@@ -85,9 +93,6 @@ namespace AccSaber.Models
 
         [JsonProperty("completionItems")]
         public List<AccSaberCampaignItem>? Items { get; set; }
-
-        [JsonProperty("playlistExportEnabled")]
-        public bool PlaylistExportEnabled { get; set; }
 
         [JsonProperty("curatedAt")]
         public DateTime CuratedAt { get; set; }

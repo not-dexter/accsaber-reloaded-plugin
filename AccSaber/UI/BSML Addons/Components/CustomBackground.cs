@@ -1,7 +1,6 @@
 ﻿using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
-using IPA.Utilities;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -45,18 +44,31 @@ namespace AccsaberLeaderboard.UI.Components
         public ImageView? Underline = null;
         public bool Rounded = false;
 
-        public void Apply(string src, Color tint = default)
+        public void Apply(string src, Color tint = default) =>
+            ApplyInternal(GetSprite(src), tint);
+        public async System.Threading.Tasks.Task ApplyUrl(string url, Color tint = default)
+        {
+            Sprite? s = await AccSaber.Utils.MiscUtils.GetImage(url);
+
+            if (s is not null)
+                ApplyInternal(s, tint);
+        }
+
+        private void ApplyInternal(Sprite sprite, Color tint)
         {
             if (tint == default)
                 tint = Color.white;
 
             if (Background is not null) 
-                Destroy(Background);
+            {
+                DestroyImmediate(Background);
+                Background = null;
+            }
 
             ImageView img = Rounded ? gameObject.AddComponent(RoundImage) : gameObject.AddComponent<ImageView>();
             img.material = Utilities.ImageResources.NoGlowMat;
             img.rectTransform.SetParent(transform, false);
-            img.sprite = GetSprite(src);
+            img.sprite = sprite;
             img.color = tint;
 
             if (!Rounded)

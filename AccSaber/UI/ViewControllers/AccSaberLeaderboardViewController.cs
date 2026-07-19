@@ -783,13 +783,15 @@ namespace AccSaber.UI.ViewControllers
             return true;
         }
 
-        public void LoadUntilNextRefreshIfScoreBeaten(int score, bool overridePlayerScore, TimeSpan timeout = default)
+        public bool LoadUntilNextRefreshIfScoreBeaten(int score, bool overridePlayerScore, TimeSpan timeout = default)
         {
             if ((currentPlayerScore?.Score ?? -1) < score)
             {
                 store.InvalidateCurrentMapCache();
                 LoadUntilNextRefresh(overridePlayerScore, timeout);
+                return true;
             }
+            return false;
         }
         public void LoadUntilNextRefresh(bool overridePlayerScore, TimeSpan timeout = default)
         {
