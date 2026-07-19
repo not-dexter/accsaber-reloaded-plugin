@@ -719,7 +719,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             CampaignCategory = "";
             CampaignTitle = campaign.Name;
-            CampaignCreator = campaign.CreatorName;
+            CampaignCreator = campaign.CreatorAlias ?? campaign.CreatorName;
             CampaignDescription = campaign.Description;
             CampaignRewards = "";
             CampaignCurated = false;
@@ -1158,7 +1158,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             [UIValue(nameof(Name))] private string Name => Data.Name;
-            [UIValue(nameof(Author))] private string Author => Data.CreatorName;
+            [UIValue(nameof(Author))] private string Author => Data.CreatorAlias ?? Data.CreatorName;
             [UIValue(nameof(Tags))] private string Tags => GetTags();
 
         }
