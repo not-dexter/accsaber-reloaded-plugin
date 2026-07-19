@@ -32,8 +32,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     internal class AccSaberCampaignMapViewController : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
     {
-        public const int MAX_LOADS_PER_FRAME = 5;
-
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly AccSaberStore store = null!;
@@ -191,7 +189,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 UpdateContainerValues(resetScrollbars);
 
-                await PreloadStandardSprites();
+                await PreloadStandardSprites(config.CampaignMaxCoverageLoadsPerFrame);
 
                 CampaignProgress = await campaignProgressTask;
 
@@ -217,7 +215,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                             ++loads;
 
-                            if (loads >= MAX_LOADS_PER_FRAME)
+                            if (loads >= config.CampaignMaxObjectLoadsPerFrame)
                             {
                                 loads = 0;
                                 yield return null;
@@ -256,7 +254,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         loads += 2;
 
-                        if (loads >= MAX_LOADS_PER_FRAME)
+                        if (loads >= config.CampaignMaxObjectLoadsPerFrame)
                         {
                             loads = 0;
                             yield return null;
@@ -511,7 +509,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         ++loads;
 
-                        if (loads >= MAX_LOADS_PER_FRAME)
+                        if (loads >= config.CampaignMaxObjectLoadsPerFrame)
                         {
                             loads = 0;
                             yield return null;
@@ -549,7 +547,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     ++loads;
 
-                    if (loads >= MAX_LOADS_PER_FRAME)
+                    if (loads >= config.CampaignMaxObjectLoadsPerFrame)
                     {
                         loads = 0;
                         yield return null;
@@ -1284,7 +1282,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 try
                 {
-                    BorderImage.sprite = GetBorderSprite(Shape).GetAwaiter().GetResult();
+                    BorderImage.sprite = GetBorderSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame).GetAwaiter().GetResult();
                     BorderImage.raycastTarget = false;
 
                     if (string.IsNullOrEmpty(Map.BorderColor))
@@ -1296,7 +1294,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     else BorderImage.color = Map.BorderColor!.Color();
 
                     ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
-                    MaskImage.sprite = GetFillSprite(Shape).GetAwaiter().GetResult();
+                    MaskImage.sprite = GetFillSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame).GetAwaiter().GetResult();
                     MaskImage.color = Color.white;
                     MaskImage.material = Utilities.ImageResources.NoGlowMat;
                     MaskImage.raycastTarget = false;
@@ -1865,14 +1863,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
     public static class NodeShapeTextures
     {
-        public const int MAX_COVERAGE_LOADS_PER_FRAME = 10000;
-
         private static readonly ConcurrentDictionary<string, Sprite> _borderSpriteCache = [];
         private static readonly ConcurrentDictionary<string, Sprite> _fillSpriteCache = [];
 
         private static bool _preloadedSprites = false;
 
-        public static async Task PreloadStandardSprites()
+        public static async Task PreloadStandardSprites(int maxCoverageLoads)
         {
             if (_preloadedSprites)
                 return;
@@ -1884,10 +1880,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 foreach (NodeShape shape in shapes)
                 {
-                    yield return GetBorderSprite(shape).WaitWithRoutine();
+                    yield return GetBorderSprite(shape, maxCoverageLoads).WaitWithRoutine();
                     yield return null;
 
-                    yield return GetFillSprite(shape).WaitWithRoutine();
+                    yield return GetFillSprite(shape, maxCoverageLoads).WaitWithRoutine();
                     yield return null;
                 }
             }
@@ -1895,21 +1891,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             await Coroutines.AsTask(LoadSlowly());
         }
 
-        public static async Task<Sprite> GetBorderSprite(NodeShape shape, int size = 256, int borderPixels = 10)
+        public static async Task<Sprite> GetBorderSprite(NodeShape shape, int maxCoverageLoads, int size = 256, int borderPixels = 10)
         {
             string key = $"{shape}_{size}_{borderPixels}";
 
             if (_borderSpriteCache.TryGetValue(key, out Sprite cached))
                 return cached;
 
-            Texture2D texture = await CreateBorderTexture(shape, size, borderPixels);
+            Texture2D texture = await CreateBorderTexture(shape, size, borderPixels, maxCoverageLoads);
             Sprite sprite = CreateSprite(texture);
 
             _borderSpriteCache[key] = sprite;
             return sprite;
         }
 
-        private static async Task<Texture2D> CreateBorderTexture(NodeShape shape, int size, int borderPixels)
+        private static async Task<Texture2D> CreateBorderTexture(NodeShape shape, int size, int borderPixels, int maxCoverageLoads)
         {
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
             {
@@ -1940,7 +1936,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         coverages += 2;
 
-                        if (coverages >= MAX_COVERAGE_LOADS_PER_FRAME)
+                        if (coverages >= maxCoverageLoads)
                         {
                             coverages = 0;
                             yield return null;
@@ -1957,20 +1953,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             return texture;
         }
 
-        public static async Task<Sprite> GetFillSprite(NodeShape shape, int size = 256)
+        public static async Task<Sprite> GetFillSprite(NodeShape shape, int maxCoverageLoads, int size = 256)
         {
             string key = $"fill_{shape}_{size}";
 
             if (_fillSpriteCache.TryGetValue(key, out Sprite cached))
                 return cached;
 
-            Texture2D texture = await CreateFillTexture(shape, size);
+            Texture2D texture = await CreateFillTexture(shape, size, maxCoverageLoads);
             Sprite sprite = CreateSprite(texture);
 
             _fillSpriteCache[key] = sprite;
             return sprite;
         }
-        private static async Task<Texture2D> CreateFillTexture(NodeShape shape, int size)
+        private static async Task<Texture2D> CreateFillTexture(NodeShape shape, int size, int maxCoverageLoads)
         {
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
             {
@@ -1995,7 +1991,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         ++coverages;
 
-                        if (coverages >= MAX_COVERAGE_LOADS_PER_FRAME)
+                        if (coverages >= maxCoverageLoads)
                         {
                             coverages = 0;
                             yield return null;

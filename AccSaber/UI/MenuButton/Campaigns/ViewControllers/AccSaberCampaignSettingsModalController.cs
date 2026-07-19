@@ -55,6 +55,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.CampaignBackgroundAlpha = value;
         }
 
+        [UIValue(nameof(PixelsPerFrame))]
+        private int PixelsPerFrame
+        {
+            get => config.CampaignMaxCoverageLoadsPerFrame;
+            set => config.CampaignMaxCoverageLoadsPerFrame = value;
+        }
+
+        [UIValue(nameof(ObjectsPerFrame))]
+        private int ObjectsPerFrame
+        {
+            get => config.CampaignMaxObjectLoadsPerFrame;
+            set => config.CampaignMaxObjectLoadsPerFrame = value;
+        }
+
         private void Parse(Transform parent)
         {
             if (!parsed)

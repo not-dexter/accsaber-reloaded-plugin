@@ -31,5 +31,7 @@ namespace AccSaber.Configuration
         public virtual bool ShowPrereqIndicator { get; set; } = true;
         public virtual float CampaignBackgroundBrightness { get; set; } = 0.5f;
         public virtual float CampaignBackgroundAlpha { get; set; } = 0.8f;
+        public virtual int CampaignMaxCoverageLoadsPerFrame { get; set; } = 10000;
+        public virtual int CampaignMaxObjectLoadsPerFrame { get; set; } = 10;
     }
 }
