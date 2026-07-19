@@ -478,6 +478,27 @@ namespace AccSaber.Utils
 
             onSuccess?.Invoke(task.Result);
         }
+        public static Color32 GetMaxColorValues(this Texture2D tex)
+        {
+            // Get all pixels as a flat 1D array (byte-based 0-255)
+            Color32[] pixels = tex.GetPixels32();
+
+            byte maxR = 0;
+            byte maxG = 0;
+            byte maxB = 0;
+            byte maxA = 0;
+
+            // Iterate through all pixels to capture the highest channel values
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (pixels[i].r > maxR) maxR = pixels[i].r;
+                if (pixels[i].g > maxG) maxG = pixels[i].g;
+                if (pixels[i].b > maxB) maxB = pixels[i].b;
+                if (pixels[i].a > maxA) maxA = pixels[i].a;
+            }
+
+            return new Color32(maxR, maxG, maxB, maxA);
+        }
 
         public static int MaxScoreForNotes(int notes)
         {

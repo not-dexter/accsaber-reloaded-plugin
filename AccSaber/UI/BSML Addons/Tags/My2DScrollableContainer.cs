@@ -1,5 +1,5 @@
-﻿using BeatSaberMarkupLanguage;
-using BeatSaberMarkupLanguage.Components;
+﻿using AccsaberLeaderboard.UI.Components;
+using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Tags;
 using HMUI;
 using UnityEngine;
@@ -54,7 +54,7 @@ namespace AccSaber.UI.BSML_Addons.Tags
 
 
 
-            GameObject content = new("Content", typeof(Backgroundable));
+            GameObject content = new("Content", typeof(CustomBackground));
 
             content.transform.SetParent(viewport.transform, false);
 

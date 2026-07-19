@@ -32,6 +32,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
     internal class AccSaberCampaignMapViewController : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
     {
+        public const int MAX_LOADS_PER_FRAME = 5;
+
         [Inject] private readonly SerializationHandler serialHandler = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly AccSaberStore store = null!;
@@ -58,7 +60,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
         private ScrollRect scrollRect = null!;
-        private Color currentBgColor;
+        private Color currentBgColor, maxBgColors;
 
         public AccSaberCampaignOffsetData? CurrentOffsetData 
         { 
@@ -189,57 +191,83 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 UpdateContainerValues(resetScrollbars);
 
-                PreloadStandardSprites();
+                await PreloadStandardSprites();
 
                 CampaignProgress = await campaignProgressTask;
 
                 if (disposed || version != setCampaignVersion)
                     return;
 
-                if (campaign.Barriers is not null)
+                int loads = 0;
+
+                IEnumerator LoadSlowly()
                 {
-                    foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
+                    if (campaign.Barriers is not null)
                     {
-                        CampaignMapBarrier barrierNode = new(
-                            barrier: barrier,
-                            parent: NodeContainer.transform,
-                            parentVC: this,
-                            offsetData: CurrentOffsetData
+                        foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
+                        {
+                            CampaignMapBarrier barrierNode = new(
+                                barrier: barrier,
+                                parent: NodeContainer.transform,
+                                parentVC: this,
+                                offsetData: CurrentOffsetData
+                            );
+
+                            campaignMapBarriers.Add(barrierNode);
+
+                            ++loads;
+
+                            if (loads >= MAX_LOADS_PER_FRAME)
+                            {
+                                loads = 0;
+                                yield return null;
+                            }
+                        }
+                    }
+
+                    foreach (AccSaberCampaignMap map in campaign.Difficulties)
+                    {
+                        AccSaberBasicDifficulty? diff = null;
+                        
+                        yield return serialHandler.GetDiffByIdAsync(map.MapDifficultyId).WaitWithRoutine(loadedDiff => diff = loadedDiff);
+
+                        if (diff is null)
+                        {
+                            Plugin.Log.Warn($"There was an error loading map with id \"{map.MapDifficultyId}\"");
+                            continue;
+                        }
+
+                        CampaignMapNode node = new(
+                            map: map,
+                            parent: this,
+                            mapHash: diff.Hash,
+                            offsetData: CurrentOffsetData,
+                            flow: accCampaignFlow,
+                            campaignViewController: acvc,
+                            levelUtils: levelUtils,
+                            serialUtils: serialHandler,
+                            threadDispatcher: threadDispatcher,
+                            config: config
                         );
 
-                        campaignMapBarriers.Add(barrierNode);
+                        campaignMapNodes.Add(node);
+
+                        VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_CELL, NodeContainer, node);
+
+                        loads += 2;
+
+                        if (loads >= MAX_LOADS_PER_FRAME)
+                        {
+                            loads = 0;
+                            yield return null;
+                        }
                     }
+
                 }
 
-                foreach (AccSaberCampaignMap map in campaign.Difficulties)
-                {
-                    AccSaberBasicDifficulty? diff = await serialHandler.GetDiffByIdAsync(map.MapDifficultyId);
+                await Coroutines.AsTask(LoadSlowly());
 
-                    if (diff is null)
-                    {
-                        Plugin.Log.Warn($"There was an error loading map with id \"{map.MapDifficultyId}\"");
-                        continue;
-                    }
-
-                    CampaignMapNode node = new(
-                        map: map,
-                        parent: this,
-                        mapHash: diff.Hash,
-                        offsetData: CurrentOffsetData,
-                        flow: accCampaignFlow,
-                        campaignViewController: acvc,
-                        levelUtils: levelUtils,
-                        serialUtils: serialHandler,
-                        threadDispatcher: threadDispatcher,
-                        config: config
-                    );
-
-                    campaignMapNodes.Add(node);
-
-                    VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_CELL, NodeContainer, node);
-                }
-
-                RebuildArrows();
+                RebuildArrows(loads);
             }
             catch (Exception e)
             {
@@ -253,55 +281,64 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
 
-            Backgroundable bg;
             CustomBackground customBg;
+
+            void SetDim() =>
+                customBg.Background?.color = maxBgColors * new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, BackgroundAlpha);
 
             if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null))
             {
-                if (!ScrollContainer.TryGetComponent(out bg))
-                {
-                    if (ScrollContainer.TryGetComponent(out customBg))
-                        UnityEngine.Object.Destroy(customBg);
+                customBg = ScrollContainer.GetComponent<CustomBackground>();
 
-                    UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
+                customBg.Apply(ResourcePaths.PIXEL);
 
-                    bg = ScrollContainer.AddComponent<Backgroundable>();
-                }
+                currentBgColor = Color.white;
+                maxBgColors = Color.white;
 
-                bg.ApplyBackground("round-rect-panel");
+                SetDim();
+
                 return;
             }
 
-            if (ScrollContainer.TryGetComponent(out bg))
-                UnityEngine.Object.DestroyImmediate(bg);
-
-            if (!ScrollContainer.TryGetComponent(out customBg))
-                customBg = ScrollContainer.AddComponent<CustomBackground>();
+            customBg = ScrollContainer.GetComponent<CustomBackground>();
 
             UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
 
-            void SetColor(float dim)
-            {
-                currentBgColor = CurrentCampaign.BackgroundColor!.Color();
+            void SetColor(float dim) => 
                 customBg.Background?.color = currentBgColor - new Color(currentBgColor.r * dim, currentBgColor.g * dim, currentBgColor.b * dim, 1f - BackgroundAlpha);
-            }
-                
-            void SetDim() =>
-                customBg.Background?.color = new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, BackgroundAlpha);
 
             bool bgColorExists = CurrentCampaign.BackgroundColor is not null;
 
             if (CurrentCampaign.BackgroundUrl is not null)
             {
+                void AfterImageLoaded(Task task)
+                {
+                    if (!task.IsCompletedSuccessfully)
+                        return;
+
+                    currentBgColor = CurrentCampaign.BackgroundColor!.Color();
+                    maxBgColors = customBg.Background!.sprite.texture.GetMaxColorValues();
+
+                    if (bgColorExists)
+                        SetColor(1f - BackgroundBrightness);
+                    else
+                        SetDim();
+                }
+
+
                 Task imgTask = customBg.ApplyUrl(CurrentCampaign.BackgroundUrl);
 
-                if (bgColorExists)
-                    imgTask.ContinueWith(task => { if (task.IsCompletedSuccessfully) SetColor(1f - BackgroundBrightness); }, UnityMainThreadTaskScheduler.Default);
-                else
-                    imgTask.ContinueWith(task => { if (task.IsCompletedSuccessfully) SetDim(); }, UnityMainThreadTaskScheduler.Default);
+                imgTask.ContinueWith(AfterImageLoaded, UnityMainThreadTaskScheduler.Default);
             }
             else if (bgColorExists)
+            {
+                customBg.Apply(ResourcePaths.PIXEL);
+
+                currentBgColor = Color.white;
+                maxBgColors = Color.white;
+
                 SetColor(0f);
+            }
         }
         private void ClearDisplay()
         {
@@ -433,7 +470,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             node.OnClick();
         }
-        private void RebuildArrows()
+        private async void RebuildArrows(int loads = 0)
         {
             foreach (var (_, _, go) in mapNodeArrows)
                 UnityEngine.Object.Destroy(go);
@@ -443,63 +480,84 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             Dictionary<Guid, PositionData> knownPositions = [];
             Queue<(AccSaberCampaignPrereq prereq, Guid toNode)> neededPositions = [];
 
-            void HandleArrows(AccSaberCampaignPositionablePrereq node, PositionData current)
+            IEnumerator LoadSlowly()
             {
-                if (!knownPositions.TryAdd(node.Id, current))
+                IEnumerator HandleArrows(AccSaberCampaignPositionablePrereq node, PositionData current)
                 {
-                    Plugin.Log.Warn($"Duplicate campaign item id: {node.Id}");
-                    return;
+                    if (!knownPositions.TryAdd(node.Id, current))
+                    {
+                        Plugin.Log.Warn($"Duplicate campaign item id: {node.Id}");
+                        yield break;
+                    }
+
+                    foreach (AccSaberCampaignPrereq prereq in node.PrerequisiteInfos)
+                    {
+                        if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
+                            CreateArrow(
+                                NodeContainer.transform,
+                                from,
+                                current,
+                                (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
+                                CurrentOffsetData!.ScaleFactor)
+                            is GameObject go)
+                        {
+                            go.transform.SetAsFirstSibling();
+                            mapNodeArrows.Add((prereq.Id, node.Id, go));
+                        }
+                        else
+                        {
+                            neededPositions.Enqueue((prereq, node.Id));
+                        }
+
+                        ++loads;
+
+                        if (loads >= MAX_LOADS_PER_FRAME)
+                        {
+                            loads = 0;
+                            yield return null;
+                        }
+                    }
                 }
 
-                foreach (AccSaberCampaignPrereq prereq in node.PrerequisiteInfos)
+                foreach (CampaignMapBarrier barrier in campaignMapBarriers)
+                    yield return HandleArrows(barrier.Barrier, new PositionData(barrier));
+
+                foreach (CampaignMapNode node in campaignMapNodes)
+                    yield return HandleArrows(node.Map, new PositionData(node));
+
+                while (neededPositions.Count > 0)
                 {
+                    var (prereq, toNode) = neededPositions.Dequeue();
+
                     if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
+                        knownPositions.TryGetValue(toNode, out PositionData to) &&
                         CreateArrow(
                             NodeContainer.transform,
                             from,
-                            current,
+                            to,
                             (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
                             CurrentOffsetData!.ScaleFactor)
                         is GameObject go)
                     {
                         go.transform.SetAsFirstSibling();
-                        mapNodeArrows.Add((prereq.Id, node.Id, go));
+                        mapNodeArrows.Add((prereq.Id, toNode, go));
                     }
                     else
                     {
-                        neededPositions.Enqueue((prereq, node.Id));
+                        Plugin.Log.Error("There is an invalid prereq!\n" + prereq + ", " + toNode);
+                    }
+
+                    ++loads;
+
+                    if (loads >= MAX_LOADS_PER_FRAME)
+                    {
+                        loads = 0;
+                        yield return null;
                     }
                 }
             }
 
-            foreach (CampaignMapBarrier barrier in campaignMapBarriers)
-                HandleArrows(barrier.Barrier, new PositionData(barrier));
-
-            foreach (CampaignMapNode node in campaignMapNodes)
-                HandleArrows(node.Map, new PositionData(node));
-
-            while (neededPositions.Count > 0)
-            {
-                var (prereq, toNode) = neededPositions.Dequeue();
-
-                if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
-                    knownPositions.TryGetValue(toNode, out PositionData to) &&
-                    CreateArrow(
-                        NodeContainer.transform,
-                        from,
-                        to,
-                        (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
-                        CurrentOffsetData!.ScaleFactor)
-                    is GameObject go)
-                {
-                    go.transform.SetAsFirstSibling();
-                    mapNodeArrows.Add((prereq.Id, toNode, go));
-                }
-                else
-                {
-                    Plugin.Log.Error("There is an invalid prereq!\n" + prereq + ", " + toNode);
-                }
-            }
+            await Coroutines.AsTask(LoadSlowly());
 
             UpdateBarrierRotationsAndArrowClipping(knownPositions);
         }
@@ -1226,7 +1284,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 try
                 {
-                    BorderImage.sprite = GetBorderSprite(Shape);
+                    BorderImage.sprite = GetBorderSprite(Shape).GetAwaiter().GetResult();
                     BorderImage.raycastTarget = false;
 
                     if (string.IsNullOrEmpty(Map.BorderColor))
@@ -1238,7 +1296,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     else BorderImage.color = Map.BorderColor!.Color();
 
                     ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
-                    MaskImage.sprite = GetFillSprite(Shape);
+                    MaskImage.sprite = GetFillSprite(Shape).GetAwaiter().GetResult();
                     MaskImage.color = Color.white;
                     MaskImage.material = Utilities.ImageResources.NoGlowMat;
                     MaskImage.raycastTarget = false;
@@ -1807,12 +1865,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
     public static class NodeShapeTextures
     {
+        public const int MAX_COVERAGE_LOADS_PER_FRAME = 10000;
+
         private static readonly ConcurrentDictionary<string, Sprite> _borderSpriteCache = [];
         private static readonly ConcurrentDictionary<string, Sprite> _fillSpriteCache = [];
 
         private static bool _preloadedSprites = false;
 
-        public static void PreloadStandardSprites()
+        public static async Task PreloadStandardSprites()
         {
             if (_preloadedSprites)
                 return;
@@ -1820,28 +1880,36 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             NodeShape[] shapes = (NodeShape[])Enum.GetValues(typeof(NodeShape));
 
-            foreach (NodeShape shape in shapes)
+            IEnumerator LoadSlowly()
             {
-                GetBorderSprite(shape);
-                GetFillSprite(shape);
+                foreach (NodeShape shape in shapes)
+                {
+                    yield return GetBorderSprite(shape).WaitWithRoutine();
+                    yield return null;
+
+                    yield return GetFillSprite(shape).WaitWithRoutine();
+                    yield return null;
+                }
             }
+
+            await Coroutines.AsTask(LoadSlowly());
         }
 
-        public static Sprite GetBorderSprite(NodeShape shape, int size = 256, int borderPixels = 10)
+        public static async Task<Sprite> GetBorderSprite(NodeShape shape, int size = 256, int borderPixels = 10)
         {
             string key = $"{shape}_{size}_{borderPixels}";
 
             if (_borderSpriteCache.TryGetValue(key, out Sprite cached))
                 return cached;
 
-            Texture2D texture = CreateBorderTexture(shape, size, borderPixels);
+            Texture2D texture = await CreateBorderTexture(shape, size, borderPixels);
             Sprite sprite = CreateSprite(texture);
 
             _borderSpriteCache[key] = sprite;
             return sprite;
         }
 
-        private static Texture2D CreateBorderTexture(NodeShape shape, int size, int borderPixels)
+        private static async Task<Texture2D> CreateBorderTexture(NodeShape shape, int size, int borderPixels)
         {
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
             {
@@ -1854,40 +1922,55 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             float innerScale = 1f - borderPixels * 2f / size;
             innerScale = Mathf.Clamp01(innerScale);
 
-            for (int y = 0; y < size; y++)
+            IEnumerator LoadSlowly() 
             {
-                for (int x = 0; x < size; x++)
+                int coverages = 0;
+
+                for (int y = 0; y < size; y++)
                 {
-                    float outerCoverage = GetCoverage(x, y, size, shape, 1f);
-                    float innerCoverage = GetCoverage(x, y, size, shape, innerScale);
+                    for (int x = 0; x < size; x++)
+                    {
+                        float outerCoverage = GetCoverage(x, y, size, shape, 1f);
+                        float innerCoverage = GetCoverage(x, y, size, shape, innerScale);
 
-                    float alpha = Mathf.Clamp01(outerCoverage - innerCoverage);
+                        float alpha = Mathf.Clamp01(outerCoverage - innerCoverage);
 
-                    byte a = (byte)Mathf.RoundToInt(alpha * 255f);
-                    pixels[y * size + x] = new Color32(255, 255, 255, a);
+                        byte a = (byte)Mathf.RoundToInt(alpha * 255f);
+                        pixels[y * size + x] = new Color32(255, 255, 255, a);
+
+                        coverages += 2;
+
+                        if (coverages >= MAX_COVERAGE_LOADS_PER_FRAME)
+                        {
+                            coverages = 0;
+                            yield return null;
+                        }
+                    }
                 }
+
+                texture.SetPixels32(pixels);
+                texture.Apply(false, true);
             }
 
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
+            await Coroutines.AsTask(LoadSlowly());
 
             return texture;
         }
 
-        public static Sprite GetFillSprite(NodeShape shape, int size = 256)
+        public static async Task<Sprite> GetFillSprite(NodeShape shape, int size = 256)
         {
             string key = $"fill_{shape}_{size}";
 
             if (_fillSpriteCache.TryGetValue(key, out Sprite cached))
                 return cached;
 
-            Texture2D texture = CreateFillTexture(shape, size);
+            Texture2D texture = await CreateFillTexture(shape, size);
             Sprite sprite = CreateSprite(texture);
 
             _fillSpriteCache[key] = sprite;
             return sprite;
         }
-        private static Texture2D CreateFillTexture(NodeShape shape, int size)
+        private static async Task<Texture2D> CreateFillTexture(NodeShape shape, int size)
         {
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
             {
@@ -1897,19 +1980,34 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Color32[] pixels = new Color32[size * size];
 
-            for (int y = 0; y < size; y++)
+            IEnumerator LoadSlowly()
             {
-                for (int x = 0; x < size; x++)
-                {
-                    float coverage = GetCoverage(x, y, size, shape, 1f);
-                    byte a = (byte)Mathf.RoundToInt(coverage * 255f);
+                int coverages = 0;
 
-                    pixels[y * size + x] = new Color32(255, 255, 255, a);
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float coverage = GetCoverage(x, y, size, shape, 1f);
+                        byte a = (byte)Mathf.RoundToInt(coverage * 255f);
+
+                        pixels[y * size + x] = new Color32(255, 255, 255, a);
+
+                        ++coverages;
+
+                        if (coverages >= MAX_COVERAGE_LOADS_PER_FRAME)
+                        {
+                            coverages = 0;
+                            yield return null;
+                        }
+                    }
                 }
+
+                texture.SetPixels32(pixels);
+                texture.Apply(false, true);
             }
 
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
+            await Coroutines.AsTask(LoadSlowly());
 
             return texture;
         }
