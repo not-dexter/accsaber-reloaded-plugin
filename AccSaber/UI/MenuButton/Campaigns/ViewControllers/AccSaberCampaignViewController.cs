@@ -10,6 +10,7 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
 using IPA.Loader;
+using IPA.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -78,6 +79,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [UIValue("campaign-cells")]
         private readonly List<object> _campaignCells = [];
+
+        [UIComponent("search-container")]
+        private readonly VerticalLayoutGroup _campaignSearchContainer = null!;
+
+        internal InputFieldView? _campaignSearchInput { get; private set; }
+        CurvedTextMeshPro? songSearchPlaceholder = null;
 
         private enum CategoryTab
         {
@@ -395,7 +402,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private bool InMapOrBarrier => InMap || InBarrier;
 
         [UIAction("#post-parse")]
-        private async void Parsed()
+        void Parsed()
         {
             if(!_parsed)
             {
@@ -403,11 +410,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_VIEW, _campaignMapContainer, _campaignMapViewController);
+            var searchBox = Resources.FindObjectsOfTypeAll<InputFieldView>().FirstOrDefault(x => x.gameObject.name == "SearchInputField")?.gameObject;
 
-            NoCampaignSelected = true;
+            if (searchBox != null)
+            {
+                var newSearchBox = Instantiate(searchBox, _campaignSearchContainer.transform, false);
+                _campaignSearchInput = newSearchBox.GetComponent<InputFieldView>();
+                _campaignSearchInput.SetText(string.Empty);
+                songSearchPlaceholder = newSearchBox.transform.Find("PlaceholderText")?.GetComponent<CurvedTextMeshPro>();
+                _campaignSearchInput.SetField("_keyboardPositionOffset", new Vector3(-45, -25));
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                _campaignSearchInput.onValueChanged.AddListener(_ => UpdateTabs());
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                NoCampaignSelected = true;
+            }
             CurrentTab = 0;
             InCampaign = false;
             InMap = false;
+
+
+
         }
 
         [UIAction("campaign-selected")]
@@ -695,6 +717,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS) ||
                         (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.COMPLETED) ||
                         (CurrentTab == CategoryTab.Official && !campaign.Official))
+                        continue;
+
+                    if (_campaignSearchInput!.text != "" && !campaign.Name.ToLower().Contains(_campaignSearchInput!.text.ToLower()))
                         continue;
 
                     _campaignCells.Add(new CampaignCell(campaign));
@@ -1033,7 +1058,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 if (newVal is null)
                     Plugin.Log.Warn("Setting the campaign node to complete failed!");
                 else
+                {
+                    _invalidateActive = newVal.Value.Completion == CompletionStatus.Complete;
+
                     CampaignProgressVal = newVal.Value;
+                }
             }
 
             if (doUpdates)

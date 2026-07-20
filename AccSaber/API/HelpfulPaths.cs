@@ -264,6 +264,7 @@
         /// </remarks>
         public const string APAPI_START_CAMPAIGN = APAPI + "campaigns/{0}/start";
 
+        public const string APAPI_CAMPAIGN_TAGS = APAPI + "campaigns/tags";
         /// <summary>
         /// Retrieves specified campaign.
         /// </summary>

@@ -355,7 +355,19 @@ namespace AccSaber.Managers
 
             return Success;
         }
+        public async Task<List<CampaignTags>> GetCampaignTags()
+        {
 
+            List<CampaignTags>? content = await APIHandler.CallAPI_Json<List<CampaignTags>>(HelpfulPaths.APAPI_CAMPAIGN_TAGS, AccsaberAPI.Throttler);
+
+            if (content is null)
+            {
+                Plugin.Log.Debug("Tags not found");
+                return [];
+            }
+
+            return content;
+        }
         public async Task<List<AccSaberEventMe>> GetEventMissions(int week, bool allWeeks = true, bool overrideCache = false)
         {
             await _serialHandler.RevalidateEvents(overrideCache);

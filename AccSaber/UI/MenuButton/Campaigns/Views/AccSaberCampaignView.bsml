@@ -1,8 +1,10 @@
 <bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical pref-width='120'>
-    <vertical vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' active='~not-in-campaign'>
+    <horizontal vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='160' pad='1' pad-top='0' active='~not-in-campaign'>
       <tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected' />
-    </vertical>
+	  <vertical preferred-width='40' id='search-container'/>
+	  <button text='filters' event-click='open-filters'/>
+    </horizontal>
     <tab tags='tabs' tab-name='Active' />
     <tab tags='tabs' tab-name='Official' />
     <tab tags='tabs' tab-name='Curated' />
@@ -97,16 +99,46 @@
             <text text='Current Progress' font-size='4' align='Center' />
             <text text='~MissionProgress' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
-          <vertical pref-height='16' vertical-fit='PreferredSize' active='~MissionHasRewards'>
+          <vertical min-height='5' vertical-fit='PreferredSize' active='~MissionHasRewards'>
             <text text='Rewards' font-size='4' align='Center' />
             <text text='~MissionRewards' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
         </vertical>
-        <vertical pref-height='5'>
+        <vertical pref-height='12'>
           <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='3.5' active='~MissionLocked' />
           <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
         </vertical>
       </vertical>
     </horizontal>
   </vertical>
+	<modal show-event='open-filters' hide-event='close-filters' clickerino-offerino-closerino='true' size-delta-x='120' size-delta-y='65'>
+		<vertical preferred-width='120' horizontal-fit='PreferredSize'>
+		    <horizontal preferred-width='88' vertical-fit='PreferredSize'>
+			    <vertical pref-width='50'>
+			        <text text='Category' align='Center'/>
+                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
+			        <vertical preferred-height='14'>
+			        </vertical>
+			
+		            <text text='Tier' align='Center'/>
+                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
+			        <vertical preferred-height='14'>					
+			        </vertical>
+		        </vertical>
+                <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>
+			    <vertical pref-width='50'>
+			        <text text='Theme' align='Center'/>
+                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
+			        <vertical preferred-height='14'>
+			        </vertical>
+		
+			        <text text='Genre' align='Center'/>
+                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
+			        <vertical preferred-height='26'>		
+			        </vertical>
+		        </vertical>
+		    </horizontal>
+		    <button text='Close' align='Center' event-click='close-filters'/>
+		</vertical>
+	</modal>
 </bg>
