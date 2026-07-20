@@ -111,8 +111,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
                 {
-                    float dim = 1f - field;
-                    image.color = currentBgColor - new Color(dim, dim, dim, 1f - BackgroundAlpha);
+                    //float dim = 1f - field;
+                    //image.color = currentBgColor - new Color(dim, dim, dim, 1f - BackgroundAlpha);
+                    image.color = maxBgColors * new Color(field, field, field, BackgroundAlpha);
                 }
 
                 NotifyPropertyChanged();
@@ -127,8 +128,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
                 {
-                    float dim = 1f - BackgroundBrightness;
-                    image.color = currentBgColor - new Color(dim, dim, dim, 1f - field);
+                    //float dim = 1f - BackgroundBrightness;
+                    //image.color = currentBgColor - new Color(dim, dim, dim, 1f - field);
+                    image.color = maxBgColors * new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, field);
                 }
 
                 NotifyPropertyChanged();
@@ -311,20 +313,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 void AfterImageLoaded(Task task)
                 {
-                    if (!task.IsCompletedSuccessfully)
-                        return;
+                    try
+                    {
+                        if (!task.IsCompletedSuccessfully)
+                            return;
 
-                    currentBgColor = CurrentCampaign.BackgroundColor!.Color();
-                    maxBgColors = customBg.Background!.sprite.texture.GetMaxColorValues();
+                        currentBgColor = CurrentCampaign.BackgroundColor?.Color() ?? Color.white;
+                        maxBgColors = customBg.Background!.sprite.texture.GetMaxColorValues();
 
-                    if (bgColorExists)
-                        SetColor(1f - BackgroundBrightness);
-                    else
-                        SetDim();
+                        if (bgColorExists)
+                            SetColor(1f - BackgroundBrightness);
+                        else
+                            SetDim();
+                    }
+                    catch (Exception e)
+                    {
+                        Plugin.Log.Error(e);
+                    }
                 }
 
-
-                Task imgTask = customBg.ApplyUrl(CurrentCampaign.BackgroundUrl);
+                Task imgTask = customBg.ApplyUrl(CurrentCampaign.BackgroundUrl, new(1f, 1f, 1f, 0f));
 
                 imgTask.ContinueWith(AfterImageLoaded, UnityMainThreadTaskScheduler.Default);
             }
@@ -332,10 +340,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 customBg.Apply(ResourcePaths.PIXEL);
 
-                currentBgColor = Color.white;
+                currentBgColor = CurrentCampaign.BackgroundColor!.Color();
                 maxBgColors = Color.white;
 
-                SetColor(0f);
+                SetColor(1f - BackgroundBrightness);
             }
         }
         private void ClearDisplay()

@@ -49,7 +49,7 @@ namespace AccSaber.Utils
         public static Task<Sprite> LoadSpriteAsync(string path) => Utilities.LoadSpriteAsync(Utilities.GetResource(Assembly.GetExecutingAssembly(), path));
 #endif
         public static Task<Sprite> LoadSpriteAsync(byte[] data, float PixelsPerUnit = 100) => Utilities.LoadSpriteAsync(data, PixelsPerUnit);
-        public static Task<Texture2D> LoadImageAsync(byte[] data) => Utilities.LoadImageAsync(data);
+        public static Task<Texture2D> LoadImageAsync(byte[] data) => Utilities.LoadImageAsync(data, makeNoLongerReadable: false);
         public static IList Data(this CustomCellListTableData ccltd) => ccltd.Data;
         public static TableView TableView(this CustomCellListTableData ccltd) => ccltd.TableView;
         public static Image Background(this Backgroundable bg) => bg.Background;

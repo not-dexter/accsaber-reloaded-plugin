@@ -337,7 +337,7 @@ namespace AccSaber.Utils
 
             if (ImageCache.TryGetCachedItem(url, out Texture2D? val))
             {
-                if (!ct.IsCancellationRequested && image != null && image.gameObject.activeInHierarchy)
+                if (!ct.IsCancellationRequested && image is not null && image.gameObject.activeInHierarchy)
                     image.sprite = Sprite.Create(val, new(0, 0, val!.width, val.height), new Vector2(0.5f, 0.5f), val.width);
 
                 yield break;

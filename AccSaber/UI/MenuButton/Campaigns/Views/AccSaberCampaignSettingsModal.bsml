@@ -4,7 +4,7 @@
     <slider-setting text='Scroll Speed' apply-on-change='true' value='ScrollSpeed' min='0.25' max='10' increment='0.25' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
     <checkbox-setting text='Show Prereq Indicator' hover-hint='Whether or not to show the asterisk on nodes' apply-on-change='true' value='ShowPrereqIndicator' scale='0.8' />
     <slider-setting text='Background Brightness' apply-on-change='true' value='BGBrightness' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
-    <slider-setting text='Background Alpha' apply-on-change='true' value='BGAlpha' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+    <slider-setting text='Background Opacity' apply-on-change='true' value='BGAlpha' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
     <vertical pref-height='5'/>
     <vertical horizontal-fit='PreferredSize' pref-width='80' pref-height='10' child-expand-width='true' child-align='MiddleCenter'>
       <text text='The below 2 options will affect the load time of the campaign.' font-size='3' align='Center' scale='0.8'/>

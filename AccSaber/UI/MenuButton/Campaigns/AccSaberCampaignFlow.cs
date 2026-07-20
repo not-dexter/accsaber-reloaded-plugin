@@ -77,9 +77,8 @@ namespace AccSaber.UI.MenuButton.Campaigns
             else
             { 
                 disableLogo = false;
-                _parentFlow.MenuShown();
                 _songPreviewPlayer.CrossfadeToDefault();
-                _parentFlow.DismissFlowCoordinator(this); 
+                _parentFlow.DismissFlowCoordinator(this, finishedCallback: _parentFlow.MenuShown); 
             }
         }
     }
