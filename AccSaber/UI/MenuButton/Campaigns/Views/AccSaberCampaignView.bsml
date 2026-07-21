@@ -54,11 +54,15 @@
       </vertical>
       <vertical active='~in-campaign'>
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
-        <horizontal>
+        <horizontal vertical-fit='PreferredSize' pref-height='10'>
           <button text='Zoom In' on-click='ZoomIn' />
           <button text='Go To Furthest Map' on-click='GotoMap' />
           <button text='Zoom Out' on-click='ZoomOut' />
           <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
+          <vertical pref-width='5'/>
+          <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='10' pref-height='10'>
+            <clickable-image src='~count-img' preserve-aspect='true' on-click='ShowCounterSettings' />
+          </vertical>
         </horizontal>
       </vertical>
       <vertical preferred-width='50' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2' child-expand-height='false'>

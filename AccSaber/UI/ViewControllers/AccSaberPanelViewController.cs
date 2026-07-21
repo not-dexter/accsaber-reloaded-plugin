@@ -151,7 +151,7 @@ namespace AccSaber.UI.ViewControllers
             _api.OnLoginUpdated -= AccSaberAPIOnOnLoginUpdated;
         }
 
-		protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+		public override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 		{
 			base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
 			
@@ -164,7 +164,7 @@ namespace AccSaber.UI.ViewControllers
 			}
 		}
 
-		protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
+		public override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
 		{
 			base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
 			

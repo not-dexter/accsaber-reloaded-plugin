@@ -1,0 +1,5 @@
+<modal id='modal' clickerino-offerino-closerino='true' size-delta-x='80' size-delta-y='14' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+  <vertical horizontal-fit='PreferredSize' pref-width='80' child-expand-width='false' pad-top='2' pad-bottom='2'>
+    <slider-setting text='Font Size' apply-on-change='true' value='FontSize' min='0.25' max='10' increment='0.25' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+  </vertical>
+</modal>

@@ -1,7 +1,11 @@
-﻿using AccSaber.Models;
+﻿using AccSaber.Configuration;
+using AccSaber.Models;
 using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.Utils.Misc;
+using BeatSaberMarkupLanguage;
+using HMUI;
 using System;
+using System.Collections;
 using System.Linq;
 using System.Reflection;
 using TMPro;
@@ -14,7 +18,10 @@ namespace AccSaber.Counter.Hosts
     {
         private static readonly Type? CanvasUtilityType;
         private static readonly Type? SettingsType;
+        private static readonly PropertyInfo? SettingsCanvasID;
         private static readonly MethodInfo? CanvasCreateText;
+        private static readonly MethodInfo? CanvasGetPos;
+        private static readonly MethodInfo? GetCanvasFromId;
 
         private object CanvasUtility = null!, Settings = null!;
 
@@ -27,6 +34,7 @@ namespace AccSaber.Counter.Hosts
         private GameEnergyCounter energy = null!;
 
         private TMP_Text DisplayText = null!;
+        private ImageView Checkmark = null!;
         private int max115Streak = 0, current115Streak = 0;
 
         private float requiredVal;
@@ -39,7 +47,10 @@ namespace AccSaber.Counter.Hosts
             if (CanvasUtilityType is null || SettingsType is null)
                 return;
 
+            SettingsCanvasID = SettingsType.GetProperty("CanvasID");
             CanvasCreateText = CanvasUtilityType.GetMethod("CreateTextFromSettings");
+            CanvasGetPos = CanvasUtilityType.GetMethod("GetAnchoredPositionFromConfig");
+            GetCanvasFromId = CanvasUtilityType.GetMethod("GetCanvasFromID");
         }
 
 
@@ -69,7 +80,35 @@ namespace AccSaber.Counter.Hosts
             }
 
             DisplayText = (TMP_Text)CanvasCreateText!.Invoke(CanvasUtility, [Settings, null]);
-            DisplayText.text = "";
+            DisplayText.text = "<color=yellow>Campaign Counter</color>";
+            DisplayText.fontSize = Plugin.Container.TryResolve<PluginConfig>().CampaignCounterFontSize;
+
+            object canvasId = SettingsCanvasID!.GetValue(Settings);
+            Canvas? canvas = (Canvas?)GetCanvasFromId!.Invoke(CanvasUtility, [canvasId]);
+
+            if (canvas is null)
+            {
+                object hudCanvas = CanvasUtilityType.GetMethod("GetCanvasSettingsFromID").Invoke(CanvasUtility, [canvasId]);
+                canvas = (Canvas)CanvasUtilityType.GetMethod("CreateCanvasWithConfig").Invoke(CanvasUtility, [hudCanvas]);
+                ((IDictionary)CanvasUtilityType.GetField("CanvasIDToCanvas", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(CanvasUtility))[canvasId] = canvas;
+                ((IDictionary)CanvasUtilityType.GetField("CanvasToSettings", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(CanvasUtility))[canvas] = hudCanvas;
+            }
+
+            GameObject go = new("CampaignCounterDisplay");
+            go.transform.SetParent(canvas.transform, false);
+
+            RectTransform rt = go.AddComponent(DisplayText.rectTransform);
+            rt.sizeDelta = new Vector2(4f, 4f) * DisplayText.fontSize;
+            DisplayText.rectTransform.anchoredPosition = new(DisplayText.rectTransform.anchoredPosition.x, DisplayText.rectTransform.anchoredPosition.y - rt.sizeDelta.y / 2f);
+
+            ImageView img = go.AddComponent<ImageView>();
+            img.transform.SetParent(go.transform, false);
+
+            img.material = Utilities.ImageResources.NoGlowMat;
+            img.sprite = Utilities.FindSpriteCached("Checkmark");
+            img.color = Color.white;
+
+            Checkmark = img;
 
             switch (Map.RequirementType)
             {
@@ -185,6 +224,7 @@ namespace AccSaber.Counter.Hosts
         private void UpdateColor(bool success)
         {
             DisplayText.faceColor = success ? Color.green : Color.red;
+            Checkmark.color = success ? Color.white : new(0.5f, 0.5f, 0.5f, 0.5f);
         }
 
     }

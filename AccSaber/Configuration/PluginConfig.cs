@@ -33,5 +33,6 @@ namespace AccSaber.Configuration
         public virtual float CampaignBackgroundAlpha { get; set; } = 0.8f;
         public virtual int CampaignMaxCoverageLoadsPerFrame { get; set; } = 10000;
         public virtual int CampaignMaxObjectLoadsPerFrame { get; set; } = 10;
+        public virtual float CampaignCounterFontSize { get; set; } = 3f;
     }
 }

@@ -102,6 +102,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
+        [Inject] private readonly AccSaberCampaignCounterSettingsModalController _campaignCounterSettingsModalController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
         [Inject] private readonly SongPreviewPlayer _songPreviewPlayer = null!;
@@ -111,6 +112,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
 #endif
+
+        [UIValue("count-img")]
+        private const string CountImg = ResourcePaths.COUNT;
+
+
         private CategoryTab CurrentTab
         {
             get;
@@ -491,6 +497,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
 
             _campaignSettingsModalController.ShowModal(_campaignMapContainer.transform);
+        }
+
+        [UIAction("ShowCounterSettings")]
+        private void ShowCounterSettings()
+        {
+            if (!_parsed)
+                return;
+
+            _campaignCounterSettingsModalController.ShowModal(_campaignMapContainer.transform);
         }
 
         public void BackPressed()

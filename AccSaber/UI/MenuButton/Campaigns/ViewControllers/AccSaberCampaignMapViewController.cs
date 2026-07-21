@@ -110,11 +110,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 field = Mathf.Clamp01(value);
 
                 if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
-                {
-                    //float dim = 1f - field;
-                    //image.color = currentBgColor - new Color(dim, dim, dim, 1f - BackgroundAlpha);
                     image.color = maxBgColors * new Color(field, field, field, BackgroundAlpha);
-                }
 
                 NotifyPropertyChanged();
             }
@@ -127,11 +123,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 field = Mathf.Clamp01(value);
 
                 if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
-                {
-                    //float dim = 1f - BackgroundBrightness;
-                    //image.color = currentBgColor - new Color(dim, dim, dim, 1f - field);
                     image.color = maxBgColors * new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, field);
-                }
 
                 NotifyPropertyChanged();
             }
@@ -163,6 +155,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             StickScrolling = config.StickScrolling;
             BackgroundBrightness = config.CampaignBackgroundBrightness;
             BackgroundAlpha = config.CampaignBackgroundAlpha;
+
+            //Plugin.Log.Info($"{Resources.FindObjectsOfTypeAll<Sprite>().Select(s => s.name).Where(n => !string.IsNullOrEmpty(n)).Print()}");
         }
 
         public void Dispose()
