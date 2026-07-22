@@ -457,6 +457,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         newText.OnClickEvent += (pointerData) => OnTagClicked(tag, newText);
                     }
                 }
+
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(_genreFilter.rectTransform);
             }
             catch (Exception ex)
             {

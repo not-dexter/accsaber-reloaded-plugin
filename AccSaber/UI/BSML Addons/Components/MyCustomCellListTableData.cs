@@ -3,8 +3,8 @@ using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Parser;
 using HMUI;
+using IPA.Utilities.Async;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -35,11 +35,8 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
         private float mainCellSize = 8.5f;
         private float initialAnchorY = -1f;
 
-        private IEnumerator? updateRoutine = null;
-        private readonly object updateRoutineLock = new();
-
         public event Action<int> OnCellClick, OnCellHighlighted, OnCellUnhighlighted;
-        public Func<int, int, CellPageSource>? PageUpdater = null; // page number, page length
+        public Func<int, int, Task<CellPageSource>>? PageUpdater = null; // page number, page length
         public List<string> CellTemplates => cellTemplates;
         public List <float> CellSizes => cellSizes;
         public List<ICellDataSource> Data
@@ -62,15 +59,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             get => mainCellSize;
             set => mainCellSize = value;
         }
-        public int Page
-        {
-            get => page;
-            set
-            {
-                page = value;
-                UpdatePageData();
-            }
-        }
+        public int Page => page;
 
         public MyCustomCellListTableData()
         {
@@ -84,14 +73,11 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             if (PageUpdater is not null && page == 0)
                 _ = Task.Run(UpdatePageData);
         }
-        public void OnEnable()
+
+        public async Task SetPage(int page)
         {
-            lock (updateRoutineLock)
-                if (updateRoutine is not null)
-                {
-                    StartCoroutine(updateRoutine);
-                    updateRoutine = null;
-                }
+            this.page = page;
+            await UpdatePageData();
         }
 
         public int NumberOfCells() => Math.Min(prefNumberOfCells, data.Count);
@@ -191,7 +177,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
 
             previouslySelected.RefreshVisuals();
         }
-        public void UpdatePageData()
+        public async Task UpdatePageData()
         {
             if (PageUpdater is null)
                 return;
@@ -200,7 +186,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
 
             if (pageInfo == default)
             {
-                pageInfo = PageUpdater(page, prefNumberOfCells);
+                pageInfo = await PageUpdater(page, prefNumberOfCells);
                 pageCacher.CacheItem(page, pageInfo);
             }
 
@@ -212,39 +198,24 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.Components
             Data.Clear();
             Data.AddRange(pageInfo.Content);
 
-            IEnumerator Update()
-            {
-                yield return new WaitForEndOfFrame();
-
-                ReloadTemplates();
-            }
-
-            lock (updateRoutineLock)
-            {
-                if (isActiveAndEnabled)
-                    StartCoroutine(Update());
-                else
-                    updateRoutine = Update();
-            }
+            await UnityMainThreadTaskScheduler.Factory.StartNew(ReloadTemplates);
         }
 
         public async void PageUp()
         {
             AsyncLock.Releaser locker = await pageLocker.LockAsync();
 
-            if (Page > 0)
-                _ = Task.Run(() => { using (locker) --Page; });
-            else
-                locker.Dispose();
+            using (locker)
+                if (Page > 0)
+                    await SetPage(page - 1);
         }
         public async void PageDown()
         {
             AsyncLock.Releaser locker = await pageLocker.LockAsync();
 
-            if (!isLastPage)
-                _ = Task.Run(() => { using (locker) ++Page; });
-            else
-                locker.Dispose();
+            using (locker)
+                if (!isLastPage)
+                    await SetPage(page + 1);
         }
 
     }

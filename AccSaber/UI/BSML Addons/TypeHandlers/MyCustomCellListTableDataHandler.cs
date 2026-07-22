@@ -107,17 +107,19 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
 
             if (data.TryGetValue("pager", out string pager))
             {
-                componentData.PageUpdater = (page, size) =>
+                componentData.PageUpdater = async (page, size) =>
                 {
                     if (!actions.TryGetValue(pager, out BSMLAction action))
                     {
-                        throw new Exception("pager action '" + pager + "' not found");
+                        string error = "pager action '" + pager + "' not found!";
+                        AccSaber.Plugin.Log.Error(error); // done since this is an async function and the exception may be lost.
+                        throw new Exception(error);
                     }
 
                     object outp = action.Invoke(page, size);
 
                     if (outp is Task<CellPageSource> task)
-                        return task.GetAwaiter().GetResult();
+                        return await task;
                     else if (outp is CellPageSource source)
                         return source;
                     else
@@ -136,7 +138,7 @@ namespace AccsaberLeaderboard.UI.BSML_Addons.TypeHandlers
                 if (!int.TryParse(page, out int value))
                     throw new Exception($"the cell number \"{page}\" cannot be parsed into an int.");
 
-                Task.Run(() => componentData.Page = value);
+                _ = componentData.SetPage(value);
             }
         }
 
