@@ -25,6 +25,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.CampaignCounterFontSize = value;
         }
 
+        [UIValue("GoalColors")]
+        private bool GoalColors
+        {
+            get => config.CampaignCounterGoalColors; 
+            set => config.CampaignCounterGoalColors = value;
+        }
+
         private void Parse(Transform parent)
         {
             if (!parsed)

@@ -1,10 +1,18 @@
-<modal id='modal' clickerino-offerino-closerino='true' size-delta-x='80' size-delta-y='59' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+<modal id='modal' clickerino-offerino-closerino='true' size-delta-x='80' size-delta-y='79' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical horizontal-fit='PreferredSize' pref-width='80' child-expand-width='false' pad-top='2' pad-bottom='2'>
+    <checkbox-setting text='Show Prereq Indicator' hover-hint='Whether or not to show the asterisk on nodes' apply-on-change='true' value='ShowPrereqIndicator' scale='0.8' />
     <checkbox-setting text='Allow Stick Scrolling' apply-on-change='true' value='StickScrolling' scale='0.8' />
     <slider-setting text='Scroll Speed' apply-on-change='true' value='ScrollSpeed' min='0.25' max='10' increment='0.25' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
-    <checkbox-setting text='Show Prereq Indicator' hover-hint='Whether or not to show the asterisk on nodes' apply-on-change='true' value='ShowPrereqIndicator' scale='0.8' />
-    <slider-setting text='Background Brightness' apply-on-change='true' value='BGBrightness' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
-    <slider-setting text='Background Opacity' apply-on-change='true' value='BGAlpha' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+    <vertical>
+      <text text='Image Background Color Settings' align='Center' font-size='4' scale='0.8' />
+      <slider-setting text='Image Brightness' apply-on-change='true' value='ImgBGBrightness' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.7' />
+      <slider-setting text='Image Opacity' apply-on-change='true' value='ImgBGAlpha' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.7' />
+    </vertical>
+    <vertical>
+      <text text='Solid Background Color Settings' align='Center' font-size='4' scale='0.8' />
+      <slider-setting text='Color Brightness' apply-on-change='true' value='ColorBGBrightness' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.7' />
+      <slider-setting text='Color Opacity' apply-on-change='true' value='ColorBGAlpha' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.7' />
+    </vertical>
     <vertical pref-height='5'/>
     <vertical horizontal-fit='PreferredSize' pref-width='80' pref-height='10' child-expand-width='true' child-align='MiddleCenter'>
       <text text='The below 2 options will affect the load time of the campaign.' font-size='3' align='Center' scale='0.8'/>

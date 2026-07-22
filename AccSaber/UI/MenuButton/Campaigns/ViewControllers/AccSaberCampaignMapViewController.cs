@@ -128,6 +128,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 NotifyPropertyChanged();
             }
         }
+        public bool IsSolidBGColor { get; private set; }
 
         [UIObject(nameof(ScrollContainer))]
         private readonly GameObject ScrollContainer = null!;
@@ -153,8 +154,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             ScrollSpeed = config.ScrollSpeed;
             StickScrolling = config.StickScrolling;
-            BackgroundBrightness = config.CampaignBackgroundBrightness;
-            BackgroundAlpha = config.CampaignBackgroundAlpha;
 
             //Plugin.Log.Info($"{Resources.FindObjectsOfTypeAll<Sprite>().Select(s => s.name).Where(n => !string.IsNullOrEmpty(n)).Print()}");
         }
@@ -262,6 +261,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 await Coroutines.AsTask(LoadSlowly());
 
                 RebuildArrows(loads);
+
+                ScrollToNode(CampaignProgress.Nodes.Heads.First().Current.Id);
             }
             catch (Exception e)
             {
@@ -277,9 +278,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             CustomBackground customBg;
 
-            void SetDim() =>
-                customBg.Background?.color = maxBgColors * new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, BackgroundAlpha);
-
             if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null))
             {
                 customBg = ScrollContainer.GetComponent<CustomBackground>();
@@ -289,7 +287,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 currentBgColor = Color.white;
                 maxBgColors = Color.white;
 
-                SetDim();
+                IsSolidBGColor = true;
+
+                BackgroundAlpha = config.CampaignColorBackgroundAlpha;
+                BackgroundBrightness = config.CampaignColorBackgroundBrightness;
 
                 return;
             }
@@ -297,9 +298,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             customBg = ScrollContainer.GetComponent<CustomBackground>();
 
             UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
-
-            void SetColor(float dim) => 
-                customBg.Background?.color = currentBgColor - new Color(currentBgColor.r * dim, currentBgColor.g * dim, currentBgColor.b * dim, 1f - BackgroundAlpha);
 
             bool bgColorExists = CurrentCampaign.BackgroundColor is not null;
 
@@ -315,10 +313,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         currentBgColor = CurrentCampaign.BackgroundColor?.Color() ?? Color.white;
                         maxBgColors = customBg.Background!.sprite.texture.GetMaxColorValues();
 
-                        if (bgColorExists)
-                            SetColor(1f - BackgroundBrightness);
-                        else
-                            SetDim();
+                        IsSolidBGColor = false;
+
+                        BackgroundAlpha = config.CampaignImageBackgroundAlpha;
+                        BackgroundBrightness = config.CampaignImageBackgroundBrightness;
                     }
                     catch (Exception e)
                     {
@@ -335,9 +333,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 customBg.Apply(ResourcePaths.PIXEL);
 
                 currentBgColor = CurrentCampaign.BackgroundColor!.Color();
-                maxBgColors = Color.white;
+                maxBgColors = currentBgColor;
 
-                SetColor(1f - BackgroundBrightness);
+                IsSolidBGColor = true;
+
+                BackgroundAlpha = config.CampaignColorBackgroundAlpha;
+                BackgroundBrightness = config.CampaignColorBackgroundBrightness;
             }
         }
         private void ClearDisplay()

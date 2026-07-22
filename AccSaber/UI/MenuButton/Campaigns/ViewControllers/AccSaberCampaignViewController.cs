@@ -85,7 +85,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIComponent("search-container")]
         private readonly VerticalLayoutGroup _campaignSearchContainer = null!;
 
-        internal InputFieldView? _campaignSearchInput { get; private set; }
+        internal InputFieldView? CampaignSearchInput { get; private set; }
         CurvedTextMeshPro? songSearchPlaceholder = null;
 
         private enum CategoryTab
@@ -410,19 +410,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private bool InMapOrBarrier => InMap || InBarrier;
 
         [UIComponent("category-filter")]
-        private GridLayoutGroup _categoryFilter = null!;
+        private readonly GridLayoutGroup _categoryFilter = null!;
 
         [UIComponent("difficulty-filter")]
-        private GridLayoutGroup _difficultyFilter = null!;
+        private readonly GridLayoutGroup _difficultyFilter = null!;
 
         [UIComponent("theme-filter")]
-        private GridLayoutGroup _themeFilter = null!;
+        private readonly GridLayoutGroup _themeFilter = null!;
 
-        [UIComponent("genre-scrollable")]
-        private ScrollView _genreContainer = null!;
+        //[UIComponent("genre-scrollable")]
+        //private readonly ScrollView _genreContainer = null!;
 
         [UIComponent("genre-filter")]
-        private GridLayoutGroup _genreFilter = null!;
+        private readonly GridLayoutGroup _genreFilter = null!;
 
         public override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
@@ -511,11 +511,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (searchBox is not null)
             {
                 GameObject newSearchBox = Instantiate(searchBox, _campaignSearchContainer.transform, false);
-                _campaignSearchInput = newSearchBox.GetComponent<InputFieldView>();
-                _campaignSearchInput.SetText(string.Empty);
+                CampaignSearchInput = newSearchBox.GetComponent<InputFieldView>();
+                CampaignSearchInput.SetText(string.Empty);
                 songSearchPlaceholder = newSearchBox.transform.Find("PlaceholderText")?.GetComponent<CurvedTextMeshPro>();
-                _campaignSearchInput.SetField("_keyboardPositionOffset", new Vector3(-45, -25));
-                _campaignSearchInput.onValueChanged.AddListener(__ => _ = UpdateTabs());
+                CampaignSearchInput.SetField("_keyboardPositionOffset", new Vector3(-45, -25));
+                CampaignSearchInput.onValueChanged.AddListener(__ => _ = UpdateTabs());
                 NoCampaignSelected = true;
             }
 
@@ -820,7 +820,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         (CurrentTab == CategoryTab.Official && !campaign.Official))
                         continue;
 
-                    if (_campaignSearchInput!.text != "" && !campaign.Name.ToLower().Contains(_campaignSearchInput!.text.ToLower()))
+                    if (CampaignSearchInput!.text != "" && !campaign.Name.ToLower().Contains(CampaignSearchInput!.text.ToLower()))
                         continue;
 
                     bool match = false;
@@ -1250,11 +1250,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 case nameof(PluginConfig.ScrollSpeed):
                     _campaignMapViewController.ScrollSpeed = _config.ScrollSpeed;
                     break;
-                case nameof(PluginConfig.CampaignBackgroundBrightness):
-                    _campaignMapViewController.BackgroundBrightness = _config.CampaignBackgroundBrightness;
+                case nameof(PluginConfig.CampaignColorBackgroundBrightness) when _campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundBrightness = _config.CampaignColorBackgroundBrightness;
                     break;
-                case nameof(PluginConfig.CampaignBackgroundAlpha):
-                    _campaignMapViewController.BackgroundAlpha = _config.CampaignBackgroundAlpha;
+                case nameof(PluginConfig.CampaignImageBackgroundBrightness) when !_campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundBrightness = _config.CampaignImageBackgroundBrightness;
+                    break;
+                case nameof(PluginConfig.CampaignColorBackgroundAlpha) when _campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundAlpha = _config.CampaignColorBackgroundAlpha;
+                    break;
+                case nameof(PluginConfig.CampaignImageBackgroundAlpha) when !_campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundAlpha = _config.CampaignImageBackgroundAlpha;
                     break;
             }
         }

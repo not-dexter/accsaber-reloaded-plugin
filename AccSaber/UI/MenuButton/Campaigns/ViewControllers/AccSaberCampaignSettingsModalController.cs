@@ -41,18 +41,32 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.ShowPrereqIndicator = value;
         }
 
-        [UIValue(nameof(BGBrightness))]
-        private float BGBrightness
+        [UIValue(nameof(ImgBGBrightness))]
+        private float ImgBGBrightness
         {
-            get => config.CampaignBackgroundBrightness;
-            set => config.CampaignBackgroundBrightness = value;
+            get => config.CampaignImageBackgroundBrightness;
+            set => config.CampaignImageBackgroundBrightness = value;
         }
 
-        [UIValue(nameof(BGAlpha))]
-        private float BGAlpha
+        [UIValue(nameof(ImgBGAlpha))]
+        private float ImgBGAlpha
         {
-            get => config.CampaignBackgroundAlpha;
-            set => config.CampaignBackgroundAlpha = value;
+            get => config.CampaignImageBackgroundAlpha;
+            set => config.CampaignImageBackgroundAlpha = value;
+        }
+
+        [UIValue(nameof(ColorBGBrightness))]
+        private float ColorBGBrightness
+        {
+            get => config.CampaignColorBackgroundBrightness;
+            set => config.CampaignColorBackgroundBrightness = value;
+        }
+
+        [UIValue(nameof(ColorBGAlpha))]
+        private float ColorBGAlpha
+        {
+            get => config.CampaignColorBackgroundAlpha;
+            set => config.CampaignColorBackgroundAlpha = value;
         }
 
         [UIValue(nameof(PixelsPerFrame))]

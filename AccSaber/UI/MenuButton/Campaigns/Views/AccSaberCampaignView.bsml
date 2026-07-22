@@ -59,8 +59,8 @@
           <button text='Go To Furthest Map' on-click='GotoMap' />
           <button text='Zoom Out' on-click='ZoomOut' />
           <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
-          <vertical pref-width='5' />
-          <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='10' pref-height='10'>
+          <vertical pref-width='2' />
+          <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='7' pref-height='7'>
             <clickable-image src='~count-img' preserve-aspect='true' on-click='ShowCounterSettings' />
           </vertical>
         </horizontal>
