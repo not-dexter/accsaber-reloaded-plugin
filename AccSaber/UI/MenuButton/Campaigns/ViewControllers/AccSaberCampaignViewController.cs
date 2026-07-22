@@ -40,6 +40,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly Queue<Guid> _nextGotoMapId = [];
+        private readonly List<Guid> _includedTags = [];
 
         private CampaignProgressValue CampaignProgressVal
         {
@@ -407,6 +408,85 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("in-map-or-barrier")]
         private bool InMapOrBarrier => InMap || InBarrier;
 
+        [UIComponent("category-filter")]
+        private GridLayoutGroup _categoryFilter = null!;
+
+        [UIComponent("difficulty-filter")]
+        private GridLayoutGroup _difficultyFilter = null!;
+
+        [UIComponent("theme-filter")]
+        private GridLayoutGroup _themeFilter = null!;
+
+       // [UIComponent("genre-scrollable")]
+      //  private ScrollView _genreContainer = null!;
+
+        [UIComponent("genre-filter")]
+        private GridLayoutGroup _genreFilter = null!;
+
+        public override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+        {
+            base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
+
+            if (firstActivation)
+            {
+                _ = GetFilters();
+            }
+        }
+
+        [UIComponent("text-template")]
+        private ClickableText _textTemplate = null!;
+        private async Task GetFilters()
+        {
+            try
+            {
+                foreach (var tag in await _accSaberStore.GetCampaignTags())
+                {
+                    var tagGrid = tag.Kind switch
+                    {
+                        CampaignTags.CampaignTagKind.CATEGORY => _categoryFilter,
+                        CampaignTags.CampaignTagKind.DIFFICULTY => _difficultyFilter,
+                        CampaignTags.CampaignTagKind.THEME => _themeFilter,
+                        CampaignTags.CampaignTagKind.GENRE => _genreFilter,
+                        _ => throw new NotImplementedException()
+                    };
+
+                    if (tagGrid is not null) 
+                    { 
+                        ClickableText newText = Instantiate(_textTemplate, tagGrid.transform, false); // need to do this since for some reason it didnt wanna be curved <3
+
+                        newText.text = tag.Name;
+                        newText.fontSize = 2.5f;
+                        newText.alignment = TMPro.TextAlignmentOptions.Center;
+                        newText.gameObject.SetActive(true);
+
+                        newText.OnClickEvent += (pointerData) => OnTagClicked(tag, newText);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error(ex);
+            }
+        }
+
+        private void OnTagClicked(CampaignTags tag, ClickableText text)
+        {
+            if (_includedTags.Contains(tag.Id))
+            {
+                _includedTags.Remove(tag.Id);
+                text.color = ColorUtils.Color("#ffffff");
+                text.DefaultColor = ColorUtils.Color("#ffffff");
+            }
+            else
+            {
+                _includedTags.Add(tag.Id);
+                text.color = ColorUtils.Color(ColorUtils.TRUE);
+                text.DefaultColor = ColorUtils.Color(ColorUtils.TRUE);
+            }
+            _ = UpdateTabs();
+        }
+
+
         [UIAction("#post-parse")]
         void Parsed()
         {
@@ -430,12 +510,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
                 NoCampaignSelected = true;
             }
+
             CurrentTab = 0;
             InCampaign = false;
             InMap = false;
-
-
-
         }
 
         [UIAction("campaign-selected")]
@@ -735,6 +813,25 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         continue;
 
                     if (_campaignSearchInput!.text != "" && !campaign.Name.ToLower().Contains(_campaignSearchInput!.text.ToLower()))
+                        continue;
+
+                    bool match = false;
+
+                    if (_includedTags.Count == 0)
+                        match = true;                       
+                    else if (campaign.Tags is not null)
+                    {
+                        foreach (var tagId in _includedTags)
+                        {
+                            if (campaign.Tags.Any(x => x.Id == tagId))
+                            {
+                                match = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (match == false)
                         continue;
 
                     _campaignCells.Add(new CampaignCell(campaign));
@@ -1206,6 +1303,5 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIValue(nameof(Tags))] private string Tags => GetTags();
 
         }
-
     }
 }

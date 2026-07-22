@@ -118,28 +118,27 @@
 	<modal show-event='open-filters' hide-event='close-filters' clickerino-offerino-closerino='true' size-delta-x='120' size-delta-y='65'>
 		<vertical preferred-width='120' horizontal-fit='PreferredSize'>
 		    <horizontal preferred-width='88' vertical-fit='PreferredSize'>
-			    <vertical pref-width='50'>
+			    <vertical pref-width='50' preferred-height='50'>
 			        <text text='Category' align='Center'/>
                     <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-			        <vertical preferred-height='14'>
-			        </vertical>
-			
+					<stack active="false">
+						<clickable-text id="text-template" text="Template"/>
+					</stack>
+					<grid id='category-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1'/>
 		            <text text='Tier' align='Center'/>
                     <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-			        <vertical preferred-height='14'>					
-			        </vertical>
+					<grid id='difficulty-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1'/>
 		        </vertical>
-                <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>
-			    <vertical pref-width='50'>
+				<!-- <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>-->
+			    <vertical pref-width='50' preferred-height='50'>
 			        <text text='Theme' align='Center'/>
                     <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-			        <vertical preferred-height='14'>
-			        </vertical>
-		
+					<grid id='theme-filter' pad-top='2' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1'/>
 			        <text text='Genre' align='Center'/>
                     <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-			        <vertical preferred-height='26'>		
-			        </vertical>
+					<scrollable-container id='genre-scrollable' size-delta-x='40' size-delta-y='45' >
+					    <grid id='genre-filter' pad-top='2' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1'/>
+					</scrollable-container>
 		        </vertical>
 		    </horizontal>
 		    <button text='Close' align='Center' event-click='close-filters'/>
