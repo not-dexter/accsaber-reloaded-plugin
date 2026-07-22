@@ -1114,7 +1114,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 List<AccSaberCampaignMap> otherMaps = [.. GetAllMapsOfDiffId(score.MapDifficultyId).Where(map => map.Id != CurrentMap.Id)];
 
-                _ = OnPlayerScoreSubmit(score, scoreBeaten, CurrentMap, doUpdates: otherMaps.Count > 0);
+                _ = OnPlayerScoreSubmit(score, scoreBeaten, CurrentMap, doUpdates: otherMaps.Count == 0);
 
                 for (int i = 0; i < otherMaps.Count; i++)
                     _ = OnPlayerScoreSubmit(score, scoreBeaten, otherMaps[i], setMap: false, doUpdates: i == otherMaps.Count - 1);
