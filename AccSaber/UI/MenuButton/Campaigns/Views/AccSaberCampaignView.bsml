@@ -2,8 +2,8 @@
   <vertical pref-width='120'>
     <horizontal vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='160' pad='1' pad-top='0' active='~not-in-campaign'>
       <tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected' />
-	  <vertical preferred-width='40' id='search-container'/>
-	  <button text='filters' event-click='open-filters'/>
+      <vertical pref-width='40' id='search-container' />
+      <button text='filters' event-click='open-filters' />
     </horizontal>
     <tab tags='tabs' tab-name='Active' />
     <tab tags='tabs' tab-name='Official' />
@@ -31,14 +31,14 @@
         </vertical>
       </horizontal>
       <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
-        <vertical preferred-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
+        <vertical pref-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
           <text text='Welcome to AccSaber Campaigns!' font-size='5' align='Center' word-wrapping='true' />
           <text text='Here you will find custom campaigns ranging in difficulty and category made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber website' font-size='3.5' align='Center' word-wrapping='true' />
         </vertical>
-        <vertical active='~CampaignIsSelected' preferred-width='100' horizontal-fit='PreferredSize'>
-          <horizontal preferred-width='100' horizontal-fit='PreferredSize'>
-            <img preserve-aspect='true' id='CampaignImage' preferred-width='25' pref-height='25' />
-            <vertical preferred-width='60' pref-height='20' vertical-fit='PreferredSize'>
+        <vertical active='~CampaignIsSelected' pref-width='100' horizontal-fit='PreferredSize'>
+          <horizontal pref-width='100' horizontal-fit='PreferredSize'>
+            <img preserve-aspect='true' id='CampaignImage' pref-width='25' pref-height='25' />
+            <vertical pref-width='60' pref-height='20' vertical-fit='PreferredSize'>
               <text text='~CampaignTitle' align='Left' font-size='5.5' overflow-mode='Ellipsis' />
               <text text='~CampaignCreator' align='Left' font-size='3.5' />
               <text text='~CampaignCategory' align='Left' font-size='3.5' />
@@ -49,7 +49,7 @@
             <text text='~CampaignRewards' align='Center' font-size='3' />
           </vertical>
           <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
-          <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
+          <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
         </vertical>
       </vertical>
       <vertical active='~in-campaign'>
@@ -59,17 +59,17 @@
           <button text='Go To Furthest Map' on-click='GotoMap' />
           <button text='Zoom Out' on-click='ZoomOut' />
           <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
-          <vertical pref-width='5'/>
+          <vertical pref-width='5' />
           <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='10' pref-height='10'>
             <clickable-image src='~count-img' preserve-aspect='true' on-click='ShowCounterSettings' />
           </vertical>
         </horizontal>
       </vertical>
-      <vertical preferred-width='50' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2' child-expand-height='false'>
-        <vertical preferred-width='42' pref-height='15' vertical-fit='PreferredSize' active='~in-map'>
+      <vertical pref-width='50' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2' child-expand-height='false'>
+        <vertical pref-width='42' pref-height='15' vertical-fit='PreferredSize' active='~in-map'>
           <horizontal>
-            <img preserve-aspect='true' id='MissionImage' preferred-width='8' pref-height='8' />
-            <vertical preferred-width='30'>
+            <img preserve-aspect='true' id='MissionImage' pref-width='8' pref-height='8' />
+            <vertical pref-width='30'>
               <text text='~MissionMapName' align='Left' overflow-mode='Ellipsis' italics='true' font-size='4' />
               <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
             </vertical>
@@ -110,38 +110,41 @@
         </vertical>
         <vertical pref-height='12'>
           <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='3.5' active='~MissionLocked' />
-          <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
+          <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
         </vertical>
       </vertical>
     </horizontal>
   </vertical>
-	<modal show-event='open-filters' hide-event='close-filters' clickerino-offerino-closerino='true' size-delta-x='120' size-delta-y='65'>
-		<vertical preferred-width='120' horizontal-fit='PreferredSize'>
-		    <horizontal preferred-width='88' vertical-fit='PreferredSize'>
-			    <vertical pref-width='50' preferred-height='50'>
-			        <text text='Category' align='Center'/>
-                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-					<stack active="false">
-						<clickable-text id="text-template" text="Template"/>
-					</stack>
-					<grid id='category-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1'/>
-		            <text text='Tier' align='Center'/>
-                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-					<grid id='difficulty-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1'/>
-		        </vertical>
-				<!-- <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>-->
-			    <vertical pref-width='50' preferred-height='50'>
-			        <text text='Theme' align='Center'/>
-                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-					<grid id='theme-filter' pad-top='2' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1'/>
-			        <text text='Genre' align='Center'/>
-                    <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'></horizontal>
-					<scrollable-container id='genre-scrollable' size-delta-x='40' size-delta-y='45' >
-					    <grid id='genre-filter' pad-top='2' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1'/>
-					</scrollable-container>
-		        </vertical>
-		    </horizontal>
-		    <button text='Close' align='Center' event-click='close-filters'/>
-		</vertical>
-	</modal>
+  <modal show-event='open-filters' hide-event='close-filters' clickerino-offerino-closerino='true' size-delta-x='140' size-delta-y='65'>
+    <vertical pref-width='140' horizontal-fit='PreferredSize'>
+      <horizontal pref-width='108' vertical-fit='PreferredSize'>
+        <vertical pref-width='60' pref-height='50'>
+          
+          <text text='Category' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <grid id='category-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
+          
+          <text text='Tier' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <grid id='difficulty-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
+          
+        </vertical>
+        <!-- <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>-->
+        <vertical pref-width='60' pref-height='50'>
+          
+          <text text='Theme' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <grid id='theme-filter' pad-top='2' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1' />
+          
+          <text text='Genre' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'/>
+          <scrollable-settings-container id='genre-scrollable' pad-top='2' pref-width='60' pref-height='25' >
+            <grid id='genre-filter' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1' horizontal-fit='Unconstrained' vertical-fit='PreferredSize' />
+          </scrollable-settings-container>
+          
+        </vertical>
+      </horizontal>
+      <button text='Close' align='Center' event-click='close-filters' />
+    </vertical>
+  </modal>
 </bg>

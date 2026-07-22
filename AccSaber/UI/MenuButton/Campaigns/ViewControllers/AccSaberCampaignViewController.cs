@@ -8,6 +8,7 @@ using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
+using BeatSaberMarkupLanguage.Tags;
 using HMUI;
 using IPA.Loader;
 using IPA.Utilities;
@@ -417,8 +418,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIComponent("theme-filter")]
         private GridLayoutGroup _themeFilter = null!;
 
-       // [UIComponent("genre-scrollable")]
-      //  private ScrollView _genreContainer = null!;
+        [UIComponent("genre-scrollable")]
+        private ScrollView _genreContainer = null!;
 
         [UIComponent("genre-filter")]
         private GridLayoutGroup _genreFilter = null!;
@@ -426,22 +427,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
             base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
-
-            if (firstActivation)
-            {
-                _ = GetFilters();
-            }
         }
 
-        [UIComponent("text-template")]
         private ClickableText _textTemplate = null!;
         private async Task GetFilters()
         {
             try
             {
-                foreach (var tag in await _accSaberStore.GetCampaignTags())
+                foreach (CampaignTags tag in await _accSaberStore.GetCampaignTags())
                 {
-                    var tagGrid = tag.Kind switch
+                    GridLayoutGroup? tagGrid = tag.Kind switch
                     {
                         CampaignTags.CampaignTagKind.CATEGORY => _categoryFilter,
                         CampaignTags.CampaignTagKind.DIFFICULTY => _difficultyFilter,
@@ -450,7 +445,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         _ => throw new NotImplementedException()
                     };
 
-                    if (tagGrid is not null) 
+                    if (tagGrid is not null)
                     { 
                         ClickableText newText = Instantiate(_textTemplate, tagGrid.transform, false); // need to do this since for some reason it didnt wanna be curved <3
 
@@ -493,21 +488,31 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if(!_parsed)
             {
                 _parsed = true;
+
+                _genreFilter.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                _genreFilter.constraintCount = 3;
+
+                if (_textTemplate is null)
+                {
+                    // transform here doesn't matter at all.
+                    _textTemplate = new ClickableTextTag().CreateObject(_categoryFilter.transform).GetComponent<ClickableText>();
+                    _textTemplate.gameObject.SetActive(false);
+                }
+
+                _ = GetFilters();
             }
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_VIEW, _campaignMapContainer, _campaignMapViewController);
-            var searchBox = Resources.FindObjectsOfTypeAll<InputFieldView>().FirstOrDefault(x => x.gameObject.name == "SearchInputField")?.gameObject;
+            GameObject? searchBox = Resources.FindObjectsOfTypeAll<InputFieldView>().FirstOrDefault(x => x.gameObject.name == "SearchInputField")?.gameObject;
 
-            if (searchBox != null)
+            if (searchBox is not null)
             {
-                var newSearchBox = Instantiate(searchBox, _campaignSearchContainer.transform, false);
+                GameObject newSearchBox = Instantiate(searchBox, _campaignSearchContainer.transform, false);
                 _campaignSearchInput = newSearchBox.GetComponent<InputFieldView>();
                 _campaignSearchInput.SetText(string.Empty);
                 songSearchPlaceholder = newSearchBox.transform.Find("PlaceholderText")?.GetComponent<CurvedTextMeshPro>();
                 _campaignSearchInput.SetField("_keyboardPositionOffset", new Vector3(-45, -25));
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                _campaignSearchInput.onValueChanged.AddListener(_ => UpdateTabs());
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                _campaignSearchInput.onValueChanged.AddListener(__ => _ = UpdateTabs());
                 NoCampaignSelected = true;
             }
 
