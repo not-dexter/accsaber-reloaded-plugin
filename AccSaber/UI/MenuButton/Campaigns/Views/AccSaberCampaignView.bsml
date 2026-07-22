@@ -122,11 +122,11 @@
           
           <text text='Category' align='Center' />
           <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
-          <grid id='category-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
+          <grid id='category-filter' cell-size-x='19.3' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
           
           <text text='Tier' align='Center' />
           <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
-          <grid id='difficulty-filter' cell-size-x='16' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
+          <grid id='difficulty-filter' cell-size-x='19.3' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
           
         </vertical>
         <!-- <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>-->
@@ -134,7 +134,7 @@
           
           <text text='Theme' align='Center' />
           <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
-          <grid id='theme-filter' pad-top='2' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1' />
+          <grid id='theme-filter' pad-top='2' cell-size-x='19.3' cell-size-y='3' spacing-x='1' spacing-y='1' />
           
           <text text='Genre' align='Center' />
           <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'/>
