@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using IPA.Config.Stores;
+using UnityEngine;
 
 [assembly: InternalsVisibleTo(GeneratedStore.AssemblyVisibilityTarget)]
 
@@ -37,5 +38,12 @@ namespace AccSaber.Configuration
         public virtual int CampaignMaxObjectLoadsPerFrame { get; set; } = 10;
         public virtual float CampaignCounterFontSize { get; set; } = 2f;
         public virtual bool CampaignCounterGoalColors { get; set; } = true;
+        public virtual float CampaignCounterCheckmarkScale { get; set; } = 6f;
+
+        public virtual Color CampaignCounterNeutralColor { get; set; } = Color.white;
+        public virtual Color CampaignCounterGoodColor { get; set; } = new(0f, 1f, 0f);
+        public virtual Color CampaignCounterBadColor { get; set; } = Color.red;
+        public virtual Color CampaignCounterCheckmarkGoodColor { get; set; } = Color.white;
+        public virtual Color CampaignCounterCheckmarkBadColor { get; set; } = new(0.5f, 0.5f, 0.5f, 0.5f);
     }
 }

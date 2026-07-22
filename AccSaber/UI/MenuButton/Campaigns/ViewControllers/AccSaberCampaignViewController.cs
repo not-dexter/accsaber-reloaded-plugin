@@ -101,6 +101,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly PluginConfig _config = null!;
+        [Inject] private readonly PlayerSocialLife _playerInfo = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
@@ -424,11 +425,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIComponent("genre-filter")]
         private readonly GridLayoutGroup _genreFilter = null!;
 
-        public override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
-        {
-            base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
-        }
-
         private ClickableText _textTemplate = null!;
         private async Task GetFilters()
         {
@@ -486,7 +482,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
         [UIAction("#post-parse")]
-        void Parsed()
+        private void Parsed()
         {
             if(!_parsed)
             {
@@ -791,6 +787,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         public async Task UpdateTabs()
         {
+            await _playerInfo.LoadTask;
+
             _campaignCells.Clear();
             _campaignList.Data().Clear();
             _campaignList.TableView().ReloadData();

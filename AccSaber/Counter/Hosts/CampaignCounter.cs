@@ -80,8 +80,7 @@ namespace AccSaber.Counter.Hosts
 
                 DisplayText = (TMP_Text)CanvasCreateText!.Invoke(CanvasUtility, [Settings, null]);
 
-                if (enabledGoalColors)
-                    DisplayText.faceColor = Color.yellow;
+                DisplayText.faceColor = enabledGoalColors ? Color.yellow : PluginSettings.CampaignCounterNeutralColor;
 
                 DisplayText.text = "Campaign Counter";
                 DisplayText.fontSize = PluginSettings.CampaignCounterFontSize;
@@ -101,7 +100,7 @@ namespace AccSaber.Counter.Hosts
                 go.transform.SetParent(canvas.transform, false);
 
                 RectTransform rt = go.AddComponent(DisplayText.rectTransform);
-                rt.sizeDelta = Vector2.one * (DisplayText.fontSize * 8f);
+                rt.sizeDelta = Vector2.one * (DisplayText.fontSize * PluginSettings.CampaignCounterCheckmarkScale);
                 DisplayText.rectTransform.anchoredPosition = new(DisplayText.rectTransform.anchoredPosition.x, DisplayText.rectTransform.anchoredPosition.y - rt.sizeDelta.y / 2f);
 
                 ImageView img = go.AddComponent<ImageView>();
@@ -234,9 +233,9 @@ namespace AccSaber.Counter.Hosts
         private void UpdateColor(bool success)
         {
             if (enabledGoalColors)
-                DisplayText.faceColor = success ? Color.green : Color.red;
+                DisplayText.faceColor = success ? PluginSettings.CampaignCounterGoodColor : PluginSettings.CampaignCounterBadColor;
 
-            Checkmark.color = success ? Color.white : new(0.5f, 0.5f, 0.5f, 0.5f);
+            Checkmark.color = success ? PluginSettings.CampaignCounterCheckmarkGoodColor : PluginSettings.CampaignCounterCheckmarkBadColor;
         }
 
     }
