@@ -196,6 +196,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 if (disposed || version != setCampaignVersion)
                     return;
 
+                HandleCheckpointCollisions();
+
                 int loads = 0;
 
                 IEnumerator LoadSlowly()
@@ -216,9 +218,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                                 yield return null;
                             }
                         }
-
-                        CurrentOffsetData.RecalculateValues();
-                        UpdateContainerValues(resetScrollbars);
                     }
 
                     if (campaign.Barriers is not null)
@@ -282,7 +281,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         }
                     }
 
-                    
+                        CurrentOffsetData.RecalculateValues();
+                        UpdateContainerValues(resetScrollbars);
                 }
 
                 await Coroutines.AsTask(LoadSlowly());
@@ -294,6 +294,74 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             catch (Exception e)
             {
                 Plugin.Log.Error(e);
+            }
+        }
+        private void HandleCheckpointCollisions()
+        {
+            if (CurrentCampaign?.Difficulties is null)
+                return;
+
+            Dictionary<string, List<Guid>> checkpointNames = [];
+            Dictionary<Guid, AccSaberCampaignMap> usedMaps = [];
+
+            foreach (AccSaberCampaignMap map in CurrentCampaign.Difficulties)
+            {
+                if (!string.IsNullOrEmpty(map.CheckpointLabel))
+                {
+                    if (!checkpointNames.TryGetValue(map.CheckpointLabel!, out List<Guid> val))
+                        val = [];
+
+                    val.Add(map.Id);
+                    
+                    if (val.Count == 1)
+                        checkpointNames[map.CheckpointLabel!] = val;
+
+                    usedMaps.Add(map.Id, map);
+                }
+            }
+
+            foreach (string key in checkpointNames.Keys)
+            {
+                List<Guid> ids = checkpointNames[key];
+
+                if (ids.Count <= 1)
+                    continue;
+
+                int xPos = 0, yPos = 0;
+
+                foreach (Guid id in ids)
+                {
+                    AccSaberCampaignMap map = usedMaps[id];
+
+                    xPos += map.PositionX;
+                    yPos += map.PositionY;
+                }
+
+                float averageXPos = xPos / (float)ids.Count, averageYPos = yPos / (float)ids.Count;
+                float minDistance = float.PositiveInfinity;
+                int minDistIndex = -1;
+
+                for (int i = 0; i < ids.Count; ++i)
+                {
+                    AccSaberCampaignMap map = usedMaps[ids[i]];
+                    float dist = Mathf.Abs((map.PositionX - averageXPos + map.PositionY - averageYPos) / 2f);
+
+                    if (dist < minDistance)
+                    {
+                        minDistance = dist;
+                        minDistIndex = i;
+                    }
+                }
+
+                for (int i = 0; i < ids.Count; ++i)
+                {
+                    AccSaberCampaignMap map = usedMaps[ids[i]];
+
+                    if (minDistIndex == i)
+                        map.CheckpointSize *= 2;
+                    else
+                        map.CheckpointLabel = null;
+                }
             }
         }
         private void OnCampaignSet()
@@ -507,11 +575,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             mapNodeArrows.Clear();
 
             Dictionary<Guid, PositionData> knownPositions = [];
-            Queue<(AccSaberCampaignPrereq prereq, Guid toNode)> neededPositions = [];
+            Queue<(AccSaberCampaignPrereqInfo prereq, Guid toNode)> neededPositions = [];
 
             IEnumerator LoadSlowly()
             {
-                IEnumerator HandleArrows(AccSaberCampaignScalablePrereq node, PositionData current)
+                IEnumerator HandleArrows(IAccSaberCampaignPrereq node, PositionData current)
                 {
                     if (!knownPositions.TryAdd(node.Id, current))
                     {
@@ -519,7 +587,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         yield break;
                     }
 
-                    foreach (AccSaberCampaignPrereq prereq in node.PrerequisiteInfos)
+                    foreach (AccSaberCampaignPrereqInfo prereq in node.PrerequisiteInfos)
                     {
                         if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
                             CreateArrow(
@@ -1181,7 +1249,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             private static event Action? UpdateMapCovers;
 
             private bool postParse = false;
-            private Coroutine? imageRoutine;
+            private CancellationTokenSource? imageTaskToken;
             private readonly AsyncLock onClickLock = new();
 
             private readonly AccSaberCampaignFlow campaignFlow;
@@ -1305,6 +1373,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 requiresAllPrereqs = map.PrerequisiteMode == CampaignPrerequisiteMode.AND;
                 ShowPrereqIndicator = config.ShowPrereqIndicator && requiresAllPrereqs;
 
+                offsetData.OnScaleChanging += UpdateCheckpointLabel;
                 offsetData.OnScaleChanged += OnOffsetDataChanged;
                 UpdateMapCovers += UpdateCover;
                 config.PropertyChanged += OnPluginUpdate;
@@ -1312,11 +1381,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
             [UIAction("#post-parse")]
-            private void PostParse()
+            private async void PostParse()
             {
                 try
                 {
-                    BorderImage.sprite = GetBorderSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame).GetAwaiter().GetResult();
+                    BorderImage.sprite = await GetBorderSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame);
                     BorderImage.raycastTarget = false;
 
                     if (string.IsNullOrEmpty(Map.BorderColor))
@@ -1325,7 +1394,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         BorderImage.color = Map.BorderColor!.Color();
 
                     ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
-                    MaskImage.sprite = GetFillSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame).GetAwaiter().GetResult();
+                    MaskImage.sprite = await GetFillSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame);
                     MaskImage.color = Color.white;
                     MaskImage.material = Utilities.ImageResources.NoGlowMat;
                     MaskImage.raycastTarget = false;
@@ -1413,7 +1482,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 if (!postParse)
                     return;
 
-                if (Map.CheckpointLabelPosition == CampaignLabelPosition.NONE || string.IsNullOrWhiteSpace(Map.CheckpointLabel))
+                if (string.IsNullOrWhiteSpace(Map.CheckpointLabel))
                 {
                     CheckpointText.gameObject.SetActive(false);
                     return;
@@ -1423,15 +1492,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 // Make sure the text does not affect the stack layout.
                 LayoutElement layoutElement = CheckpointText.GetComponent<LayoutElement>();
-                if (layoutElement is null)
-                    layoutElement = CheckpointText.gameObject.AddComponent<LayoutElement>();
+                layoutElement ??= CheckpointText.gameObject.AddComponent<LayoutElement>();
 
                 layoutElement.ignoreLayout = true;
 
                 CheckpointText.text = Map.CheckpointLabel;
-                CheckpointText.color = string.IsNullOrEmpty(Map.CheckpointColor) ? Color.white : Map.CheckpointColor!.Color();
+                CheckpointText.color = string.IsNullOrEmpty(Map.CheckpointColor) ? new Color32(99, 102, 241, 255) : Map.CheckpointColor!.Color();
 
-                CheckpointText.fontSize = Math.Max(1, Map.CheckpointSize!.Value * OffsetData.ScaleFactor);
                 CheckpointText.alignment = TextAlignmentOptions.Center;
                 CheckpointText.enableWordWrapping = false;
                 CheckpointText.overflowMode = TextOverflowModes.Overflow;
@@ -1442,6 +1509,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 rectTransform.localRotation = Quaternion.identity;
                 rectTransform.localScale = Vector3.one;
+
+                UpdateCheckpointLabel();
+            }
+            private void UpdateCheckpointLabel()
+            {
+                CheckpointText.fontSize = Math.Max(1, Map.CheckpointSize * OffsetData.ScaleFactor);
+
+                RectTransform rectTransform = (RectTransform)CheckpointText.transform;
 
                 float padding = Mathf.Max(2f, NodeWidth * 0.05f);
 
@@ -1486,6 +1561,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     Mathf.Max(CheckpointText.preferredWidth, CheckpointText.fontSize),
                     Mathf.Max(CheckpointText.preferredHeight, CheckpointText.fontSize)
                 );
+
+                Map.Size = rectTransform.rect.size;
             }
 
             private void OnPluginUpdate(object sender, PropertyChangedEventArgs args)
@@ -1498,10 +1575,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 if (!postParse)
                     return;
 
-                if (imageRoutine is not null)
-                    threadDispatcher.StopCoroutine(imageRoutine);
+                if (imageTaskToken is not null)
+                {
+                    imageTaskToken.Cancel();
+                    imageTaskToken.Dispose();
+                }
 
-                imageRoutine = threadDispatcher.StartCoroutine(CoverImage.LoadCoverImageRoutine(Hash, Map.CoverUrl));
+                imageTaskToken = new();
+
+                _ = Map.CheckpointAvatarUrl is null ?
+                    CoverImage.LoadCoverImage(Hash, Map.CoverUrl, imageTaskToken.Token) :
+                    CoverImage.LoadImage(Map.CheckpointAvatarUrl, imageTaskToken.Token);
             }
 
             public void UpdateProgress()
@@ -1525,8 +1609,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 mainLayout.preferredWidth = NodeWidth;
                 mainLayout.preferredHeight = NodeHeight;
 
-                SetupCheckpointLabel();
-
                 NotifyPropertyChanged(nameof(NodeWidth));
                 NotifyPropertyChanged(nameof(NodeHeight));
                 NotifyPropertyChanged(nameof(NodeXPos));
@@ -1535,19 +1617,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             public void Dispose()
             {
+                OffsetData.OnScaleChanging -= UpdateCheckpointLabel;
                 OffsetData.OnScaleChanged -= OnOffsetDataChanged;
                 UpdateMapCovers -= UpdateCover;
                 config.PropertyChanged -= OnPluginUpdate;
 
-                try
+                if (imageTaskToken is not null)
                 {
-                    if (imageRoutine is not null)
-                    {
-                        threadDispatcher.StopCoroutine(imageRoutine);
-                        imageRoutine = null;
-                    }
+                    imageTaskToken.Cancel();
+                    imageTaskToken.Dispose();
+                    imageTaskToken = null;
                 }
-                catch (Exception) { } // this is just in case the coroutine contains something that is null, to prevent the error from propagating.
 
                 UnityEngine.Object.Destroy(Container);
             }

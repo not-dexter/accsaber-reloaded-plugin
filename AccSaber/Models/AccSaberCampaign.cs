@@ -6,7 +6,6 @@ using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Runtime.Serialization;
 using UnityEngine;
@@ -345,7 +344,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignPrereq : CampaignModel
+    internal class AccSaberCampaignPrereqInfo : CampaignModel
     {
         [JsonProperty("comesFromCampaignDifficultyId")]
         public Guid Id { get; set; }
@@ -363,21 +362,43 @@ namespace AccSaber.Models
         }
     }
 
-    [UsedImplicitly]
-    internal class AccSaberCampaignScalablePrereq : AccSaberCampaignScalable, Utils.Misc.INode<Guid>
+    internal interface IAccSaberCampaignPrereq
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
 
         [JsonProperty("prerequisites")]
-        public virtual List<AccSaberCampaignPrereq> PrerequisiteInfos { get; set; } = [];
+        public List<AccSaberCampaignPrereqInfo> PrerequisiteInfos { get; set; }
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignScalablePrereq : AccSaberCampaignScalable, Utils.Misc.INode<Guid>, IAccSaberCampaignPrereq
+    {
+        [JsonProperty("id")]
+        public Guid Id { get; set; }
+
+        [JsonProperty("prerequisites")]
+        public virtual List<AccSaberCampaignPrereqInfo> PrerequisiteInfos { get; set; } = [];
 
         [JsonIgnore]
         public IReadOnlyCollection<Guid> InwardArrows => [.. PrerequisiteInfos.Select(prereq => prereq.Id)];
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignMap : AccSaberCampaignScalablePrereq
+    internal class AccSaberCampaignSizablePrereq : AccSaberCampaignSizable, Utils.Misc.INode<Guid>, IAccSaberCampaignPrereq
+    {
+        [JsonProperty("id")]
+        public Guid Id { get; set; }
+
+        [JsonProperty("prerequisites")]
+        public virtual List<AccSaberCampaignPrereqInfo> PrerequisiteInfos { get; set; } = [];
+
+        [JsonIgnore]
+        public IReadOnlyCollection<Guid> InwardArrows => [.. PrerequisiteInfos.Select(prereq => prereq.Id)];
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignMap : AccSaberCampaignSizablePrereq
     {
         [JsonProperty("mapDifficultyId")]
         public Guid MapDifficultyId { get; set; }
@@ -429,16 +450,16 @@ namespace AccSaber.Models
         public string? CheckpointLabel { get; set; }
 
         [JsonProperty("checkpointLabelPosition")]
-        public CampaignLabelPosition CheckpointLabelPosition { get; set; } = CampaignLabelPosition.NONE;
+        public CampaignLabelPosition CheckpointLabelPosition { get; set; } = CampaignLabelPosition.UP;
 
         [JsonProperty("checkpointAvatarUrl")]
         public string? CheckpointAvatarUrl { get; set; } 
 
         [JsonProperty("checkpointColor")]
-        public string? CheckpointColor { get; set; } 
+        public string? CheckpointColor { get; set; }
 
         [JsonProperty("checkpointSize")]
-        public int? CheckpointSize { get; set; } 
+        public int CheckpointSize { get; set; } = 30;
 
         [JsonProperty("borderColor")]
         public string? BorderColor { get; set; } 
