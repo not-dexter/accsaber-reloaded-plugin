@@ -2052,7 +2052,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 get
                 {
+#if NEW_VERSION
                     TextObj.ForceMeshUpdate(true, true);
+#else
+                    TextObj.ForceMeshUpdate(true);
+#endif
                     return TextObj.GetRenderedValues(false);
                 }
             }
@@ -2122,7 +2126,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 ResizeTextToFit(240f * Text.Scale * OffsetData.ScaleFactor);
 
                 Canvas.ForceUpdateCanvases();
+#if NEW_VERSION
                 TextObj.ForceMeshUpdate(true, true);
+#else
+                TextObj.ForceMeshUpdate(true);
+#endif
 
                 Vector2 rectSize = TextObj.rectTransform.rect.size;
 
@@ -2141,7 +2149,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 TextObj.enableWordWrapping = useWrapping;
                 TextObj.overflowMode = TextOverflowModes.Overflow;
 
+#if NEW_VERSION
                 TextObj.ForceMeshUpdate(true, true);
+#else
+                TextObj.ForceMeshUpdate(true);
+#endif
 
                 Vector2 preferredSize;
 
@@ -2164,14 +2176,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, preferredSize.x);
                 rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, preferredSize.y);
 
+#if NEW_VERSION
                 TextObj.ForceMeshUpdate(true, true);
+#else
+                TextObj.ForceMeshUpdate(true);
+#endif
             }
 
             public void Dispose()
             {
                 OffsetData.OnScaleChanging -= ApplyOffsetData;
 
-                if (TextObj != null)
+                if (TextObj is not null)
                     UnityEngine.Object.Destroy(TextObj.gameObject);
             }
 
@@ -2213,10 +2229,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     Dictionary<string, string> values = m.Groups["content"].Success
                         ? [with(ContentMatcher.Matches(m.Groups["content"].Value)
-                    .Select(m => new KeyValuePair<string, string>(
-                        m.Groups["tag"].Value,
-                        m.Groups["value"].Value)))]
-                        : [];
+#if !NEW_VERSION
+                        .Cast<Match>()
+#endif
+                        .Select(m => new KeyValuePair<string, string>(
+                            m.Groups["tag"].Value,
+                            m.Groups["value"].Value)))]
+                            : [];
 
                     if (tag.Length < 2)
                         continue;
