@@ -48,7 +48,7 @@
             <text text='Completion Rewards' font-size='5' />
             <text text='~CampaignRewards' align='Center' font-size='3' />
           </vertical>
-          <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
+          <text id='campaign-description' text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
           <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
         </vertical>
       </vertical>

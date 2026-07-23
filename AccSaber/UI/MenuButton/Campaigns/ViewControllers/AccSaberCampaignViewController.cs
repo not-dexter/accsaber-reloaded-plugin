@@ -21,6 +21,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -86,6 +87,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [UIComponent("search-container")]
         private readonly VerticalLayoutGroup _campaignSearchContainer = null!;
+
+        [UIComponent("campaign-description")]
+        private readonly TextMeshProUGUI _campaignDescription = null!;
 
         internal InputFieldView? CampaignSearchInput { get; private set; }
         CurvedTextMeshPro? songSearchPlaceholder = null;
@@ -516,6 +520,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 CampaignSearchInput.onValueChanged.AddListener(__ => _ = UpdateTabs());
                 NoCampaignSelected = true;
             }
+            _campaignDescription.enableAutoSizing = true;
+            _campaignDescription.fontSizeMax = 3.5f;
+            _campaignDescription.fontSizeMin = 1f;
 
             CurrentTab = 0;
             InCampaign = false;
@@ -877,7 +884,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 {
                     foreach (var item in campaign.Items)
                     {
-                        items += $"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>\n";
+
+                        string quantity = item.Quantity == 1 ? "" : $"{item.Quantity}x ";
+
+                        items += $"<color={ColorUtils.RANK}>{quantity}{item.ItemName}</color>\n";
 
                     }
                 }
@@ -961,7 +971,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 StringBuilder str = new();
 
                 foreach (AccSaberCampaignItem item in map.Items)
-                    str.AppendLine($"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>");
+                {
+                    string quantity = item.Quantity == 1 ? "" : $"{item.Quantity}x ";
+                    str.AppendLine($"<color={ColorUtils.RANK}>{quantity}{item.ItemName}</color>");
+                }
 
                 str.AppendLine($"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>");
 
