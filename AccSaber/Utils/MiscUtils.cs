@@ -523,6 +523,16 @@ namespace AccSaber.Utils
         public static T Max<T>(T item1, T item2) where T : IComparable<T> => item1.CompareTo(item2) <= 0 ? item2 : item1;
         public static T Min<T>(T item1, T item2) where T : IComparable<T> => item1.CompareTo(item2) <= 0 ? item1 : item2;
 
+        public static string ReplaceFirst(this string text, string search, string replace)
+        {
+            int pos = text.IndexOf(search);
+
+            if (pos < 0)
+                return text; // Search string not found, return original
+
+            return text[..pos] + replace + text[(pos + search.Length)..];
+        }
+
         public static string GenerateNonce(int byteLength = 32)
         {
             byte[] byteArray = new byte[byteLength];

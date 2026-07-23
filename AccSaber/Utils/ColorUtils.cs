@@ -108,7 +108,8 @@ namespace AccSaber.Utils
                 alpha >= 0f ? alpha : c.a
             );
         }
-        public static string Color(this Color color) => $"#{(int)(color.r * 255):X2}{(int)(color.g * 255):X2}{(int)(color.b * 255):X2}{(int)(color.a * 255):X2}";
+        public static string Color(this Color color) => Color((Color32)color);
+        public static string Color(this Color32 color) => $"#{color.r:X2}{color.g:X2}{color.b:X2}{color.a:X2}";
         public static string ToProperColor(this string hex)
         {
             if (string.IsNullOrEmpty(hex) || hex.Length == 9)

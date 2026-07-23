@@ -19,6 +19,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
@@ -26,9 +27,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Zenject;
-
-using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 using static AccSaber.Models.CampaignModel;
+using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
@@ -58,6 +58,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         private readonly List<CampaignMapNode> campaignMapNodes = [];
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
+        private readonly List<CampaignMapText> campaignMapTexts = [];
         private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
         private ScrollRect scrollRect = null!;
         private Color currentBgColor, maxBgColors;
@@ -182,7 +183,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign)).Unwrap();
 
-                CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<AccSaberCampaignPositionable>().Concat(campaign.Barriers?.Cast<AccSaberCampaignPositionable>() ?? []));
+                CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<AccSaberCampaignScalable>()
+                    .Concat(campaign.Barriers?.Cast<AccSaberCampaignScalable>() ?? [])
+                    .Concat(campaign.Texts?.Cast<AccSaberCampaignScalable>() ?? []));
 
                 UpdateContainerValues(resetScrollbars);
 
@@ -197,6 +200,27 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 IEnumerator LoadSlowly()
                 {
+                    if (campaign.Texts is not null)
+                    {
+                        foreach (AccSaberCampaignText text in campaign.Texts)
+                        {
+                            CampaignMapText mapText = new(text, (RectTransform)NodeContainer.transform, CurrentOffsetData);
+
+                            campaignMapTexts.Add(mapText);
+
+                            ++loads;
+
+                            if (loads >= config.CampaignMaxObjectLoadsPerFrame)
+                            {
+                                loads = 0;
+                                yield return null;
+                            }
+                        }
+
+                        CurrentOffsetData.RecalculateValues();
+                        UpdateContainerValues(resetScrollbars);
+                    }
+
                     if (campaign.Barriers is not null)
                     {
                         foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
@@ -258,6 +282,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         }
                     }
 
+                    
                 }
 
                 await Coroutines.AsTask(LoadSlowly());
@@ -345,7 +370,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         private void ClearDisplay()
         {
-            foreach (IDisposable node in campaignMapNodes.Cast<IDisposable>().Concat(campaignMapBarriers))
+            foreach (IDisposable node in campaignMapNodes.Cast<IDisposable>().Concat(campaignMapBarriers).Concat(campaignMapTexts))
                 node.Dispose();
 
             foreach (var (_, _, go) in mapNodeArrows)
@@ -353,6 +378,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             campaignMapNodes.Clear();
             campaignMapBarriers.Clear();
+            campaignMapTexts.Clear();
             mapNodeArrows.Clear();
         }
         private void UpdateContainerValues(bool resetScrollbars)
@@ -485,7 +511,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             IEnumerator LoadSlowly()
             {
-                IEnumerator HandleArrows(AccSaberCampaignPositionablePrereq node, PositionData current)
+                IEnumerator HandleArrows(AccSaberCampaignScalablePrereq node, PositionData current)
                 {
                     if (!knownPositions.TryAdd(node.Id, current))
                     {
@@ -1199,10 +1225,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
             [UIValue("NodeWidth")]
-            public float NodeWidth => Map.Size * OffsetData.ScaleFactor;
+            public float NodeWidth => Map.Scale * OffsetData.ScaleFactor;
 
             [UIValue("NodeHeight")]
-            public float NodeHeight => Map.Size * OffsetData.ScaleFactor;
+            public float NodeHeight => Map.Scale * OffsetData.ScaleFactor;
 
             [UIValue("NodeXPos")]
             public float NodeXPos => Map.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x;
@@ -1690,7 +1716,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 SizeDelta = new Vector2(
                     WIDTH * OffsetData.ScaleFactor,
-                    Barrier.Size * OffsetData.ScaleFactor
+                    Barrier.Scale * OffsetData.ScaleFactor
                 );
 
                 text.fontSize = FONT_SIZE * OffsetData.ScaleFactor;
@@ -1931,6 +1957,254 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 UnityEngine.Object.Destroy(obj);
                 UnityEngine.Object.Destroy(textObj);
+            }
+        }
+
+        internal class CampaignMapText : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
+        {
+            public readonly AccSaberCampaignText Text;
+            public readonly AccSaberCampaignOffsetData OffsetData;
+
+            private readonly TextMeshProUGUI TextObj;
+
+            public Vector2 Position { get; private set; }
+            public Vector2 RenderedSize
+            {
+                get
+                {
+                    TextObj.ForceMeshUpdate(true, true);
+                    return TextObj.GetRenderedValues(false);
+                }
+            }
+            public Vector2 Size
+            {
+                get
+                {
+                    Rect rect = TextObj.rectTransform.rect;
+                    return rect.size;
+                }
+            }
+
+            public Rect GetRect()
+            {
+                Vector2 size = Size;
+
+                Vector2 min = Position - size * 0.5f;
+                Vector2 max = Position + size * 0.5f;
+
+                return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+            }
+
+            public CampaignMapText(AccSaberCampaignText text, RectTransform parent, AccSaberCampaignOffsetData offsetData)
+            {
+                Text = text;
+                OffsetData = offsetData;
+
+                TextObj = BeatSaberUI.CreateText(parent, ParseGivenContent(text.Content), Vector2.zero);
+
+                RectTransform rt = TextObj.rectTransform;
+
+                // Since map coordinates are centered on the parent plane, use center anchors.
+                rt.anchorMin = new Vector2(0.5f, 0.5f);
+                rt.anchorMax = new Vector2(0.5f, 0.5f);
+
+                // This makes anchoredPosition refer to the center of the text rect.
+                rt.pivot = new Vector2(0.5f, 0.5f);
+
+                // Center the actual text inside the RectTransform.
+                TextObj.alignment = TextAlignmentOptions.Center;
+
+                TextObj.raycastTarget = false;
+
+                if (!TextObj.TryGetComponent(out LayoutElement le))
+                    le = TextObj.gameObject.AddComponent<LayoutElement>();
+
+                le.ignoreLayout = true;
+
+                ApplyOffsetData();
+
+                OffsetData.OnScaleChanging += ApplyOffsetData;
+            }
+
+            private void ApplyOffsetData()
+            {
+                UpdateTextSize();
+
+                Position = new(Text.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x, -Text.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y);
+                //Position = new Vector2(Text.PositionX * OffsetData.OffsetSize, -Text.PositionY * OffsetData.OffsetSize) + OffsetData.Offset;
+
+                TextObj.rectTransform.anchoredPosition = Position;
+            }
+            private void UpdateTextSize()
+            {
+                TextObj.fontSize = Text.Scale * 15f * OffsetData.ScaleFactor;
+
+                ResizeTextToFit(240f * Text.Scale * OffsetData.ScaleFactor);
+
+                Canvas.ForceUpdateCanvases();
+                TextObj.ForceMeshUpdate(true, true);
+
+                Vector2 rectSize = TextObj.rectTransform.rect.size;
+
+                // Extra safety padding. TMP glyphs can slightly exceed calculated bounds.
+                rectSize += new Vector2(4f, 4f);
+
+                Text.Size = rectSize;
+            }
+
+            private void ResizeTextToFit(float maxWidth = 0f)
+            {
+                RectTransform rt = TextObj.rectTransform;
+
+                bool useWrapping = maxWidth > 0f;
+
+                TextObj.enableWordWrapping = useWrapping;
+                TextObj.overflowMode = TextOverflowModes.Overflow;
+
+                TextObj.ForceMeshUpdate(true, true);
+
+                Vector2 preferredSize;
+
+                if (useWrapping)
+                {
+                    preferredSize = TextObj.GetPreferredValues(TextObj.text, maxWidth, Mathf.Infinity);
+
+                    preferredSize.x = Mathf.Min(preferredSize.x, maxWidth);
+                }
+                else
+                {
+                    preferredSize = TextObj.GetPreferredValues(TextObj.text, Mathf.Infinity, Mathf.Infinity);
+                }
+
+                const float padding = 4f;
+
+                preferredSize.x = Mathf.Ceil(preferredSize.x + padding);
+                preferredSize.y = Mathf.Ceil(preferredSize.y + padding);
+
+                rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, preferredSize.x);
+                rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, preferredSize.y);
+
+                TextObj.ForceMeshUpdate(true, true);
+            }
+
+            public void Dispose()
+            {
+                OffsetData.OnScaleChanging -= ApplyOffsetData;
+
+                if (TextObj != null)
+                    UnityEngine.Object.Destroy(TextObj.gameObject);
+            }
+
+            private static readonly Regex TagMatcher = new(@"</?(?'name'[\w_]+) ?(?'content'[^>]+)?>");
+            private static readonly Regex ContentMatcher = new(@"(?'tag'[\w_]+)=(?'value'\d+|\w+|""[^""]+"")");
+
+            private static string ParseGivenContent(string givenStr)
+            {
+                MatchCollection mc = TagMatcher.Matches(givenStr);
+                Queue<(string oldStr, string newStr)> toReplace = [];
+                Stack<(string oldStr, string newStr)> closingTagReplacement = [];
+
+                foreach (Match m in mc)
+                {
+                    string tag = m.Groups["name"].Value;
+
+                    if (m.Value[1] == '/')
+                    {
+                        Stack<(string oldStr, string newStr)> temp = [];
+
+                        while (closingTagReplacement.Count > 0)
+                        {
+                            if (closingTagReplacement.Peek().oldStr.Equals(m.Value))
+                                break;
+
+                            temp.Push(closingTagReplacement.Pop());
+                        }
+
+                        if (closingTagReplacement.Count == 0)
+                            Plugin.Log.Warn("There was an error parsing the text content!\n" + givenStr);
+                        else
+                            toReplace.Enqueue(closingTagReplacement.Pop());
+
+                        while (temp.Count > 0)
+                            closingTagReplacement.Push(temp.Pop());
+
+                        continue;
+                    }
+
+                    Dictionary<string, string> values = m.Groups["content"].Success
+                        ? [with(ContentMatcher.Matches(m.Groups["content"].Value)
+                    .Select(m => new KeyValuePair<string, string>(
+                        m.Groups["tag"].Value,
+                        m.Groups["value"].Value)))]
+                        : [];
+
+                    if (tag.Length < 2)
+                        continue;
+
+                    bool failed = true;
+
+                    switch (tag)
+                    {
+                        case "span":
+                            if (values.TryGetValue("style", out string content))
+                            {
+                                failed = false;
+
+                                if (content[1..].StartsWith("color:rgb("))
+                                {
+                                    int current = 11, set = 0;
+                                    byte[] rgbVals = new byte[3];
+
+                                    for (int i = 0; i < 3; ++i, ++set)
+                                    {
+                                        while (current < content.Length && !char.IsDigit(content[current]))
+                                            ++current;
+
+                                        if (current >= content.Length)
+                                        {
+                                            Plugin.Log.Warn("Cannot parse the given content: " + content);
+                                            break;
+                                        }
+
+                                        int len = 0;
+
+                                        while (current < content.Length && char.IsDigit(content[current]))
+                                        {
+                                            ++len;
+                                            ++current;
+                                        }
+
+                                        rgbVals[i] = byte.Parse(content[(current - len)..current]);
+                                    }
+
+                                    if (set < 3)
+                                        break;
+
+                                    toReplace.Enqueue((m.Value, $"<color={new Color32(rgbVals[0], rgbVals[1], rgbVals[2], 255).Color()}>"));
+                                    closingTagReplacement.Push(("</span>", "</color>"));
+                                }
+                            }
+
+                            break;
+                    }
+
+                    if (failed)
+                    {
+                        toReplace.Enqueue((m.Value, ""));
+                        closingTagReplacement.Push(($"</{tag}>", ""));
+                    }
+                }
+
+                while (closingTagReplacement.Count > 0)
+                    toReplace.Enqueue(closingTagReplacement.Pop());
+
+                while (toReplace.Count > 0)
+                {
+                    var (oldStr, newStr) = toReplace.Dequeue();
+                    givenStr = givenStr.ReplaceFirst(oldStr, newStr);
+                }
+
+                return givenStr;
             }
         }
     }

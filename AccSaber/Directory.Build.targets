@@ -182,7 +182,7 @@
         OutputPath=$(MSBuildProjectDirectory)\bin\Release\%(BeatSaberMultiBuild.Identity)\;
         OutDir=$(MSBuildProjectDirectory)\bin\Release\%(BeatSaberMultiBuild.Identity)\;
         IntermediateOutputPath=$(MSBuildProjectDirectory)\obj\Release\%(BeatSaberMultiBuild.Identity)\;
-        DisableCopyToPlugins=true;
+        DisableCopyToPlugins=false;
         DisableZipRelease=false" />
   </Target>
 

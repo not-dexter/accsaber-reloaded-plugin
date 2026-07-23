@@ -201,106 +201,86 @@ namespace AccSaber.Models
         public const float NODE_PADDING = 1f;
         public const int NODE_CONTAINER_PADDING = 5;
 
-        public event Action? OnScaleChanged;
+        public event Action? OnScaleChanging, OnScaleChanged;
 
-        public Point MinPosition { get; }
-        public float MinRawSize { get; }
-
-        public Point MaxPosition { get; }
-        public float MaxRawSize { get; }
-        public Vector2 RawSizeAtMinEdge { get; }
-        public Vector2 RawSizeAtMaxEdge { get; }
-
-        public Point PositionDelta { get; }
-
+        private readonly List<AccSaberCampaignScalable> nodes;
 
         public Vector2 ContainerSize { get; private set; }
-        public Vector2 Shift { get; private set; }
         public Vector2 Offset { get; private set; }
-        public Vector2 SizeAtMinEdge { get; private set; }
-        public Vector2 SizeAtMaxEdge { get; private set; }
+
         public float ScaleFactor { get; private set; }
         public float OffsetSize { get; private set; }
 
-        public AccSaberCampaignOffsetData(float scaleFactor, IEnumerable<AccSaberCampaignPositionable> nodes)
+        public Vector2 BoundsMin { get; private set; }
+        public Vector2 BoundsMax { get; private set; }
+
+        public AccSaberCampaignOffsetData(float scaleFactor, IEnumerable<AccSaberCampaignScalable> nodes)
         {
             if (nodes is null || !nodes.Any())
                 throw new ArgumentException("The node IEnumerable given must not be null and contain elements!");
 
-            int minHeight = int.MaxValue, maxHeight = int.MinValue, minWidth = int.MaxValue, maxWidth = int.MinValue;
-            float minSize = float.MaxValue, maxSize = float.MinValue;
-            float minHeightSize = 0f, maxHeightSize = 0f, minWidthSize = 0f, maxWidthSize = 0f;
-
-            foreach (AccSaberCampaignPositionable map in nodes)
-            {
-                if (minHeight > map.PositionY)
-                {
-                    minHeight = map.PositionY;
-                    minHeightSize = map.Size;
-                }
-
-                if (maxHeight < map.PositionY)
-                {
-                    maxHeight = map.PositionY;
-                    maxHeightSize = map.Size;
-                }
-
-                if (minWidth > map.PositionX)
-                {
-                    minWidth = map.PositionX;
-                    minWidthSize = map.Size;
-                }
-
-                if (maxWidth < map.PositionX)
-                {
-                    maxWidth = map.PositionX;
-                    maxWidthSize = map.Size;
-                }
-
-                if (minSize > map.Size)
-                    minSize = map.Size;
-
-                if (maxSize < map.Size)
-                    maxSize = map.Size;
-            }
-
-            MinPosition = new(minWidth, minHeight);
-            MinRawSize = minSize;
-            RawSizeAtMinEdge = new(minWidthSize, minHeightSize);
-
-            MaxPosition = new(maxWidth, maxHeight);
-            MaxRawSize = maxSize;
-            RawSizeAtMaxEdge = new(maxWidthSize, maxHeightSize);
-
-            PositionDelta = new(maxWidth - minWidth, maxHeight - minHeight);
-
-#if PRINT_DEBUG
-            Plugin.Log.Info($"MinPosition = {MinPosition}, MaxPosition = {MaxPosition}, MinRawSize = {MinRawSize}, MaxRawSize = {MaxRawSize}, MaxRawSizeAtMinEdge = {RawSizeAtMinEdge}, MaxRawSizeAtMaxEdge = {RawSizeAtMaxEdge}");
-#endif
+            this.nodes = [.. nodes];
 
             RecalculateValuesWithScale(scaleFactor);
+        }
+
+        public void RecalculateValues()
+        {
+            RecalculateValuesWithScale(ScaleFactor);
         }
 
         public void RecalculateValuesWithScale(float scaleFactor)
         {
             ScaleFactor = scaleFactor;
-            OffsetSize = MinRawSize * scaleFactor + NODE_PADDING;
 
-            SizeAtMinEdge = RawSizeAtMinEdge * scaleFactor;
-            SizeAtMaxEdge = RawSizeAtMaxEdge * scaleFactor;
+            // This is the distance between logical map coordinates.
+            OffsetSize = 48f * scaleFactor + NODE_PADDING;
 
-            float width = PositionDelta.X * OffsetSize + SizeAtMinEdge.x / 2f + SizeAtMaxEdge.x / 2f + NODE_CONTAINER_PADDING * 2;
-            float height = PositionDelta.Y * OffsetSize + SizeAtMinEdge.y / 2f + SizeAtMaxEdge.y / 2f + NODE_CONTAINER_PADDING * 2;
-            ContainerSize = new(width, height);
+            OnScaleChanging?.Invoke();
 
-            Shift = new((SizeAtMaxEdge.x - SizeAtMinEdge.x) / 4f, (SizeAtMaxEdge.y - SizeAtMinEdge.y) / 4f);
-            Offset = new(-(MinPosition.X + MaxPosition.X) / 2f * OffsetSize + Shift.x, -(MinPosition.Y + MaxPosition.Y) / 2f * OffsetSize - Shift.y);
+            float left = float.PositiveInfinity;
+            float right = float.NegativeInfinity;
+            float bottom = float.PositiveInfinity;
+            float top = float.NegativeInfinity;
+
+            foreach (AccSaberCampaignScalable node in nodes)
+            {
+                float centerX = node.PositionX * OffsetSize;
+                float centerY = node.PositionY * OffsetSize;
+
+                Vector2 size = node is AccSaberCampaignSizable sizeNode ? sizeNode.Size : Vector2.one * (node.Scale * scaleFactor);
+
+                float halfWidth = size.x * 0.5f;
+                float halfHeight = size.y * 0.5f;
+
+                left = Mathf.Min(left, centerX - halfWidth);
+                right = Mathf.Max(right, centerX + halfWidth);
+
+                bottom = Mathf.Min(bottom, centerY - halfHeight);
+                top = Mathf.Max(top, centerY + halfHeight);
+            }
+
+            BoundsMin = new Vector2(left, bottom);
+            BoundsMax = new Vector2(right, top);
+
+            float width = right - left;
+            float height = top - bottom;
+
+            ContainerSize = new Vector2(
+                width + NODE_CONTAINER_PADDING * 2f,
+                height + NODE_CONTAINER_PADDING * 2f
+            );
+
+            Vector2 boundsCenter = new((left + right) * 0.5f, (bottom + top) * 0.5f);
+
+            Offset = -boundsCenter;
 
             OnScaleChanged?.Invoke();
 
 #if PRINT_DEBUG
-            Plugin.Log.Info($"ContainerSize = {ContainerSize}, Shift = {Shift}, Offset = {Offset}, MaxSizeAtMinEdge = {SizeAtMinEdge}, MaxSizeAtMaxEdge = {SizeAtMaxEdge}");
-            Plugin.Log.Info($"ScaleFactor = {ScaleFactor}, OffsetSize = {OffsetSize}");
+        Plugin.Log.Info($"BoundsMin = {BoundsMin}, BoundsMax = {BoundsMax}");
+        Plugin.Log.Info($"ContainerSize = {ContainerSize}, Offset = {Offset}");
+        Plugin.Log.Info($"ScaleFactor = {ScaleFactor}, OffsetSize = {OffsetSize}");
 #endif
         }
     }
@@ -343,14 +323,25 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal class AccSaberCampaignPositionable : CampaignModel
     {
-        [JsonProperty("size")]
-        public int Size { get; set; }
 
         [JsonProperty("positionX")]
         public int PositionX { get; set; }
 
         [JsonProperty("positionY")]
         public int PositionY { get; set; }
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignScalable : AccSaberCampaignPositionable
+    {
+        [JsonProperty("size")]
+        public virtual float Scale { get; set; }
+    }
+
+    internal class AccSaberCampaignSizable : AccSaberCampaignScalable
+    {
+        [JsonIgnore]
+        public Vector2 Size { get; set; }
     }
 
     [UsedImplicitly]
@@ -373,7 +364,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignPositionablePrereq : AccSaberCampaignPositionable, Utils.Misc.INode<Guid>
+    internal class AccSaberCampaignScalablePrereq : AccSaberCampaignScalable, Utils.Misc.INode<Guid>
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -386,7 +377,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignMap : AccSaberCampaignPositionablePrereq
+    internal class AccSaberCampaignMap : AccSaberCampaignScalablePrereq
     {
         [JsonProperty("mapDifficultyId")]
         public Guid MapDifficultyId { get; set; }
@@ -465,8 +456,8 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            if (Size == default)
-                Size = 48;
+            if (Scale == default)
+                Scale = 48;
 
             if (CategoryId is not null)
                 Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
@@ -475,7 +466,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionablePrereq, Utils.Misc.INodeAffected<Guid>
+    internal class AccSaberCampaignBarrier : AccSaberCampaignScalablePrereq, Utils.Misc.INodeAffected<Guid>
     {
         [JsonProperty("conditionType")]
         public BarrierConditionType ConditionType { get; set; }
@@ -523,15 +514,15 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            if (Size == default)
-                Size = 48;
+            if (Scale == default)
+                Scale = 48;
 
             AffectedByIds = [.. AffectedCampaignDifficultyIds.Union(InwardArrows)];
         }
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignText : CampaignModel
+    internal class AccSaberCampaignText : AccSaberCampaignSizable
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -539,17 +530,11 @@ namespace AccSaber.Models
         [JsonProperty("content")]
         public string Content { get; set; } = null!;
 
-        [JsonProperty("positionX")]
-        public int PositionX { get; set; }
-
-        [JsonProperty("positionY")]
-        public int PositionY { get; set; }
-
         [JsonProperty("font")]
         public string Font { get; set; } = null!;
 
         [JsonProperty("scale")]
-        public float Scale { get; set; }
+        public override float Scale { get; set; }
 
         [JsonProperty("color")]
         public string Color { get; set; } = null!;
@@ -578,7 +563,7 @@ namespace AccSaber.Models
         public AccSaberCampaign Campaign { get; set; } = null!;
 
         [JsonProperty("progressStatus")]
-        public AccSaberCampaign.UserCampaignProgress? ProgressStatus { get; set; }
+        public UserCampaignProgress? ProgressStatus { get; set; }
 
         [JsonProperty("startedAt")]
         public DateTime StartedAt { get; set; }
