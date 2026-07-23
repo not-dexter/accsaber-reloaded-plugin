@@ -121,25 +121,25 @@ namespace AccSaber.Counter.Hosts
 
             switch (Map.RequirementType)
             {
-                case AccSaberCampaignMap.CampaignRequirementType.ACC:
+                case CampaignModel.CampaignRequirementType.ACC:
                     sc.scoringForNoteFinishedEvent += AccCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.AP:
+                case CampaignModel.CampaignRequirementType.AP:
                     Calc = Plugin.Container.TryResolve<APCalc>();
                     sc.scoringForNoteFinishedEvent += ApCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.SCORE:
+                case CampaignModel.CampaignRequirementType.SCORE:
                     sc.scoreDidChangeEvent += ScoreCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.STREAK_115:
+                case CampaignModel.CampaignRequirementType.STREAK_115:
                     sc.scoringForNoteFinishedEvent += StreakCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.FC:
+                case CampaignModel.CampaignRequirementType.FC:
                     UpdateColor(true);
                     DisplayText.SetText("FC!");
                     cc.comboBreakingEventHappenedEvent += FCCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.PASS:
+                case CampaignModel.CampaignRequirementType.PASS:
                     UpdateColor(true);
                     DisplayText.SetText("Pass!");
                     energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
@@ -157,22 +157,22 @@ namespace AccSaber.Counter.Hosts
 
             switch (Map.RequirementType)
             {
-                case AccSaberCampaignMap.CampaignRequirementType.ACC:
+                case CampaignModel.CampaignRequirementType.ACC:
                     sc.scoringForNoteFinishedEvent -= AccCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.AP:
+                case CampaignModel.CampaignRequirementType.AP:
                     sc.scoringForNoteFinishedEvent -= ApCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.SCORE:
+                case CampaignModel.CampaignRequirementType.SCORE:
                     sc.scoreDidChangeEvent -= ScoreCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.STREAK_115:
+                case CampaignModel.CampaignRequirementType.STREAK_115:
                     sc.scoringForNoteFinishedEvent -= StreakCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.FC:
+                case CampaignModel.CampaignRequirementType.FC:
                     cc.comboBreakingEventHappenedEvent -= FCCounter;
                     break;
-                case AccSaberCampaignMap.CampaignRequirementType.PASS:
+                case CampaignModel.CampaignRequirementType.PASS:
                     energy.gameEnergyDidReach0Event -= FCCounter;
                     break;
             }

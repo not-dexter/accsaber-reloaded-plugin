@@ -13,9 +13,82 @@ using UnityEngine;
 
 namespace AccSaber.Models
 {
+    public abstract class CampaignModel : IModel 
+    {
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignStatus.java
+        public enum CampaignStatus
+        {
+            DRAFT, PUBLISHED, EDITING, CURATED
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignCompletionMode.java
+        public enum CampaignCompletionMode
+        {
+            TERMINAL, ALL
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/UserCampaignStatus.java
+        public enum UserCampaignProgress
+        {
+            IN_PROGRESS,
+            COMPLETED,
+            ABANDONED
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignTagKind.java
+        public enum CampaignTagKind
+        {
+            CATEGORY, DIFFICULTY, THEME, GENRE
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java
+        public enum CampaignRequirementType
+        {
+            ACC,
+            AP,
+            SCORE,
+            STREAK_115,
+            FC,
+            RANK,
+            PASS
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignPrerequisiteMode.java
+        public enum CampaignPrerequisiteMode
+        {
+            OR,
+            AND
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignLabelPosition.java
+        public enum CampaignLabelPosition
+        {
+            LEFT,
+            RIGHT,
+            UP,
+            DOWN,
+            NONE
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/BarrierConditionType.java
+        public enum BarrierConditionType
+        {
+            AVERAGE_ACC,
+            AVERAGE_AP,
+            AP_MAX,
+            ACC_MAX,
+            STREAK_115_AVERAGE,
+            STREAK_115_MAX,
+            FC,
+            AVERAGE_RANK,
+            MAX_RANK,
+            COMPLETION_COUNT,
+            PASS
+        }
+    }
 
     [UsedImplicitly]
-    internal class AccSaberCampaign<T> : IModel where T : Utils.Misc.INode<Guid> 
+    internal class AccSaberCampaign<T> : CampaignModel where T : Utils.Misc.INode<Guid> 
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -101,7 +174,7 @@ namespace AccSaber.Models
         public DateTime CreatedAt { get; set; }
 
         [JsonProperty("tags")]
-        public List<CampaignTags>? Tags { get; set; }
+        public List<CampaignTag>? Tags { get; set; }
 
         [JsonProperty("difficulties")]
         public List<AccSaberCampaignMap>? Difficulties { get; set; }
@@ -119,25 +192,7 @@ namespace AccSaber.Models
         public AccSaberCampaignOffsetData? OffsetData { get; set; }
 
 
-        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignStatus.java
-        public enum CampaignStatus
-        {
-            DRAFT, PUBLISHED, EDITING, CURATED
-        }
-
-        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignCompletionMode.java
-        public enum CampaignCompletionMode
-        {
-            TERMINAL, ALL
-        }
-
-        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/UserCampaignStatus.java
-        public enum UserCampaignProgress
-        {
-            IN_PROGRESS,
-            COMPLETED,
-            ABANDONED
-        }
+        
     }
     internal class AccSaberCampaign : AccSaberCampaign<AccSaberCampaignMap>;
 
@@ -251,7 +306,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class CampaignTags
+    internal class CampaignTag : CampaignModel
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -269,15 +324,11 @@ namespace AccSaber.Models
         public bool System { get; set; }
 
 
-        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignTagKind.java
-        public enum CampaignTagKind
-        {
-            CATEGORY, DIFFICULTY, THEME, GENRE
-        }
+        
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignItem : IModel
+    internal class AccSaberCampaignItem : CampaignModel
     {
         [JsonProperty("itemId")]
         public Guid ItemId { get; set; }
@@ -290,12 +341,9 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignPositionable : IModel
+    internal class AccSaberCampaignPositionable : CampaignModel
     {
         [JsonProperty("size")]
-        public string SizeStr { get; set; } = "0";
-
-        [JsonIgnore]
         public int Size { get; set; }
 
         [JsonProperty("positionX")]
@@ -303,17 +351,10 @@ namespace AccSaber.Models
 
         [JsonProperty("positionY")]
         public int PositionY { get; set; }
-
-        [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
-        {
-            if (int.TryParse(SizeStr, out int size))
-                Size = size;
-        }
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignPrereq
+    internal class AccSaberCampaignPrereq : CampaignModel
     {
         [JsonProperty("comesFromCampaignDifficultyId")]
         public Guid Id { get; set; }
@@ -350,7 +391,16 @@ namespace AccSaber.Models
         [JsonProperty("mapDifficultyId")]
         public Guid MapDifficultyId { get; set; }
 
-        // categoryId?, complexity?, beatsaverCode?, maxScore?
+        [JsonProperty("mapId")]
+        public Guid MapId { get; set; }
+
+        [JsonProperty("categoryId")]
+        public Guid? CategoryId { get; set; }
+
+        [JsonIgnore]
+        public APCategory Category { get; set; } = APCategory.Overall;
+
+        // complexity?, beatsaverCode?, maxScore?
 
         [JsonProperty("mapAuthor")]
         public string MapAuthor { get; set; } = null!;
@@ -370,6 +420,8 @@ namespace AccSaber.Models
         [JsonProperty("characteristic")]
         public string Characteristic { get; set; } = null!;
 
+        // mapDifficultyStatus
+
         [JsonProperty("requirementType")]
         public CampaignRequirementType RequirementType { get; set; }
 
@@ -377,10 +429,25 @@ namespace AccSaber.Models
         public float RequirementValue { get; set; }
 
         [JsonProperty("prerequisiteMode")]
-        public string PrerequisiteMode { get; set; } = null!;
+        public CampaignPrerequisiteMode PrerequisiteMode { get; set; }
 
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
+
+        [JsonProperty("checkpointLabel")]
+        public string? CheckpointLabel { get; set; }
+
+        [JsonProperty("checkpointLabelPosition")]
+        public CampaignLabelPosition CheckpointLabelPosition { get; set; } = CampaignLabelPosition.NONE;
+
+        [JsonProperty("checkpointAvatarUrl")]
+        public string? CheckpointAvatarUrl { get; set; } 
+
+        [JsonProperty("checkpointColor")]
+        public string? CheckpointColor { get; set; } 
+
+        [JsonProperty("checkpointSize")]
+        public int? CheckpointSize { get; set; } 
 
         [JsonProperty("borderColor")]
         public string? BorderColor { get; set; } 
@@ -400,19 +467,11 @@ namespace AccSaber.Models
         {
             if (Size == default)
                 Size = 48;
+
+            if (CategoryId is not null)
+                Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
         }
 
-        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java
-        public enum CampaignRequirementType
-        {
-            ACC,
-            AP,
-            SCORE,
-            STREAK_115,
-            FC,
-            RANK,
-            PASS
-        }
     }
 
     [UsedImplicitly]
@@ -469,37 +528,10 @@ namespace AccSaber.Models
 
             AffectedByIds = [.. AffectedCampaignDifficultyIds.Union(InwardArrows)];
         }
-
-
-        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/BarrierConditionType.java
-        public enum BarrierConditionType
-        {
-            AVERAGE_ACC,
-            AVERAGE_AP,
-            AP_MAX,
-            ACC_MAX,
-            STREAK_115_AVERAGE,
-            STREAK_115_MAX,
-            FC,
-            AVERAGE_RANK,
-            MAX_RANK,
-            COMPLETION_COUNT,
-            PASS
-        }
-
-        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignLabelPosition.java
-        public enum CampaignLabelPosition
-        {
-            LEFT,
-            RIGHT,
-            UP,
-            DOWN,
-            NONE
-        }
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignText : IModel
+    internal class AccSaberCampaignText : CampaignModel
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -526,7 +558,7 @@ namespace AccSaber.Models
         public string Effects { get; set; } = null!;
     }
 
-    internal class AccSaberCampaignPaged<T> : IModel where T : Utils.Misc.INode<Guid>
+    internal class AccSaberCampaignPaged<T> : CampaignModel where T : Utils.Misc.INode<Guid>
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -537,7 +569,7 @@ namespace AccSaber.Models
         [JsonProperty("progressStatus")]
         public string? ProgressStatus { get; set; }
     }
-    internal class AccSaberCampaignPaged : IModel
+    internal class AccSaberCampaignPaged : CampaignModel
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }

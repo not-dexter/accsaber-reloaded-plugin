@@ -355,10 +355,10 @@ namespace AccSaber.Managers
 
             return Success;
         }
-        public async Task<List<CampaignTags>> GetCampaignTags()
+        public async Task<List<CampaignTag>> GetCampaignTags()
         {
 
-            List<CampaignTags>? content = await APIHandler.CallAPI_Json<List<CampaignTags>>(HelpfulPaths.APAPI_CAMPAIGN_TAGS, AccsaberAPI.Throttler);
+            List<CampaignTag>? content = await APIHandler.CallAPI_Json<List<CampaignTag>>(HelpfulPaths.APAPI_CAMPAIGN_TAGS, AccsaberAPI.Throttler);
 
             if (content is null)
             {
@@ -775,7 +775,7 @@ namespace AccSaber.Managers
             this(
                 playerValues,
                 new(campaign.Difficulties.Cast<INode<Guid>>().Concat(campaign.Barriers)),
-                campaign.Difficulties.Where(map => map.PrerequisiteMode.Equals("AND")).Select(map => map.Id)
+                campaign.Difficulties.Where(map => map.PrerequisiteMode == CampaignModel.CampaignPrerequisiteMode.AND).Select(map => map.Id)
                 )
         { }
 

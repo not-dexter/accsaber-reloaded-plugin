@@ -26,7 +26,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Zenject;
+
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
+using static AccSaber.Models.CampaignModel;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
@@ -1192,6 +1194,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIComponent("requiresAllImage")]
             private readonly ImageView RequiresAllImage = null!;
 
+            [UIComponent("checkpointText")]
+            private readonly TextMeshProUGUI CheckpointText = null!;
+
 
             [UIValue("NodeWidth")]
             public float NodeWidth => Map.Size * OffsetData.ScaleFactor;
@@ -1271,7 +1276,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 this.config = config;
 
                 IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
-                requiresAllPrereqs = map.PrerequisiteMode.Equals("AND");
+                requiresAllPrereqs = map.PrerequisiteMode == CampaignPrerequisiteMode.AND;
                 ShowPrereqIndicator = config.ShowPrereqIndicator && requiresAllPrereqs;
 
                 offsetData.OnScaleChanged += OnOffsetDataChanged;
@@ -1289,12 +1294,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     BorderImage.raycastTarget = false;
 
                     if (string.IsNullOrEmpty(Map.BorderColor))
-                    {
-                        // Fetching from cache is ok because the map will have been loaded at this point
-                        APCategory category = serialUtils.GetDiffById(Map.MapDifficultyId)?.Category ?? APCategory.Overall;
-                        BorderImage.color = ColorUtils.GetColor(category).Color();
-                    }
-                    else BorderImage.color = Map.BorderColor!.Color();
+                        BorderImage.color = ColorUtils.GetColor(Map.Category).Color();
+                    else 
+                        BorderImage.color = Map.BorderColor!.Color();
 
                     ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
                     MaskImage.sprite = GetFillSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame).GetAwaiter().GetResult();
@@ -1313,12 +1315,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     RectTransform transform = (RectTransform)RequiresAllImage.transform;
                     transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-#if !NEW_VERSION
-                    transform.anchorMin = new(0.75f, 0.75f);
-                    transform.anchorMax = new(1f, 1f);
-#endif
 
                     postParse = true;
+                    SetupCheckpointLabel();
                     UpdateCover();
                     UpdateProgress();
 #if PRINT_DEBUG
@@ -1383,6 +1382,86 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
 
+            private void SetupCheckpointLabel()
+            {
+                if (!postParse)
+                    return;
+
+                if (Map.CheckpointLabelPosition == CampaignLabelPosition.NONE || string.IsNullOrWhiteSpace(Map.CheckpointLabel))
+                {
+                    CheckpointText.gameObject.SetActive(false);
+                    return;
+                }
+
+                CheckpointText.gameObject.SetActive(true);
+
+                // Make sure the text does not affect the stack layout.
+                LayoutElement layoutElement = CheckpointText.GetComponent<LayoutElement>();
+                if (layoutElement is null)
+                    layoutElement = CheckpointText.gameObject.AddComponent<LayoutElement>();
+
+                layoutElement.ignoreLayout = true;
+
+                CheckpointText.text = Map.CheckpointLabel;
+                CheckpointText.color = string.IsNullOrEmpty(Map.CheckpointColor) ? Color.white : Map.CheckpointColor!.Color();
+
+                CheckpointText.fontSize = Math.Max(1, Map.CheckpointSize!.Value * OffsetData.ScaleFactor);
+                CheckpointText.alignment = TextAlignmentOptions.Center;
+                CheckpointText.enableWordWrapping = false;
+                CheckpointText.overflowMode = TextOverflowModes.Overflow;
+                CheckpointText.raycastTarget = false;
+
+                RectTransform rectTransform = (RectTransform)CheckpointText.transform;
+                rectTransform.SetAsLastSibling();
+
+                rectTransform.localRotation = Quaternion.identity;
+                rectTransform.localScale = Vector3.one;
+
+                float padding = Mathf.Max(2f, NodeWidth * 0.05f);
+
+                switch (Map.CheckpointLabelPosition)
+                {
+                    case CampaignLabelPosition.UP:
+                        rectTransform.anchorMin = new Vector2(0.5f, 1f);
+                        rectTransform.anchorMax = new Vector2(0.5f, 1f);
+                        rectTransform.pivot = new Vector2(0.5f, 0f);
+                        rectTransform.anchoredPosition = new Vector2(0f, padding);
+                        break;
+
+                    case CampaignLabelPosition.DOWN:
+                        rectTransform.anchorMin = new Vector2(0.5f, 0f);
+                        rectTransform.anchorMax = new Vector2(0.5f, 0f);
+                        rectTransform.pivot = new Vector2(0.5f, 1f);
+                        rectTransform.anchoredPosition = new Vector2(0f, -padding);
+                        break;
+
+                    case CampaignLabelPosition.LEFT:
+                        rectTransform.anchorMin = new Vector2(0f, 0.5f);
+                        rectTransform.anchorMax = new Vector2(0f, 0.5f);
+                        rectTransform.pivot = new Vector2(1f, 0.5f);
+                        rectTransform.anchoredPosition = new Vector2(-padding, 0f);
+                        break;
+
+                    case CampaignLabelPosition.RIGHT:
+                        rectTransform.anchorMin = new Vector2(1f, 0.5f);
+                        rectTransform.anchorMax = new Vector2(1f, 0.5f);
+                        rectTransform.pivot = new Vector2(0f, 0.5f);
+                        rectTransform.anchoredPosition = new Vector2(padding, 0f);
+                        break;
+
+                    default:
+                        CheckpointText.gameObject.SetActive(false);
+                        return;
+                }
+
+                CheckpointText.ForceMeshUpdate();
+
+                rectTransform.sizeDelta = new Vector2(
+                    Mathf.Max(CheckpointText.preferredWidth, CheckpointText.fontSize),
+                    Mathf.Max(CheckpointText.preferredHeight, CheckpointText.fontSize)
+                );
+            }
+
             private void OnPluginUpdate(object sender, PropertyChangedEventArgs args)
             {
                 if (args.PropertyName.Equals(nameof(PluginConfig.ShowPrereqIndicator)))
@@ -1409,26 +1488,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
 
                 if (IsComplete)
-                {
-
-                    RectTransform transform = (CompletionImage.transform as RectTransform)!;
-
-                    transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-
-#if !NEW_VERSION
-                    transform.anchorMin = new(0.75f, 0f);
-                    transform.anchorMax = new(1f, 0.25f);
-#endif
-                }
+                    ((RectTransform)CompletionImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
             }
             private void OnOffsetDataChanged()
             {
-                (CompletionImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-                (RequiresAllImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                ((RectTransform)CompletionImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                ((RectTransform)RequiresAllImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
 
                 LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
                 mainLayout.preferredWidth = NodeWidth;
                 mainLayout.preferredHeight = NodeHeight;
+
+                SetupCheckpointLabel();
 
                 NotifyPropertyChanged(nameof(NodeWidth));
                 NotifyPropertyChanged(nameof(NodeHeight));
@@ -1590,7 +1661,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
             private void RecalculateFCProgress()
             {
-                if (Barrier.ConditionType != AccSaberCampaignBarrier.BarrierConditionType.FC)
+                if (Barrier.ConditionType != BarrierConditionType.FC)
                     return;
 
                 List<float> values = [.. Barrier.AffectedCampaignDifficultyIds
@@ -1808,37 +1879,37 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 string value = Barrier.ConditionType switch
                 {
-                    AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_ACC =>
+                    BarrierConditionType.AVERAGE_ACC =>
                         $"Average Accuracy\n<color={ColorUtils.LEVEL}>{Progress.Progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_AP =>
+                    BarrierConditionType.AVERAGE_AP =>
                         $"Average Ap\n<color={ColorUtils.AP}>{Progress.Progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.AP_MAX =>
+                    BarrierConditionType.AP_MAX =>
                         $"Max Ap\n<color={ColorUtils.AP}>{Progress.Progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.ACC_MAX =>
+                    BarrierConditionType.ACC_MAX =>
                         $"Max Accuracy\n<color={ColorUtils.LEVEL}>{Progress.Progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_AVERAGE =>
+                    BarrierConditionType.STREAK_115_AVERAGE =>
                         $"Average streak\n<color={ColorUtils.TECH}>{Progress.Progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_MAX =>
+                    BarrierConditionType.STREAK_115_MAX =>
                         $"Max streak\n<color={ColorUtils.TECH}>{Progress.Progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.FC =>
+                    BarrierConditionType.FC =>
                         $"FC maps\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_RANK =>
+                    BarrierConditionType.AVERAGE_RANK =>
                         $"Average Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:0.##}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:0.##}</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.MAX_RANK =>
+                    BarrierConditionType.MAX_RANK =>
                         $"Max Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:N0}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:N0}</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT =>
+                    BarrierConditionType.COMPLETION_COUNT =>
                         $"Nodes Completed\n<color={ColorUtils.GLOBAL}>{Progress.Progress:N0}</color> / <color={ColorUtils.GLOBAL}>{Barrier.ConditionValue:N0}</color>",
 
-                    AccSaberCampaignBarrier.BarrierConditionType.PASS =>
+                    BarrierConditionType.PASS =>
                         $"Nodes Passed\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
 
                     _ => "Unknown type"

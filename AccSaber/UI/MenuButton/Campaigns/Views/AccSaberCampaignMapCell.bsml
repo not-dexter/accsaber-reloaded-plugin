@@ -1,8 +1,9 @@
-<stack id='container' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='~NodeHeight' pref-width='~NodeWidth' anchor-pos-y='~NodeYPos' anchor-pos-x='~NodeXPos' ignore-layout='true'>
+<stack id='container' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='~NodeHeight' pref-width='~NodeWidth' anchor-pos-y='~NodeYPos' anchor-pos-x='~NodeXPos' ignore-layout='true' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical id='coverContainer' scale='0.95'>
     <clickable-image id='coverImage' on-click='OnClick'/>
   </vertical>
   <image id='borderImage'/>
-  <image id='completionImage' src='~CheckmarkSrc' preserve-aspect='true' anchor-min='0.75 0' anchor-max='1 0.25' ignore-layout='true' img-color='#0F0' active='~IsComplete'/>
-  <image id='requiresAllImage' src='~RequiresAllSrc' preserve-aspect='true' anchor-min='0.75 0.75' anchor-max='1 1' ignore-layout='true' active='~ShowPrereqIndicator'/>
+  <image id='completionImage' src='~CheckmarkSrc' preserve-aspect='true' anchor-min-x='0.75' anchor-min-y='0' anchor-max-x='1' anchor-max-y='0.25' ignore-layout='true' img-color='#0F0' active='~IsComplete'/>
+  <image id='requiresAllImage' src='~RequiresAllSrc' preserve-aspect='true' anchor-min-x='0.75' anchor-min-y='0.75' anchor-max-x='1' anchor-max-y='1' ignore-layout='true' active='~ShowPrereqIndicator'/>
+  <text id='checkpointText' active='false' />
 </stack>
