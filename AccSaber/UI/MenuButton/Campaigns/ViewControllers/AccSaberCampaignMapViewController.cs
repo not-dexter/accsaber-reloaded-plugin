@@ -19,6 +19,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1518,7 +1519,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 RectTransform rectTransform = (RectTransform)CheckpointText.transform;
 
-                float padding = Mathf.Max(2f, NodeWidth * 0.05f);
+                float padding = NodeWidth * 0.05f;
 
                 switch (Map.CheckpointLabelPosition)
                 {
@@ -2042,6 +2043,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         internal class CampaignMapText : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
         {
+            private const float padding = 1f;
+
             public readonly AccSaberCampaignText Text;
             public readonly AccSaberCampaignOffsetData OffsetData;
 
@@ -2107,7 +2110,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 ApplyOffsetData();
 
-                OffsetData.OnScaleChanging += ApplyOffsetData;
+                OffsetData.OnScaleChanging += UpdateTextSize;
+                OffsetData.OnScaleChanged += ApplyOffsetData;
             }
 
             private void ApplyOffsetData()
@@ -2134,8 +2138,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 Vector2 rectSize = TextObj.rectTransform.rect.size;
 
-                // Extra safety padding. TMP glyphs can slightly exceed calculated bounds.
-                rectSize += new Vector2(4f, 4f);
+
+                if (padding != 0f)
+                    rectSize += new Vector2(padding, padding) * OffsetData.ScaleFactor;
 
                 Text.Size = rectSize;
             }
@@ -2168,10 +2173,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     preferredSize = TextObj.GetPreferredValues(TextObj.text, Mathf.Infinity, Mathf.Infinity);
                 }
 
-                const float padding = 4f;
-
-                preferredSize.x = Mathf.Ceil(preferredSize.x + padding);
-                preferredSize.y = Mathf.Ceil(preferredSize.y + padding);
+                preferredSize.x = Mathf.Ceil(preferredSize.x + padding * OffsetData.ScaleFactor);
+                preferredSize.y = Mathf.Ceil(preferredSize.y + padding * OffsetData.ScaleFactor);
 
                 rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, preferredSize.x);
                 rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, preferredSize.y);
@@ -2185,7 +2188,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             public void Dispose()
             {
-                OffsetData.OnScaleChanging -= ApplyOffsetData;
+                OffsetData.OnScaleChanging -= UpdateTextSize;
+                OffsetData.OnScaleChanged -= ApplyOffsetData;
 
                 if (TextObj is not null)
                     UnityEngine.Object.Destroy(TextObj.gameObject);
@@ -2203,6 +2207,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 foreach (Match m in mc)
                 {
                     string tag = m.Groups["name"].Value;
+
+                    if (tag.Length < 2)
+                        continue;
 
                     if (m.Value[1] == '/')
                     {
@@ -2236,9 +2243,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                             m.Groups["tag"].Value,
                             m.Groups["value"].Value)))]
                             : [];
-
-                    if (tag.Length < 2)
-                        continue;
 
                     bool failed = true;
 
@@ -2302,8 +2306,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     var (oldStr, newStr) = toReplace.Dequeue();
                     givenStr = givenStr.ReplaceFirst(oldStr, newStr);
                 }
-
-                return givenStr;
+                return WebUtility.HtmlDecode(givenStr);
             }
         }
     }

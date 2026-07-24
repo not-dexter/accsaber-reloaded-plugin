@@ -568,6 +568,30 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         }
 
+        [UIValue("ResetZoom")]
+        private void ResetZoom()
+        {
+            if (_currentCampaign is not null)
+            {
+                _campaignMapViewController.UpdateScaling(0.2f);
+
+                if (InMap && CurrentMap is not null)
+                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
+            }
+        }
+
+        [UIValue("ZoomFullyOut")]
+        private void ZoomFullyOut()
+        {
+            if (_currentCampaign is not null)
+            {
+                _campaignMapViewController.UpdateScaling(0.025f);
+
+                if (InMap && CurrentMap is not null)
+                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
+            }
+        }
+
         [UIAction("GotoMap")]
         private void GotoMap()
         {
@@ -599,14 +623,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignCounterSettingsModalController.ShowModal(_campaignMapContainer.transform);
         }
 
-        public void BackPressed()
+        public async Task BackPressed(bool update = true)
         {
-            _campaignFlow.HideLeaderboard();
+#if NEW_VERSION
+            _campaignFlow.HideLeaderboard(!update);
+#else
+            _campaignFlow.HideLeaderboard(true);
+#endif
+
             InCampaign = false;
             InBarrier = false;
             InMap = false;
             _songPreviewPlayer.CrossfadeToDefault();
-            _ = UpdateTabs();
+
+            if (update)
+                await UpdateTabs();
         }
 
         [UIAction("PlayCampaign")]
@@ -932,7 +963,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
             CurrentBeatMapLevel = beatmapLevel;
-#endif            
+#endif
             float nps = 0;
             float njs = 0;
 

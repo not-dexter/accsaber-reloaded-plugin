@@ -54,15 +54,28 @@
       </vertical>
       <vertical active='~in-campaign'>
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
-        <horizontal vertical-fit='PreferredSize' pref-height='10'>
+        <horizontal vertical-fit='PreferredSize' pref-height='15'>
+          
           <button text='Zoom In' on-click='ZoomIn' />
-          <button text='Go To Furthest Map' on-click='GotoMap' />
-          <button text='Zoom Out' on-click='ZoomOut' />
-          <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
-          <vertical pref-width='2' />
+
+          <vertical pref-height='20' child-align='MiddleCenter' spacing='-1'>
+            <button text='Go To Furthest Map' on-click='GotoMap' />
+            <button text='Reset Zoom' on-click='ResetZoom' />
+          </vertical>
+
+          <vertical pref-height='20' child-align='MiddleCenter' spacing='-1'>
+            <button text='Zoom Out' on-click='ZoomOut' />
+            <button text='Zoom Fully Out' on-click='ZoomFullyOut' />
+          </vertical>
+          
+          <vertical pref-height='10' pad-right='2'>
+            <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
+          </vertical>
+          
           <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='7' pref-height='7'>
             <clickable-image src='~count-img' preserve-aspect='true' on-click='ShowCounterSettings' />
           </vertical>
+          
         </horizontal>
       </vertical>
       <vertical pref-width='50' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2' child-expand-height='false'>

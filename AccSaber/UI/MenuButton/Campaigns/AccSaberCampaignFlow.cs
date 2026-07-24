@@ -1,4 +1,5 @@
 ﻿using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
+using AccSaber.UI.ViewControllers;
 using HMUI;
 using Zenject;
 
@@ -15,18 +16,19 @@ namespace AccSaber.UI.MenuButton.Campaigns
         private AccSaberCampaignViewController _campaignController = null!;
         private GameplaySetupViewController _gameplaySetupViewController = null!;
         private PlatformLeaderboardViewController _leaderboardController = null!;
+        private AccSaberPanelViewController _panelViewController = null!;
         private SongPreviewPlayer _songPreviewPlayer = null!;
-        public bool disableLogo;
 
         [Inject]
         protected void Construct(AccSaberCampaignViewController campaignController, AccSaberMainFlowCoordinator parentCoordinator,
             GameplaySetupViewController gameplaySetupViewController, PlatformLeaderboardViewController platformLeaderboardViewController,
-            SongPreviewPlayer songPreviewPlayer)
+            AccSaberPanelViewController panelViewController, SongPreviewPlayer songPreviewPlayer)
         {
             _campaignController = campaignController;
             _parentFlow = parentCoordinator;
             _gameplaySetupViewController = gameplaySetupViewController;
             _leaderboardController = platformLeaderboardViewController;
+            _panelViewController = panelViewController;
             _songPreviewPlayer = songPreviewPlayer;
         }
         protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
@@ -44,7 +46,8 @@ namespace AccSaber.UI.MenuButton.Campaigns
                 
                 ProvideInitialViewControllers(_campaignController, _gameplaySetupViewController, null);
             }
-            disableLogo = true;
+            _panelViewController.LogoDoesTransition = false;
+            _panelViewController.OnLogoClicked += ExitToMenu;
         }
 
 #if NEW_VERSION
@@ -60,9 +63,9 @@ namespace AccSaber.UI.MenuButton.Campaigns
             _leaderboardController.SetData(beatmapkey);
         }
 #endif
-        public void HideLeaderboard()
+        public void HideLeaderboard(bool instant = false)
         {
-            SetRightScreenViewController(null, ViewController.AnimationType.Out);
+            SetRightScreenViewController(null, instant ? ViewController.AnimationType.None : ViewController.AnimationType.Out);
         }
         internal void PresentFlowCoordinator()
         {
@@ -72,14 +75,23 @@ namespace AccSaber.UI.MenuButton.Campaigns
         {
             if (_campaignController.InCampaign)
             {
-                _campaignController.BackPressed();
+                _ = _campaignController.BackPressed();
             }
             else
-            { 
-                disableLogo = false;
-                _songPreviewPlayer.CrossfadeToDefault();
-                _parentFlow.DismissFlowCoordinator(this, finishedCallback: _parentFlow.MenuShown); 
+            {
+                ExitToMenu();
             }
+        }
+        internal async void ExitToMenu()
+        {
+            if (_campaignController.InCampaign)
+                await _campaignController.BackPressed(false);
+
+            _panelViewController.OnLogoClicked -= ExitToMenu;
+            _panelViewController.LogoDoesTransition = true;
+
+            _songPreviewPlayer.CrossfadeToDefault();
+            _parentFlow.DismissFlowCoordinator(this, finishedCallback: _parentFlow.MenuShown);
         }
     }
 }
