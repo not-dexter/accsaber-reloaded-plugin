@@ -30,12 +30,19 @@ namespace AccSaber.Configuration
         public virtual bool StickScrolling { get; set; } = true;
         public virtual float ScrollSpeed { get; set; } = 2.0f;
         public virtual bool ShowPrereqIndicator { get; set; } = true;
+
         public virtual float CampaignImageBackgroundBrightness { get; set; } = 0.5f;
         public virtual float CampaignImageBackgroundAlpha { get; set; } = 0.8f;
         public virtual float CampaignColorBackgroundBrightness { get; set; } = 0f;
         public virtual float CampaignColorBackgroundAlpha { get; set; } = 0.5f;
         public virtual int CampaignMaxCoverageLoadsPerFrame { get; set; } = 10000;
         public virtual int CampaignMaxObjectLoadsPerFrame { get; set; } = 10;
+
+        public virtual float CampaignDefaultZoomValue { get; set; } = 0.2f;
+        public virtual float CampaignZoomIncrementValue { get; set; } = 0.025f;
+        public virtual float CampaignMinZoomValue { get; set; } = 0.025f;
+        public virtual float CampaignMaxZoomValue { get; set; } = 0.75f;
+
         public virtual float CampaignCounterFontSize { get; set; } = 2f;
         public virtual bool CampaignCounterGoalColors { get; set; } = true;
         public virtual float CampaignCounterCheckmarkScale { get; set; } = 6f;

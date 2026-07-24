@@ -1,0 +1,9 @@
+<modal id='modal' clickerino-offerino-closerino='true' size-delta-x='80' size-delta-y='29' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+  <vertical horizontal-fit='PreferredSize' pref-width='80' pad-top='2' pad-bottom='2'>
+    <text text='Zoom Settings' font-size='4' align='Center' scale='0.8' />
+    <slider-setting text='Default Scale' apply-on-change='true' value='DefaultZoom' min='0.005' max='2' increment='0.005' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+    <slider-setting text='Zoom Increment' apply-on-change='true' value='ZoomIncrement' min='0.005' max='2' increment='0.005' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+    <slider-setting text='Min Zoom' apply-on-change='true' value='MinZoom' min='0.005' max='2' increment='0.005' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+    <slider-setting text='Max Zoom' apply-on-change='true' value='MaxZoom' min='0.005' max='2' increment='0.005' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+  </vertical>
+</modal>

@@ -1,24 +1,15 @@
 ﻿using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Utils;
-using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage.Attributes;
-using HMUI;
 using UnityEngine;
 using Zenject;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
-    internal class AccSaberCampaignSettingsModalController
+    internal class AccSaberCampaignSettingsModalController : Utils.Misc.BasicModalController
     {
-        private bool parsed = false;
-
         [Inject] private readonly PluginConfig config = null!;
-
-
-        [UIComponent("modal")]
-        private ModalView modal = null!;
-
 
         [UIValue(nameof(StickScrolling))]
         private bool StickScrolling
@@ -83,23 +74,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.CampaignMaxObjectLoadsPerFrame = value;
         }
 
-        private void Parse(Transform parent)
-        {
-            if (!parsed)
-            {
-                VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_SETTINGS_MODAL, parent, this);
-
-                parsed = true;
-            }
-
-            modal.transform.SetParent(parent.transform);
-            Accessors.ViewValidAccessor(ref modal) = false;
-        }
-        public void ShowModal(Transform parent)
-        {
-            Parse(parent);
-
-            modal.Show(true, true);
-        }
+        protected override void FirstParse(Transform parent) => 
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_SETTINGS_MODAL, parent, this);
     }
 }

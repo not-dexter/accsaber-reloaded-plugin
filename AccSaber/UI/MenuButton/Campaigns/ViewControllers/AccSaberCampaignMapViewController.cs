@@ -1374,7 +1374,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 requiresAllPrereqs = map.PrerequisiteMode == CampaignPrerequisiteMode.AND;
                 ShowPrereqIndicator = config.ShowPrereqIndicator && requiresAllPrereqs;
 
-                offsetData.OnScaleChanging += UpdateCheckpointLabel;
+                if (!string.IsNullOrWhiteSpace(Map.CheckpointLabel) && !(Map.CheckpointLabelPosition == CampaignLabelPosition.NONE))
+                    offsetData.OnScaleChanging += UpdateCheckpointLabel;
+
                 offsetData.OnScaleChanged += OnOffsetDataChanged;
                 UpdateMapCovers += UpdateCover;
                 config.PropertyChanged += OnPluginUpdate;
@@ -1465,7 +1467,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     campaignFlow.ShowLeaderboard(key);
 
-                    campaignController.SetMission(Map, key, level, Progress);
+                    await campaignController.SetMission(Map, key, level, Progress);
 #else
                     BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty));
                     IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
@@ -1473,7 +1475,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     campaignFlow.ShowLeaderboard(diff);
 
-                    campaignController.SetMission(Map, diff, Progress);
+                    await campaignController.SetMission(Map, diff, Progress);
 #endif
                 }
             }
@@ -1483,9 +1485,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 if (!postParse)
                     return;
 
-                if (string.IsNullOrWhiteSpace(Map.CheckpointLabel))
+                if (string.IsNullOrWhiteSpace(Map.CheckpointLabel) || Map.CheckpointLabelPosition == CampaignLabelPosition.NONE)
                 {
                     CheckpointText.gameObject.SetActive(false);
+
+                    Map.Size = new(NodeWidth, NodeHeight);
+
                     return;
                 }
 
@@ -1521,6 +1526,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 float padding = NodeWidth * 0.05f;
 
+                Vector2 nodeSize;
+
                 switch (Map.CheckpointLabelPosition)
                 {
                     case CampaignLabelPosition.UP:
@@ -1528,6 +1535,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         rectTransform.anchorMax = new Vector2(0.5f, 1f);
                         rectTransform.pivot = new Vector2(0.5f, 0f);
                         rectTransform.anchoredPosition = new Vector2(0f, padding);
+                        nodeSize = new Vector2(0f, NodeHeight + padding * 2);
                         break;
 
                     case CampaignLabelPosition.DOWN:
@@ -1535,6 +1543,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         rectTransform.anchorMax = new Vector2(0.5f, 0f);
                         rectTransform.pivot = new Vector2(0.5f, 1f);
                         rectTransform.anchoredPosition = new Vector2(0f, -padding);
+                        nodeSize = new Vector2(0f, NodeHeight + padding * 2);
                         break;
 
                     case CampaignLabelPosition.LEFT:
@@ -1542,6 +1551,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         rectTransform.anchorMax = new Vector2(0f, 0.5f);
                         rectTransform.pivot = new Vector2(1f, 0.5f);
                         rectTransform.anchoredPosition = new Vector2(-padding, 0f);
+                        nodeSize = new Vector2(NodeWidth + padding * 2, 0f);
                         break;
 
                     case CampaignLabelPosition.RIGHT:
@@ -1549,6 +1559,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         rectTransform.anchorMax = new Vector2(1f, 0.5f);
                         rectTransform.pivot = new Vector2(0f, 0.5f);
                         rectTransform.anchoredPosition = new Vector2(padding, 0f);
+                        nodeSize = new Vector2(NodeWidth + padding * 2, 0f);
                         break;
 
                     default:
@@ -1563,7 +1574,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     Mathf.Max(CheckpointText.preferredHeight, CheckpointText.fontSize)
                 );
 
-                Map.Size = rectTransform.rect.size;
+                Map.Size = rectTransform.rect.size + nodeSize;
             }
 
             private void OnPluginUpdate(object sender, PropertyChangedEventArgs args)

@@ -112,6 +112,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
         [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
         [Inject] private readonly AccSaberCampaignCounterSettingsModalController _campaignCounterSettingsModalController = null!;
+        [Inject] private readonly AccSaberCampaignZoomModalController _campaignZoomModalController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
         [Inject] private readonly SongPreviewPlayer _songPreviewPlayer = null!;
@@ -547,9 +548,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("ZoomIn")]
         private void ZoomIn()
         {
-            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor < 0.75f)
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor < _config.CampaignMaxZoomValue)
             {
-                _campaignMapViewController.UpdateScalingDelta(0.025f);
+                _campaignMapViewController.UpdateScalingDelta(_config.CampaignZoomIncrementValue);
 
                 if (InMap && CurrentMap is not null)
                     _campaignMapViewController.ScrollToNode(CurrentMap.Id);
@@ -559,9 +560,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("ZoomOut")]
         private void ZoomOut()
         {
-            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor > 0.025f)
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor > _config.CampaignMinZoomValue)
             {
-                _campaignMapViewController.UpdateScalingDelta(-0.025f);
+                _campaignMapViewController.UpdateScalingDelta(-_config.CampaignZoomIncrementValue);
 
                 if (InMap && CurrentMap is not null)
                     _campaignMapViewController.ScrollToNode(CurrentMap.Id);
@@ -573,7 +574,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             if (_currentCampaign is not null)
             {
-                _campaignMapViewController.UpdateScaling(0.2f);
+                _campaignMapViewController.UpdateScaling(_config.CampaignDefaultZoomValue);
 
                 if (InMap && CurrentMap is not null)
                     _campaignMapViewController.ScrollToNode(CurrentMap.Id);
@@ -585,7 +586,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             if (_currentCampaign is not null)
             {
-                _campaignMapViewController.UpdateScaling(0.025f);
+                _campaignMapViewController.UpdateScaling(_config.CampaignMinZoomValue);
 
                 if (InMap && CurrentMap is not null)
                     _campaignMapViewController.ScrollToNode(CurrentMap.Id);
@@ -603,6 +604,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignMapViewController.ClickNode(current);
 
             _nextGotoMapId.Enqueue(current);
+        }
+
+        [UIAction("ZoomSettings")]
+        private void ZoomSettings()
+        {
+            if (!_parsed)
+                return;
+
+            _campaignZoomModalController.ShowModal(_campaignMapContainer.transform);
         }
 
         [UIAction("ShowSettings")]
@@ -682,9 +692,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     }
                 }
             }
-            var colorScheme = _playerDataModel.playerData.colorSchemesSettings.overrideDefaultColors
+
+            ColorScheme? colorScheme = _playerDataModel.playerData.colorSchemesSettings.overrideDefaultColors
             ? _playerDataModel.playerData.colorSchemesSettings.GetSelectedColorScheme()
             : null;
+
             MapStarted = true;
 
             RecordPlayMethod?.Invoke(null, null);
@@ -947,7 +959,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             if ((campaign.IconUrl is not null && campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
-                await _campaignImage.SetImageAsync("AccSaber.Resources.AccSaber.png", false);
+                await _campaignImage.SetImageAsync(ResourcePaths.ACCSABER, false);
             else
                 StartCoroutine(_campaignImage.LoadImageRoutine(campaign.IconUrl));
 
@@ -955,7 +967,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
 #if NEW_VERSION
-        public async void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion, bool withSound = true)
+        public async Task SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
             CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
@@ -1234,9 +1246,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (setMap && currentMap is not null && CurrentBeatMapLevel is not null)
 #if NEW_VERSION
-                SetMission(currentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal, false);
+                _ = SetMission(currentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal, false);
 #else
-                SetMission(currentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
+                _ = SetMission(currentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
 #endif
         }
         public async Task WaitForServerUpdate(TimeSpan timeout = default)
@@ -1277,10 +1289,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 #if NEW_VERSION
                     if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                        SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
+                        _ = SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
 #else
                     if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                        SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal);
+                        _ = SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal);
 #endif
                 });
         }

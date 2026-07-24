@@ -55,8 +55,11 @@
       <vertical active='~in-campaign'>
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
         <horizontal vertical-fit='PreferredSize' pref-height='15'>
-          
-          <button text='Zoom In' on-click='ZoomIn' />
+
+          <vertical pref-height='20' child-align='MiddleCenter' spacing='-1'>
+            <button text='Zoom In' on-click='ZoomIn' />
+            <button text='Zoom Settings' on-click='ZoomSettings' />
+          </vertical>
 
           <vertical pref-height='20' child-align='MiddleCenter' spacing='-1'>
             <button text='Go To Furthest Map' on-click='GotoMap' />

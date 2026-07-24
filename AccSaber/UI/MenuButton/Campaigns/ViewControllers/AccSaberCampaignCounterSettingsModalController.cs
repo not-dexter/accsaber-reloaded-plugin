@@ -9,17 +9,12 @@ using Zenject;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
-    internal class AccSaberCampaignCounterSettingsModalController
+    internal class AccSaberCampaignCounterSettingsModalController : BasicModalController
     {
         [Inject] private readonly PluginConfig config = null!;
 
-        private bool parsed = false;
-
-        [UIComponent("modal")]
-        private ModalView modal = null!;
-
         [UIComponent("colorModal")]
-        private ModalView colorModal = null!;
+        private readonly ModalView ColorModal = null!;
 
 
         [UIValue("FontSize")]
@@ -113,26 +108,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => CheckmarkBadColor = CheckmarkBadColor.ColorWithAlpha(value / 255f);
         }
 
+        protected override void FirstParse(Transform parent) => 
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_COUNTER_SETTINGS_MODAL, parent, this);
 
-        private void Parse(Transform parent)
+        protected override void Parse(Transform parent)
         {
-            if (!parsed)
-            {
-                VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_COUNTER_SETTINGS_MODAL, parent, this);
+            base.Parse(parent);
 
-                parsed = true;
-            }
-
-            modal.transform.SetParent(parent.transform);
-
-            colorModal.transform.SetParent(modal.transform);
-            colorModal.AttachTo(modal);
-        }
-        public void ShowModal(Transform parent)
-        {
-            Parse(parent);
-
-            modal.Show(true, true);
+            ColorModal.transform.SetParent(Modal.transform);
+            ColorModal.AttachTo(Modal);
         }
     }
 }
