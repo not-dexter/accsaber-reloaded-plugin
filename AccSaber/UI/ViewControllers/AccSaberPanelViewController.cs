@@ -300,7 +300,7 @@ namespace AccSaber.UI.ViewControllers
 			if (!_logoClickable || !LogoDoesTransition)
 				return;
 
-			_mainFlowCoordinator.PresentFlowCoordinator();
+			_mainFlowCoordinator.PresentFlowCoordinatorSafe();
 		}
 
 		[UIAction("settings-clicked")]

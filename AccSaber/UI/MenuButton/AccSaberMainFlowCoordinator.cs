@@ -49,6 +49,19 @@ namespace AccSaber.UI.MenuButton
         {
             OnHubDeactivated -= OnDismiss;
         }
+
+        public void PresentFlowCoordinatorSafe(Action? callback = null, bool immediately = false)
+        {
+            FlowCoordinator parent = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
+
+            if (parent is not SoloFreePlayFlowCoordinator)
+            {
+                Plugin.Log.Warn("Cannot transition when not in the solo menu!");
+                return;
+            }
+
+            PresentFlowCoordinator(callback, immediately);
+        }
         public override void PresentFlowCoordinator(Action? callback = null, bool immediately = false)
         {
             ParentFlowCoordinator = _mainFlowCoordinator.YoungestChildFlowCoordinatorOrSelf();
