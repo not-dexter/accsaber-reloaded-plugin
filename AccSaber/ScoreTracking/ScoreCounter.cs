@@ -82,19 +82,44 @@ namespace AccSaber.ScoreTracking
                 return;
             }
 
-            totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
+            totalNotes = beatmapData.cuttableNotesCount;
+
+            if (totalNotes == 0)
+                totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
 
 #if NEW_VERSION
-            bool IsInvalidLevel() => 
-                !transition.beatmapLevel.levelID.Equals(currentMap.ParentInfo?.Hash) || transition.beatmapKey.difficulty != currentMap.Difficulty;
+            bool IsInvalidLevel()
+            {
+                string currentHash = transition.beatmapLevel.levelID.ToLower();
+                
+                if (currentHash.StartsWith(AccSaberManager.CUSTOM_LEVEL_HASH))
+                    currentHash = currentHash[AccSaberManager.CUSTOM_LEVEL_HASH.Length..];
+
+                return !currentHash.Equals(currentMap.ParentInfo?.Hash, StringComparison.OrdinalIgnoreCase) || transition.beatmapKey.difficulty != currentMap.Difficulty;
+            }
 #else
-            bool IsInvalidLevel() => 
-                !transition.difficultyBeatmap.level.levelID.Equals(currentMap.ParentInfo?.Hash) || transition.difficultyBeatmap.difficulty != currentMap.Difficulty;
+            bool IsInvalidLevel()
+            {
+                string currentHash = transition.difficultyBeatmap.level.levelID.ToLower();
+
+                if (currentHash.StartsWith(AccSaberManager.CUSTOM_LEVEL_HASH))
+                    currentHash = currentHash[AccSaberManager.CUSTOM_LEVEL_HASH.Length..];
+
+                return !currentHash.Equals(currentMap.ParentInfo?.Hash, StringComparison.OrdinalIgnoreCase) || transition.difficultyBeatmap.difficulty != currentMap.Difficulty;
+            }
 #endif
 
             if (IsInvalidLevel())
             {
                 Plugin.Log.Critical("What?? The current map is not equal to the recorded map!!! Attempting to recorrect...");
+
+#if NEW_VERSION
+                Plugin.Log.Info($"transition level id = {transition.beatmapLevel.levelID}, transition difficulty = {transition.beatmapKey.difficulty}");
+#else
+                Plugin.Log.Info($"transition level id = {transition.difficultyBeatmap.level.levelID}, transition difficulty = {transition.difficultyBeatmap.difficulty}");
+#endif
+
+                Plugin.Log.Info($"current level id = {currentMap.ParentInfo?.Hash}, current difficulty = {currentMap.Difficulty}");
 
                 PlatformLeaderboardViewController? viewController = Plugin.Container.TryResolve<PlatformLeaderboardViewController>();
 
@@ -141,6 +166,7 @@ namespace AccSaber.ScoreTracking
                 if (currentMap is null || IsInvalidLevel())
                 {
                     Plugin.Log.Critical("Current map was still not updated correctly, score submission disabled for this map.");
+                    currentMap = null;
                     return;
                 }
                 else

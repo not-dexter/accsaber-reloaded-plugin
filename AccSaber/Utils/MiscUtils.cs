@@ -553,6 +553,18 @@ namespace AccSaber.Utils
                 return hash;
             }
         }
+        public static int GetHashCode<T>(params IEnumerable<T> items)
+        {
+            unchecked
+            {
+                int hash = 17;
+
+                foreach (T item in items)
+                    hash = hash * 23 + item?.GetHashCode() ?? 0;
+                
+                return hash;
+            }
+        }
 
         public static T? ParseEnum<T>(string value) where T : Enum => (T?)Enum.Parse(typeof(T), value);
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)

@@ -414,6 +414,9 @@ namespace AccSaber.Models
 
         // complexity?, beatsaverCode?, maxScore?
 
+        [JsonProperty("metadata")]
+        public AccSaberMetadata Metadata { get; set; } = null!;
+
         [JsonProperty("mapAuthor")]
         public string MapAuthor { get; set; } = null!;
 
