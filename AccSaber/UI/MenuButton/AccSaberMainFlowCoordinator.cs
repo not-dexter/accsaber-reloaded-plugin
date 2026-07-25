@@ -2,6 +2,7 @@
 using HMUI;
 using Zenject;
 using System;
+using System.Collections.Generic;
 
 
 #if !NEW_VERSION
@@ -21,6 +22,8 @@ namespace AccSaber.UI.MenuButton
 
         public event Action? OnHubActivated;
         public event Action? OnHubDeactivated;
+
+        public Stack<Action> BackButtonActions { get; } = [];
 
         // Called immediately when the flow coordinator is activated
 
@@ -78,7 +81,16 @@ namespace AccSaber.UI.MenuButton
         public override void DismissFlowCoordinator(Action? callback = null, bool immediately = false)
         {
             OnHubDeactivated?.Invoke();
+            BackButtonActions.Clear();
             base.DismissFlowCoordinator(callback, immediately);
+        }
+
+        protected override void BackButtonWasPressed(ViewController topViewController)
+        {
+            if (BackButtonActions.Count > 0)
+                BackButtonActions.Pop().Invoke();
+            else
+                base.BackButtonWasPressed(topViewController);
         }
 
 

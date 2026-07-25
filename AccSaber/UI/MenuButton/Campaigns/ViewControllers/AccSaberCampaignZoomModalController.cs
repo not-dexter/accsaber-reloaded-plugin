@@ -52,6 +52,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         }
 
+        [UIAction("ThreeDecimals")]
+        private string ThreeDecimalFormatter(float number) => $"{number:0.###}";
+
         protected override void FirstParse(Transform parent) => 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_ZOOM_MODAL, parent, this);
     }

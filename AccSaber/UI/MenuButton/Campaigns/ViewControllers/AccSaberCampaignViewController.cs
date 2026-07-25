@@ -65,6 +65,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public AccSaberCampaignMap? CurrentMap;
         public int CurrentMaxNoteCount;
         public bool MapStarted { get; private set; } = false;
+        public AccSaberCampaign? CurrentCampaign => _currentCampaign;
 
         [UIObject("CampaignMapContainer")]
         private readonly GameObject _campaignMapContainer = null!;
@@ -651,23 +652,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
 
         [UIAction("PlayCampaign")]
-        private async void PlayCampaign()
-        {
-            InCampaign = true;
-            if (_currentCampaign is not null)
-            {                  
-                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS)
-                    _missionButton.SetButtonText("Start Campaign");
-                else
-                    _missionButton.SetButtonText("Play");
-
-                _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
-
-                await _campaignMapViewController.SetCampaign(_currentCampaign);
-
-                UpdateGoToMapButton();
-            }
-        }
+        private async void PlayCampaign() => await OpenCampaign();
 
         [UIAction("PlayMission")]
         private async void PlayMission()
@@ -837,6 +822,32 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _nextGotoMapId.Enqueue(unlockedIds);
         }
 
+        public async Task OpenCampaign()
+        {
+            if (_currentCampaign is null)
+            {
+                Plugin.Log.Warn("Current campaign is null, cannot open the current campaign!");
+                return;
+            }
+
+            await OpenCampaign(_currentCampaign);
+        }
+        public async Task OpenCampaign(AccSaberCampaign campaign)
+        {
+            if (!_activeCampaigns.Any(x => x.Id == campaign.Id) && campaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS)
+                _missionButton.SetButtonText("Start Campaign");
+            else
+                _missionButton.SetButtonText("Play");
+
+            _currentCampaign = await _accSaberStore.GetCampaign(campaign.Id, true);
+
+            InCampaign = true;
+
+            await _campaignMapViewController.SetCampaign(_currentCampaign);
+
+            UpdateGoToMapButton();
+        }
+
         public async Task UpdateTabs()
         {
             await _playerInfo.LoadTask;
@@ -972,7 +983,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
-        public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion, bool withSound = true)
+        public async Task SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
             CurrentBeatMapLevel = beatmapLevel;
 #endif

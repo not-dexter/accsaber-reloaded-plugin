@@ -41,7 +41,7 @@ namespace AccSaber.Managers
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
 #if NEW_VERSION
-        public event Action<BeatmapKey, BeatmapLevel>? OnLeaderboardUpdated;
+        public event Action<BeatmapKey, BeatmapLevel?>? OnLeaderboardUpdated;
 #else
         public event Action<IDifficultyBeatmap>? OnLeaderboardUpdated;
 #endif
@@ -52,7 +52,7 @@ namespace AccSaber.Managers
 
 #if NEW_VERSION
         public BeatmapKey CurrentKey { get; private set; }
-        public BeatmapLevel CurrentLevel { get; private set; } = null!;
+        public BeatmapLevel? CurrentLevel { get; private set; }
 #else
         public IDifficultyBeatmap CurrentLevel { get; private set; } = null!;
 #endif
@@ -458,7 +458,7 @@ namespace AccSaber.Managers
             CurrentRankedMap = _api.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
         }
 #if NEW_VERSION
-        public void SetCurrentMap(BeatmapKey key, BeatmapLevel level)
+        public void SetCurrentMap(BeatmapKey key, BeatmapLevel? level)
         {
             CurrentKey = key;
             CurrentLevel = level;

@@ -169,7 +169,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             ClearDisplay();
         }
 
-        public async Task SetCampaign(AccSaberCampaign campaign, float scaleFactor = 0.2f, bool resetScrollbars = true)
+        public async Task SetCampaign(AccSaberCampaign campaign, float scaleFactor = -1f, bool resetScrollbars = true)
         {
             int version = Interlocked.Increment(ref setCampaignVersion);
 
@@ -177,6 +177,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 if (!parsed || campaign.Difficulties is null)
                     return;
+
+                if (scaleFactor <= 0f)
+                    scaleFactor = config.CampaignDefaultZoomValue;
 
                 ClearDisplay();
 

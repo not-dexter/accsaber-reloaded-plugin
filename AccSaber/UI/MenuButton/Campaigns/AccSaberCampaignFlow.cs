@@ -1,6 +1,7 @@
 ﻿using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using HMUI;
+using System;
 using Zenject;
 
 #if !NEW_VERSION
@@ -47,7 +48,7 @@ namespace AccSaber.UI.MenuButton.Campaigns
                 ProvideInitialViewControllers(_campaignController, _gameplaySetupViewController, null);
             }
             _panelViewController.LogoDoesTransition = false;
-            _panelViewController.OnLogoClicked += ExitToMenu;
+            _panelViewController.OnLogoClicked += OnLogoClicked;
         }
 
 #if NEW_VERSION
@@ -67,9 +68,9 @@ namespace AccSaber.UI.MenuButton.Campaigns
         {
             SetRightScreenViewController(null, instant ? ViewController.AnimationType.None : ViewController.AnimationType.Out);
         }
-        internal void PresentFlowCoordinator()
+        internal void PresentFlowCoordinator(Action? callback = null, bool instant = false)
         {
-            _parentFlow.PresentFlowCoordinator(this);
+            _parentFlow.PresentFlowCoordinator(this, finishedCallback: callback, immediately: instant);
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
@@ -87,11 +88,32 @@ namespace AccSaber.UI.MenuButton.Campaigns
             if (_campaignController.InCampaign)
                 await _campaignController.BackPressed(false);
 
-            _panelViewController.OnLogoClicked -= ExitToMenu;
+            _panelViewController.OnLogoClicked -= OnLogoClicked;
             _panelViewController.LogoDoesTransition = true;
 
             _songPreviewPlayer.CrossfadeToDefault();
             _parentFlow.DismissFlowCoordinator(this, finishedCallback: _parentFlow.MenuShown);
+        }
+
+        private void OnLogoClicked()
+        {
+            Models.AccSaberCampaign? campaign = _campaignController.CurrentCampaign;
+
+            _parentFlow.BackButtonActions.Push(() =>
+            {
+
+                void Callback()
+                {
+                    _ = _campaignController.OpenCampaign(campaign);
+                }
+                
+                if (campaign is not null)
+                    PresentFlowCoordinator(Callback, true);
+                else
+                    PresentFlowCoordinator(instant: true);
+            });
+
+            ExitToMenu();
         }
     }
 }

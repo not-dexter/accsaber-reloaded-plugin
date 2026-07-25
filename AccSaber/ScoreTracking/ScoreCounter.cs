@@ -82,13 +82,76 @@ namespace AccSaber.ScoreTracking
                 return;
             }
 
+            totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
+
+#if NEW_VERSION
+            bool IsInvalidLevel() => 
+                !transition.beatmapLevel.levelID.Equals(currentMap.ParentInfo?.Hash) || transition.beatmapKey.difficulty != currentMap.Difficulty;
+#else
+            bool IsInvalidLevel() => 
+                !transition.difficultyBeatmap.level.levelID.Equals(currentMap.ParentInfo?.Hash) || transition.difficultyBeatmap.difficulty != currentMap.Difficulty;
+#endif
+
+            if (IsInvalidLevel())
+            {
+                Plugin.Log.Critical("What?? The current map is not equal to the recorded map!!! Attempting to recorrect...");
+
+                PlatformLeaderboardViewController? viewController = Plugin.Container.TryResolve<PlatformLeaderboardViewController>();
+
+                if (viewController is not null)
+                {
+#if NEW_VERSION
+                    BeatmapKey key = transition.beatmapKey;
+                    viewController.SetData(in key);
+#else
+                    IDifficultyBeatmap key = transition.difficultyBeatmap;
+                    viewController.SetData(key);
+#endif
+
+                    SerializationHandler? serialHandler = Plugin.Container.TryResolve<SerializationHandler>();
+                    AccSaberManager manager = Plugin.Container.TryResolve<AccSaberManager>();
+
+                    bool failed = true;
+
+                    if (serialHandler is not null && manager is not null)
+                    {
+                        string? hash = manager.GetHash(key);
+
+                        if (hash is not null)
+                        {
+                            Models.CacheModels.AccSaberBasicMap? map = await serialHandler.GetMapByHashAsync(hash);
+
+                            if (map is not null)
+                            {
+                                BeatmapDifficulty diff = key.difficulty;
+                                currentMap = map.Difficulties.FirstOrDefault(basicDiff => basicDiff.Difficulty == diff);
+                                failed = false;
+                            }
+                        }
+                    }
+
+                    if (failed)
+                    {
+                        Plugin.Log.Warn("Failed to directly get map from cache, attempting to get it from the store.");
+
+                        currentMap = store.CurrentRankedMap ?? await store.GetCurrentMap();
+                    }
+                }
+
+                if (currentMap is null || IsInvalidLevel())
+                {
+                    Plugin.Log.Critical("Current map was still not updated correctly, score submission disabled for this map.");
+                    return;
+                }
+                else
+                    Plugin.Log.Warn("Current map was fixed.");
+            }
+
             score = new()
             {
                 MapDifficultyId = currentMap.DifficultyId,
-                Headset = (await store.GetCurrentUserAsync()).Headset,
+                Headset = (await store.GetCurrentUserAsync()).Headset
             };
-
-            totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
 
             current115Streak = 0;
             combo = 0;

@@ -295,9 +295,11 @@ namespace AccSaber.UI.ViewControllers
 		[UIAction("logo-clicked")]
 		public void LogoClicked()
 		{
+			bool logoDoesTransition = LogoDoesTransition;
+
 			OnLogoClicked?.Invoke();
 
-			if (!_logoClickable || !LogoDoesTransition)
+			if (!_logoClickable || !logoDoesTransition)
 				return;
 
 			_mainFlowCoordinator.PresentFlowCoordinatorSafe();
