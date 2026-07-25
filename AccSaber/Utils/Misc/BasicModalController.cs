@@ -18,6 +18,9 @@ namespace AccSaber.Utils.Misc
             {
                 FirstParse(parent);
 
+                if (Modal is null)
+                    return;
+
                 parsed = true;
             }
 
@@ -27,12 +30,12 @@ namespace AccSaber.Utils.Misc
         {
             Parse(parent);
 
-            Modal.Show(animated, true);
+            Modal?.Show(animated, true);
         }
 
         public virtual void HideModal(bool animated = true)
         {
-            Modal.Hide(animated);
+            Modal?.Hide(animated);
         }
     }
 }

@@ -642,20 +642,27 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignFlow.HideLeaderboard(true);
 #endif
 
-            if (InCampaign)
+            try
             {
-                _campaignSettingsModalController.HideModal(false);
-                _campaignCounterSettingsModalController.HideModal(false);
-                _campaignZoomModalController.HideModal(false);
+                if (InCampaign)
+                {
+                    _campaignSettingsModalController.HideModal(false);
+                    _campaignCounterSettingsModalController.HideModal(false);
+                    _campaignZoomModalController.HideModal(false);
+                }
+
+                InCampaign = false;
+                InBarrier = false;
+                InMap = false;
+                _songPreviewPlayer.CrossfadeToDefault();
+
+                if (update)
+                    await UpdateTabs();
             }
-
-            InCampaign = false;
-            InBarrier = false;
-            InMap = false;
-            _songPreviewPlayer.CrossfadeToDefault();
-
-            if (update)
-                await UpdateTabs();
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an exception on exiting the campaign!!!\n" + e);
+            }
         }
 
         [UIAction("PlayCampaign")]
