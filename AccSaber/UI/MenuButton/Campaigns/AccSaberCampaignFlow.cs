@@ -1,4 +1,5 @@
-﻿using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
+﻿using AccSaber.Configuration;
+using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using HMUI;
 using System;
@@ -19,11 +20,12 @@ namespace AccSaber.UI.MenuButton.Campaigns
         private PlatformLeaderboardViewController _leaderboardController = null!;
         private AccSaberPanelViewController _panelViewController = null!;
         private SongPreviewPlayer _songPreviewPlayer = null!;
+        private PluginConfig _pluginConfig = null!;
 
         [Inject]
         protected void Construct(AccSaberCampaignViewController campaignController, AccSaberMainFlowCoordinator parentCoordinator,
             GameplaySetupViewController gameplaySetupViewController, PlatformLeaderboardViewController platformLeaderboardViewController,
-            AccSaberPanelViewController panelViewController, SongPreviewPlayer songPreviewPlayer)
+            AccSaberPanelViewController panelViewController, SongPreviewPlayer songPreviewPlayer, PluginConfig pluginConfig)
         {
             _campaignController = campaignController;
             _parentFlow = parentCoordinator;
@@ -31,6 +33,7 @@ namespace AccSaber.UI.MenuButton.Campaigns
             _leaderboardController = platformLeaderboardViewController;
             _panelViewController = panelViewController;
             _songPreviewPlayer = songPreviewPlayer;
+            _pluginConfig = pluginConfig;
         }
         protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
@@ -97,21 +100,24 @@ namespace AccSaber.UI.MenuButton.Campaigns
 
         private void OnLogoClicked()
         {
-            Models.AccSaberCampaign? campaign = _campaignController.CurrentCampaign;
-
-            _parentFlow.BackButtonActions.Push(() =>
+            if (_pluginConfig.CampaignBackButton)
             {
+                Models.AccSaberCampaign? campaign = _campaignController.CurrentCampaign;
 
-                void Callback()
+                _parentFlow.BackButtonActions.Push(() =>
                 {
-                    _ = _campaignController.OpenCampaign(campaign);
-                }
-                
-                if (campaign is not null)
-                    PresentFlowCoordinator(Callback, true);
-                else
-                    PresentFlowCoordinator(instant: true);
-            });
+
+                    void Callback()
+                    {
+                        _ = _campaignController.OpenCampaign(campaign);
+                    }
+
+                    if (campaign is not null)
+                        PresentFlowCoordinator(Callback, true);
+                    else
+                        PresentFlowCoordinator(instant: true);
+                });
+            }
 
             ExitToMenu();
         }

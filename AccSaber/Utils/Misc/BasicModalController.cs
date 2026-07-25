@@ -1,8 +1,5 @@
-﻿using AccSaber.Consts;
-using BeatSaberMarkupLanguage;
-using BeatSaberMarkupLanguage.Attributes;
+﻿using BeatSaberMarkupLanguage.Attributes;
 using HMUI;
-using System;
 using UnityEngine;
 
 namespace AccSaber.Utils.Misc

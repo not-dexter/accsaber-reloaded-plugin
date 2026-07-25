@@ -293,7 +293,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 RebuildArrows(loads);
 
-                ScrollToNode(CampaignProgress.Nodes.Heads.First().Current.Id);
+                if (!ScrollToFirstValidNode(CampaignProgress.Nodes.Heads.Select(node => node.Current.Id)))
+                {
+                    Plugin.Log.Warn("There are no valid starting nodes, this is a wacky campaign.");
+                    Plugin.Log.Debug($"Heads: {CampaignProgress.Nodes.Heads.Print()}");
+                }
             }
             catch (Exception e)
             {
@@ -516,20 +520,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             RebuildArrows();
         }
-        public void ScrollToNode(Guid nodeId)
+        public bool ScrollToNode(Guid nodeId, bool printWarning = true)
         {
             if (!parsed)
             {
-                Plugin.Log.Warn("Cannot scroll to node before the map is loaded!");
-                return;
+                if (printWarning)
+                    Plugin.Log.Warn("Cannot scroll to node before the map is loaded!");
+                return false;
             }
 
             CampaignMapNode? node = campaignMapNodes.FirstOrDefault(node => node.Map.Id == nodeId);
 
             if (node is null)
             {
-                Plugin.Log.Warn($"No node of id \"{nodeId}\" found.");
-                return;
+                if (printWarning)
+                    Plugin.Log.Warn($"No node of id \"{nodeId}\" found.");
+                return false;
             }
 
             Vector2 viewSize = new(ViewportWidth, ViewportHeight);
@@ -558,6 +564,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #if PRINT_DEBUG
             Plugin.Log.Info($"Final scroll percent = ({scrollableContainer.horizontalScrollbar.value * 100f:N2}%, {scrollableContainer.verticalScrollbar.value * 100f:N2}%)");
 #endif
+
+            return true;
+        }
+        public bool ScrollToFirstValidNode(IEnumerable<Guid> ids)
+        {
+            foreach (Guid id in ids)
+                if (ScrollToNode(id, false))
+                    return true;
+
+            return false;
         }
         public void ClickNode(Guid nodeId)
         {

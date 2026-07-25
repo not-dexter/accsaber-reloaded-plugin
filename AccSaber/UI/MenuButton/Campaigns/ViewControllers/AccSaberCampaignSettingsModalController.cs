@@ -32,6 +32,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.ShowPrereqIndicator = value;
         }
 
+        [UIValue(nameof(CampaignBackButton))]
+        private bool CampaignBackButton
+        {
+            get => config.CampaignBackButton;
+            set => config.CampaignBackButton = value;
+        }
+
         [UIValue(nameof(ImgBGBrightness))]
         private float ImgBGBrightness
         {

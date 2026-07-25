@@ -27,9 +27,11 @@ namespace AccSaber.Configuration
         public virtual bool SubmitOnIncompletePlay { get; set; } = true;
         public virtual bool AllowMultipleCustomPlaylists { get; set; } = true;
         public virtual string CustomPlaylistPath { get; set; } = "";
+
         public virtual bool StickScrolling { get; set; } = true;
         public virtual float ScrollSpeed { get; set; } = 2.0f;
         public virtual bool ShowPrereqIndicator { get; set; } = true;
+        public virtual bool CampaignBackButton { get; set; } = true;
 
         public virtual float CampaignImageBackgroundBrightness { get; set; } = 0.5f;
         public virtual float CampaignImageBackgroundAlpha { get; set; } = 0.8f;

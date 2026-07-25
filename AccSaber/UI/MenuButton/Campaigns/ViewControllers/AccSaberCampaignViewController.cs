@@ -642,6 +642,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignFlow.HideLeaderboard(true);
 #endif
 
+            if (InCampaign)
+            {
+                _campaignSettingsModalController.HideModal(false);
+                _campaignCounterSettingsModalController.HideModal(false);
+                _campaignZoomModalController.HideModal(false);
+            }
+
             InCampaign = false;
             InBarrier = false;
             InMap = false;
