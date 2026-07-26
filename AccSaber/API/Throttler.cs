@@ -25,12 +25,12 @@ namespace AccSaber.API
         /// <summary>
         /// Maximum allowed calls per cycle.
         /// </summary>
-        public int CallsPerCycle { get; private set; } = callsPerCycle;
+        public int CallsPerCycle { get; } = callsPerCycle;
 
         /// <summary>
         /// Cycle length in seconds.
         /// </summary>
-        public int CycleLength { get; private set; } = cycleLength;
+        public int CycleLength { get; } = cycleLength;
 
         ///<summary>Time when the current cycle started (UTC).</summary>
         private DateTime CycleStartTime = DateTime.UtcNow;
@@ -66,15 +66,16 @@ namespace AccSaber.API
         /// </exception>
         public async Task Call(CancellationToken ct = default)
         {
-            AsyncLock.Releaser releaser = await locker.LockAsync();
+            AsyncLock.Releaser releaser = await locker.LockAsync(ct);
             using (releaser)
             {
-                TimeSpan diff = DateTime.UtcNow - CycleStartTime;
+                DateTime now = DateTime.UtcNow;
+                TimeSpan diff = now - CycleStartTime;
 
                 if (diff.TotalSeconds >= CycleLength)
                 {
                     CallsThisCycle = 0;
-                    CycleStartTime = DateTime.UtcNow;
+                    CycleStartTime = now;
                 }
 
                 CallsThisCycle++;
@@ -83,15 +84,55 @@ namespace AccSaber.API
                 {
                     int restTime = (int)(CycleLength * 1000 - diff.TotalMilliseconds);
 
+                    CallsThisCycle = 1;
+                    CycleStartTime = now.AddMilliseconds(restTime);
+
                     Plugin.Log.Info("Throttling calls for " + restTime + "ms.");
                     await Task.Delay(restTime, ct);
-
-                    CallsThisCycle = 1;
-                    CycleStartTime = DateTime.UtcNow.AddMilliseconds(restTime);
                 }
 
                 ct.ThrowIfCancellationRequested();
             }
+        }
+
+        /// <summary>
+        /// Estimates how long a caller would need to wait before it can start an operation
+        /// guarded by this <see cref="Throttler"/>.
+        /// </summary>
+        /// <returns>
+        /// A <see cref="TimeSpan"/> representing an estimated wait time. Returns <see cref="TimeSpan.Zero"/>
+        /// when there is no contention on the internal lock.
+        /// </returns>
+        /// <remarks>
+        /// - This method inspects the internal <see cref="AsyncLock"/> state (via <c>locker</c>) and the
+        ///   current cycle bookkeeping to produce a conservative estimate of the wait time.
+        /// - The calculation uses <c>locker.LineLength + 1</c> to account for the queued waiters plus the
+        ///   thread currently holding the lock. It then determines how many full cycles of length
+        ///   <see cref="CycleLength"/> seconds are required to satisfy the outstanding callers given
+        ///   the configured <see cref="CallsPerCycle"/>.
+        /// - If <c>CycleStartTime</c> has been moved into the future (happens when callers were previously
+        ///   throttled), the remaining time until that start is added to the estimate.
+        /// - The returned value is an estimate only: it does not block, observe cancellation, nor guarantee
+        ///   the exact delay that will be experienced by a real caller.
+        /// - This method is safe to call concurrently but reads internal state without acquiring the lock,
+        ///   so the result may be transient.
+        /// </remarks>
+        public TimeSpan EstimatedWaitTime()
+        {
+            int currentCalls = CallsThisCycle, lineLength = locker.LineLength;
+
+            if (!locker.IsLocked && currentCalls != CallsPerCycle)
+                return TimeSpan.Zero;
+
+            DateTime now = DateTime.UtcNow, cycle = CycleStartTime;
+
+            int fullCycles = (lineLength + currentCalls) / CallsPerCycle;
+            TimeSpan currentDelay = TimeSpan.FromSeconds(CycleLength) * fullCycles;
+
+            if (cycle > now)
+                currentDelay += CycleStartTime - now;
+
+            return currentDelay;
         }
     }
 }

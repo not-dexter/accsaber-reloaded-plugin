@@ -187,9 +187,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign)).Unwrap();
 
-                CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<AccSaberCampaignScalable>()
-                    .Concat(campaign.Barriers?.Cast<AccSaberCampaignScalable>() ?? [])
-                    .Concat(campaign.Texts?.Cast<AccSaberCampaignScalable>() ?? []));
+                CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<IAccSaberCampaignScalable>()
+                    .Concat(campaign.Barriers?.Cast<IAccSaberCampaignScalable>() ?? [])
+                    .Concat(campaign.Texts?.Cast<IAccSaberCampaignScalable>() ?? []));
 
                 UpdateContainerValues(resetScrollbars);
 
@@ -335,7 +335,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 if (ids.Count <= 1)
                     continue;
 
-                int xPos = 0, yPos = 0;
+                float xPos = 0, yPos = 0;
 
                 foreach (Guid id in ids)
                 {
@@ -345,7 +345,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     yPos += map.PositionY;
                 }
 
-                float averageXPos = xPos / (float)ids.Count, averageYPos = yPos / (float)ids.Count;
+                float averageXPos = xPos / ids.Count, averageYPos = yPos / ids.Count;
                 float minDistance = float.PositiveInfinity;
                 int minDistIndex = -1;
 
@@ -2315,7 +2315,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                                     toReplace.Enqueue((m.Value, $"<color={new Color32(rgbVals[0], rgbVals[1], rgbVals[2], 255).Color()}>"));
                                     closingTagReplacement.Push(("</span>", "</color>"));
+
+                                    break;
                                 }
+
+                                if (content[1..].StartsWith("font-size:"))
+                                {
+                                    toReplace.Enqueue((m.Value, $"<size={content[11..content.Length]}>"));
+                                    closingTagReplacement.Push(("</span>", "</size>"));
+
+                                    break;
+                                }
+
+                                failed = true;
                             }
 
                             break;

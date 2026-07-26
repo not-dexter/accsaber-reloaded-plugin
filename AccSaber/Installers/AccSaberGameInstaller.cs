@@ -8,6 +8,7 @@ namespace AccSaber.Installers
         public override void InstallBindings()
         {
             Container.BindInterfacesAndSelfTo<ScoreCounter>().AsSingle();
+            //Container.Bind<ScoreSubmissionHandler>().FromResolve();
         }
     }
 }

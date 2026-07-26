@@ -202,7 +202,7 @@ namespace AccSaber.Models
 
         public event Action? OnScaleChanging, OnScaleChanged;
 
-        private readonly List<AccSaberCampaignScalable> nodes;
+        private readonly List<IAccSaberCampaignScalable> nodes;
 
         public Vector2 ContainerSize { get; private set; }
         public Vector2 Offset { get; private set; }
@@ -213,7 +213,7 @@ namespace AccSaber.Models
         public Vector2 BoundsMin { get; private set; }
         public Vector2 BoundsMax { get; private set; }
 
-        public AccSaberCampaignOffsetData(float scaleFactor, IEnumerable<AccSaberCampaignScalable> nodes)
+        public AccSaberCampaignOffsetData(float scaleFactor, IEnumerable<IAccSaberCampaignScalable> nodes)
         {
             if (nodes is null || !nodes.Any())
                 throw new ArgumentException("The node IEnumerable given must not be null and contain elements!");
@@ -242,12 +242,12 @@ namespace AccSaber.Models
             float bottom = float.PositiveInfinity;
             float top = float.NegativeInfinity;
 
-            foreach (AccSaberCampaignScalable node in nodes)
+            foreach (IAccSaberCampaignScalable node in nodes)
             {
                 float centerX = node.PositionX * OffsetSize;
                 float centerY = node.PositionY * OffsetSize;
 
-                Vector2 size = node is AccSaberCampaignSizable sizeNode ? sizeNode.Size : Vector2.one * (node.Scale * scaleFactor);
+                Vector2 size = node is IAccSaberCampaignSizable sizeNode ? sizeNode.Size : Vector2.one * (node.Scale * scaleFactor);
 
                 float halfWidth = size.x * 0.5f;
                 float halfHeight = size.y * 0.5f;
@@ -301,9 +301,6 @@ namespace AccSaber.Models
 
         [JsonProperty("system")]
         public bool System { get; set; }
-
-
-        
     }
 
     [UsedImplicitly]
@@ -319,25 +316,34 @@ namespace AccSaber.Models
         public int Quantity { get; set; }
     }
 
-    [UsedImplicitly]
-    internal class AccSaberCampaignPositionable : CampaignModel
+    internal interface IAccSaberCampaignPositionable : IModel
     {
 
         [JsonProperty("positionX")]
-        public int PositionX { get; set; }
+        public float PositionX { get; set; }
 
         [JsonProperty("positionY")]
-        public int PositionY { get; set; }
+        public float PositionY { get; set; }
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignScalable : AccSaberCampaignPositionable
+    internal class AccSaberCampaignPositionable : CampaignModel, IAccSaberCampaignPositionable
     {
-        [JsonProperty("size")]
-        public virtual float Scale { get; set; }
+
+        [JsonProperty("positionX")]
+        public float PositionX { get; set; }
+
+        [JsonProperty("positionY")]
+        public float PositionY { get; set; }
     }
 
-    internal class AccSaberCampaignSizable : AccSaberCampaignScalable
+    internal interface IAccSaberCampaignScalable : IAccSaberCampaignPositionable
+    {
+        [JsonProperty("size")]
+        public float Scale { get; set; }
+    }
+
+    internal interface IAccSaberCampaignSizable : IAccSaberCampaignPositionable
     {
         [JsonIgnore]
         public Vector2 Size { get; set; }
@@ -372,7 +378,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignScalablePrereq : AccSaberCampaignScalable, Utils.Misc.INode<Guid>, IAccSaberCampaignPrereq
+    internal class AccSaberCampaignPositionablePrereq : AccSaberCampaignPositionable, Utils.Misc.INode<Guid>, IAccSaberCampaignPrereq
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -385,20 +391,21 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignSizablePrereq : AccSaberCampaignSizable, Utils.Misc.INode<Guid>, IAccSaberCampaignPrereq
+    internal class AccSaberCampaignPositionableScalablePrereq : AccSaberCampaignPositionablePrereq, IAccSaberCampaignScalable
     {
-        [JsonProperty("id")]
-        public Guid Id { get; set; }
-
-        [JsonProperty("prerequisites")]
-        public virtual List<AccSaberCampaignPrereqInfo> PrerequisiteInfos { get; set; } = [];
-
-        [JsonIgnore]
-        public IReadOnlyCollection<Guid> InwardArrows => [.. PrerequisiteInfos.Select(prereq => prereq.Id)];
+        [JsonProperty("size")]
+        public virtual float Scale { get; set; }
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignMap : AccSaberCampaignSizablePrereq
+    internal class AccSaberCampaignPositionableSizablePrereq : AccSaberCampaignPositionableScalablePrereq, IAccSaberCampaignSizable
+    {
+        [JsonIgnore]
+        public Vector2 Size { get; set; }
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignMap : AccSaberCampaignPositionableSizablePrereq
     {
         [JsonProperty("mapDifficultyId")]
         public Guid MapDifficultyId { get; set; }
@@ -490,7 +497,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignBarrier : AccSaberCampaignScalablePrereq, Utils.Misc.INodeAffected<Guid>
+    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionableScalablePrereq, Utils.Misc.INodeAffected<Guid>
     {
         [JsonProperty("conditionType")]
         public BarrierConditionType ConditionType { get; set; }
@@ -546,11 +553,8 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignText : AccSaberCampaignSizable
+    internal class AccSaberCampaignText : AccSaberCampaignPositionableSizablePrereq
     {
-        [JsonProperty("id")]
-        public Guid Id { get; set; }
-
         [JsonProperty("content")]
         public string Content { get; set; } = null!;
 

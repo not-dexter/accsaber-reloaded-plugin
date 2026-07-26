@@ -58,5 +58,8 @@ namespace AccSaber.Models
 
         [JsonIgnore]
         public int Mistakes => Misses + BadCuts + BombHits + WallHits;
+
+        [JsonIgnore]
+        public bool BeatPreviousScore { get; set; } = false;
     }
 }

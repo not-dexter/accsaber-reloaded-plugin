@@ -1,9 +1,8 @@
 ﻿using AccSaber.API;
 using AccSaber.Counter;
-using AccSaber.Managers;
+using AccSaber.ScoreTracking;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
-using System;
 using Zenject;
 
 namespace AccSaber.Installers
@@ -18,7 +17,7 @@ namespace AccSaber.Installers
             Container.Bind<PlayerSocialLife>().AsSingle();
             Container.Bind<APCalc>().AsSingle();
 
-            //Container.Bind(typeof(IDisposable)).To<PlayerSocialLife>().AsSingle();
+            Container.BindInterfacesAndSelfTo<ScoreSubmissionHandler>().AsSingle();
         }
     }
 }

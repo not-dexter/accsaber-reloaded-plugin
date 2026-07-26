@@ -6,7 +6,6 @@ using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
-using IPA.Loader;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -27,6 +26,7 @@ namespace AccSaber.ScoreTracking
         [Inject] private readonly BeatmapObjectManager bomb = null!;
         [Inject] private readonly PlayerHeadAndObstacleInteraction wall = null!;
         [Inject] private readonly PauseController pause = null!;
+        [Inject] private readonly ScoreSubmissionHandler submission = null!;
         private StandardLevelScenesTransitionSetupDataSO transition = null!;
         private GameEnergyCounter? energy = null;
         private AccSaberStore? store = null;
@@ -354,12 +354,14 @@ namespace AccSaber.ScoreTracking
                 if (!mapIncomplete)
                     scoreBeaten = aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score, true, TimeSpan.FromSeconds(7));
 
-                bool submitted = await api.SubmitScore(score);
+                score.BeatPreviousScore = scoreBeaten;
+
+                bool submitted = await submission.AttemptSubmitScore(score);
                 SerializationHandler.LastScoreTime = DateTime.UtcNow;
 
                 OnScoreSubmit?.Invoke(score, scoreBeaten);
 
-                if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
+                if (!submitted && ScoreSubmissionHandler.CheckFullSubmissionFailure(score))
                     aslvc.ForceShowLeaderboard();
             }
             catch (Exception e)
