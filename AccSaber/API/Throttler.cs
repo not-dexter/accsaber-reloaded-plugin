@@ -96,41 +96,50 @@ namespace AccSaber.API
         }
 
         /// <summary>
-        /// Estimates how long a caller would need to wait before it can start an operation
-        /// guarded by this <see cref="Throttler"/>.
+        /// Estimates how long a caller would need to wait before their operation can start given the current
+        /// throttler state and an optional number of additional "virtual" calls that are expected to be queued.
         /// </summary>
+        /// <param name="extraVirtualScores">
+        /// Optional count of additional pending calls to include in the estimate (defaults to 0). These are not
+        ///  yet reflected in <see cref="CallsThisCycle"/> but should be considered for a projected wait time.
+        /// </param>
         /// <returns>
-        /// A <see cref="TimeSpan"/> representing an estimated wait time. Returns <see cref="TimeSpan.Zero"/>
-        /// when there is no contention on the internal lock.
+        /// A <see cref="TimeSpan"/> representing the estimated wait time. Returns <see cref="TimeSpan.Zero"/>
+        /// when the call would be allowed immediately.
         /// </returns>
         /// <remarks>
-        /// - This method inspects the internal <see cref="AsyncLock"/> state (via <c>locker</c>) and the
-        ///   current cycle bookkeeping to produce a conservative estimate of the wait time.
-        /// - The calculation uses <c>locker.LineLength + 1</c> to account for the queued waiters plus the
-        ///   thread currently holding the lock. It then determines how many full cycles of length
-        ///   <see cref="CycleLength"/> seconds are required to satisfy the outstanding callers given
-        ///   the configured <see cref="CallsPerCycle"/>.
-        /// - If <c>CycleStartTime</c> has been moved into the future (happens when callers were previously
-        ///   throttled), the remaining time until that start is added to the estimate.
-        /// - The returned value is an estimate only: it does not block, observe cancellation, nor guarantee
-        ///   the exact delay that will be experienced by a real caller.
-        /// - This method is safe to call concurrently but reads internal state without acquiring the lock,
-        ///   so the result may be transient.
+        /// - The calculation is non-destructive: it does not modify the throttler's internal state.
+        /// - The estimate combines:
+        ///     1) the current number of calls in the active cycle (<see cref="CallsThisCycle"/>),
+        ///     2) the number of waiters currently queued on the internal <see cref="AsyncLock"/> (via <c>locker.LineLength</c>),
+        ///     3) the supplied <paramref name="extraVirtualScores"/>.
+        /// - If the lock is free and the projected total fits within <see cref="CallsPerCycle"/>, the method returns <see cref="TimeSpan.Zero"/>.
+        /// - Otherwise the method computes how many full cycles are required to accommodate the projected calls,
+        ///   adds the remaining time in the current cycle (if any), and returns the summed delay.
+        /// - Use this for UI/monitoring to show expected delays; it is an approximation and may differ from the actual
+        ///   delay experienced by a caller due to concurrent activity.
         /// </remarks>
-        public TimeSpan EstimatedWaitTime()
+        public TimeSpan EstimatedWaitTime(int extraVirtualScores = 0) 
         {
-            int currentCalls = CallsThisCycle, lineLength = locker.LineLength;
+            int currentCalls = CallsThisCycle, lineLength = locker.LineLength + extraVirtualScores;
+            int totalCalls = currentCalls + lineLength;
 
-            if (!locker.IsLocked && currentCalls != CallsPerCycle)
+            if (!locker.IsLocked && totalCalls <= CallsPerCycle)
                 return TimeSpan.Zero;
 
             DateTime now = DateTime.UtcNow, cycle = CycleStartTime;
 
-            int fullCycles = (lineLength + currentCalls) / CallsPerCycle;
-            TimeSpan currentDelay = TimeSpan.FromSeconds(CycleLength) * fullCycles;
+            int fullCycles = (totalCalls - 1) / CallsPerCycle;
+            TimeSpan currentDelay = TimeSpan.FromSeconds(CycleLength * (fullCycles - 1)); // full cycles minus one as the first cycle may not be a full cycle.
 
             if (cycle > now)
-                currentDelay += CycleStartTime - now;
+                currentDelay += cycle - now;
+            else if (fullCycles > 0)
+            {
+                TimeSpan periodTimeElapsed = now - cycle;
+                if (periodTimeElapsed.TotalSeconds < CycleLength)
+                    currentDelay += TimeSpan.FromSeconds(CycleLength) - periodTimeElapsed;
+            }
 
             return currentDelay;
         }

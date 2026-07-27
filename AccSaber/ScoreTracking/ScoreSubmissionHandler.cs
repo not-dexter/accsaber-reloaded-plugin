@@ -19,12 +19,18 @@ namespace AccSaber.ScoreTracking
 
     internal class ScoreSubmissionHandler : IInitializable, IDisposable
     {
-        private static readonly Throttler SubmitThrottler = new(1, 60);
         private static readonly TimeSpan WaitDelayThreshold = TimeSpan.FromMilliseconds(500);
-        private static readonly TimeSpan LoopDelayThreshold = TimeSpan.FromMinutes(5);
 
 #if TEST_SUBMISSION
+        // Fake values for faster testing.
+        private static readonly Throttler SubmitThrottler = new(1, 8);
+        private static readonly TimeSpan LoopDelayThreshold = TimeSpan.FromMinutes(0.1);
+
+
         [Inject] private readonly Utils.Misc.SerializationHandler handler = null!;
+#else
+        private static readonly Throttler SubmitThrottler = new(1, 60);
+        private static readonly TimeSpan LoopDelayThreshold = TimeSpan.FromMinutes(5);
 #endif
 
         private readonly ConcurrentQueue<AccSaberScore> ScoresToSubmit = new();
@@ -184,10 +190,18 @@ namespace AccSaber.ScoreTracking
 
             CancellationToken ct = loopCancelToken?.Token ?? CancellationToken.None;
 
-            TimeSpan wait = SubmitThrottler.EstimatedWaitTime();
+            TimeSpan wait = SubmitThrottler.EstimatedWaitTime(extraVirtualScores: 1);
+
+#if TEST_SUBMISSION
+            Plugin.Log.Info($"Current wait: {wait}");
+#endif
 
             if (wait < WaitDelayThreshold)
                 return await TrackSubmissionTask(SubmitScore(score, false, ct)).ConfigureAwait(false);
+
+            Plugin.Log.Warn(
+                $"The current score could not be submitted as the wait was longer than {WaitDelayThreshold.TotalMilliseconds:N0}ms.\n" +
+                "Estimated wait time: " + wait);
 
             RequeueScore(score);
 
@@ -214,8 +228,6 @@ namespace AccSaber.ScoreTracking
 #if TEST_SUBMISSION
                 await SubmitThrottler.Call(ct).ConfigureAwait(false);
                 bool success = true;
-
-                Plugin.Log.Info("Finished");
 #else
             var (success, _) = await APIHandler.CallAPI(request, SubmitThrottler, maxRetries: 1, ct: ct).ConfigureAwait(false);
 #endif
