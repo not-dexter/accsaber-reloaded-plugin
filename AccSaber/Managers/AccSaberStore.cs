@@ -288,7 +288,7 @@ namespace AccSaber.Managers
                 campaignObj["difficulties"]
                 .Select(node => new KeyValuePair<Guid, CampaignProgressValue>(
                     Guid.Parse(node["node"]?["id"]?.ToString() ?? ""),
-                    new((float)(node["userValue"] ?? 0f),
+                    new([.. node["targets"].Select(target => (float)(target["userValue"] ?? 0f))],
                      GetCompletionStatus(
                          (bool)(node["unlocked"] ?? false),
                          (bool)(node["completed"] ?? false)
@@ -298,7 +298,7 @@ namespace AccSaber.Managers
                 campaignObj["barriers"]
                 .Select(barrier => new KeyValuePair<Guid, CampaignProgressValue>(
                     Guid.Parse(barrier["barrier"]?["id"]?.ToString() ?? ""),
-                    new((float)(barrier["currentValue"] ?? 0f),
+                    new([(float)(barrier["currentValue"] ?? 0f)],
                      GetCompletionStatus(
                          (bool)(barrier["unlocked"] ?? false),
                          (bool)(barrier["satisfied"] ?? false)
@@ -779,7 +779,7 @@ namespace AccSaber.Managers
                 )
         { }
 
-        internal HashSet<Guid> MarkAsComplete(Guid id, float progess)
+        internal HashSet<Guid> MarkAsComplete(Guid id, IEnumerable<float> progess)
         {
             if (!UnlockedItems.Contains(id))
             {
@@ -797,7 +797,7 @@ namespace AccSaber.Managers
                 return [];
             }
 
-            PlayerValues[id] = new(progess, CompletionStatus.Complete);
+            PlayerValues[id] = new([.. progess], CompletionStatus.Complete);
 
             UnlockedItems.Remove(id);
             CompletedItems.Add(id);
@@ -930,7 +930,7 @@ namespace AccSaber.Managers
             Incomplete, Unlocked, Complete
         }
 
-        public record struct CampaignProgressValue(float Progress, CompletionStatus Completion);
+        public record struct CampaignProgressValue(float[] Progress, CompletionStatus Completion);
 
     }
 }

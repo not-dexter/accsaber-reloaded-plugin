@@ -93,7 +93,7 @@ namespace AccSaber.Utils
         //public static readonly Guid OverallReloadedCategory = Guid.Parse("b0000000-0000-0000-0000-000000000005");
 
         public static ReloadedDifficulty DiffToReloadedDiff(BeatmapDifficulty diff) => (ReloadedDifficulty)FromDiff(diff);
-        public static BeatmapDifficulty ReloadedDiffToDiff(ReloadedDifficulty diff) => ToDiff((int)diff);
+        public static BeatmapDifficulty ReloadedDiffToDiff(ReloadedDifficulty? diff) => diff is null ? default : ToDiff((int)diff);
         public static APCategory? ReloadedCategoryIdToCategoryNullable(Guid? categoryId) => categoryId?.ToString() switch
         {
             "b0000000-0000-0000-0000-000000000001" => APCategory.True,

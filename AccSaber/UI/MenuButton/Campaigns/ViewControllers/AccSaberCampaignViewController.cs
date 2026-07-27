@@ -1054,17 +1054,40 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             MissionLocked = completion.Completion == CompletionStatus.Incomplete;
             _missionButton.gameObject.SetActive(!MissionLocked);
 
-            MissionProgress = map.RequirementType switch
+            StringBuilder missionProgressStr = new(), missionObjectiveStr = new();
+
+            for (int i = 0; i < map.Targets.Count; ++i)
             {
-                CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{completion.Progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{map.RequirementValue * 100f:N2}%</color>",
-                CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{completion.Progress:0.##}ap</color> / <color={ColorUtils.AP}>{map.RequirementValue:0.##}ap</color>",
-                CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{completion.Progress:N0}</color> / <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color>",
-                CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{completion.Progress:N0}x</color> / <color={ColorUtils.TECH}>{map.RequirementValue:N0}x</color>",
-                CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{completion.Progress:N0}</color> / <color={ColorUtils.GREY}>{map.RequirementValue:N0}</color>",
-                CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
-                CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
-                _ => $"{completion.Progress}"
-            };
+                AccSaberCampaignTarget target = map.Targets[i];
+                float progress = completion.Progress[i];
+
+                missionProgressStr.AppendLine(target.RequirementType switch
+                {
+                    CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color>",
+                    CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> / <color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color>",
+                    CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> / <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color>",
+                    CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color>",
+                    CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> / <color={ColorUtils.GREY}>{target.RequirementValue:N0}</color>",
+                    CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                    CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                    _ => $"{progress} / {target.RequirementValue}"
+                });
+
+                missionObjectiveStr.AppendLine(target.RequirementType switch
+                {
+                    CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy",
+                    CampaignRequirementType.AP => $"Set a score worth <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>",
+                    CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color> or better on the map",
+                    CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row",
+                    CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points or higher",
+                    CampaignRequirementType.FC => "Set a Full Combo",
+                    CampaignRequirementType.PASS => "Pass the map without no fail",
+                    _ => $"Get something with a requirement value of {target.RequirementValue:N0}"
+                });
+            }
+
+            MissionProgress = missionProgressStr.ToString();
+            MissionObjective = missionObjectiveStr.ToString();
 
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
@@ -1079,21 +1102,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
             MissionMapDuration = string.Format("{0:D1}:{1:D2}", Duration.Minutes, Duration.Seconds);
-
-
-            string objective = map.RequirementType switch
-            {
-                CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{map.RequirementValue * 100:N2}%</color> accuracy",
-                CampaignRequirementType.AP => $"Set a score worth <color={ColorUtils.RANK}>{map.RequirementValue:N0} AP</color>",
-                CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color> or better on the map",
-                CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> 115s in a row",
-                CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> points or higher",
-                CampaignRequirementType.FC => "Set a Full Combo",
-                CampaignRequirementType.PASS => "Pass the map without no fail",
-                _ => $"Get something with a requirement value of {map.RequirementValue:N0}"
-            };
-
-            MissionObjective = objective;
 
             AccSaberBasicDifficulty? mapDiff = await _serialHandler.GetDiffByIdAsync(map.MapDifficultyId);
 
@@ -1215,8 +1223,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (!InMap || (score.UncompletedMap ?? true))
                 return;
 
-            float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
-
             AccSaberBasicDifficulty? diff = await _serialHandler.GetDiffByIdAsync(score.MapDifficultyId);
 
             if (diff is null)
@@ -1225,34 +1231,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
             }
 
-            float val = currentMap.RequirementType switch
-            {
-                CampaignRequirementType.ACC => acc,
-                CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
-                CampaignRequirementType.SCORE => score.Score,
-                CampaignRequirementType.STREAK_115 => score.Streak115,
-                CampaignRequirementType.FC => score.Mistakes,
-                CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
-                _ => -1f
-            };
+            CampaignProgressValue current = CampaignProgressVal;
 
-            if (val < 0f)
+            if (CheckMapSuccess(score, currentMap, diff, ref current))
             {
-                Plugin.Log.Warn("Cannot handle the campaign type that was completed.");
-                return; // I can only handle certain types, those I can't will be updated once the websocket sends the score.
-            }
-
-            if (CampaignProgressVal.Progress >= val)
-            {
-                Plugin.Log.Info("Player did not beat old pb.");
-                return; // didn't beat old progress.
-            }
-
-            _lastUpdate = now;
-
-            if (currentMap.RequirementValue > CampaignProgressVal.Progress && currentMap.RequirementValue <= val)
-            {
-                CampaignProgressValue? newVal = await _campaignMapViewController.MarkNodeAsComplete(currentMap.Id, val);
+                CampaignProgressValue? newVal = await _campaignMapViewController.MarkNodeAsComplete(currentMap.Id, current.Progress);
 
                 if (doUpdates)
                     UpdateGoToMapButton();
@@ -1267,6 +1250,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
 
+            _lastUpdate = now;
+
             if (doUpdates)
                 _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
 
@@ -1276,6 +1261,55 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #else
                 _ = SetMission(currentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
 #endif
+        }
+        private bool CheckMapSuccess(AccSaberScore score, AccSaberCampaignMap map, AccSaberBasicDifficulty diff, ref CampaignProgressValue progress)
+        {
+            float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
+
+            List<float> newVals = [with(map.Targets.Count)];
+            List<bool> completed = [with(map.Targets.Count)];
+
+            for (int i = 0; i < newVals.Count; ++i)
+            {
+                float val = map.Targets[i].RequirementType switch
+                {
+                    CampaignRequirementType.ACC => acc,
+                    CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
+                    CampaignRequirementType.SCORE => score.Score,
+                    CampaignRequirementType.STREAK_115 => score.Streak115,
+                    CampaignRequirementType.FC => score.Mistakes,
+                    CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
+                    _ => -1f
+                };
+
+                if (val < 0f)
+                {
+                    Plugin.Log.Warn("Cannot handle a campaign type that was completed.");
+                    return false; // I can only handle certain types, those I can't will be updated once the websocket sends the score.
+                }
+
+                if (CampaignProgressVal.Progress[i] >= val) // TODO: Check if less is better for some types.
+                {
+                    Plugin.Log.Info("Player did not beat old pb.");
+                    newVals.Add(progress.Progress[newVals.Count]);
+                    completed.Add(false);
+                    continue; // didn't beat old progress.
+                }
+
+                newVals.Add(val);
+                completed.Add(map.Targets[i].RequirementValue <= val); // Also add check here.
+            }
+
+            bool success = map.TargetMode switch
+            {
+                CampaignPrerequisiteMode.OR => completed.Any(success => success),
+                CampaignPrerequisiteMode.AND => completed.All(success => success),
+                _ => false
+            };
+
+            progress = new([.. newVals], progress.Completion);
+
+            return success;
         }
         public async Task WaitForServerUpdate(TimeSpan timeout = default)
         {

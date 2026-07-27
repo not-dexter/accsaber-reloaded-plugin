@@ -1,11 +1,13 @@
 ﻿using AccSaber.Configuration;
 using AccSaber.Models;
 using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
+using AccSaber.Utils;
 using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using HMUI;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using TMPro;
@@ -37,8 +39,12 @@ namespace AccSaber.Counter.Hosts
         private TMP_Text DisplayText = null!;
         private ImageView Checkmark = null!;
         private int max115Streak = 0, current115Streak = 0;
+        private LineInfo[] lineData = null!;
+        private AccSaberCampaignTarget[] targets = null!;
+        private readonly List<Action> cleanupActions = [];
+        private int highestSuccessIndex = int.MaxValue;
+        private string goodColor = null!, badColor = null!;
 
-        private float requiredVal;
         private bool enabledGoalColors;
 
         static CampaignCounter()
@@ -71,18 +77,22 @@ namespace AccSaber.Counter.Hosts
                 if (!campaignVC.MapStarted)
                     return;
 
+                goodColor = PluginSettings.CampaignCounterGoodColor.Color();
+                badColor = PluginSettings.CampaignCounterBadColor.Color();
+
                 enabledGoalColors = PluginSettings.CampaignCounterGoalColors;
 
                 Map = campaignVC.CurrentMap!;
                 DiffInfo = Plugin.Container.TryResolve<SerializationHandler>().GetDiffByIdAsync(Map.MapDifficultyId).GetAwaiter().GetResult()!;
 
-                requiredVal = Map.RequirementValue - 0.00005f;
+                lineData = new LineInfo[Map.Targets.Count];
+                targets = [.. Map.Targets];
 
                 DisplayText = (TMP_Text)CanvasCreateText!.Invoke(CanvasUtility, [Settings, null]);
 
-                DisplayText.faceColor = enabledGoalColors ? Color.yellow : PluginSettings.CampaignCounterNeutralColor;
+                Color displayColor = enabledGoalColors ? Color.yellow : PluginSettings.CampaignCounterNeutralColor;
 
-                DisplayText.text = "Campaign Counter";
+                DisplayText.text = $"<color={displayColor.Color()}>Campaign Counter</color>";
                 DisplayText.fontSize = PluginSettings.CampaignCounterFontSize;
 
                 object canvasId = SettingsCanvasID!.GetValue(Settings);
@@ -117,93 +127,102 @@ namespace AccSaber.Counter.Hosts
                 Plugin.Log.Error(e);
                 return;
             }
-            
 
-            switch (Map.RequirementType)
+            cleanupActions.Clear();
+
+            for (int i = 0; i < targets.Length; ++i)
             {
-                case CampaignModel.CampaignRequirementType.ACC:
-                    sc.scoringForNoteFinishedEvent += AccCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.AP:
-                    Calc = Plugin.Container.TryResolve<APCalc>();
-                    sc.scoringForNoteFinishedEvent += ApCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.SCORE:
-                    sc.scoreDidChangeEvent += ScoreCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.STREAK_115:
-                    sc.scoringForNoteFinishedEvent += StreakCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.FC:
-                    UpdateColor(true);
-                    DisplayText.SetText("FC!");
-                    cc.comboBreakingEventHappenedEvent += FCCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.PASS:
-                    UpdateColor(true);
-                    DisplayText.SetText("Pass!");
-                    energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
-                    energy.gameEnergyDidReach0Event += FCCounter;
-                    break;
-                default: // TODO: Add Rank (or maybe just don't worry about that one)
-                    campaignVC = null;
-                    break;
+                AccSaberCampaignTarget target = targets[i];
+
+                Action ActionEvent0(Action<int> action) => () => action(i);
+
+                Action<T> ActionEvent1<T>(Action<T, int> action) => item => action(item, i);
+
+                Action<T1, T2> ActionEvent2<T1, T2>(Action<T1, T2, int> action) => (item1, item2) => action(item1, item2, i);
+
+                Action action0;
+                Action<ScoringElement> action1;
+                Action<int, int> action2;
+
+                lineData[i] = new("");
+
+                switch (target.RequirementType)
+                {
+                    case CampaignModel.CampaignRequirementType.ACC:
+                        action1 = ActionEvent1<ScoringElement>(AccCounter);
+                        sc.scoringForNoteFinishedEvent += action1;
+                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action1);
+                        break;
+                    case CampaignModel.CampaignRequirementType.AP:
+                        Calc = Plugin.Container.TryResolve<APCalc>();
+
+                        action1 = ActionEvent1<ScoringElement>(ApCounter);
+                        sc.scoringForNoteFinishedEvent += action1;
+                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action1);
+                        break;
+                    case CampaignModel.CampaignRequirementType.SCORE:
+                        action2 = ActionEvent2<int, int>(ScoreCounter);
+                        sc.scoreDidChangeEvent += action2;
+                        cleanupActions.Add(() => sc.scoreDidChangeEvent -= action2);
+                        break;
+                    case CampaignModel.CampaignRequirementType.STREAK_115:
+                        action1 = ActionEvent1<ScoringElement>(StreakCounter);
+                        sc.scoringForNoteFinishedEvent += action1;
+                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action1);
+                        break;
+                    case CampaignModel.CampaignRequirementType.FC:
+                        lineData[i].Success = true;
+                        lineData[i].Content = "FC!";
+
+                        action0 = ActionEvent0(FCCounter);
+                        cc.comboBreakingEventHappenedEvent += action0;
+                        cleanupActions.Add(() => cc.comboBreakingEventHappenedEvent -= action0);
+                        break;
+                    case CampaignModel.CampaignRequirementType.PASS:
+                        lineData[i].Success = true;
+                        lineData[i].Content = "Pass!";
+
+                        energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
+
+                        action0 = ActionEvent0(FCCounter);
+                        energy.gameEnergyDidReach0Event += action0;
+                        cleanupActions.Add(() => energy.gameEnergyDidReach0Event -= action0);
+                        break;
+                    default: // TODO: Add Rank (or maybe just don't worry about that one)
+                        campaignVC = null;
+                        break;
+                }
             }
         }
         public void Dispose()
         {
-            if (campaignVC is null || !campaignVC.MapStarted)
+            if (cleanupActions.Count == 0)
                 return;
 
-            switch (Map.RequirementType)
-            {
-                case CampaignModel.CampaignRequirementType.ACC:
-                    sc.scoringForNoteFinishedEvent -= AccCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.AP:
-                    sc.scoringForNoteFinishedEvent -= ApCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.SCORE:
-                    sc.scoreDidChangeEvent -= ScoreCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.STREAK_115:
-                    sc.scoringForNoteFinishedEvent -= StreakCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.FC:
-                    cc.comboBreakingEventHappenedEvent -= FCCounter;
-                    break;
-                case CampaignModel.CampaignRequirementType.PASS:
-                    energy.gameEnergyDidReach0Event -= FCCounter;
-                    break;
-            }
+            foreach (Action action in cleanupActions)
+                action.Invoke();
         }
 
 
-        private void AccCounter(ScoringElement scoringElement)
+        private void AccCounter(ScoringElement scoringElement, int index)
         {
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore * 100f;
-            float goalAcc = requiredVal * 100f;
+            float goalAcc = targets[index].RequirementValue * 100f;
 
-            UpdateColor(acc >= goalAcc);
-
-            DisplayText.SetText($"{acc:N2}% / {goalAcc:N2}%");
+            UpdateInfo(index, success: acc >= goalAcc - 0.005f, content: $"{acc:N2}% / {goalAcc:N2}%");
         }
-        private void ApCounter(ScoringElement scoringElement)
+        private void ApCounter(ScoringElement scoringElement, int index)
         {
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore;
             float ap = Calc.GetAp(acc, DiffInfo.Complexity);
 
-            UpdateColor(ap >= requiredVal);
-
-            DisplayText.SetText($"{ap:0.##} ap / {Map.RequirementValue:0.##} ap");
+            UpdateInfo(index, success: ap >= targets[index].RequirementValue, content: $"{ap:0.##} ap / {targets[index].RequirementValue:0.##} ap");
         }
-        private void ScoreCounter(int multipliedScore, int modifiedScore)
+        private void ScoreCounter(int multipliedScore, int modifiedScore, int index)
         {
-            UpdateColor(multipliedScore >= requiredVal);
-
-            DisplayText.SetText($"{multipliedScore:N0} / {Map.RequirementValue:N0} Score");
+            UpdateInfo(index, success: multipliedScore >= targets[index].RequirementValue, content: $"{multipliedScore:N0} / {targets[index].RequirementValue:N0} Score");
         }
-        private void StreakCounter(ScoringElement scoringElement)
+        private void StreakCounter(ScoringElement scoringElement, int index)
         {
             bool is115 = scoringElement.cutScore == 115;
 
@@ -220,23 +239,56 @@ namespace AccSaber.Counter.Hosts
             }
 
             int streak = Math.Max(max115Streak, current115Streak);
-            UpdateColor(streak >= (int)Map.RequirementValue);
 
-            DisplayText.SetText($"{streak}x / {Map.RequirementValue:N0}x 115 streak\n<size=70%><color=#BBB>(Current - {current115Streak}x)</color>");
+            UpdateInfo(index, success: streak >= (int)targets[index].RequirementValue, content: $"{streak}x / {targets[index].RequirementValue:N0}x 115 streak");
         }
-        private void FCCounter()
+        private void FCCounter(int index)
         {
-            UpdateColor(false);
+            UpdateInfo(index, success: false);
         }
 
 
-        private void UpdateColor(bool success)
+        private void UpdateInfo(int index, bool? success = null, string? content = null)
         {
-            if (enabledGoalColors)
-                DisplayText.faceColor = success ? PluginSettings.CampaignCounterGoodColor : PluginSettings.CampaignCounterBadColor;
+            if (success is not null)
+            {
+                if (enabledGoalColors)
+                    lineData[index].Color = success.Value ? goodColor : badColor;
+
+                if (success.Value && index < highestSuccessIndex)
+                    highestSuccessIndex = index;
+            }
+
+            if (content is not null)
+                lineData[index].Content = content;
+        }
+        private void UpdateDisplay()
+        {
+            bool success = Map.TargetMode switch
+            {
+                CampaignModel.CampaignPrerequisiteMode.AND => lineData.All(line => line.Success),
+                CampaignModel.CampaignPrerequisiteMode.OR => lineData.Any(line => line.Success),
+                _ => false,
+            };
 
             Checkmark.color = success ? PluginSettings.CampaignCounterCheckmarkGoodColor : PluginSettings.CampaignCounterCheckmarkBadColor;
+
+            if (success && Map.TargetMode == CampaignModel.CampaignPrerequisiteMode.OR && highestSuccessIndex >= 0)
+                lineData[highestSuccessIndex].Color = lineData[highestSuccessIndex].Color.BrightenColor(5);
+
+            string outp = lineData.Aggregate("", (total, current) => total + current + '\n')[..^1];
+
+            DisplayText.SetText(outp);
         }
 
+        private struct LineInfo(string content, bool success = false, string? color = null)
+        {
+            public string Content { get; set; } = content;
+            public bool Success { get; set; } = success;
+            public string Color { get; set; } = color ?? "#FFF";
+
+            public override readonly string ToString() => 
+                $"<color={Color}>{Content}</color>";
+        }
     }
 }

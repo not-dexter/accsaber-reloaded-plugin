@@ -85,6 +85,20 @@ namespace AccSaber.Models
             COMPLETION_COUNT,
             PASS
         }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignNodeBorderLayer.java
+        public enum CampaignNodeBorderLayer
+        {
+            ABOVE,
+            BELOW
+        }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignModifierRequirement.java
+        public enum CampaignModifierRequirement
+        {
+            REQUIRED,
+            FORBIDDEN
+        }
     }
 
     [UsedImplicitly]
@@ -143,6 +157,9 @@ namespace AccSaber.Models
         [JsonProperty("backgroundColor")]
         public string? BackgroundColor { get; set; }
 
+        [JsonProperty("background")]
+        public AccSaberCampaignBackgroundSizeInfo? BackgroundSizeInfo { get; set; }
+
         [JsonProperty("iconUrl")]
         public string? IconUrl { get; set; }
 
@@ -190,11 +207,20 @@ namespace AccSaber.Models
 
         [JsonIgnore]
         public AccSaberCampaignOffsetData? OffsetData { get; set; }
-
-
-        
     }
     internal class AccSaberCampaign : AccSaberCampaign<AccSaberCampaignMap>;
+
+    internal class AccSaberCampaignBackgroundSizeInfo : CampaignModel
+    {
+        [JsonProperty("size")]
+        public int Size { get; set; }
+
+        [JsonProperty("x")]
+        public int X { get; set; }
+
+        [JsonProperty("y")]
+        public int Y { get; set; }
+    }
 
     internal class AccSaberCampaignOffsetData
     {
@@ -319,12 +345,16 @@ namespace AccSaber.Models
 
     internal interface IAccSaberCampaignPositionable : IModel
     {
-
         [JsonProperty("positionX")]
         public float PositionX { get; set; }
 
         [JsonProperty("positionY")]
         public float PositionY { get; set; }
+    }
+
+    internal interface IAccSaberCampaignId : IModel
+    {
+        public Guid Id { get; set; }
     }
 
     [UsedImplicitly]
@@ -351,7 +381,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignPrereqInfo : CampaignModel
+    internal class AccSaberCampaignPrereqInfo : CampaignModel, IAccSaberCampaignId
     {
         [JsonProperty("comesFromCampaignDifficultyId")]
         public Guid Id { get; set; }
@@ -369,11 +399,8 @@ namespace AccSaber.Models
         }
     }
 
-    internal interface IAccSaberCampaignPrereq
+    internal interface IAccSaberCampaignPrereq : IAccSaberCampaignId
     {
-        [JsonProperty("id")]
-        public Guid Id { get; set; }
-
         [JsonProperty("prerequisites")]
         public List<AccSaberCampaignPrereqInfo> PrerequisiteInfos { get; set; }
     }
@@ -425,8 +452,7 @@ namespace AccSaber.Models
         [JsonProperty("metadata")]
         public AccSaberMetadata Metadata { get; set; } = null!;
 
-        [JsonProperty("mapAuthor")]
-        public string MapAuthor { get; set; } = null!;
+        // nps?, maxCombo?
 
         [JsonProperty("songName")]
         public string SongName { get; set; } = null!;
@@ -434,22 +460,25 @@ namespace AccSaber.Models
         [JsonProperty("songAuthor")]
         public string SongAuthor { get; set; } = null!;
 
+        [JsonProperty("mapAuthor")]
+        public string MapAuthor { get; set; } = null!;
+        
         [JsonProperty("coverUrl")]
         public string CoverUrl { get; set; } = null!;
 
-        [JsonProperty("difficulty")]
-        public string Difficulty { get; set; } = null!;
+        [JsonProperty("difficulty"), JsonConverter(typeof(EnumJsonConverter<ReloadedDifficulty>))]
+        public ReloadedDifficulty? Difficulty { get; set; }
 
         [JsonProperty("characteristic")]
         public string Characteristic { get; set; } = null!;
 
         // mapDifficultyStatus
 
-        [JsonProperty("requirementType"), JsonConverter(typeof(EnumJsonConverter<CampaignRequirementType>))]
-        public CampaignRequirementType? RequirementType { get; set; }
+        [JsonProperty("targetMode"), JsonConverter(typeof(EnumJsonConverter<CampaignPrerequisiteMode>))]
+        public CampaignPrerequisiteMode? TargetMode { get; set; }
 
-        [JsonProperty("requirementValue")]
-        public float RequirementValue { get; set; }
+        [JsonProperty("targets")]
+        public List<AccSaberCampaignTarget> Targets { get; set; } = null!; 
 
         [JsonProperty("prerequisiteMode"), JsonConverter(typeof(EnumJsonConverter<CampaignPrerequisiteMode>))]
         public CampaignPrerequisiteMode? PrerequisiteMode { get; set; }
@@ -478,11 +507,20 @@ namespace AccSaber.Models
         [JsonProperty("borderShape")]
         public string? BorderShape { get; set; }
 
+        [JsonProperty("nodeBorderUrl")]
+        public string? NodeBorderUrl { get; set; }
+
+        [JsonProperty("nodeBorderLayer"), JsonConverter(typeof(EnumJsonConverter<CampaignNodeBorderLayer>))]
+        public CampaignNodeBorderLayer NodeBorderLayer { get; set; } = CampaignNodeBorderLayer.ABOVE;
+
         [JsonProperty("xp")]
         public float XP { get; set; }
 
         [JsonProperty("items")]
         public List<AccSaberCampaignItem> Items { get; set; } = [];
+
+        [JsonProperty("modifiers")]
+        public List<AccSaberCampaignModifier> Modifiers { get; set; } = [];
 
 
         [OnDeserialized]
@@ -495,6 +533,32 @@ namespace AccSaber.Models
                 Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
         }
 
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignTarget : CampaignModel, IAccSaberCampaignId
+    {
+        [JsonProperty("id")]
+        public Guid Id { get; set; }
+
+        [JsonProperty("requirementType"), JsonConverter(typeof(EnumJsonConverter<CampaignRequirementType>))]
+        public CampaignRequirementType? RequirementType { get; set; }
+
+        [JsonProperty("requirementValue")]
+        public float RequirementValue { get; set; }
+
+        [JsonProperty("requirementValueMax")]
+        public float RequirementValueMax { get; set; }
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignModifier : CampaignModel
+    {
+        [JsonProperty("modifier")]
+        public AccSaberModifier Modifier { get; set; } = null!;
+
+        [JsonProperty("requirement"), JsonConverter(typeof(EnumJsonConverter<CampaignModifierRequirement>))]
+        public CampaignModifierRequirement? Requirement { get; set; }
     }
 
     [UsedImplicitly]

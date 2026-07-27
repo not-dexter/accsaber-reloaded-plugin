@@ -772,7 +772,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
-        public async Task<CampaignProgress.CampaignProgressValue?> MarkNodeAsComplete(Guid id, float progress)
+        public async Task<CampaignProgress.CampaignProgressValue?> MarkNodeAsComplete(Guid id, float[] progress)
         {
             if (CurrentCampaign is null || CurrentCampaign.Difficulties is null)
             {
@@ -1482,7 +1482,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #if NEW_VERSION
                     IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
                     BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
-                    BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty)));
+                    BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(Map.Difficulty));
 
                     campaignFlow.ShowLeaderboard(key);
 
@@ -1791,23 +1791,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             public void UpdateProgress()
             {
-                RecalculateFCProgress();
                 UpdateText();
                 UpdateTextSize();
                 UpdateTextPos();
-            }
-            private void RecalculateFCProgress()
-            {
-                if (Barrier.ConditionType != BarrierConditionType.FC)
-                    return;
-
-                List<float> values = [.. Barrier.AffectedCampaignDifficultyIds
-                    .Select(id => parentVC.CampaignProgress.PlayerValues[id])
-                    .Where(val => val.Completion == CampaignProgress.CompletionStatus.Complete)
-                    .Select(val => val.Progress)];
-
-                CampaignProgress.CampaignProgressValue progess = parentVC.CampaignProgress.PlayerValues[Barrier.Id];
-                parentVC.CampaignProgress.PlayerValues[Barrier.Id] = new(values.Count, progess.Completion);
             }
 
             private static void SetupManualRectTransform(RectTransform rt)
@@ -2014,40 +2000,42 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private void UpdateText()
             {
+                float progress = Progress.Progress[0];
+
                 string value = Barrier.ConditionType switch
                 {
                     BarrierConditionType.AVERAGE_ACC =>
-                        $"Average Accuracy\n<color={ColorUtils.LEVEL}>{Progress.Progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
+                        $"Average Accuracy\n<color={ColorUtils.LEVEL}>{progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
 
                     BarrierConditionType.AVERAGE_AP =>
-                        $"Average Ap\n<color={ColorUtils.AP}>{Progress.Progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
+                        $"Average Ap\n<color={ColorUtils.AP}>{progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
 
                     BarrierConditionType.AP_MAX =>
-                        $"Max Ap\n<color={ColorUtils.AP}>{Progress.Progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
+                        $"Max Ap\n<color={ColorUtils.AP}>{progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
 
                     BarrierConditionType.ACC_MAX =>
-                        $"Max Accuracy\n<color={ColorUtils.LEVEL}>{Progress.Progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
+                        $"Max Accuracy\n<color={ColorUtils.LEVEL}>{progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
 
                     BarrierConditionType.STREAK_115_AVERAGE =>
-                        $"Average streak\n<color={ColorUtils.TECH}>{Progress.Progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
+                        $"Average streak\n<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
 
                     BarrierConditionType.STREAK_115_MAX =>
-                        $"Max streak\n<color={ColorUtils.TECH}>{Progress.Progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
+                        $"Max streak\n<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
 
                     BarrierConditionType.FC =>
-                        $"FC maps\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
+                        $"FC maps\n<color={ColorUtils.RELOADED}>{progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
 
                     BarrierConditionType.AVERAGE_RANK =>
-                        $"Average Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:0.##}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:0.##}</color>",
+                        $"Average Rank\n<color={ColorUtils.RANK}>#{progress:0.##}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:0.##}</color>",
 
                     BarrierConditionType.MAX_RANK =>
-                        $"Max Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:N0}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:N0}</color>",
+                        $"Max Rank\n<color={ColorUtils.RANK}>#{progress:N0}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:N0}</color>",
 
                     BarrierConditionType.COMPLETION_COUNT =>
-                        $"Nodes Completed\n<color={ColorUtils.GLOBAL}>{Progress.Progress:N0}</color> / <color={ColorUtils.GLOBAL}>{Barrier.ConditionValue:N0}</color>",
+                        $"Nodes Completed\n<color={ColorUtils.GLOBAL}>{progress:N0}</color> / <color={ColorUtils.GLOBAL}>{Barrier.ConditionValue:N0}</color>",
 
                     BarrierConditionType.PASS =>
-                        $"Nodes Passed\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
+                        $"Nodes Passed\n<color={ColorUtils.RELOADED}>{progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
 
                     _ => "Unknown type"
                 };
