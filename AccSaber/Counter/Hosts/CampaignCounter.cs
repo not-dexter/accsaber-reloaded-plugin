@@ -132,13 +132,15 @@ namespace AccSaber.Counter.Hosts
 
             for (int i = 0; i < targets.Length; ++i)
             {
-                AccSaberCampaignTarget target = targets[i];
+                int current = i;
 
-                Action ActionEvent0(Action<int> action) => () => action(i);
+                AccSaberCampaignTarget target = targets[current];
 
-                Action<T> ActionEvent1<T>(Action<T, int> action) => item => action(item, i);
+                Action ActionEvent0(Action<int> action) => () => action(current);
 
-                Action<T1, T2> ActionEvent2<T1, T2>(Action<T1, T2, int> action) => (item1, item2) => action(item1, item2, i);
+                Action<T> ActionEvent1<T>(Action<T, int> action) => item => action(item, current);
+
+                Action<T1, T2> ActionEvent2<T1, T2>(Action<T1, T2, int> action) => (item1, item2) => action(item1, item2, current);
 
                 Action action0;
                 Action<ScoringElement> action1;
@@ -189,10 +191,12 @@ namespace AccSaber.Counter.Hosts
                         cleanupActions.Add(() => energy.gameEnergyDidReach0Event -= action0);
                         break;
                     default: // TODO: Add Rank (or maybe just don't worry about that one)
-                        campaignVC = null;
                         break;
                 }
             }
+
+            if (cleanupActions.Count > 0)
+                sc.scoringForNoteFinishedEvent += UpdateDisplay;
         }
         public void Dispose()
         {
@@ -201,6 +205,8 @@ namespace AccSaber.Counter.Hosts
 
             foreach (Action action in cleanupActions)
                 action.Invoke();
+
+            sc.scoringForNoteFinishedEvent -= UpdateDisplay;
         }
 
 
@@ -262,6 +268,7 @@ namespace AccSaber.Counter.Hosts
             if (content is not null)
                 lineData[index].Content = content;
         }
+        private void UpdateDisplay(ScoringElement _) => UpdateDisplay();
         private void UpdateDisplay()
         {
             bool success = Map.TargetMode switch
@@ -275,6 +282,8 @@ namespace AccSaber.Counter.Hosts
 
             if (success && Map.TargetMode == CampaignModel.CampaignPrerequisiteMode.OR && highestSuccessIndex >= 0)
                 lineData[highestSuccessIndex].Color = lineData[highestSuccessIndex].Color.BrightenColor(5);
+
+            highestSuccessIndex = -1;
 
             string outp = lineData.Aggregate("", (total, current) => total + current + '\n')[..^1];
 
