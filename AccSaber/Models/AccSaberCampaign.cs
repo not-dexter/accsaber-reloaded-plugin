@@ -1,6 +1,7 @@
 ﻿//#define PRINT_DEBUG
 
 using AccSaber.Models.Base;
+using AccSaber.Models.JsonConverters;
 using AccSaber.Utils;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
@@ -112,8 +113,8 @@ namespace AccSaber.Models
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
 
-        [JsonProperty("status")]
-        public CampaignStatus Status { get; set; }
+        [JsonProperty("status"), JsonConverter(typeof(EnumJsonConverter<CampaignStatus>))]
+        public CampaignStatus? Status { get; set; }
 
         [JsonProperty("seekingCuration")]
         public bool SeekingCuration { get; set; }
@@ -124,8 +125,8 @@ namespace AccSaber.Models
         [JsonProperty("progressionAgnostic")]
         public bool ProgressionAgnostic { get; set; }
 
-        [JsonProperty("completionMode")]
-        public CampaignCompletionMode CompletionMode { get; set; }
+        [JsonProperty("completionMode"), JsonConverter(typeof(EnumJsonConverter<CampaignCompletionMode>))]
+        public CampaignCompletionMode? CompletionMode { get; set; }
 
         [JsonProperty("legacy")]
         public bool Legacy { get; set; }
@@ -184,7 +185,7 @@ namespace AccSaber.Models
         [JsonProperty("texts")]
         public List<AccSaberCampaignText>? Texts { get; set; } 
 
-        [JsonIgnore]
+        [JsonIgnore, JsonConverter(typeof(EnumJsonConverter<UserCampaignProgress>))]
         public UserCampaignProgress? ProgressStatus { get; set; }
 
         [JsonIgnore]
@@ -290,8 +291,8 @@ namespace AccSaber.Models
         [JsonProperty("id")]
         public Guid Id { get; set; }
 
-        [JsonProperty("kind")]
-        public CampaignTagKind Kind { get; set; }
+        [JsonProperty("kind"), JsonConverter(typeof(EnumJsonConverter<CampaignTagKind>))]
+        public CampaignTagKind? Kind { get; set; }
 
         [JsonProperty("categoryId")]
         public Guid CategoryId { get; set; }
@@ -416,7 +417,7 @@ namespace AccSaber.Models
         [JsonProperty("categoryId")]
         public Guid? CategoryId { get; set; }
 
-        [JsonIgnore]
+        [JsonIgnore, JsonConverter(typeof(EnumJsonConverter<APCategory>))]
         public APCategory Category { get; set; } = APCategory.Overall;
 
         // complexity?, beatsaverCode?, maxScore?
@@ -444,14 +445,14 @@ namespace AccSaber.Models
 
         // mapDifficultyStatus
 
-        [JsonProperty("requirementType")]
-        public CampaignRequirementType RequirementType { get; set; }
+        [JsonProperty("requirementType"), JsonConverter(typeof(EnumJsonConverter<CampaignRequirementType>))]
+        public CampaignRequirementType? RequirementType { get; set; }
 
         [JsonProperty("requirementValue")]
         public float RequirementValue { get; set; }
 
-        [JsonProperty("prerequisiteMode")]
-        public CampaignPrerequisiteMode PrerequisiteMode { get; set; }
+        [JsonProperty("prerequisiteMode"), JsonConverter(typeof(EnumJsonConverter<CampaignPrerequisiteMode>))]
+        public CampaignPrerequisiteMode? PrerequisiteMode { get; set; }
 
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
@@ -459,7 +460,7 @@ namespace AccSaber.Models
         [JsonProperty("checkpointLabel")]
         public string? CheckpointLabel { get; set; }
 
-        [JsonProperty("checkpointLabelPosition")]
+        [JsonProperty("checkpointLabelPosition"), JsonConverter(typeof(EnumJsonConverter<CampaignLabelPosition>))]
         public CampaignLabelPosition CheckpointLabelPosition { get; set; } = CampaignLabelPosition.UP;
 
         [JsonProperty("checkpointAvatarUrl")]
@@ -499,8 +500,8 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal class AccSaberCampaignBarrier : AccSaberCampaignPositionableScalablePrereq, Utils.Misc.INodeAffected<Guid>
     {
-        [JsonProperty("conditionType")]
-        public BarrierConditionType ConditionType { get; set; }
+        [JsonProperty("conditionType"), JsonConverter(typeof(EnumJsonConverter<BarrierConditionType>))]
+        public BarrierConditionType? ConditionType { get; set; }
 
         [JsonProperty("conditionValue")]
         public float ConditionValue { get; set; }
@@ -511,7 +512,7 @@ namespace AccSaber.Models
         [JsonProperty("checkpointLabel")]
         public string? CheckpointLabel { get; set; }
 
-        [JsonProperty("checkpointLabelPosition")]
+        [JsonProperty("checkpointLabelPosition"), JsonConverter(typeof(EnumJsonConverter<CampaignLabelPosition>))]
         public CampaignLabelPosition? CheckpointLabelPosition { get; set; }
 
         [JsonProperty("checkpointAvatarUrl")]
@@ -590,7 +591,7 @@ namespace AccSaber.Models
         [JsonProperty("campaign")]
         public AccSaberCampaign Campaign { get; set; } = null!;
 
-        [JsonProperty("progressStatus")]
+        [JsonProperty("progressStatus"), JsonConverter(typeof(EnumJsonConverter<UserCampaignProgress>))]
         public UserCampaignProgress? ProgressStatus { get; set; }
 
         [JsonProperty("startedAt")]

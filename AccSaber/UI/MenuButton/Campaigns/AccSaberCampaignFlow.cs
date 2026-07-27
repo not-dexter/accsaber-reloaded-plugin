@@ -103,13 +103,21 @@ namespace AccSaber.UI.MenuButton.Campaigns
             if (_pluginConfig.CampaignBackButton)
             {
                 Models.AccSaberCampaign? campaign = _campaignController.CurrentCampaign;
+                Guid? mapId = _campaignController.InMap && _campaignController.CurrentMap is not null ? _campaignController.CurrentMap.Id : null;
 
                 _parentFlow.BackButtonActions.Push(() =>
                 {
 
                     void Callback()
                     {
-                        _ = _campaignController.OpenCampaign(campaign);
+                        System.Threading.Tasks.Task task = _campaignController.OpenCampaign(campaign);
+
+                        if (mapId is not null)
+                            task.ContinueWith(task2 => 
+                            {
+                                if (task2.IsCompletedSuccessfully)
+                                    _campaignController._campaignMapViewController.ClickNode(mapId.Value);
+                            }, IPA.Utilities.Async.UnityMainThreadTaskScheduler.Default);
                     }
 
                     if (campaign is not null)

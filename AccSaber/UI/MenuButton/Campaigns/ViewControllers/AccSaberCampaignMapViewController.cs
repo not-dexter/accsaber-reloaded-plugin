@@ -1614,9 +1614,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 imageTaskToken = new();
 
-                _ = Map.CheckpointAvatarUrl is null ?
+                _ = string.IsNullOrEmpty(Map.CheckpointAvatarUrl) ?
                     CoverImage.LoadCoverImage(Hash, Map.CoverUrl, imageTaskToken.Token) :
-                    CoverImage.LoadImage(Map.CheckpointAvatarUrl, imageTaskToken.Token);
+                    CoverImage.LoadImage(Map.CheckpointAvatarUrl!, imageTaskToken.Token);
             }
 
             public void UpdateProgress()

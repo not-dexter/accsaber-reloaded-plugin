@@ -110,7 +110,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly PluginConfig _config = null!;
         [Inject] private readonly PlayerSocialLife _playerInfo = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
-        [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
+        // generally try not to expose injected stuff, but these 2 classes are so close to each other I might as well
+        [Inject] internal readonly AccSaberCampaignMapViewController _campaignMapViewController = null!; 
         [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
         [Inject] private readonly AccSaberCampaignCounterSettingsModalController _campaignCounterSettingsModalController = null!;
         [Inject] private readonly AccSaberCampaignZoomModalController _campaignZoomModalController = null!;
