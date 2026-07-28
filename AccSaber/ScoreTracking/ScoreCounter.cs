@@ -90,6 +90,12 @@ namespace AccSaber.ScoreTracking
 #if NEW_VERSION
             bool IsInvalidLevel()
             {
+                if (transition.beatmapLevel is null)
+                {
+                    Plugin.Log.Critical("The beatmap transition beatmap level is somehow null, this should not be possible.");
+                    return false;
+                }
+
                 string currentHash = transition.beatmapLevel.levelID.ToLower();
                 
                 if (currentHash.StartsWith(AccSaberManager.CUSTOM_LEVEL_HASH))
@@ -114,7 +120,7 @@ namespace AccSaber.ScoreTracking
                 Plugin.Log.Critical("What?? The current map is not equal to the recorded map!!! Attempting to recorrect...");
 
 #if NEW_VERSION
-                Plugin.Log.Info($"transition level id = {transition.beatmapLevel.levelID}, transition difficulty = {transition.beatmapKey.difficulty}");
+                Plugin.Log.Info($"transition level id = {transition.beatmapLevel?.levelID}, transition difficulty = {transition.beatmapKey.difficulty}");
 #else
                 Plugin.Log.Info($"transition level id = {transition.difficultyBeatmap.level.levelID}, transition difficulty = {transition.difficultyBeatmap.difficulty}");
 #endif

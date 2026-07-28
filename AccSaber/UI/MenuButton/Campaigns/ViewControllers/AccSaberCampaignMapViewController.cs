@@ -1488,7 +1488,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     await campaignController.SetMission(Map, key, level, Progress);
 #else
-                    BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty));
+                    BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(Map.Difficulty);
                     IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
                     IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == mapDiff);
 
@@ -1525,9 +1525,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 CheckpointText.color = string.IsNullOrEmpty(Map.CheckpointColor) ? new Color32(99, 102, 241, 255) : Map.CheckpointColor!.Color();
 
                 CheckpointText.alignment = TextAlignmentOptions.Center;
-                CheckpointText.enableWordWrapping = false;
                 CheckpointText.overflowMode = TextOverflowModes.Overflow;
                 CheckpointText.raycastTarget = false;
+
+#if V41
+                CheckpointText.textWrappingMode = TextWrappingModes.NoWrap;
+#else
+                CheckpointText.enableWordWrapping = false;
+#endif
 
                 RectTransform rectTransform = (RectTransform)CheckpointText.transform;
                 rectTransform.SetAsLastSibling();
@@ -2105,7 +2110,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Text = text;
                 OffsetData = offsetData;
 
+#if V41
+                TextObj = BeatSaberUI.CreateCurvedUIText(parent, ParseGivenContent(text.Content));
+#else
                 TextObj = BeatSaberUI.CreateText(parent, ParseGivenContent(text.Content), Vector2.zero);
+#endif
 
                 RectTransform rt = TextObj.rectTransform;
 
@@ -2169,13 +2178,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 bool useWrapping = maxWidth > 0f;
 
-                TextObj.enableWordWrapping = useWrapping;
                 TextObj.overflowMode = TextOverflowModes.Overflow;
 
 #if NEW_VERSION
                 TextObj.ForceMeshUpdate(true, true);
+                TextObj.textWrappingMode = useWrapping ? TextWrappingModes.PreserveWhitespace : TextWrappingModes.NoWrap;
 #else
                 TextObj.ForceMeshUpdate(true);
+                TextObj.enableWordWrapping = useWrapping;
 #endif
 
                 Vector2 preferredSize;

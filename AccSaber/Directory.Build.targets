@@ -114,34 +114,6 @@
     <Warning Text="Beat Saber is running, restart the game to use the latest build." Condition="'$(IsRunning)' == 'True'" />
   </Target>
 
-  <!-- Versions to build when doing a multi-version Release build -->
-  <ItemGroup>
-    <BeatSaberMultiBuild Include="v29">
-      <FolderName>v29 Test</FolderName>
-      <GameVersion>1.29.1</GameVersion>
-    </BeatSaberMultiBuild>
-
-    <BeatSaberMultiBuild Include="v39">
-      <FolderName>v39 Test</FolderName>
-      <GameVersion>1.39.1</GameVersion>
-    </BeatSaberMultiBuild>
-
-    <BeatSaberMultiBuild Include="v40">
-      <FolderName>v40 Test</FolderName>
-      <GameVersion>1.40.8</GameVersion>
-    </BeatSaberMultiBuild>
-
-    <BeatSaberMultiBuild Include="v41">
-      <FolderName>v41 Test</FolderName>
-      <GameVersion>1.41.1</GameVersion>
-    </BeatSaberMultiBuild>
-
-    <BeatSaberMultiBuild Include="v43">
-      <FolderName>v43 Test</FolderName>
-      <GameVersion>1.42.0</GameVersion>
-    </BeatSaberMultiBuild>
-  </ItemGroup>
-
   <!--
     When BuildAllBeatSaberVersions=true and Configuration=Release,
     replace the normal outer Build with our multi-build target.
