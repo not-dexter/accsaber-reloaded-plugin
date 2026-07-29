@@ -2180,12 +2180,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 TextObj.overflowMode = TextOverflowModes.Overflow;
 
-#if NEW_VERSION
-                TextObj.ForceMeshUpdate(true, true);
+#if V41
                 TextObj.textWrappingMode = useWrapping ? TextWrappingModes.PreserveWhitespace : TextWrappingModes.NoWrap;
 #else
-                TextObj.ForceMeshUpdate(true);
                 TextObj.enableWordWrapping = useWrapping;
+#endif
+
+#if NEW_VERSION
+                TextObj.ForceMeshUpdate(true, true);
+#else
+                TextObj.ForceMeshUpdate(true);
 #endif
 
                 Vector2 preferredSize;

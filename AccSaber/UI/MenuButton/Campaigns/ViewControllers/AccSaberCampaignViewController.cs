@@ -78,7 +78,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly ImageView _missionImage = null!;
 
         [UIComponent("MissionButton")]
-        private readonly Button _missionButton = null!;
+        private readonly TextMeshProUGUI _missionButton = null!;
 
         [UIComponent("campaign-list")]
         private readonly CustomCellListTableData _campaignList = null!;
@@ -680,7 +680,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (_currentCampaign is not null)
             {
-                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS)
+                if (!_activeCampaigns.Any(x => x.Id == _currentCampaign.Id) && _currentCampaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS)
                 {
                     if (await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
                         Plugin.Log.Error("Failed to start campaign!");
@@ -688,7 +688,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     {
                         _invalidateActive = true;
                         _activeCampaigns.Add(await _accSaberStore.GetCampaign(_currentCampaign.Id));
-                        _missionButton.SetButtonText("Play");
+                        _missionButton.SetText("Play");
                     }
                 }
             }
@@ -850,9 +850,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public async Task OpenCampaign(AccSaberCampaign campaign)
         {
             if (!_activeCampaigns.Any(x => x.Id == campaign.Id) && campaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS)
-                _missionButton.SetButtonText("Start Campaign");
+                _missionButton.SetText("Start Campaign");
             else
-                _missionButton.SetButtonText("Play");
+                _missionButton.SetText("Play");
 
             _currentCampaign = await _accSaberStore.GetCampaign(campaign.Id, true);
 
