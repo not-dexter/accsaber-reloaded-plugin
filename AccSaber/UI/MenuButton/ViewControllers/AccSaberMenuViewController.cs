@@ -99,7 +99,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 _rankingTab = value;
-
+                _rankingsPageNumber = 0;
 				_rankingCategory = RankingTab switch
                 {
                     RankingsTab.Overall => "b0000000-0000-0000-0000-000000000005",
