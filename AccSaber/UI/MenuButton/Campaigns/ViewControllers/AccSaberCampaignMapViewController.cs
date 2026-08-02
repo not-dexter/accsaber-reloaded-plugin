@@ -2333,6 +2333,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                             }
 
                             break;
+
+                        case "div":
+                            failed = false;
+
+                            toReplace.Enqueue((m.Value, ""));
+                            closingTagReplacement.Push(($"</{tag}>", "\n"));
+                            break;
                     }
 
                     if (failed)

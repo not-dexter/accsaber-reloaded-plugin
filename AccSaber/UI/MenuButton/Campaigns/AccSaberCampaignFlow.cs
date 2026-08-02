@@ -105,6 +105,8 @@ namespace AccSaber.UI.MenuButton.Campaigns
                 Models.AccSaberCampaign? campaign = _campaignController.CurrentCampaign;
                 Guid? mapId = _campaignController.InMap && _campaignController.CurrentMap is not null ? _campaignController.CurrentMap.Id : null;
 
+                ExitToMenu();
+
                 _parentFlow.BackButtonActions.Push(() =>
                 {
 
@@ -116,7 +118,9 @@ namespace AccSaber.UI.MenuButton.Campaigns
                             task.ContinueWith(task2 => 
                             {
                                 if (task2.IsCompletedSuccessfully)
+                                {
                                     _campaignController._campaignMapViewController.ClickNode(mapId.Value);
+                                }
                             }, IPA.Utilities.Async.UnityMainThreadTaskScheduler.Default);
                     }
 
@@ -126,8 +130,8 @@ namespace AccSaber.UI.MenuButton.Campaigns
                         PresentFlowCoordinator(instant: true);
                 });
             }
-
-            ExitToMenu();
+            else
+                ExitToMenu();
         }
     }
 }

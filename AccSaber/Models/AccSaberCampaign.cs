@@ -42,6 +42,15 @@ namespace AccSaber.Models
         }
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java
+        // On modification, check the following places:
+        // CampaignCounter line 153
+        // AccSaberCampaignViewController line 1073, 1283 <-- TODO these lines, counter done. Add maxValue handling as well.
+        /// <summary>
+        /// The types of requirements that can be set for a campaign node. These are used to determine if a player meets
+        /// the requirements to access a node. See below for the places where this enum is used and should be updated if
+        /// modified.<br/> - <see cref="Counter.Hosts.CampaignCounter"/> at line 153<br/> -
+        /// <see cref="UI.MenuButton.Campaigns.ViewControllers.AccSaberCampaignViewController"/> at line 1073 and 1283
+        /// </summary>
         public enum CampaignRequirementType
         {
             ACC,
@@ -50,8 +59,15 @@ namespace AccSaber.Models
             STREAK_115,
             FC,
             RANK,
-            PASS
+            PASS,
+            COMBO,
+            BOMB_HITS,
+            MISTAKES
         }
+
+        // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java#L15
+        public static bool IsLowerBetter(CampaignRequirementType requirement) => requirement is CampaignRequirementType.RANK;
+
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignPrerequisiteMode.java
         public enum CampaignPrerequisiteMode
@@ -548,7 +564,18 @@ namespace AccSaber.Models
         public float RequirementValue { get; set; }
 
         [JsonProperty("requirementValueMax")]
-        public float RequirementValueMax { get; set; }
+        public float? RequirementValueMax { get; set; } = null;
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            if (RequirementType is not null && IsLowerBetter(RequirementType.Value))
+            {
+                float temp = RequirementValueMax ?? 0f;
+                RequirementValueMax = RequirementValue;
+                RequirementValue = temp;
+            }
+        }
     }
 
     [UsedImplicitly]

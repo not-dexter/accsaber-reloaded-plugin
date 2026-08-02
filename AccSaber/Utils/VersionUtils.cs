@@ -52,6 +52,7 @@ namespace AccSaber.Utils
         public static Task<Texture2D> LoadImageAsync(byte[] data) => Utilities.LoadImageAsync(data, makeNoLongerReadable: false);
         public static IList Data(this CustomCellListTableData ccltd) => ccltd.Data;
         public static TableView TableView(this CustomCellListTableData ccltd) => ccltd.TableView;
+        public static ScrollView ScrollView(this ScrollViewContent svc) => svc.ScrollView;
         public static Image Background(this Backgroundable bg) => bg.Background;
         public static Image Image(this ButtonIconImage bii) => bii.Image;
         public static GameObject Handle(this FloatingScreen screen) => screen.Handle;
@@ -72,6 +73,7 @@ namespace AccSaber.Utils
         public static async Task<Texture2D> LoadImageAsync(byte[] data) => Utilities.LoadTextureRaw(data);
         public static ref List<object> Data(this CustomCellListTableData ccltd) => ref ccltd.data;
         public static ref TableView TableView(this CustomCellListTableData ccltd) => ref ccltd.tableView;
+        public static ref ScrollView ScrollView(this ScrollViewContent svc) => ref svc.scrollView;
         public static ref Image Background(this Backgroundable bg) => ref bg.background;
         public static ref Image Image(this ButtonIconImage bii) => ref bii.image;
         public static ref GameObject Handle(this FloatingScreen screen) => ref screen.handle;

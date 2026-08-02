@@ -70,18 +70,18 @@
             <button text='Zoom Out' on-click='ZoomOut' />
             <button text='Zoom Fully Out' on-click='ZoomFullyOut' />
           </vertical>
-          
+
           <vertical pref-height='10' pad-right='2'>
             <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
           </vertical>
-          
+
           <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='7' pref-height='7'>
             <clickable-image src='~count-img' preserve-aspect='true' on-click='ShowCounterSettings' />
           </vertical>
-          
         </horizontal>
       </vertical>
-      <vertical pref-width='50' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2' child-expand-height='false'>
+      <vertical pref-width='60' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad='4' child-expand-height='false' child-expand-width='false'>
+
         <vertical pref-width='42' pref-height='15' vertical-fit='PreferredSize' active='~in-map'>
           <horizontal>
             <img preserve-aspect='true' id='MissionImage' pref-width='8' pref-height='8' />
@@ -109,25 +109,37 @@
             </horizontal>
           </horizontal>
         </vertical>
-        <vertical pref-height='49'>
-          <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
-          
-          <vertical pref-height='10' pad-top='2' vertical-fit='PreferredSize'>
-            <text text='Objective' font-size='4' align='Center' />
-            <text text='~MissionObjective' word-wrapping='true' font-size='3' />
+
+        <settings-container pref-width='60' pref-height='55' child-align='MiddleCenter' child-expand-height='false' child-control-width='true'>
+
+          <vertical pref-height='10' pad-top='2' vertical-fit='PreferredSize' child-align='MiddleCenter' active='~MissionComplete'>
+            <text text='Completed!' align='Center' face-color='green' font-size='4' />
           </vertical>
-          
-          <vertical pref-height='10' pad-top='2' vertical-fit='PreferredSize'>
+
+          <vertical pref-height='~DetailContainerHeight' pref-width='55' pad-top='2' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+            <text text='Objective(s)' font-size='4' align='Center' />
+            <vertical pad-left='2'>
+              <text text='~MissionObjective' align='Left' word-wrapping='false' font-size='2.5' />
+            </vertical>
+          </vertical>
+
+          <vertical pref-height='15' pad-top='2' vertical-fit='PreferredSize' child-align='MiddleCenter' active='~ShowModifiers'>
+            <text text='Modifiers' font-size='4' align='Center' />
+            <text text='~RequiredModifiers' font-size='3' align='Left' word-wrapping='false' />
+            <text text='~DisallowedModifiers' font-size='3' align='Left' word-wrapping='false' />
+          </vertical>
+
+          <vertical pref-height='~DetailContainerHeight' pad-top='2' vertical-fit='PreferredSize'>
             <text text='Current Progress' font-size='4' align='Center' />
             <text text='~MissionProgress' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
-          
+
           <vertical pref-height='15' vertical-fit='PreferredSize' child-expand-height='false' child-align='MiddleCenter' spacing='-1' active='~MissionHasRewards'>
             <text text='Rewards' font-size='4' align='Center' />
             <text text='~MissionRewards' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
-          
-        </vertical>
+        </settings-container>
+
         <vertical pref-height='12'>
           <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='3.5' active='~MissionLocked' />
           <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
@@ -139,29 +151,27 @@
     <vertical pref-width='140' horizontal-fit='PreferredSize'>
       <horizontal pref-width='108' vertical-fit='PreferredSize'>
         <vertical pref-width='60' pref-height='50'>
-          
+
           <text text='Category' align='Center' />
           <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
           <grid id='category-filter' cell-size-x='19.3' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
-          
+
           <text text='Tier' align='Center' />
           <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
           <grid id='difficulty-filter' cell-size-x='19.3' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
-          
         </vertical>
         <!-- <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>-->
         <vertical pref-width='60' pref-height='50'>
-          
+
           <text text='Theme' align='Center' />
           <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
           <grid id='theme-filter' pad-top='2' cell-size-x='19.3' cell-size-y='3' spacing-x='1' spacing-y='1' />
-          
+
           <text text='Genre' align='Center' />
-          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5'/>
-          <scrollable-settings-container id='genre-scrollable' pad-top='2' pref-width='60' pref-height='25' >
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <scrollable-settings-container id='genre-scrollable' pad-top='2' pref-width='60' pref-height='25'>
             <grid id='genre-filter' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1' horizontal-fit='Unconstrained' vertical-fit='PreferredSize' />
           </scrollable-settings-container>
-          
         </vertical>
       </horizontal>
       <button text='Close' align='Center' event-click='close-filters' />

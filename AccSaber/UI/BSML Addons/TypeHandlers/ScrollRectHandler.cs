@@ -1,46 +1,32 @@
-﻿using AccSaber.Utils;
-using BeatSaberMarkupLanguage;
-using BeatSaberMarkupLanguage.Parser;
-using BeatSaberMarkupLanguage.TypeHandlers;
-using System.Collections.Generic;
+﻿using BeatSaberMarkupLanguage.TypeHandlers;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace AccSaber.UI.BSML_Addons.TypeHandlers
 {
     [ComponentHandler(typeof(ScrollRect))]
-    internal class ScrollRectHandler : TypeHandler
+    internal class ScrollRectHandler : ScrollHandler<ScrollRect>
     {
-        public override Dictionary<string, string[]> Props => new()
+        protected override void SetContentHeight(ScrollRect scrollComponent, float height)
         {
-            { "viewportWidth", ["viewport-width"] },
-            { "viewportHeight", ["viewport-height"] },
-            { "contentWidth", ["content-width"] },
-            { "contentHeight", ["content-height"] },
-        };
+            scrollComponent.viewport.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, height);
+            scrollComponent.horizontalScrollbar.value = 0;
+        }
 
-        public override void HandleType(BSMLParser.ComponentTypeWithData componentType, BSMLParserParams parserParams)
+        protected override void SetContentWidth(ScrollRect scrollComponent, float width)
         {
-            Dictionary<string, string> componentData = componentType.Data();
-            ScrollRect scrollRect = (componentType.Component() as ScrollRect)!;
+            scrollComponent.viewport.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, width);
+            scrollComponent.verticalScrollbar.value = 0;
+        }
 
-            if (componentData.TryGetValue("viewportWidth", out string viewportWidth) && float.TryParse(viewportWidth, out float vw))
-            {
-                scrollRect.viewport.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, vw);
-                scrollRect.horizontalScrollbar.value = 0;
-            }
+        protected override void SetViewportHeight(ScrollRect scrollComponent, float height)
+        {
+            scrollComponent.content.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, height);
+        }
 
-            if (componentData.TryGetValue("viewportHeight", out string viewportHeight) && float.TryParse(viewportHeight, out float vh))
-            {
-                scrollRect.viewport.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, vh);
-                scrollRect.verticalScrollbar.value = 0;
-            }
-
-            if (componentData.TryGetValue("contentWidth", out string contentWidth) && float.TryParse(contentWidth, out float cw))
-                scrollRect.content.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, cw);
-
-            if (componentData.TryGetValue("contentHeight", out string contentHeight) && float.TryParse(contentHeight, out float ch))
-                scrollRect.content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, ch);
+        protected override void SetViewportWidth(ScrollRect scrollComponent, float width)
+        {
+            scrollComponent.content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, width);
         }
     }
 }

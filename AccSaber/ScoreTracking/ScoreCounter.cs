@@ -44,6 +44,8 @@ namespace AccSaber.ScoreTracking
         private bool transitionFinished, counterDisposed, failed;
         private string? gamemode = null;
 
+        public event Action? OnMistake;
+
         private bool AtEndsOfMap => notes == 0 || notes == totalNotes;
 
         public async void Initialize()
@@ -257,6 +259,8 @@ namespace AccSaber.ScoreTracking
                 score.MaxCombo = Math.Max(score.MaxCombo, combo);
                 combo = 0;
                 current115Streak = 0;
+
+                OnMistake?.Invoke();
                 return;
             }
             else combo++;
@@ -278,6 +282,8 @@ namespace AccSaber.ScoreTracking
 
             combo = 0;
             score.BombHits++;
+
+            OnMistake?.Invoke();
         }
         private void OnWallHit(ObstacleController oc)
         {
@@ -286,6 +292,8 @@ namespace AccSaber.ScoreTracking
 
             combo = 0;
             score.WallHits++;
+
+            OnMistake?.Invoke();
         }
         private void OnUnpause()
         {
@@ -338,6 +346,18 @@ namespace AccSaber.ScoreTracking
                 if (!SubmissionPatch.Submit)
                 {
                     Plugin.Log.Debug("No score submit: " + SubmissionPatch.GetSubmitReason());
+                    return;
+                }
+
+                if (currentMap is null)
+                {
+                    Plugin.Log.Critical("There is an issue with this map and score submission! The current map is null.");
+                    return;
+                }
+
+                if (score.Score == 0)
+                {
+                    Plugin.Log.Debug("No score submit: The score was 0.");
                     return;
                 }
 

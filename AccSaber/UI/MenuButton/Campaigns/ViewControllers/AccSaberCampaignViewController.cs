@@ -319,6 +319,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 field = value;
                 NotifyPropertyChanged();
+                NotifyPropertyChanged(nameof(DetailContainerHeight));
             }
         } = null!;
 
@@ -357,6 +358,45 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [UIValue("MissionProgress")]
         private string MissionProgress
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("DetailContainerHeight")]
+        private float DetailContainerHeight
+        {
+            get => 5f + 5f * MissionObjective?.Count(c => c == '\n') ?? 0f;
+        }
+
+        [UIValue("ShowModifiers")]
+        private bool ShowModifiers
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = false;
+
+        [UIValue("RequiredModifiers")]
+        private string RequiredModifiers
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("DisallowedModifiers")]
+        private string DisallowedModifiers
         {
             get;
             set
@@ -637,14 +677,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         public async Task BackPressed(bool update = true)
         {
-#if NEW_VERSION
-            _campaignFlow.HideLeaderboard(!update);
-#else
-            _campaignFlow.HideLeaderboard(true);
-#endif
-
             try
             {
+                _campaignFlow.HideLeaderboard(true);
+
                 if (InCampaign)
                 {
                     _campaignSettingsModalController.HideModal(false);
@@ -1050,8 +1086,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 MissionRewards = str.ToString();
             }
 
-
+#if DEBUG
+            MissionLocked = false; // for testing purposes
+#else
             MissionLocked = completion.Completion == CompletionStatus.Incomplete;
+#endif
+
             _missionButton.gameObject.SetActive(!MissionLocked);
 
             StringBuilder missionProgressStr = new(), missionObjectiveStr = new();
@@ -1060,34 +1100,155 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 AccSaberCampaignTarget target = map.Targets[i];
                 float progress = completion.Progress[i];
+                string progressStr, objectiveStr;
 
-                missionProgressStr.AppendLine(target.RequirementType switch
+                if (target.RequirementValueMax is null)
                 {
-                    CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color>",
-                    CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> / <color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color>",
-                    CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> / <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color>",
-                    CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color>",
-                    CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> / <color={ColorUtils.GREY}>{target.RequirementValue:N0}</color>",
-                    CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
-                    CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
-                    _ => $"{progress} / {target.RequirementValue}"
-                });
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> / <color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> / <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> / <color={ColorUtils.GREY}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistakes",
+                        _ => $"{progress} / {target.RequirementValue}"
+                    };
 
-                missionObjectiveStr.AppendLine(target.RequirementType switch
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score worth at least <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>.",
+                        CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> or better on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points or higher.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score with a combo of at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistakes.",
+                        _ => $"Get something with a requirement value of {target.RequirementValue:N0}."
+                    };
+                }
+                else if (Mathf.Approximately(target.RequirementValue, target.RequirementValueMax.Value))
                 {
-                    CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy",
-                    CampaignRequirementType.AP => $"Set a score worth <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>",
-                    CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color> or better on the map",
-                    CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row",
-                    CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points or higher",
-                    CampaignRequirementType.FC => "Set a Full Combo",
-                    CampaignRequirementType.PASS => "Pass the map without no fail",
-                    _ => $"Get something with a requirement value of {target.RequirementValue:N0}"
-                });
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> = <color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> = <color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> = <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> = <color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> = <color={ColorUtils.GREY}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{progress:N0}</color> = <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> = <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistakes",
+                        _ => $"{progress} = {target.RequirementValue}"
+                    };
+
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score with exactly <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score worth exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>.",
+                        CampaignRequirementType.RANK => $"Get exactly rank <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score with a combo of exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistakes.",
+                        _ => $"Get something with a requirement value of {target.RequirementValue:N0}."
+                    };
+                }
+                else if (Mathf.Approximately(target.RequirementValue, 0))
+                {
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> <= <color={ColorUtils.ACC}>{target.RequirementValueMax * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> <= <color={ColorUtils.AP}>{target.RequirementValueMax:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> <= <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> <= <color={ColorUtils.TECH}>{target.RequirementValueMax:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> <= <color={ColorUtils.GREY}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> Mistakes",
+                        _ => $"{progress} <= {target.RequirementValueMax}"
+                    };
+
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score with at most <color={ColorUtils.RANK}>{target.RequirementValueMax * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score worth at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0} AP</color>.",
+                        CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color> or worse on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> points or lower.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score with a combo of at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> mistakes.",
+                        _ => $"Get something with a max requirement value of {target.RequirementValueMax:N0}."
+                    };
+                }
+                else
+                {
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color> <= <color={ColorUtils.ACC}>{progress * 100f:N2}%</color> <= <color={ColorUtils.ACC}>{target.RequirementValueMax * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color> <= <color={ColorUtils.AP}>{progress:0.##}ap</color> <= <color={ColorUtils.AP}>{target.RequirementValueMax:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> <= <color={ColorUtils.RANK}>#{progress:N0}</color> <= <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color> <= <color={ColorUtils.TECH}>{progress:N0}x</color> <= <color={ColorUtils.TECH}>{target.RequirementValueMax:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.GREY}>{progress:N0}</color> <= <color={ColorUtils.GREY}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> Mistakes",
+                        _ => $"{target.RequirementValue} <= {progress} <= {target.RequirementValueMax}"
+                    };
+
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue:N0} ap</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0} ap</color>.",
+                        CampaignRequirementType.RANK => $"Get a rank between <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> and <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color> on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> points.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> mistakes.",
+                        _ => $"Get something with a requirement value between {target.RequirementValueMax:N0} and {target.RequirementValue:N0}."
+                    };
+                }
+
+                missionProgressStr.AppendLine(progressStr);
+
+                missionObjectiveStr.AppendLine(objectiveStr);
             }
 
             MissionProgress = missionProgressStr.ToString();
             MissionObjective = missionObjectiveStr.ToString();
+
+            ShowModifiers = map.Modifiers.Count > 0;
+
+            if (ShowModifiers)
+            {
+                string requiredMods = string.Join(", ", map.Modifiers.Where(mod => mod.Requirement == CampaignModifierRequirement.REQUIRED).Select(mod => mod.Modifier.Code));
+                string disallowedMods = string.Join(", ", map.Modifiers.Where(mod => mod.Requirement == CampaignModifierRequirement.FORBIDDEN).Select(mod => mod.Modifier.Code));
+
+                RequiredModifiers = requiredMods.Length > 0 ? $"Required: <color=#5F5>{requiredMods}</color>" : string.Empty;
+                DisallowedModifiers = disallowedMods.Length > 0 ? $"Forbidden: <color=#F00>{disallowedMods}</color>" : string.Empty;
+            }
 
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";

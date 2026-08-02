@@ -1,5 +1,6 @@
 ﻿using AccSaber.Configuration;
 using AccSaber.Models;
+using AccSaber.ScoreTracking;
 using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
@@ -10,6 +11,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using Zenject;
@@ -34,16 +36,21 @@ namespace AccSaber.Counter.Hosts
         private APCalc Calc = null!;
         [Inject] private readonly ScoreController sc = null!;
         [Inject] private readonly ComboController cc = null!;
+        [Inject] private readonly ScoreCounter myScoreCounter = null!;
         private GameEnergyCounter energy = null!;
+
+        [Inject] private readonly SerializationHandler serialhandler = null!;
 
         private TMP_Text DisplayText = null!;
         private ImageView Checkmark = null!;
         private int max115Streak = 0, current115Streak = 0;
+        private int bombHits = 0, mistakes = 0;
         private LineInfo[] lineData = null!;
         private AccSaberCampaignTarget[] targets = null!;
         private readonly List<Action> cleanupActions = [];
         private int highestSuccessIndex = int.MaxValue;
         private string goodColor = null!, badColor = null!;
+        private StringBuilder outpString = null!;
 
         private bool enabledGoalColors;
 
@@ -83,8 +90,9 @@ namespace AccSaber.Counter.Hosts
                 enabledGoalColors = PluginSettings.CampaignCounterGoalColors;
 
                 Map = campaignVC.CurrentMap!;
-                DiffInfo = Plugin.Container.TryResolve<SerializationHandler>().GetDiffByIdAsync(Map.MapDifficultyId).GetAwaiter().GetResult()!;
+                DiffInfo = serialhandler.GetDiffByIdAsync(Map.MapDifficultyId).GetAwaiter().GetResult()!;
 
+                outpString = new();
                 lineData = new LineInfo[Map.Targets.Count];
                 targets = [.. Map.Targets];
 
@@ -143,53 +151,86 @@ namespace AccSaber.Counter.Hosts
                 Action<T1, T2> ActionEvent2<T1, T2>(Action<T1, T2, int> action) => (item1, item2) => action(item1, item2, current);
 
                 Action action0;
-                Action<ScoringElement> action1;
+                Action<ScoringElement> action10;
+                Action<int> action11;
                 Action<int, int> action2;
-
-                lineData[i] = new("");
 
                 switch (target.RequirementType)
                 {
                     case CampaignModel.CampaignRequirementType.ACC:
-                        action1 = ActionEvent1<ScoringElement>(AccCounter);
-                        sc.scoringForNoteFinishedEvent += action1;
-                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action1);
+                        action10 = ActionEvent1<ScoringElement>(AccCounter);
+                        sc.scoringForNoteFinishedEvent += action10;
+                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action10);
+
+                        lineData[i] = new(SelectContent(i, "{0:N2}% / {1:N2}%", "{0:N2}% <= {2:N2}%", "{1:N2}% <= {0:N2}% <= {2:N2}%", "{0:N2}% = {1:N2}%"));
                         break;
                     case CampaignModel.CampaignRequirementType.AP:
                         Calc = Plugin.Container.TryResolve<APCalc>();
 
-                        action1 = ActionEvent1<ScoringElement>(ApCounter);
-                        sc.scoringForNoteFinishedEvent += action1;
-                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action1);
+                        action10 = ActionEvent1<ScoringElement>(ApCounter);
+                        sc.scoringForNoteFinishedEvent += action10;
+                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action10);
+
+                        lineData[i] = new(SelectContent(i, "{0:0.##} ap / {1:0.##} ap", "{0:0.##} ap <= {2:0.##} ap", "{1:0.##} ap <= {0:0.##} ap <= {2:0.##} ap", "{0:0.##} ap = {1:0.##} ap"));
                         break;
                     case CampaignModel.CampaignRequirementType.SCORE:
                         action2 = ActionEvent2<int, int>(ScoreCounter);
                         sc.scoreDidChangeEvent += action2;
                         cleanupActions.Add(() => sc.scoreDidChangeEvent -= action2);
+
+                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} score", "{0:N0} <= {2:N0} score", "{1:N0} <= {0:N0} <= {2:N0} score", "{0:N0} = {1:N0} score"));
                         break;
                     case CampaignModel.CampaignRequirementType.STREAK_115:
-                        action1 = ActionEvent1<ScoringElement>(StreakCounter);
-                        sc.scoringForNoteFinishedEvent += action1;
-                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action1);
+                        action10 = ActionEvent1<ScoringElement>(StreakCounter);
+                        sc.scoringForNoteFinishedEvent += action10;
+                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action10);
+
+                        lineData[i] = new(SelectContent(i, "{0:N0}x / {1:N0}x 115 streak", "{0:N0}x <= {2:N0}x 115 streak", "{1:N0}x <= {0:N0}x <= {2:N0}x 115 streak", "{0:N0}x = {1:N0}x 115 streak"));
                         break;
                     case CampaignModel.CampaignRequirementType.FC:
-                        lineData[i].Success = true;
-                        lineData[i].Content = "FC!";
-
                         action0 = ActionEvent0(FCCounter);
                         cc.comboBreakingEventHappenedEvent += action0;
                         cleanupActions.Add(() => cc.comboBreakingEventHappenedEvent -= action0);
+
+                        lineData[i] = new("FC!", true);
+                        UpdateColor(i);
                         break;
                     case CampaignModel.CampaignRequirementType.PASS:
-                        lineData[i].Success = true;
-                        lineData[i].Content = "Pass!";
-
                         energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
 
                         action0 = ActionEvent0(FCCounter);
                         energy.gameEnergyDidReach0Event += action0;
                         cleanupActions.Add(() => energy.gameEnergyDidReach0Event -= action0);
+
+                        lineData[i] = new("Pass!", true);
+                        UpdateColor(i);
                         break;
+                    case CampaignModel.CampaignRequirementType.COMBO:
+                        action11 = ActionEvent1<int>(ComboCounter);
+                        cc.comboDidChangeEvent += action11;
+                        cleanupActions.Add(() => cc.comboDidChangeEvent -= action11);
+
+                        action0 = () => action11(0);
+                        cc.comboBreakingEventHappenedEvent += action0;
+                        cleanupActions.Add(() => cc.comboBreakingEventHappenedEvent -= action0);
+
+                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} combo", "{0:N0} <= {2:N0} combo", "{1:N0} <= {0:N0} <= {2:N0} combo", "{0:N0} = {1:N0} combo"));
+                        break;
+                    case CampaignModel.CampaignRequirementType.BOMB_HITS:
+                        action10 = ActionEvent1<ScoringElement>(BombHitCounter);
+                        sc.scoringForNoteFinishedEvent += action10;
+                        cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action10);
+
+                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} bombs", "{0:N0} <= {2:N0} bombs", "{1:N0} <= {0:N0} <= {2:N0} bombs", "{0:N0} = {1:N0} bombs"));
+                        break;
+                    case CampaignModel.CampaignRequirementType.MISTAKES:
+                        action0 = ActionEvent0(MistakeCounter);
+                        myScoreCounter.OnMistake += action0;
+                        cleanupActions.Add(() => myScoreCounter.OnMistake -= action0);
+
+                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} mistakes", "{0:N0} <= {2:N0} mistakes", "{1:N0} <= {0:N0} <= {2:N0} mistakes", "{0:N0} = {1:N0} mistakes"));
+                        break;
+
                     default: // TODO: Add Rank (or maybe just don't worry about that one)
                         break;
                 }
@@ -213,20 +254,28 @@ namespace AccSaber.Counter.Hosts
         private void AccCounter(ScoringElement scoringElement, int index)
         {
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore * 100f;
-            float goalAcc = targets[index].RequirementValue * 100f;
+            float goalAccMin = targets[index].RequirementValue * 100f;
+            float? goalAccMax = targets[index].RequirementValueMax;
 
-            UpdateInfo(index, success: acc >= goalAcc - 0.005f, content: $"{acc:N2}% / {goalAcc:N2}%");
+            if (goalAccMax is not null)
+                goalAccMax *= 100f;
+
+            UpdateInfo(index, success: DoComp(ComparisonType.GTE, acc, goalAccMin - 0.005f, goalAccMax - 0.005f));
         }
         private void ApCounter(ScoringElement scoringElement, int index)
         {
             float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore;
             float ap = Calc.GetAp(acc, DiffInfo.Complexity);
 
-            UpdateInfo(index, success: ap >= targets[index].RequirementValue, content: $"{ap:0.##} ap / {targets[index].RequirementValue:0.##} ap");
+            lineData[index].CurrentValue = ap;
+
+            UpdateInfo(index, success: DoNormalComp(index, ap));
         }
         private void ScoreCounter(int multipliedScore, int modifiedScore, int index)
         {
-            UpdateInfo(index, success: multipliedScore >= targets[index].RequirementValue, content: $"{multipliedScore:N0} / {targets[index].RequirementValue:N0} Score");
+            lineData[index].CurrentValue = multipliedScore;
+
+            UpdateInfo(index, success: DoNormalComp(index, multipliedScore));
         }
         private void StreakCounter(ScoringElement scoringElement, int index)
         {
@@ -246,28 +295,77 @@ namespace AccSaber.Counter.Hosts
 
             int streak = Math.Max(max115Streak, current115Streak);
 
-            UpdateInfo(index, success: streak >= (int)targets[index].RequirementValue, content: $"{streak}x / {targets[index].RequirementValue:N0}x 115 streak");
+            lineData[index].CurrentValue = streak;
+
+            UpdateInfo(index, success: DoNormalComp(index, streak));
         }
         private void FCCounter(int index)
         {
             UpdateInfo(index, success: false);
         }
-
-
-        private void UpdateInfo(int index, bool? success = null, string? content = null)
+        private void ComboCounter(int currentCombo, int index)
         {
-            if (success is not null)
-            {
-                if (enabledGoalColors)
-                    lineData[index].Color = success.Value ? goodColor : badColor;
+            lineData[index].CurrentValue = currentCombo;
 
-                if (success.Value && index < highestSuccessIndex)
-                    highestSuccessIndex = index;
-            }
-
-            if (content is not null)
-                lineData[index].Content = content;
+            UpdateInfo(index, success: DoNormalComp(index, currentCombo));
         }
+        private void BombHitCounter(ScoringElement scoringElement, int index)
+        {
+            if (scoringElement.noteData.gameplayType != NoteData.GameplayType.Bomb)
+                return;
+
+            lineData[index].CurrentValue = ++bombHits;
+
+            UpdateInfo(index, success: DoNormalComp(index, bombHits));
+        }
+        private void MistakeCounter(int index)
+        {
+            lineData[index].CurrentValue = ++mistakes;
+
+            UpdateInfo(index, success: DoNormalComp(index, mistakes));
+        }
+
+
+        private string SelectContent(int index, string minOnly, string maxOnly, string minMax, string minMaxEqual)
+        {
+            if (targets[index].RequirementValueMax is null)
+                return minOnly;
+
+            if (Mathf.Approximately(targets[index].RequirementValue, 0f))
+                return maxOnly;
+            // requirementValueMax cannot be null, otherwise the previous if statement would have been true, so we can safely use !.Value here
+            if (Mathf.Approximately(targets[index].RequirementValue, targets[index].RequirementValueMax!.Value))
+                return minMaxEqual;
+
+            return minMax;
+        }
+
+        // input >= ReqVal
+        private bool DoNormalComp(int index, float current) =>
+            DoComp(ComparisonType.GTE, current, targets[index].RequirementValue, targets[index].RequirementValueMax);
+        private bool DoComp(ComparisonType comp, float current, float minTarget, float? maxTarget = null)
+        {
+            return comp switch
+            {
+                ComparisonType.GTE => current >= minTarget && (maxTarget is null || current <= maxTarget),
+                ComparisonType.GT => current > minTarget && (maxTarget is null || current < maxTarget),
+                ComparisonType.LTE => current <= minTarget && (maxTarget is null || current >= maxTarget),
+                ComparisonType.LT => current < minTarget && (maxTarget is null || current > maxTarget),
+                _ => false
+            };
+        }
+
+        private void UpdateInfo(int index, bool success)
+        {
+            lineData[index].Success = success;
+
+            if (enabledGoalColors)
+                UpdateColor(index);
+
+            if (success && index < highestSuccessIndex)
+                highestSuccessIndex = index; // note highestSuccessIndex is the lowest index.
+        }
+        private void UpdateColor(int index) => lineData[index].Color = lineData[index].Success ? goodColor : badColor;
         private void UpdateDisplay(ScoringElement _) => UpdateDisplay();
         private void UpdateDisplay()
         {
@@ -285,7 +383,13 @@ namespace AccSaber.Counter.Hosts
 
             highestSuccessIndex = -1;
 
-            string outp = lineData.Aggregate("", (total, current) => total + current + '\n')[..^1];
+            outpString.Clear();
+            for (int i = 0; i < lineData.Length; ++i)
+            {
+                LineInfo line = lineData[i];
+                outpString.AppendLine(line.UpdateContent ? line.ToString(targets[i]) : line.ToString());
+            }
+            string outp = outpString.ToString();
 
             DisplayText.SetText(outp);
         }
@@ -293,11 +397,62 @@ namespace AccSaber.Counter.Hosts
         private struct LineInfo(string content, bool success = false, string? color = null)
         {
             public string Content { get; set; } = content;
-            public bool Success { get; set; } = success;
-            public string Color { get; set; } = color ?? "#FFF";
+            public bool Success 
+            { 
+                get;
+                set
+                {
+                    if (value == field)
+                        return;
 
-            public override readonly string ToString() => 
-                $"<color={Color}>{Content}</color>";
+                    field = value;
+                    UpdateContent = true;
+                }
+            } = success;
+            public string Color 
+            {
+                get;
+                set
+                {
+                    if (value.Equals(field))
+                        return;
+
+                    field = value;
+                    UpdateContent = true;
+                }
+            } = color ?? "#FFF";
+
+            public float CurrentValue 
+            { 
+                get;
+                set
+                {
+                    if (Mathf.Approximately(value, field))
+                        return;
+
+                    field = value;
+                    UpdateContent = true;
+                }
+            } = 0f;
+            public bool UpdateContent { get; set; } = true;
+
+            private string LastOutput { get; set; } = $"<color={color ?? "#FFF"}>{content}</color>";
+
+            public string ToString(AccSaberCampaignTarget target)
+            {
+                LastOutput = $"<color={Color}>{string.Format(Content, CurrentValue, target.RequirementValue, target.RequirementValueMax)}</color>";
+                return LastOutput;
+            }
+
+            public override string ToString()
+            {
+                if (UpdateContent) 
+                {
+                    LastOutput = $"<color={Color}>{Content}</color>";
+                    UpdateContent = false;
+                }
+                return LastOutput;
+            }
         }
     }
 }
