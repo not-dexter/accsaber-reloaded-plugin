@@ -170,6 +170,15 @@
         /// </remarks>
         public const string APAPI_LEADERBOARD_DIFF_COUNTRY = APAPI + "maps/difficulties/{0}/scores?country={1}&page={2}&size={3}"; //diff_id, country, page (zero indexed), count
 
+
+        /// <summary>
+        /// Retrieves leaderboard of a category (paged).
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: category_id, page (zero-indexed).
+        /// </remarks>
+        public const string APAPI_LEADERBOARD_CATEGORY = APAPI + "leaderboards/{0}?page={1}&size=5"; //category_id, page
+
         /// <summary>
         /// Retrieves a user's milestones (paged).
         /// </summary>

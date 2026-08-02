@@ -54,6 +54,7 @@ namespace AccSaber.Consts
         public const string MENU_BSML_PATH = "AccSaber.UI.MenuButton.Views";
         public const string ACC_SABER_MENU_VIEW = MENU_BSML_PATH + ".AccSaberMenuView.bsml";
         public const string ACC_SABER_MENU_CELL = MENU_BSML_PATH + ".AccSaberMenuCell.bsml";
+        public const string ACC_SABER_MENU_PLAYER_CELL = MENU_BSML_PATH + ".AccSaberMenuPlayerCell.bsml";
         public const string ACC_SABER_PLAYLIST_MODAL = MENU_BSML_PATH + ".AccSaberPlaylistModal.bsml";
         public const string ACC_SABER_PLAYLIST_SETTINGS_MODAL = MENU_BSML_PATH + ".AccSaberPlaylistSettingsModal.bsml";
         public const string ACC_SABER_PLAYLIST_CELL = MENU_BSML_PATH + ".AccSaberPlaylistCell.bsml";

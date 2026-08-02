@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
 using static AccSaber.Managers.CampaignProgress;
+using static AccSaber.UI.MenuButton.ViewControllers.AccSaberMenuViewController;
 
 #if V41
 using OculusStudios.Platform.Core;
@@ -415,6 +416,33 @@ namespace AccSaber.Managers
             var (Success, _) = await APIHandler.CallAPI(request, AccsaberAPI.Throttler, maxRetries: 1).ConfigureAwait(false);
 
             return Success;
+        }
+
+        public async Task<List<AccSaberLeaderboardPlayer>> GetLeaderboardRanking(string category, int page, RankingsScope scope)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_LEADERBOARD_CATEGORY, category, page);
+
+            if (scope == RankingsScope.Country)
+                call += $"&country={_currentUser?.Country}";
+            else if (scope == RankingsScope.Followed)
+                call += $"&relation=follower";
+
+
+            AccSaberPagedContent<AccSaberLeaderboardPlayer>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardPlayer>>(call, AccsaberAPI.Throttler);
+
+            if (content is null)
+                return [];
+
+            List<AccSaberLeaderboardPlayer> newLeaderboard = [];
+
+
+            foreach (AccSaberLeaderboardPlayer player in content.Content!)
+            {
+                player.MaxPage = content.TotalPages;
+                newLeaderboard.Add(player);
+            }
+
+            return newLeaderboard;
         }
 
         private async Task UpdateAccSaberInfo()
