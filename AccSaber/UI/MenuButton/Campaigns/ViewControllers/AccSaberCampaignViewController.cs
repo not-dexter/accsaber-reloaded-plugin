@@ -370,7 +370,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("DetailContainerHeight")]
         private float DetailContainerHeight
         {
-            get => 5f + 5f * MissionObjective?.Count(c => c == '\n') ?? 0f;
+            get => 10f + 5f * MissionObjective?[..^1].Count(c => c == '\n') ?? 0f;
         }
 
         [UIValue("ShowModifiers")]
@@ -1092,7 +1092,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             MissionLocked = completion.Completion == CompletionStatus.Incomplete;
 #endif
 
-            _missionButton.gameObject.SetActive(!MissionLocked);
+            _missionButton.transform.parent.parent.gameObject.SetActive(!MissionLocked);
 
             StringBuilder missionProgressStr = new(), missionObjectiveStr = new();
 
@@ -1331,7 +1331,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             MissionLocked = false;
-            _missionButton.gameObject.SetActive(false);
+            _missionButton.transform.parent.parent.gameObject.SetActive(false);
+
+            ShowModifiers = false;
 
             InMap = false;
             InBarrier = true;
@@ -1396,22 +1398,31 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (CheckMapSuccess(score, currentMap, diff, ref current))
             {
+                Plugin.Log.Info("map success:\n" + current.ToString());
                 CampaignProgressValue? newVal = await _campaignMapViewController.MarkNodeAsComplete(currentMap.Id, current.Progress);
 
                 if (doUpdates)
                     UpdateGoToMapButton();
 
                 if (newVal is null)
-                    Plugin.Log.Warn("Setting the campaign node to complete failed!");
+                {
+                    Plugin.Log.Warn("Setting the campaign node to complete failed!"); 
+                    return;
+                }
                 else
                 {
                     _invalidateActive = newVal.Value.Completion == CompletionStatus.Complete;
 
                     CampaignProgressVal = newVal.Value;
+
+                    _lastUpdate = now;
                 }
             }
-
-            _lastUpdate = now;
+            else
+            {
+                CampaignProgressVal = current;
+                Plugin.Log.Info("Node was not completed, but progress was updated:\n" + current.ToString());
+            }
 
             if (doUpdates)
                 _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
@@ -1430,7 +1441,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             List<float> newVals = [with(map.Targets.Count)];
             List<bool> completed = [with(map.Targets.Count)];
 
-            for (int i = 0; i < newVals.Count; ++i)
+            for (int i = 0; i < map.Targets.Count; ++i)
             {
                 float val = map.Targets[i].RequirementType switch
                 {
@@ -1440,6 +1451,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     CampaignRequirementType.STREAK_115 => score.Streak115,
                     CampaignRequirementType.FC => score.Mistakes,
                     CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
+                    CampaignRequirementType.COMBO => score.MaxCombo,
+                    CampaignRequirementType.BOMB_HITS => score.BombHits,
+                    CampaignRequirementType.MISTAKES => score.Mistakes,
                     _ => -1f
                 };
 
@@ -1449,7 +1463,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     return false; // I can only handle certain types, those I can't will be updated once the websocket sends the score.
                 }
 
-                if (CampaignProgressVal.Progress[i] >= val) // TODO: Check if less is better for some types.
+                if (CampaignProgressVal.Progress[i] >= val)
                 {
                     Plugin.Log.Info("Player did not beat old pb.");
                     newVals.Add(progress.Progress[newVals.Count]);

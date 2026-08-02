@@ -958,7 +958,10 @@ namespace AccSaber.Managers
             Incomplete, Unlocked, Complete
         }
 
-        public record struct CampaignProgressValue(float[] Progress, CompletionStatus Completion);
+        public record struct CampaignProgressValue(float[] Progress, CompletionStatus Completion)
+        {
+            public override readonly string ToString() => $"Progress: {Progress.Print()}, Completion: {Completion}";
+        }
 
     }
 }

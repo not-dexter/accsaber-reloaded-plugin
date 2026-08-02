@@ -162,7 +162,7 @@ namespace AccSaber.Counter.Hosts
                         sc.scoringForNoteFinishedEvent += action10;
                         cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action10);
 
-                        lineData[i] = new(SelectContent(i, "{0:N2}% / {1:N2}%", "{0:N2}% <= {2:N2}%", "{1:N2}% <= {0:N2}% <= {2:N2}%", "{0:N2}% = {1:N2}%"));
+                        lineData[i] = new(SelectContent(i, "{0:N2}% / {1:N2}%", "{0:N2}% <= {2:N2}%", "{1:N2}% <= {0:N2}% <= {2:N2}%", "{0:N2}% = {1:N2}%"), mult: 100f);
                         break;
                     case CampaignModel.CampaignRequirementType.AP:
                         Calc = Plugin.Container.TryResolve<APCalc>();
@@ -253,14 +253,13 @@ namespace AccSaber.Counter.Hosts
 
         private void AccCounter(ScoringElement scoringElement, int index)
         {
-            float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore * 100f;
-            float goalAccMin = targets[index].RequirementValue * 100f;
+            float acc = sc.multipliedScore / (float)sc.immediateMaxPossibleMultipliedScore;
+            float goalAccMin = targets[index].RequirementValue;
             float? goalAccMax = targets[index].RequirementValueMax;
 
-            if (goalAccMax is not null)
-                goalAccMax *= 100f;
+            lineData[index].CurrentValue = acc;
 
-            UpdateInfo(index, success: DoComp(ComparisonType.GTE, acc, goalAccMin - 0.005f, goalAccMax - 0.005f));
+            UpdateInfo(index, success: DoComp(ComparisonType.GTE, acc, goalAccMin - 0.00005f, goalAccMax - 0.00005f));
         }
         private void ApCounter(ScoringElement scoringElement, int index)
         {
@@ -394,7 +393,7 @@ namespace AccSaber.Counter.Hosts
             DisplayText.SetText(outp);
         }
 
-        private struct LineInfo(string content, bool success = false, string? color = null)
+        private struct LineInfo(string content, bool success = false, string? color = null, float? shift = null, float? mult = null)
         {
             public string Content { get; set; } = content;
             public bool Success 
@@ -422,6 +421,8 @@ namespace AccSaber.Counter.Hosts
                 }
             } = color ?? "#FFF";
 
+            public readonly float? Shift = shift, Mult = mult;
+
             public float CurrentValue 
             { 
                 get;
@@ -440,7 +441,23 @@ namespace AccSaber.Counter.Hosts
 
             public string ToString(AccSaberCampaignTarget target)
             {
-                LastOutput = $"<color={Color}>{string.Format(Content, CurrentValue, target.RequirementValue, target.RequirementValueMax)}</color>";
+                float current = CurrentValue, targetMin = target.RequirementValue, targetMax = target.RequirementValueMax ?? 0f;
+
+                if (Shift is not null)
+                {
+                    current += Shift.Value;
+                    targetMin += Shift.Value;
+                    targetMax += Shift.Value;
+                }
+
+                if (Mult is not null)
+                {
+                    current *= Mult.Value;
+                    targetMin *= Mult.Value;
+                    targetMax *= Mult.Value;
+                }
+
+                LastOutput = $"<color={Color}>{string.Format(Content, current, targetMin, targetMax)}</color>";
                 return LastOutput;
             }
 

@@ -44,7 +44,7 @@ namespace AccSaber.Models
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java
         // On modification, check the following places:
         // CampaignCounter line 153
-        // AccSaberCampaignViewController line 1073, 1283 <-- TODO these lines, counter done. Add maxValue handling as well.
+        // AccSaberCampaignViewController line 1073, 1283
         /// <summary>
         /// The types of requirements that can be set for a campaign node. These are used to determine if a player meets
         /// the requirements to access a node. See below for the places where this enum is used and should be updated if
