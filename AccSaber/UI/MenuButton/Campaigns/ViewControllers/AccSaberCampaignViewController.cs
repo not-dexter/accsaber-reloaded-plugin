@@ -1096,10 +1096,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             StringBuilder missionProgressStr = new(), missionObjectiveStr = new();
 
-            for (int i = 0; i < map.Targets.Count; ++i)
+            foreach (var val in completion.GetProgressWithTargets(map.Targets))
             {
-                AccSaberCampaignTarget target = map.Targets[i];
-                float progress = completion.Progress[i];
+                AccSaberCampaignTarget target = val.Target;
+                float progress = val.Progress.CurrentValue;
                 string progressStr, objectiveStr;
 
                 if (target.RequirementValueMax is null)
@@ -1438,19 +1438,21 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
 
-            List<float> newVals = [with(map.Targets.Count)];
+            List<CampaignTargetProgess> newVals = [with(map.Targets.Count)];
             List<bool> completed = [with(map.Targets.Count)];
 
-            for (int i = 0; i < map.Targets.Count; ++i)
+            var arr = progress.GetProgressWithTargets(map.Targets).ToArray();
+
+            for (int i = 0; i < arr.Length; ++i)
             {
-                float val = map.Targets[i].RequirementType switch
+                float val = arr[i].Target.RequirementType switch
                 {
                     CampaignRequirementType.ACC => acc,
                     CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
                     CampaignRequirementType.SCORE => score.Score,
                     CampaignRequirementType.STREAK_115 => score.Streak115,
-                    CampaignRequirementType.FC => score.Mistakes,
-                    CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
+                    CampaignRequirementType.FC => score.Mistakes > 0 ? 0f : 1f,
+                    CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 0f : 1f,
                     CampaignRequirementType.COMBO => score.MaxCombo,
                     CampaignRequirementType.BOMB_HITS => score.BombHits,
                     CampaignRequirementType.MISTAKES => score.Mistakes,
@@ -1471,8 +1473,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     continue; // didn't beat old progress.
                 }
 
-                newVals.Add(val);
-                completed.Add(map.Targets[i].RequirementValue <= val); // Also add check here.
+                newVals.Add(new(arr[i].Target.Id, val));
+
+                bool complete = arr[i].Target.RequirementValue <= val;
+
+                if (arr[i].Target.RequirementValueMax is not null)
+                    complete &= arr[i].Target.RequirementValueMax >= val;
+
+                completed.Add(complete);
             }
 
             bool success = map.TargetMode switch

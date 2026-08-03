@@ -47,6 +47,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private int setCampaignVersion = 0;
         private bool disposed = false;
 
+        private readonly API.Throttler fetchThrottler = new(1, 60);
+
         private AccSaberCampaign? CurrentCampaign
         {
             get;
@@ -772,7 +774,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
-        public async Task<CampaignProgress.CampaignProgressValue?> MarkNodeAsComplete(Guid id, float[] progress)
+        public async Task<CampaignProgress.CampaignProgressValue?> MarkNodeAsComplete(Guid id, CampaignProgress.CampaignTargetProgess[] progress)
         {
             if (CurrentCampaign is null || CurrentCampaign.Difficulties is null)
             {
@@ -805,7 +807,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (CurrentCampaign is null || !CurrentCampaign.Equals(current) || !acvc.InCampaign)
                 return;
 
-            CampaignProgress = await store.GetCampaignProgress(CurrentCampaign);
+            if (await fetchThrottler.TryCall())
+                CampaignProgress = await store.GetCampaignProgress(CurrentCampaign);
         }
 
         private static bool TryGetPerpendicularBarrierRotation(List<Vector2> arrowDirections, out Quaternion rotation)
@@ -2005,7 +2008,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private void UpdateText()
             {
-                float progress = Progress.Progress[0];
+                float progress = Progress.Progress[0].CurrentValue;
 
                 string value = Barrier.ConditionType switch
                 {

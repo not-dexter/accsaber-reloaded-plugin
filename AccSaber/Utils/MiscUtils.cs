@@ -559,7 +559,19 @@ namespace AccSaber.Utils
             {
                 int hash = 17;
 
-                foreach (T item in items)
+                foreach (T? item in items)
+                    hash = hash * 23 + item?.GetHashCode() ?? 0;
+                
+                return hash;
+            }
+        }
+        public static int GetHashCode(params IEnumerable<object?> items)
+        {
+            unchecked
+            {
+                int hash = 17;
+
+                foreach (object? item in items)
                     hash = hash * 23 + item?.GetHashCode() ?? 0;
                 
                 return hash;

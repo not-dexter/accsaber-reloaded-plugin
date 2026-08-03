@@ -282,7 +282,7 @@
         /// </remarks>
         public const string APAPI_CAMPAIGN = APAPI + "campaigns/{0}"; //campaign_id
 
-        public const string APAPI_CAMPAIGN_PROGRESS = APAPI + "campaigns/me/progress?ids={0}"; //campaign_id
+        public const string APAPI_CAMPAIGN_PROGRESS = APAPI + "campaigns/{0}/me/progress"; //campaign_id
 
 
         /// <summary>

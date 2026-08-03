@@ -67,6 +67,72 @@ namespace AccSaber.API
         public async Task Call(CancellationToken ct = default)
         {
             AsyncLock.Releaser releaser = await locker.LockAsync(ct);
+            await CallInternal(releaser, ct);
+        }
+
+        /// <summary>
+        /// Attempts to acquire permission to start an operation under the current throttling policy without blocking.
+        /// </summary>
+        /// <param name="ct">
+        /// A <see cref="CancellationToken"/> forwarded to any asynchronous delay performed when throttling is required.
+        /// If cancellation occurs while waiting, the returned task will complete in a canceled state and may throw
+        /// an <see cref="OperationCanceledException"/>.
+        /// </param>
+        /// <returns>
+        /// A <see cref="Task{Boolean}"/> that completes with <c>true</c> if the caller obtained permission to proceed.
+        /// Returns <c>false</c> if the call would exceed the configured <see cref="CallsPerCycle"/> and the method
+        /// could not obtain the internal lock immediately.
+        /// </returns>
+        /// <remarks>
+        /// - This method performs a fast, non-blocking pre-check to avoid acquiring the lock when the current cycle
+        ///   already contains exactly <see cref="CallsPerCycle"/> calls.
+        /// - The method then attempts to obtain the internal <see cref="AsyncLock"/> without awaiting; if the lock is
+        ///   unavailable, the method returns <c>false</c> rather than waiting for it.
+        /// - When the lock is obtained the call is forwarded to <see cref="CallInternal(AsyncLock.Releaser, CancellationToken)"/>,
+        ///   which performs the cycle bookkeeping and any necessary throttling delay. If that call completes successfully,
+        ///   this method returns <c>true</c>.
+        /// - Cancellation is only observed during any asynchronous delay performed by <see cref="CallInternal"/>.
+        /// </remarks>
+        public async Task<bool> TryCall(CancellationToken ct = default)
+        {
+            if (CallsThisCycle == CallsPerCycle)
+                return false; // Quick check to avoid locking if we already know we're at the limit.
+
+            AsyncLock.Releaser? releaser = await locker.TryLockAsync();
+
+            if (releaser is null)
+                return false;
+
+            await CallInternal(releaser.Value, ct);
+            return true;
+        }
+
+        /// <summary>
+        /// Internal implementation that performs the cycle bookkeeping and enforces throttling while holding the provided lock.
+        /// </summary>
+        /// <param name="releaser">
+        /// The <see cref="AsyncLock.Releaser"/> obtained from <see cref="locker"/>. This method takes ownership and will dispose it
+        /// (release the lock) when finished.
+        /// </param>
+        /// <param name="ct">
+        /// A <see cref="CancellationToken"/> forwarded to any asynchronous delay performed when throttling is required.
+        /// </param>
+        /// <returns>
+        /// A <see cref="Task"/> that completes once the internal bookkeeping (and any throttling delay) completes.
+        /// </returns>
+        /// <remarks>
+        /// - The method assumes the caller provided a valid <paramref name="releaser"/> that holds <see cref="locker"/>.
+        /// - While holding the lock the method:
+        ///     1. Computes whether the current cycle has expired and resets counters if needed.
+        ///     2. Increments <see cref="CallsThisCycle"/> and, if the incremented value exceeds <see cref="CallsPerCycle"/>,
+        ///        computes the remaining milliseconds in the current cycle and schedules a delay for that duration.
+        /// - Before awaiting the delay the method updates cycle state so other callers see the expected start time for the next cycle.
+        /// - The provided <paramref name="releaser"/> is disposed at the end of the method scope, releasing the lock.
+        /// - Cancellation via <paramref name="ct"/> is observed during the asynchronous <see cref="Task.Delay"/> and will cause an
+        ///   <see cref="OperationCanceledException"/> to be thrown if cancellation occurs while waiting.
+        /// </remarks>
+        private async Task CallInternal(AsyncLock.Releaser releaser, CancellationToken ct)
+        {
             using (releaser)
             {
                 DateTime now = DateTime.UtcNow;

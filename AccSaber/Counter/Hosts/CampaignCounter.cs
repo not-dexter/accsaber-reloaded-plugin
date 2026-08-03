@@ -304,9 +304,9 @@ namespace AccSaber.Counter.Hosts
         }
         private void ComboCounter(int currentCombo, int index)
         {
-            lineData[index].CurrentValue = currentCombo;
+            lineData[index].CurrentValue = cc.maxCombo;
 
-            UpdateInfo(index, success: DoNormalComp(index, currentCombo));
+            UpdateInfo(index, success: DoNormalComp(index, cc.maxCombo));
         }
         private void BombHitCounter(ScoringElement scoringElement, int index)
         {

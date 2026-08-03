@@ -273,39 +273,24 @@ namespace AccSaber.Managers
         {
             //Plugin.Log.Info(await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler) ?? "null");
 
-            List<JObject>? campaignList =
-                await APIHandler.CallAPI_Json<List<JObject>>(
+            JObject? campaignObj = await APIHandler.CallAPI_Json<JObject>(
                     string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler);
 
-            if (campaignList is null)
+            if (campaignObj is null)
                 return default;
 
-            // I don't wanna make an entire new tree of models for this one function, so just using JObjects.
-            // After looking at this mess, maybe I should have made the models 0.o
+            List<AccSaberCampaignProgressDifficulty>? diffList = campaignObj["difficulties"]?.ToObject<List<AccSaberCampaignProgressDifficulty>>();
 
-            JObject campaignObj = campaignList.First();
+            if (diffList is null)
+                return default;
 
-            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> diffValues = 
-                campaignObj["difficulties"]
-                .Select(node => new KeyValuePair<Guid, CampaignProgressValue>(
-                    Guid.Parse(node["node"]?["id"]?.ToString() ?? ""),
-                    new([.. node["targets"].Select(target => (float)(target["userValue"] ?? 0f))],
-                     GetCompletionStatus(
-                         (bool)(node["unlocked"] ?? false),
-                         (bool)(node["completed"] ?? false)
-                    ))));
+            List<AccSaberCampaignProgressBarrier> barrierList = campaignObj["barriers"]?.ToObject<List<AccSaberCampaignProgressBarrier>>() ?? [];
 
-            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> barrierValues = 
-                campaignObj["barriers"]
-                .Select(barrier => new KeyValuePair<Guid, CampaignProgressValue>(
-                    Guid.Parse(barrier["barrier"]?["id"]?.ToString() ?? ""),
-                    new([(float)(barrier["currentValue"] ?? 0f)],
-                     GetCompletionStatus(
-                         (bool)(barrier["unlocked"] ?? false),
-                         (bool)(barrier["satisfied"] ?? false)
-                         ))));
+            // Cannot use .Cast, because it does not support explicit operators.
+            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> outp = diffList.Select(d => (KeyValuePair<Guid, CampaignProgressValue>)d);
+            outp = outp.Concat(barrierList.Select(b => (KeyValuePair<Guid, CampaignProgressValue>)b));
 
-            return new([with(diffValues.Concat(barrierValues))], campaign);
+            return new([with(outp)], campaign);
         }
 
         public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 100)
@@ -807,7 +792,7 @@ namespace AccSaber.Managers
                 )
         { }
 
-        internal HashSet<Guid> MarkAsComplete(Guid id, IEnumerable<float> progess)
+        internal HashSet<Guid> MarkAsComplete(Guid id, IEnumerable<CampaignTargetProgess> progress)
         {
             if (!UnlockedItems.Contains(id))
             {
@@ -825,7 +810,7 @@ namespace AccSaber.Managers
                 return [];
             }
 
-            PlayerValues[id] = new([.. progess], CompletionStatus.Complete);
+            PlayerValues[id] = new([.. progress], CompletionStatus.Complete);
 
             UnlockedItems.Remove(id);
             CompletedItems.Add(id);
@@ -958,10 +943,55 @@ namespace AccSaber.Managers
             Incomplete, Unlocked, Complete
         }
 
-        public record struct CampaignProgressValue(float[] Progress, CompletionStatus Completion)
+        public record struct CampaignProgressValue(CampaignTargetProgess[] Progress, CompletionStatus Completion)
         {
+            /// <summary>
+            /// Returns a list of tuples containing the target and its corresponding progress for the given targets. the
+            /// parameter is conformed to the Progress list, meaning the order returned is the same as the order of the
+            /// Progress list.
+            /// </summary>
+            /// <param name="targets">The targets to zip with their progress.</param>
+            /// <returns>A list of tuples containing the target and its corresponding progress.</returns>
+            internal readonly IEnumerable<(AccSaberCampaignTarget Target, CampaignTargetProgess Progress)> GetProgressWithTargets(IEnumerable<AccSaberCampaignTarget> targets)
+            {
+                List<AccSaberCampaignTarget> targetList = [.. targets];
+
+                foreach (CampaignTargetProgess progress in Progress)
+                {
+                    int targetIndex = targetList.FindIndex(t => t.Id == progress.TargetId);
+                    if (targetIndex != -1)
+                    {
+                        yield return (targetList[targetIndex], progress);
+                        targetList.RemoveAt(targetIndex);
+                    }
+                }
+            }
+
             public override readonly string ToString() => $"Progress: {Progress.Print()}, Completion: {Completion}";
         }
 
+        public record struct CampaignTargetProgess(Guid TargetId, float CurrentValue) : IComparable<Guid>, IComparable<CampaignTargetProgess>
+        {
+            public readonly int CompareTo(Guid other) => TargetId.CompareTo(other);
+            public readonly int CompareTo(CampaignTargetProgess other) => TargetId.CompareTo(other.TargetId);
+
+            public static implicit operator CampaignTargetProgess((Guid targetId, float currentValue) tuple) => new(tuple.targetId, tuple.currentValue);
+            public static implicit operator (Guid targetId, float currentValue)(CampaignTargetProgess progress) => (progress.TargetId, progress.CurrentValue);
+
+            public static bool operator >(float value, CampaignTargetProgess progress) => value > progress.CurrentValue;
+            public static bool operator <(float value, CampaignTargetProgess progress) => value < progress.CurrentValue;
+            public static bool operator >=(float value, CampaignTargetProgess progress) => value >= progress.CurrentValue;
+            public static bool operator <=(float value, CampaignTargetProgess progress) => value <= progress.CurrentValue;
+
+            public static bool operator >(CampaignTargetProgess progress, float value) => progress.CurrentValue > value;
+            public static bool operator <(CampaignTargetProgess progress, float value) => progress.CurrentValue < value;
+            public static bool operator >=(CampaignTargetProgess progress, float value) => progress.CurrentValue >= value;
+            public static bool operator <=(CampaignTargetProgess progress, float value) => progress.CurrentValue <= value;
+
+            public static bool operator ==(float value, CampaignTargetProgess progress) => progress.CurrentValue == value;
+            public static bool operator !=(float value, CampaignTargetProgess progress) => progress.CurrentValue != value;
+            public static bool operator ==(CampaignTargetProgess progress, float value) => progress.CurrentValue == value;
+            public static bool operator !=(CampaignTargetProgess progress, float value) => progress.CurrentValue != value;
+        }
     }
 }

@@ -552,7 +552,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignTarget : CampaignModel, IAccSaberCampaignId
+    internal class AccSaberCampaignTarget : CampaignModel, IAccSaberCampaignId, IComparable<Guid>, IComparable<AccSaberCampaignTarget>
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }
@@ -575,6 +575,14 @@ namespace AccSaber.Models
                 RequirementValueMax = RequirementValue;
                 RequirementValue = temp;
             }
+        }
+
+        public int CompareTo(Guid other) => Id.CompareTo(other);
+        public int CompareTo(AccSaberCampaignTarget? other) => other is not null ? Id.CompareTo(other.Id) : 1;
+
+        public override int GetHashCode()
+        {
+            return MiscUtils.GetHashCode(Id, RequirementType, RequirementValue, RequirementValueMax);
         }
     }
 
@@ -695,9 +703,86 @@ namespace AccSaber.Models
         public int CompletedDifficulties { get; set; } = 0;
     }
 
+    [UsedImplicitly]
     internal class AccSaberCampaignNode
     {
         [JsonProperty("node")]
         public AccSaberCampaignMap Node { get; set; } = null!;
     }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignProgressDifficulty : CampaignModel
+    {
+        [JsonProperty("node")]
+        public AccSaberCampaignMap Node { get; set; } = null!;
+
+        [JsonProperty("userValue")]
+        public float? UserValue { get; set; } = null;
+
+        [JsonProperty("targets")]
+        public List<AccSaberCampaignProgressTarget> Targets { get; set; } = null!;
+
+        [JsonProperty("userScore")]
+        public float? UserScore { get; set; } = null;
+
+        [JsonProperty("completed")]
+        public bool Completed { get; set; }
+
+        [JsonProperty("unlocked")]
+        public bool Unlocked { get; set; }
+
+        [JsonProperty("pathCompleted")]
+        public bool PathCompleted { get; set; }
+
+        [JsonProperty("rewardsEarned")]
+        public bool RewardsEarned { get; set; }
+
+        public static implicit operator Managers.CampaignProgress.CampaignProgressValue(AccSaberCampaignProgressDifficulty diffProgress) =>
+            new([.. diffProgress.Targets], Managers.CampaignProgress.GetCompletionStatus(diffProgress.Unlocked, diffProgress.Completed));
+
+        public static explicit operator KeyValuePair<Guid, Managers.CampaignProgress.CampaignProgressValue>(AccSaberCampaignProgressDifficulty diffProgress) =>
+            new(diffProgress.Node.Id, diffProgress);
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignProgressTarget : CampaignModel
+    {
+        [JsonProperty("target")]
+        public AccSaberCampaignTarget Target { get; set; } = null!;
+
+        [JsonProperty("userValue")]
+        public float UserValue { get; set; } = 0f;
+
+        [JsonProperty("met")]
+        public bool Met { get; set; }
+
+        public static implicit operator Managers.CampaignProgress.CampaignTargetProgess(AccSaberCampaignProgressTarget targetProgress) =>
+            new(targetProgress.Target.Id, targetProgress.UserValue);
+    }
+
+    [UsedImplicitly]
+    internal class AccSaberCampaignProgressBarrier : CampaignModel
+    {
+        [JsonProperty("barrier")]
+        public AccSaberCampaignBarrier Barrier { get; set; } = null!;
+
+        [JsonProperty("currentValue")]
+        public float CurrentValue { get; set; }
+
+        [JsonProperty("satisfied")]
+        public bool Satisfied { get; set; }
+
+        [JsonProperty("unlocked")]
+        public bool Unlocked { get; set; }
+
+        public static implicit operator Managers.CampaignProgress.CampaignTargetProgess(AccSaberCampaignProgressBarrier barrierProgress) =>
+            new(barrierProgress.Barrier.Id, barrierProgress.CurrentValue);
+        public static implicit operator Managers.CampaignProgress.CampaignProgressValue(AccSaberCampaignProgressBarrier barrierProgress) =>
+            new([barrierProgress], Managers.CampaignProgress.GetCompletionStatus(barrierProgress.Unlocked, barrierProgress.Satisfied));
+
+        public static explicit operator KeyValuePair<Guid, Managers.CampaignProgress.CampaignProgressValue>(AccSaberCampaignProgressBarrier barrierProgress) =>
+            new(barrierProgress.Barrier.Id, barrierProgress);
+    }
+
+    
 }
