@@ -1,4 +1,6 @@
-﻿using AccSaber.Configuration;
+﻿#define TEST_SUBMIT
+
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Counter;
 using AccSaber.Managers;
@@ -1031,6 +1033,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #if NEW_VERSION
         public async Task SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
+#if DEBUG && TEST_SUBMIT
+            bool doTestSubmit = withSound && completion.Completion != CompletionStatus.Complete && (CurrentBeatMapLevel?.levelID ?? "") == beatmapLevel.levelID && CurrentBeatMapKey == beatmapKey && InMap;
+#endif
+
             CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
@@ -1063,6 +1069,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     njs = beatmapLevel.noteJumpMovementSpeed;
 #endif
                 }
+
+#if DEBUG && TEST_SUBMIT
+                if (doTestSubmit)
+                {
+                    // purely for testing, this will simulate submitting a 100% score (without the server call of course).
+                    AccSaberScore score = new()
+                    {
+                        MapDifficultyId = map.MapDifficultyId,
+                        Score = (uint)MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount),
+                        MaxCombo = CurrentMaxNoteCount,
+                        Headset = "Index",
+                        UncompletedMap = false,
+                        BeatPreviousScore = true
+                    };
+                    score.ScoreNoMods = score.Score;
+
+                    Plugin.Log.Info("Submitting test score for map: " + map.MapDifficultyId);
+                    OnPlayerScoreSubmit(score, true);
+                }
+#endif
             }
             catch (Exception e)
             {
@@ -1371,6 +1397,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 _ = OnPlayerScoreSubmit(score, scoreBeaten, CurrentMap, doUpdates: otherMaps.Count == 0);
 
+#if DEBUG
+                Plugin.Log.Info("Other map ids: " + otherMaps.Select(map => map.Id).Print());
+#endif
+
                 for (int i = 0; i < otherMaps.Count; i++)
                     _ = OnPlayerScoreSubmit(score, scoreBeaten, otherMaps[i], setMap: false, doUpdates: i == otherMaps.Count - 1);
             }
@@ -1421,6 +1451,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             else
             {
                 CampaignProgressVal = current;
+                _campaignMapViewController.UpdateNodes(_campaignMapViewController.CampaignProgress.UpdateNode(currentMap.Id, current.Progress));
                 Plugin.Log.Info("Node was not completed, but progress was updated:\n" + current.ToString());
             }
 

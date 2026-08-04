@@ -792,15 +792,11 @@ namespace AccSaber.Managers
                 )
         { }
 
-        internal HashSet<Guid> MarkAsComplete(Guid id, IEnumerable<CampaignTargetProgess> progress)
+        public HashSet<Guid> MarkStatusAndUpdateNode(Guid id, IEnumerable<CampaignTargetProgess> progress, CompletionStatus status)
         {
-            if (!UnlockedItems.Contains(id))
+            if (!PlayerValues.ContainsKey(id))
             {
-                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete, it is not marked as unlocked!");
-                if (PlayerValues.TryGetValue(id, out var value))
-                    Plugin.Log.Debug(value.ToString());
-                else
-                    Plugin.Log.Warn($"The id is also not found in the playerValues dictionary!");
+                Plugin.Log.Warn($"The id is not found in the playerValues dictionary!");
                 return [];
             }
 
@@ -810,16 +806,86 @@ namespace AccSaber.Managers
                 return [];
             }
 
-            PlayerValues[id] = new([.. progress], CompletionStatus.Complete);
+            CompletionStatus before = PlayerValues[id].Completion;
+            bool becameComplete = before != CompletionStatus.Complete && status == CompletionStatus.Complete;
 
-            UnlockedItems.Remove(id);
-            CompletedItems.Add(id);
+            if (before == CompletionStatus.Incomplete && status == CompletionStatus.Complete)
+            {
+                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete if it is not unlocked first!");
+                return [];
+            }
 
+            PlayerValues[id] = new([.. progress], status);
+
+            UpdateNodePlacement(id, before, status);
+
+            return UpdateNodeInternal(node, becameComplete);
+        }
+        public HashSet<Guid> UpdateNode(Guid id, IEnumerable<CampaignTargetProgess> progress)
+        {
+            if (!PlayerValues.TryGetValue(id, out CampaignProgressValue value))
+            {
+                Plugin.Log.Warn($"The id is not found in the playerValues dictionary!");
+                return [];
+            }
+
+            return MarkStatusAndUpdateNode(id, progress, value.Completion);
+        }
+
+        private void UpdateNodePlacement(Guid id, CompletionStatus before, CompletionStatus after)
+        {
+            if (before == after)
+                return;
+
+            switch (before)
+            {
+                case CompletionStatus.Complete:
+                    
+                    CompletedItems.Remove(id);
+
+                    if (after == CompletionStatus.Unlocked)
+                        UnlockedItems.Add(id);
+
+                    break;
+                case CompletionStatus.Unlocked:
+
+                    UnlockedItems.Remove(id);
+
+                    if (after == CompletionStatus.Complete)
+                        CompletedItems.Add(id);
+
+                    break;
+                case CompletionStatus.Incomplete:
+
+                    if (after == CompletionStatus.Unlocked)
+                        UnlockedItems.Add(id);
+                    else if (after == CompletionStatus.Complete)
+                        CompletedItems.Add(id);
+
+                    break;
+            }
+        }
+
+        private HashSet<Guid> UpdateNodeInternal(AcyclicGraph<Guid>.Node node, bool nodeSetCompleted)
+        {
             HashSet<Guid> outp = [];
 
-            foreach (Guid nodeIdToUpdate in node.AffectedIdsOnUpdate)
-                if (UpdateNode(nodeIdToUpdate))
-                    outp.Add(nodeIdToUpdate);
+            if (nodeSetCompleted)
+            {
+                foreach (Guid nodeIdToUpdate in node.AffectedIdsOnUpdate)
+                    if (UpdateNode(nodeIdToUpdate))
+                        outp.Add(nodeIdToUpdate);
+            }
+            else
+            {
+                foreach (Guid nodeIdToUpdate in node.AffectedIdsOnUpdate)
+                    if (Nodes.NodeIdToNode.TryGetValue(nodeIdToUpdate, out AcyclicGraph<Guid>.Node n) && n.Current is AccSaberCampaignBarrier)
+                        outp.Add(nodeIdToUpdate);
+            }
+
+#if DEBUG
+            Plugin.Log.Info("Updated nodes: " + outp.Print());
+#endif
 
             return outp;
         }
@@ -863,7 +929,7 @@ namespace AccSaber.Managers
                 UnlockedItems.Add(id);
             }
 
-            return success;
+            return success || node.Current is AccSaberCampaignBarrier;
         }
         public IEnumerable<Guid> MostProgressedNodes(CompletionStatus status)
         {

@@ -783,11 +783,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return null;
             }
 
-            HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkAsComplete(id, progress), id];
+            HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkStatusAndUpdateNode(id, progress, CampaignProgress.CompletionStatus.Complete), id];
 
             if (campaignMapBarriers.Any(node => mapsToUpdate.Contains(node.Barrier.Id)))
                 await FetchProgress();
 
+            UpdateNodes(mapsToUpdate);
+
+            return CampaignProgress.PlayerValues[id];
+        }
+        public void UpdateNodes(HashSet<Guid> mapsToUpdate)
+        {
             foreach (CampaignMapBarrier node in campaignMapBarriers)
                 if (mapsToUpdate.Contains(node.Barrier.Id))
                     node.UpdateProgress();
@@ -795,8 +801,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             foreach (CampaignMapNode node in campaignMapNodes)
                 if (mapsToUpdate.Contains(node.Map.Id))
                     node.UpdateProgress();
-
-            return CampaignProgress.PlayerValues[id];
         }
         private async Task FetchProgress()
         {
