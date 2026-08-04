@@ -80,6 +80,7 @@
           </vertical>
         </horizontal>
       </vertical>
+      <vertical pref-width='10' active='~in-map-or-barrier'/>
       <vertical pref-width='60' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad='4' child-expand-height='false' child-expand-width='false'>
 
         <vertical pref-width='42' pref-height='15' vertical-fit='PreferredSize' active='~in-map'>
