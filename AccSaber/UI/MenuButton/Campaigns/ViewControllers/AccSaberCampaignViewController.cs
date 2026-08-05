@@ -1428,7 +1428,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (CheckMapSuccess(score, currentMap, diff, ref current))
             {
+#if DEBUG
                 Plugin.Log.Info("map success:\n" + current.ToString());
+#endif
                 CampaignProgressValue? newVal = await _campaignMapViewController.MarkNodeAsComplete(currentMap.Id, current.Progress);
 
                 if (doUpdates)

@@ -29,6 +29,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Zenject;
 using static AccSaber.Models.CampaignModel;
+using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.AccSaberCampaignMapViewController;
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
@@ -62,7 +63,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapNode> campaignMapNodes = [];
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<CampaignMapText> campaignMapTexts = [];
-        private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
+        private readonly List<(Guid fromNode, Guid toNode, UIArrow arrow)> mapNodeArrows = [];
         private ScrollRect scrollRect = null!;
         private Color currentBgColor, maxBgColors;
 
@@ -293,7 +294,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 await Coroutines.AsTask(LoadSlowly());
 
-                RebuildArrows(loads);
+                await RebuildArrows(loads);
 
                 if (!ScrollToFirstValidNode(CampaignProgress.Nodes.Heads.Select(node => node.Current.Id)))
                 {
@@ -520,7 +521,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             UpdateContainerValues(false);
 
-            RebuildArrows();
+            //RebuildArrows();
+            //TODO
+            SetArrowColors();
         }
         public bool ScrollToNode(Guid nodeId, bool printWarning = true)
         {
@@ -589,19 +592,45 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             node.OnClick();
         }
-        private async void RebuildArrows(int loads = 0)
+        private void SetArrowColors()
+        {
+            List<(Guid fromNode, Guid toNode, UIArrow arrow)> listCopy = [with(mapNodeArrows)];
+
+            foreach (IAccSaberCampaignPrereq node in 
+                campaignMapNodes.Select(node => (IAccSaberCampaignPrereq)node.Map).Concat(campaignMapBarriers.Select(node => (IAccSaberCampaignPrereq)node.Barrier)))
+            {
+                int searchAmount = node.PrerequisiteInfos.Count;
+
+                for (int i = listCopy.Count - 1; i >= 0; --i)
+                {
+                    var (fromNode, toNode, arrow) = listCopy[i];
+
+                    if (toNode != node.Id)
+                        continue;
+
+                    arrow.Color = GetPrereqColor(node.PrerequisiteInfos.First(prereq => prereq.Id == fromNode));
+                    
+                    --searchAmount;
+                    listCopy.RemoveAt(i);
+
+                    if (searchAmount <= 0)
+                        break;
+                }
+            }
+        }
+        private async Task RebuildArrows(int loads = 0)
         {
             foreach (var (_, _, go) in mapNodeArrows)
                 UnityEngine.Object.Destroy(go);
 
             mapNodeArrows.Clear();
 
-            Dictionary<Guid, PositionData> knownPositions = [];
+            Dictionary<Guid, IndependentPositionData> knownPositions = [];
             Queue<(AccSaberCampaignPrereqInfo prereq, Guid toNode)> neededPositions = [];
 
             IEnumerator LoadSlowly()
             {
-                IEnumerator HandleArrows(IAccSaberCampaignPrereq node, PositionData current)
+                IEnumerator HandleArrows(IAccSaberCampaignPrereq node, IndependentPositionData current)
                 {
                     if (!knownPositions.TryAdd(node.Id, current))
                     {
@@ -611,17 +640,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     foreach (AccSaberCampaignPrereqInfo prereq in node.PrerequisiteInfos)
                     {
-                        if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
-                            CreateArrow(
-                                NodeContainer.transform,
-                                from,
-                                current,
-                                (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
-                                CurrentOffsetData!.ScaleFactor)
-                            is GameObject go)
+                        if (knownPositions.TryGetValue(prereq.Id, out IndependentPositionData from))
                         {
-                            go.transform.SetAsFirstSibling();
-                            mapNodeArrows.Add((prereq.Id, node.Id, go));
+                            UIArrow arrow = new(NodeContainer.transform, from, current, GetPrereqColor(prereq));
+
+                            arrow.CreateOrGetArrow()?.transform.SetAsFirstSibling();
+                            mapNodeArrows.Add((prereq.Id, node.Id, arrow));
                         }
                         else
                         {
@@ -639,27 +663,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
 
                 foreach (CampaignMapBarrier barrier in campaignMapBarriers)
-                    yield return HandleArrows(barrier.Barrier, new PositionData(barrier));
+                    yield return HandleArrows(barrier.Barrier, new IndependentPositionData(barrier));
 
                 foreach (CampaignMapNode node in campaignMapNodes)
-                    yield return HandleArrows(node.Map, new PositionData(node));
+                    yield return HandleArrows(node.Map, new IndependentPositionData(node));
 
                 while (neededPositions.Count > 0)
                 {
                     var (prereq, toNode) = neededPositions.Dequeue();
 
-                    if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
-                        knownPositions.TryGetValue(toNode, out PositionData to) &&
-                        CreateArrow(
-                            NodeContainer.transform,
-                            from,
-                            to,
-                            (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
-                            CurrentOffsetData!.ScaleFactor)
-                        is GameObject go)
+                    if (knownPositions.TryGetValue(prereq.Id, out IndependentPositionData from) &&
+                        knownPositions.TryGetValue(toNode, out IndependentPositionData to))
                     {
-                        go.transform.SetAsFirstSibling();
-                        mapNodeArrows.Add((prereq.Id, toNode, go));
+                        UIArrow arrow = new(NodeContainer.transform, from, to, GetPrereqColor(prereq));
+
+                        arrow.CreateOrGetArrow()?.transform.SetAsFirstSibling();
+                        mapNodeArrows.Add((prereq.Id, toNode, arrow));
                     }
                     else
                     {
@@ -678,8 +697,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             await Coroutines.AsTask(LoadSlowly());
 
-            UpdateBarrierRotationsAndArrowClipping(knownPositions);
+            UpdateBarrierRotationsAndArrowClipping([with(knownPositions.Select(kvp => new KeyValuePair<Guid, PositionData>(kvp.Key, kvp.Value)))]);
         }
+        private Color GetPrereqColor(AccSaberCampaignPrereqInfo prereq) =>
+            (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color();
         private void UpdateBarrierRotationsAndArrowClipping(Dictionary<Guid, PositionData> knownPositions)
         {
             Dictionary<Guid, CampaignMapBarrier> barrierNodeIds =
@@ -745,7 +766,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 finalBarrierRotations[barrierNodeId] = desiredRotation;
             }
 
-            foreach (var (fromNode, toNode, go) in mapNodeArrows)
+            foreach (var (fromNode, toNode, arrow) in mapNodeArrows)
             {
                 if (!knownPositions.TryGetValue(fromNode, out PositionData fromPositionData))
                     continue;
@@ -761,7 +782,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     ? foundToRotation
                     : Quaternion.identity;
 
-                if (TryGetClippedArrowPoints(
+                if (UIArrow.TryGetClippedArrowPoints(
                         fromPositionData,
                         fromRotation,
                         toPositionData,
@@ -770,7 +791,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         out Vector2 newEnd,
                         padding: 0f))
                 {
-                    UpdateExistingArrow(go, newStart, newEnd);
+                    UpdateExistingArrow(arrow!, newStart, newEnd);
                 }
             }
         }
@@ -917,359 +938,80 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             headRect.anchoredPosition = new Vector2(shaftLength, 0f);
         }
-        public static GameObject? CreateArrow(
-            Transform parent,
-            PositionData from,
-            PositionData to,
-            Color color,
-            float scale,
-            float shaftThickness = 5f,
-            float headLength = 20f,
-            float headWidth = 20f,
-            string name = "UI Arrow")
-        {
-            if (!TryGetClippedArrowPoints(from, from.Shape, to, to.Shape, out Vector2 fromPos, out Vector2 toPos))
-            {
-                fromPos = from.Position;
-                toPos = to.Position;
-            }
-
-            Vector2 direction = toPos - fromPos;
-            float length = direction.magnitude;
-
-            if (length <= 0.001f)
-                return null;
-
-            shaftThickness *= scale;
-            headLength *= scale;
-            headWidth *= scale;
-
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-
-            headLength = Mathf.Min(headLength, length);
-            float shaftLength = Mathf.Max(0f, length - headLength);
-
-            GameObject arrow = new(name, typeof(RectTransform));
-            arrow.transform.SetParent(parent, false);
-
-            arrow.AddComponent<LayoutElement>().ignoreLayout = true;
-
-            RectTransform arrowRect = arrow.GetComponent<RectTransform>();
-            arrowRect.anchorMin = new Vector2(0.5f, 0.5f);
-            arrowRect.anchorMax = new Vector2(0.5f, 0.5f);
-            arrowRect.pivot = new Vector2(0f, 0.5f);
-            arrowRect.anchoredPosition = fromPos;
-            arrowRect.sizeDelta = new Vector2(length, headWidth);
-            arrowRect.localRotation = Quaternion.Euler(0f, 0f, angle);
-
-            // Shaft
-            GameObject shaft = new("Shaft", typeof(RectTransform));
-            shaft.transform.SetParent(arrow.transform, false);
-
-            RectTransform shaftRect = shaft.GetComponent<RectTransform>();
-            shaftRect.anchorMin = new Vector2(0f, 0.5f);
-            shaftRect.anchorMax = new Vector2(0f, 0.5f);
-            shaftRect.pivot = new Vector2(0f, 0.5f);
-            shaftRect.anchoredPosition = Vector2.zero;
-            shaftRect.sizeDelta = new Vector2(shaftLength, shaftThickness);
-
-            ImageView shaftImage = shaft.AddComponent<ImageView>();
-            shaftImage.sprite = Utilities.ImageResources.WhitePixel;
-            shaftImage.material = Utilities.ImageResources.NoGlowMat;
-            shaftImage.color = color;
-            shaftImage.raycastTarget = false;
-
-            // Arrow head
-            GameObject head = new("Head", typeof(RectTransform));
-            head.transform.SetParent(arrow.transform, false);
-
-            RectTransform headRect = head.GetComponent<RectTransform>();
-            headRect.anchorMin = new Vector2(0f, 0.5f);
-            headRect.anchorMax = new Vector2(0f, 0.5f);
-            headRect.pivot = new Vector2(0f, 0.5f);
-            headRect.anchoredPosition = new Vector2(shaftLength, 0f);
-            headRect.sizeDelta = new Vector2(headLength, headWidth);
-
-            ImageView headImage = head.AddComponent<ImageView>();
-            headImage.sprite = TriangleArrowHeadSprite;
-            headImage.material = Utilities.ImageResources.NoGlowMat;
-            headImage.type = Image.Type.Simple;
-            headImage.color = color;
-            headImage.raycastTarget = false;
-
-            return arrow;
-        }
-
-        private static bool TryGetClippedArrowPoints(
-            PositionData from,
-            NodeShape fromShape,
-            PositionData to,
-            NodeShape toShape,
-            out Vector2 arrowStart,
-            out Vector2 arrowEnd,
-            float padding = 0f)
-        {
-            arrowStart = from.Position;
-            arrowEnd = to.Position;
-
-            Vector2 delta = to.Position - from.Position;
-
-            if (delta.sqrMagnitude < 0.0001f)
-                return false;
-
-            Vector2 direction = delta.normalized;
-
-            arrowStart = GetShapeEdgePoint(from.Position, from.Size, fromShape, direction, padding);
-            arrowEnd = GetShapeEdgePoint(to.Position, to.Size, toShape, -direction, padding);
-
-            // If the two shapes overlap, or are too close, the clipped arrow may be invalid.
-            if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
-                return false;
-
-            return true;
-        }
-        private static bool TryGetClippedArrowPoints(
-            PositionData from,
-            Quaternion fromRotation,
-            PositionData to,
-            Quaternion toRotation,
-            out Vector2 arrowStart,
-            out Vector2 arrowEnd,
-            float padding = 0f)
-        {
-            arrowStart = from.Position;
-            arrowEnd = to.Position;
-
-            Vector2 delta = to.Position - from.Position;
-
-            if (delta.sqrMagnitude < 0.0001f)
-                return false;
-
-            Vector2 direction = delta.normalized;
-
-            arrowStart = GetRotatedShapeEdgePoint(from.Position, from.Size, from.Shape, fromRotation, direction, padding);
-
-            arrowEnd = GetRotatedShapeEdgePoint(to.Position, to.Size, to.Shape, toRotation, -direction, padding);
-
-            if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
-                return false;
-
-            return true;
-        }
-
-        private static Vector2 GetRotatedShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Quaternion rotation, Vector2 worldDirection, float padding = 0f)
-        {
-            if (worldDirection.sqrMagnitude < 0.0001f)
-                return center;
-
-            worldDirection.Normalize();
-
-            Vector2 halfSize = new(
-                Mathf.Abs(size.x) * 0.5f,
-                Mathf.Abs(size.y) * 0.5f
-            );
-
-            if (halfSize.x <= 0.0001f || halfSize.y <= 0.0001f)
-                return center;
-
-            // Convert the world-space arrow direction into the node's local rotated space.
-            Vector3 localDirection3 =
-                Quaternion.Inverse(rotation) *
-                new Vector3(worldDirection.x, worldDirection.y, 0f);
-
-            Vector2 localDirection = new(localDirection3.x, localDirection3.y);
-
-            if (localDirection.sqrMagnitude < 0.0001f)
-                return center;
-
-            localDirection.Normalize();
-
-            float distanceToEdge = GetShapeDistanceToEdge(
-                halfSize,
-                shape,
-                localDirection
-            );
-
-            return center + worldDirection * (distanceToEdge + padding);
-        }
-        private static float GetShapeDistanceToEdge(
-            Vector2 halfSize,
-            NodeShape shape,
-            Vector2 localDirection)
-        {
-            return shape switch
-            {
-                NodeShape.Square => GetRectangleDistanceToEdge(halfSize, localDirection),
-                NodeShape.Circle => GetEllipseDistanceToEdge(halfSize, localDirection),
-                NodeShape.Diamond => GetDiamondDistanceToEdge(halfSize, localDirection),
-                NodeShape.Hexagon => GetHexagonDistanceToEdge(halfSize, localDirection),
-                _ => GetRectangleDistanceToEdge(halfSize, localDirection)
-            };
-        }
-        private static Vector2 GetShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Vector2 direction, float padding = 0f)
-        {
-            if (direction.sqrMagnitude < 0.0001f)
-                return center;
-
-            direction.Normalize();
-
-            Vector2 halfSize = new(
-                Mathf.Abs(size.x) * 0.5f,
-                Mathf.Abs(size.y) * 0.5f
-            );
-
-            if (halfSize.x <= 0.0001f || halfSize.y <= 0.0001f)
-                return center;
-
-            float distance = shape switch
-            {
-                NodeShape.Square => GetRectangleDistanceToEdge(halfSize, direction),
-                NodeShape.Circle => GetEllipseDistanceToEdge(halfSize, direction),
-                NodeShape.Diamond => GetDiamondDistanceToEdge(halfSize, direction),
-                NodeShape.Hexagon => GetHexagonDistanceToEdge(halfSize, direction),
-                _ => GetRectangleDistanceToEdge(halfSize, direction)
-            };
-
-            return center + direction * (distance + padding);
-        }
-        private static float GetRectangleDistanceToEdge(Vector2 halfSize, Vector2 direction)
-        {
-            float distanceToVerticalEdge =
-                Mathf.Abs(direction.x) > 0.0001f
-                    ? halfSize.x / Mathf.Abs(direction.x)
-                    : float.PositiveInfinity;
-
-            float distanceToHorizontalEdge =
-                Mathf.Abs(direction.y) > 0.0001f
-                    ? halfSize.y / Mathf.Abs(direction.y)
-                    : float.PositiveInfinity;
-
-            return Mathf.Min(distanceToVerticalEdge, distanceToHorizontalEdge);
-        }
-
-        private static float GetEllipseDistanceToEdge(Vector2 halfSize, Vector2 direction)
-        {
-            // This treats Circle as an ellipse using the full Size.
-            // If Size.x == Size.y, this is a true circle.
-            float x = direction.x / halfSize.x;
-            float y = direction.y / halfSize.y;
-
-            float denominator = Mathf.Sqrt((x * x) + (y * y));
-
-            if (denominator <= 0.0001f)
-                return 0f;
-
-            return 1f / denominator;
-        }
-
-        private static float GetDiamondDistanceToEdge(Vector2 halfSize, Vector2 direction)
-        {
-            // Diamond equation:
-            // abs(x / halfWidth) + abs(y / halfHeight) = 1
-            float denominator =
-                Mathf.Abs(direction.x) / halfSize.x +
-                Mathf.Abs(direction.y) / halfSize.y;
-
-            if (denominator <= 0.0001f)
-                return 0f;
-
-            return 1f / denominator;
-        }
-
-
-        private static float GetHexagonDistanceToEdge(Vector2 halfSize, Vector2 direction)
-        {
-            if (direction.sqrMagnitude < 0.0001f)
-                return 0f;
-
-            direction.Normalize();
-
-            // width : height = 2 : sqrt(3)
-            //
-            // halfSize.x = outer radius
-            // halfSize.y = apothem
-            //
-            // If your RectTransform is slightly non-regular, this still fits the largest
-            // regular flat-top hexagon inside the given size.
-
-            float radiusFromWidth = halfSize.x;
-            float radiusFromHeight = halfSize.y * 2f / Mathf.Sqrt(3f);
-
-            float radius = Mathf.Min(radiusFromWidth, radiusFromHeight);
-            float apothem = radius * Mathf.Sqrt(3f) * 0.5f;
-
-            // A regular flat-top hexagon can be represented by these 3 pairs of parallel edges:
-            //
-            // |y| <= apothem
-            // |sqrt(3)/2 * x + 1/2 * y| <= apothem
-            // |sqrt(3)/2 * x - 1/2 * y| <= apothem
-
-            const float sqrt3Over2 = 0.86602540378f;
-
-            float d1 = Mathf.Abs(direction.y);
-            float d2 = Mathf.Abs((sqrt3Over2 * direction.x) + (0.5f * direction.y));
-            float d3 = Mathf.Abs((sqrt3Over2 * direction.x) - (0.5f * direction.y));
-
-            float maxProjection = Mathf.Max(d1, d2, d3);
-
-            if (maxProjection <= 0.0001f)
-                return 0f;
-
-            return apothem / maxProjection;
-        }
-
-        private static Sprite? _triangleArrowHeadSprite;
-
-        public static Sprite TriangleArrowHeadSprite
-        {
-            get
-            {
-                _triangleArrowHeadSprite ??= CreateTriangleArrowHeadSprite();
-
-                return _triangleArrowHeadSprite;
-            }
-        }
-
-        private static Sprite CreateTriangleArrowHeadSprite()
-        {
-            const int width = 64;
-            const int height = 64;
-
-            Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
-            {
-                name = "Generated Triangle Arrow Head",
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
-            };
-
-            Color clear = new(1f, 1f, 1f, 0f);
-            Color white = Color.white;
-
-            float midY = (height - 1) * 0.5f;
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    // Triangle points:
-                    // left-top, left-bottom, right-middle
-                    float t = x / (float)(width - 1);
-                    float allowedHalfHeight = (1f - t) * midY;
-
-                    bool insideTriangle = Mathf.Abs(y - midY) <= allowedHalfHeight;
-
-                    texture.SetPixel(x, y, insideTriangle ? white : clear);
-                }
-            }
-
-            texture.Apply();
-
-            return Sprite.Create(texture, new(0f, 0f, width, height), new(0f, 0.5f), 100f);
-        }
+        
         public record struct PositionData(Vector2 Position, Vector2 Size, NodeShape Shape)
         {
             internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight), node.Shape) { }
             internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta, NodeShape.Square) { }
+        }
+        public record class IndependentPositionData
+        {
+            public Func<AccSaberCampaignOffsetData, Vector2> PositionFunc { get; init; }
+            public Func<AccSaberCampaignOffsetData, Vector2> SizeFunc { get; init; }
+            public NodeShape Shape { get; init; }
+            public AccSaberCampaignOffsetData PositionOffset { get; init; }
+
+            internal IndependentPositionData(CampaignMapNode node)
+            {
+                PositionFunc = offset => new(node.Map.PositionX * offset.OffsetSize + offset.Offset.x, -node.Map.PositionY * offset.OffsetSize - offset.Offset.y);
+                SizeFunc = offset => new(node.Map.Scale * offset.ScaleFactor, node.Map.Scale * offset.ScaleFactor);
+                Shape = node.Shape;
+                PositionOffset = node.OffsetData;
+            }
+            internal IndependentPositionData(CampaignMapBarrier node)
+            {
+                PositionFunc = offset => new(node.Barrier.PositionX * offset.OffsetSize + offset.Offset.x, -node.Barrier.PositionY * offset.OffsetSize - offset.Offset.y);
+                SizeFunc = offset => new(CampaignMapBarrier.WIDTH * offset.ScaleFactor, node.Barrier.Scale * offset.ScaleFactor);
+                Shape = NodeShape.Square;
+                PositionOffset = node.OffsetData;
+            }
+
+            public DependentPositionData ToDependentPositionData() => new(this);
+            public PositionData ToPositionData() =>
+                new(PositionFunc(PositionOffset), SizeFunc(PositionOffset), Shape);
+
+            public static implicit operator DependentPositionData(IndependentPositionData posData) => posData.ToDependentPositionData();
+            public static implicit operator PositionData(IndependentPositionData posData) => posData.ToPositionData();
+        }
+        public class DependentPositionData
+        {
+            private readonly IndependentPositionData parent;
+
+            private Vector2 position, size;
+            
+            public float Scale { get; private set; }
+
+            public readonly NodeShape Shape;
+
+            public event Action<PositionData>? OnPositionDataUpdate;
+            public event Action OnParentUpdate
+            {
+                add => parent.PositionOffset.OnScaleChanged += value;
+                remove => parent.PositionOffset.OnScaleChanged -= value;
+            }
+
+            public DependentPositionData(IndependentPositionData parent)
+            {
+                this.parent = parent;
+                Shape = parent.Shape;
+
+                parent.PositionOffset.OnScaleChanged += UpdateData;
+                UpdateData();
+            }
+
+            private void UpdateData()
+            {
+                position = parent.PositionFunc(parent.PositionOffset);
+                size = parent.SizeFunc(parent.PositionOffset);
+                Scale = parent.PositionOffset.ScaleFactor;
+
+                OnPositionDataUpdate?.Invoke(ToPositionData());
+            }
+
+            public PositionData ToPositionData() =>
+                new(position, size, Shape);
+
+            public static implicit operator PositionData(DependentPositionData d) => d.ToPositionData();
         }
         internal class CampaignMapNode : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
         {
@@ -2367,6 +2109,450 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return WebUtility.HtmlDecode(givenStr);
             }
         }
+    }
+
+    internal class UIArrow : IDisposable
+    {
+        private readonly Transform parent;
+        private readonly DependentPositionData StartPoint, EndPoint;
+        private readonly float shaftThickness, headLength, headWidth;
+        private readonly string name;
+
+        private GameObject? arrowObj;
+        private ImageView? headImg, shaftImg;
+
+        public Color Color
+        {
+            get;
+            set
+            {
+                if (field == value)
+                    return;
+
+                field = value;
+
+                if (headImg is not null && shaftImg is not null)
+                {
+                    headImg.color = value;
+                    shaftImg.color = value;
+                }
+            }
+        }
+        public GameObject? Arrow => arrowObj;
+
+        public UIArrow(Transform parent, DependentPositionData from, DependentPositionData to, Color color) :
+            this(parent, from, to, color, 5f, 20f, 20f, "UI Arrow") { }
+        public UIArrow(Transform parent, DependentPositionData from, DependentPositionData to, Color color, float shaftThickness, float headLength, float headWidth, string name)
+        {
+            this.parent = parent;
+            StartPoint = from; 
+            EndPoint = to;
+            Color = color;
+            this.shaftThickness = shaftThickness;
+            this.headLength = headLength;
+            this.headWidth = headWidth;
+            this.name = name;
+
+            from.OnParentUpdate += ModifyArrow;
+        }
+
+        public GameObject? CreateOrGetArrow()
+        {
+            if (arrowObj is null)
+                return CreateArrow();
+
+            return arrowObj;
+        }
+        public GameObject? CreateArrow()
+        {
+            PositionData from = StartPoint;
+            PositionData to = EndPoint;
+
+            float scale = StartPoint.Scale;
+
+            if (!TryGetClippedArrowPoints(from, to, out Vector2 fromPos, out Vector2 toPos))
+            {
+                fromPos = from.Position;
+                toPos = to.Position;
+            }
+
+            Vector2 direction = toPos - fromPos;
+            float length = direction.magnitude;
+
+            if (length <= 0.001f)
+                return null;
+
+            float shaftThickness = this.shaftThickness * scale;
+            float headLength = this.headLength * scale;
+            float headWidth = this.headWidth * scale;
+
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+            headLength = Mathf.Min(headLength, length);
+            float shaftLength = Mathf.Max(0f, length - headLength);
+
+            if (arrowObj is not null)
+                UnityEngine.Object.Destroy(arrowObj);
+
+            arrowObj = new(name, typeof(RectTransform));
+            arrowObj.transform.SetParent(parent, false);
+
+            arrowObj.AddComponent<LayoutElement>().ignoreLayout = true;
+
+            RectTransform arrowRect = arrowObj.GetComponent<RectTransform>();
+            arrowRect.anchorMin = new Vector2(0.5f, 0.5f);
+            arrowRect.anchorMax = new Vector2(0.5f, 0.5f);
+            arrowRect.pivot = new Vector2(0f, 0.5f);
+            arrowRect.anchoredPosition = fromPos;
+            arrowRect.sizeDelta = new Vector2(length, headWidth);
+            arrowRect.localRotation = Quaternion.Euler(0f, 0f, angle);
+
+            // Shaft
+            GameObject shaft = new("Shaft", typeof(RectTransform));
+            shaft.transform.SetParent(arrowObj.transform, false);
+
+            RectTransform shaftRect = shaft.GetComponent<RectTransform>();
+            shaftRect.anchorMin = new Vector2(0f, 0.5f);
+            shaftRect.anchorMax = new Vector2(0f, 0.5f);
+            shaftRect.pivot = new Vector2(0f, 0.5f);
+            shaftRect.anchoredPosition = Vector2.zero;
+            shaftRect.sizeDelta = new Vector2(shaftLength, shaftThickness);
+
+            shaftImg = shaft.AddComponent<ImageView>();
+            shaftImg.sprite = Utilities.ImageResources.WhitePixel;
+            shaftImg.material = Utilities.ImageResources.NoGlowMat;
+            shaftImg.color = Color;
+            shaftImg.raycastTarget = false;
+
+            // Arrow head
+            GameObject head = new("Head", typeof(RectTransform));
+            head.transform.SetParent(arrowObj.transform, false);
+
+            RectTransform headRect = head.GetComponent<RectTransform>();
+            headRect.anchorMin = new Vector2(0f, 0.5f);
+            headRect.anchorMax = new Vector2(0f, 0.5f);
+            headRect.pivot = new Vector2(0f, 0.5f);
+            headRect.anchoredPosition = new Vector2(shaftLength, 0f);
+            headRect.sizeDelta = new Vector2(headLength, headWidth);
+
+            headImg = head.AddComponent<ImageView>();
+            headImg.sprite = TriangleArrowHeadSprite;
+            headImg.material = Utilities.ImageResources.NoGlowMat;
+            headImg.type = Image.Type.Simple;
+            headImg.color = Color;
+            headImg.raycastTarget = false;
+
+            return arrowObj;
+        }
+        private void ModifyArrow()
+        {
+            if (arrowObj is null)
+                return;
+
+            PositionData from = StartPoint;
+            PositionData to = EndPoint;
+
+            float scale = StartPoint.Scale;
+
+            if (!TryGetClippedArrowPoints(from, to, out Vector2 fromPos, out Vector2 toPos))
+            {
+                fromPos = from.Position;
+                toPos = to.Position;
+            }
+
+            Vector2 direction = toPos - fromPos;
+            float length = direction.magnitude;
+
+            if (length <= 0.001f)
+                return;
+
+            float shaftThickness = this.shaftThickness * scale;
+            float headLength = this.headLength * scale;
+            float headWidth = this.headWidth * scale;
+
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg; // no change
+
+            headLength = Mathf.Min(headLength, length);
+            float shaftLength = Mathf.Max(0f, length - headLength);
+
+            RectTransform arrow = (RectTransform)arrowObj.transform;
+            RectTransform shaft = (RectTransform)arrowObj.transform.Find("Shaft");
+            RectTransform head = (RectTransform)arrowObj.transform.Find("Head");
+
+            arrow.anchoredPosition = fromPos;
+            arrow.sizeDelta = new Vector2(length, headWidth);
+
+            shaft.sizeDelta = new(shaftLength, shaftThickness);
+
+            head.anchoredPosition = new(shaftLength, 0f);
+            head.sizeDelta = new(headLength, headWidth);
+        }
+
+        private static bool TryGetClippedArrowPoints(PositionData from, PositionData to, out Vector2 arrowStart, out Vector2 arrowEnd, float padding = 0f)
+        {
+            NodeShape fromShape = from.Shape;
+            NodeShape toShape = to.Shape;
+
+            arrowStart = from.Position;
+            arrowEnd = to.Position;
+
+            Vector2 delta = to.Position - from.Position;
+
+            if (delta.sqrMagnitude < 0.0001f)
+                return false;
+
+            Vector2 direction = delta.normalized;
+
+            arrowStart = GetShapeEdgePoint(from.Position, from.Size, fromShape, direction, padding);
+            arrowEnd = GetShapeEdgePoint(to.Position, to.Size, toShape, -direction, padding);
+
+            // If the two shapes overlap, or are too close, the clipped arrow may be invalid.
+            if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
+                return false;
+
+            return true;
+        }
+        public static bool TryGetClippedArrowPoints(
+            PositionData from,
+            Quaternion fromRotation,
+            PositionData to,
+            Quaternion toRotation,
+            out Vector2 arrowStart,
+            out Vector2 arrowEnd,
+            float padding = 0f)
+        {
+            arrowStart = from.Position;
+            arrowEnd = to.Position;
+
+            Vector2 delta = to.Position - from.Position;
+
+            if (delta.sqrMagnitude < 0.0001f)
+                return false;
+
+            Vector2 direction = delta.normalized;
+
+            arrowStart = GetRotatedShapeEdgePoint(from.Position, from.Size, from.Shape, fromRotation, direction, padding);
+
+            arrowEnd = GetRotatedShapeEdgePoint(to.Position, to.Size, to.Shape, toRotation, -direction, padding);
+
+            if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
+                return false;
+
+            return true;
+        }
+
+        private static Vector2 GetRotatedShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Quaternion rotation, Vector2 worldDirection, float padding = 0f)
+        {
+            if (worldDirection.sqrMagnitude < 0.0001f)
+                return center;
+
+            worldDirection.Normalize();
+
+            Vector2 halfSize = new(
+                Mathf.Abs(size.x) * 0.5f,
+                Mathf.Abs(size.y) * 0.5f
+            );
+
+            if (halfSize.x <= 0.0001f || halfSize.y <= 0.0001f)
+                return center;
+
+            // Convert the world-space arrow direction into the node's local rotated space.
+            Vector3 localDirection3 =
+                Quaternion.Inverse(rotation) *
+                new Vector3(worldDirection.x, worldDirection.y, 0f);
+
+            Vector2 localDirection = new(localDirection3.x, localDirection3.y);
+
+            if (localDirection.sqrMagnitude < 0.0001f)
+                return center;
+
+            localDirection.Normalize();
+
+            float distanceToEdge = GetShapeDistanceToEdge(halfSize, shape, localDirection);
+
+            return center + worldDirection * (distanceToEdge + padding);
+        }
+        private static float GetShapeDistanceToEdge(Vector2 halfSize, NodeShape shape, Vector2 localDirection)
+        {
+            return shape switch
+            {
+                NodeShape.Square => GetRectangleDistanceToEdge(halfSize, localDirection),
+                NodeShape.Circle => GetEllipseDistanceToEdge(halfSize, localDirection),
+                NodeShape.Diamond => GetDiamondDistanceToEdge(halfSize, localDirection),
+                NodeShape.Hexagon => GetHexagonDistanceToEdge(halfSize, localDirection),
+                _ => GetRectangleDistanceToEdge(halfSize, localDirection)
+            };
+        }
+        private static Vector2 GetShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Vector2 direction, float padding = 0f)
+        {
+            if (direction.sqrMagnitude < 0.0001f)
+                return center;
+
+            direction.Normalize();
+
+            Vector2 halfSize = new(
+                Mathf.Abs(size.x) * 0.5f,
+                Mathf.Abs(size.y) * 0.5f
+            );
+
+            if (halfSize.x <= 0.0001f || halfSize.y <= 0.0001f)
+                return center;
+
+            float distance = shape switch
+            {
+                NodeShape.Square => GetRectangleDistanceToEdge(halfSize, direction),
+                NodeShape.Circle => GetEllipseDistanceToEdge(halfSize, direction),
+                NodeShape.Diamond => GetDiamondDistanceToEdge(halfSize, direction),
+                NodeShape.Hexagon => GetHexagonDistanceToEdge(halfSize, direction),
+                _ => GetRectangleDistanceToEdge(halfSize, direction)
+            };
+
+            return center + direction * (distance + padding);
+        }
+        private static float GetRectangleDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
+            float distanceToVerticalEdge =
+                Mathf.Abs(direction.x) > 0.0001f
+                    ? halfSize.x / Mathf.Abs(direction.x)
+                    : float.PositiveInfinity;
+
+            float distanceToHorizontalEdge =
+                Mathf.Abs(direction.y) > 0.0001f
+                    ? halfSize.y / Mathf.Abs(direction.y)
+                    : float.PositiveInfinity;
+
+            return Mathf.Min(distanceToVerticalEdge, distanceToHorizontalEdge);
+        }
+
+        private static float GetEllipseDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
+            // This treats Circle as an ellipse using the full Size.
+            // If Size.x == Size.y, this is a true circle.
+            float x = direction.x / halfSize.x;
+            float y = direction.y / halfSize.y;
+
+            float denominator = Mathf.Sqrt((x * x) + (y * y));
+
+            if (denominator <= 0.0001f)
+                return 0f;
+
+            return 1f / denominator;
+        }
+
+        private static float GetDiamondDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
+            // Diamond equation:
+            // abs(x / halfWidth) + abs(y / halfHeight) = 1
+            float denominator =
+                Mathf.Abs(direction.x) / halfSize.x +
+                Mathf.Abs(direction.y) / halfSize.y;
+
+            if (denominator <= 0.0001f)
+                return 0f;
+
+            return 1f / denominator;
+        }
+
+
+        private static float GetHexagonDistanceToEdge(Vector2 halfSize, Vector2 direction)
+        {
+            if (direction.sqrMagnitude < 0.0001f)
+                return 0f;
+
+            direction.Normalize();
+
+            // width : height = 2 : sqrt(3)
+            //
+            // halfSize.x = outer radius
+            // halfSize.y = apothem
+            //
+            // If your RectTransform is slightly non-regular, this still fits the largest
+            // regular flat-top hexagon inside the given size.
+
+            float radiusFromWidth = halfSize.x;
+            float radiusFromHeight = halfSize.y * 2f / Mathf.Sqrt(3f);
+
+            float radius = Mathf.Min(radiusFromWidth, radiusFromHeight);
+            float apothem = radius * Mathf.Sqrt(3f) * 0.5f;
+
+            // A regular flat-top hexagon can be represented by these 3 pairs of parallel edges:
+            //
+            // |y| <= apothem
+            // |sqrt(3)/2 * x + 1/2 * y| <= apothem
+            // |sqrt(3)/2 * x - 1/2 * y| <= apothem
+
+            const float sqrt3Over2 = 0.86602540378f;
+
+            float d1 = Mathf.Abs(direction.y);
+            float d2 = Mathf.Abs((sqrt3Over2 * direction.x) + (0.5f * direction.y));
+            float d3 = Mathf.Abs((sqrt3Over2 * direction.x) - (0.5f * direction.y));
+
+            float maxProjection = Mathf.Max(d1, d2, d3);
+
+            if (maxProjection <= 0.0001f)
+                return 0f;
+
+            return apothem / maxProjection;
+        }
+
+        private static Sprite? _triangleArrowHeadSprite;
+
+        public static Sprite TriangleArrowHeadSprite
+        {
+            get
+            {
+                _triangleArrowHeadSprite ??= CreateTriangleArrowHeadSprite();
+
+                return _triangleArrowHeadSprite;
+            }
+        }
+
+        private static Sprite CreateTriangleArrowHeadSprite()
+        {
+            const int width = 64;
+            const int height = 64;
+
+            Texture2D texture = new(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "Generated Triangle Arrow Head",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+
+            Color clear = new(1f, 1f, 1f, 0f);
+            Color white = Color.white;
+
+            float midY = (height - 1) * 0.5f;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    // Triangle points:
+                    // left-top, left-bottom, right-middle
+                    float t = x / (float)(width - 1);
+                    float allowedHalfHeight = (1f - t) * midY;
+
+                    bool insideTriangle = Mathf.Abs(y - midY) <= allowedHalfHeight;
+
+                    texture.SetPixel(x, y, insideTriangle ? white : clear);
+                }
+            }
+
+            texture.Apply();
+
+            return Sprite.Create(texture, new(0f, 0f, width, height), new(0f, 0.5f), 100f);
+        }
+
+        public void Dispose()
+        {
+            StartPoint.OnParentUpdate -= ModifyArrow;
+
+            if (arrowObj is not null)
+                UnityEngine.Object.Destroy(arrowObj);
+        }
+
+        public static implicit operator GameObject?(UIArrow arrow) => arrow.CreateOrGetArrow();
     }
 
     public static class NodeShapeTextures

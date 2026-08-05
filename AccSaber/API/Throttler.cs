@@ -95,7 +95,7 @@ namespace AccSaber.API
         /// </remarks>
         public async Task<bool> TryCall(CancellationToken ct = default)
         {
-            if (CallsThisCycle == CallsPerCycle)
+            if (CallsThisCycle == CallsPerCycle && (DateTime.UtcNow - CycleStartTime).TotalSeconds < CycleLength)
                 return false; // Quick check to avoid locking if we already know we're at the limit.
 
             AsyncLock.Releaser? releaser = await locker.TryLockAsync();
