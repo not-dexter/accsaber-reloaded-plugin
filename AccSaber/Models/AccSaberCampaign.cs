@@ -240,7 +240,7 @@ namespace AccSaber.Models
 
     internal class AccSaberCampaignOffsetData
     {
-        public const float NODE_PADDING = 1f;
+        public const float NODE_PADDING = 0f;
         public const int NODE_CONTAINER_PADDING = 5;
 
         public event Action? OnScaleChanging, OnScaleChanged;
@@ -376,12 +376,17 @@ namespace AccSaber.Models
     [UsedImplicitly]
     internal class AccSaberCampaignPositionable : CampaignModel, IAccSaberCampaignPositionable
     {
-
         [JsonProperty("positionX")]
         public float PositionX { get; set; }
 
         [JsonProperty("positionY")]
         public float PositionY { get; set; }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            PositionY += 0.5f * (1 - Mathf.Abs(1 - (Mathf.Abs(PositionX) % 2)));
+        }
     }
 
     internal interface IAccSaberCampaignScalable : IAccSaberCampaignPositionable
