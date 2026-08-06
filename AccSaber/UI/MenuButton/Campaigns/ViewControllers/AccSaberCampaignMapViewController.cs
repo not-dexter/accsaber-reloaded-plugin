@@ -1369,7 +1369,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 imageTaskToken = new();
 
                 _ = string.IsNullOrEmpty(Map.CheckpointAvatarUrl) ?
-                    CoverImage.LoadCoverImage(Hash, Map.CoverUrl, imageTaskToken.Token) :
+                    (Map.NodeBorderUrl is null ? CoverImage.LoadCoverImage(Hash, Map.CoverUrl, imageTaskToken.Token) : CoverImage.LoadImage(Map.NodeBorderUrl!, imageTaskToken.Token)) :
                     CoverImage.LoadImage(Map.CheckpointAvatarUrl!, imageTaskToken.Token);
             }
 
