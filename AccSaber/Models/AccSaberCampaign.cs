@@ -229,13 +229,13 @@ namespace AccSaber.Models
     internal class AccSaberCampaignBackgroundSizeInfo : CampaignModel
     {
         [JsonProperty("size")]
-        public int Size { get; set; }
+        public float Size { get; set; }
 
         [JsonProperty("x")]
-        public int X { get; set; }
+        public float X { get; set; }
 
         [JsonProperty("y")]
-        public int Y { get; set; }
+        public float Y { get; set; }
     }
 
     internal class AccSaberCampaignOffsetData
@@ -667,7 +667,7 @@ namespace AccSaber.Models
         public string Font { get; set; } = null!;
 
         [JsonProperty("scale")]
-        public override float Scale { get; set; }
+        public override float Scale { get; set; } = 1.0f;
 
         [JsonProperty("color")]
         public string Color { get; set; } = null!;

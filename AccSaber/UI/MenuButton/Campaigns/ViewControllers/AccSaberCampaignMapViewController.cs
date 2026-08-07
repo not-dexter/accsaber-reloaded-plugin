@@ -213,11 +213,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     {
                         foreach (AccSaberCampaignText text in campaign.Texts)
                         {
-                            CampaignMapText mapText = new(text, (RectTransform)NodeContainer.transform, CurrentOffsetData);
+                                CampaignMapText mapText = new(text, (RectTransform)NodeContainer.transform, CurrentOffsetData);
 
-                            campaignMapTexts.Add(mapText);
+                                campaignMapTexts.Add(mapText);
 
-                            ++loads;
+                                ++loads;
 
                             if (loads >= config.CampaignMaxObjectLoadsPerFrame)
                             {
@@ -2026,6 +2026,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                             : [];
 
                     bool failed = true;
+                    bool endTagInstant = m.Value[^2] == '/';
 
                     switch (tag)
                     {
@@ -2064,16 +2065,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                                     if (set < 3)
                                         break;
 
-                                    toReplace.Enqueue((m.Value, $"<color={new Color32(rgbVals[0], rgbVals[1], rgbVals[2], 255).Color()}>"));
-                                    closingTagReplacement.Push(("</span>", "</color>"));
+                                    toReplace.Enqueue((m.Value, $"<color={new Color32(rgbVals[0], rgbVals[1], rgbVals[2], 255).Color()}{(endTagInstant ? "/" : "")}>"));
+
+                                    if (!endTagInstant)
+                                        closingTagReplacement.Push(("</span>", "</color>"));
 
                                     break;
                                 }
 
                                 if (content[1..].StartsWith("font-size:"))
                                 {
-                                    toReplace.Enqueue((m.Value, $"<size={content[11..content.Length]}>"));
-                                    closingTagReplacement.Push(("</span>", "</size>"));
+                                    toReplace.Enqueue((m.Value, $"<size={content[11..content.Length].Replace("\"", "")}{(endTagInstant ? "/" : "")}>"));
+
+                                    if (!endTagInstant)
+                                        closingTagReplacement.Push(("</span>", "</size>"));
 
                                     break;
                                 }
@@ -2083,18 +2088,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                             break;
 
-                        case "div":
+                        case "div" or "br":
                             failed = false;
 
-                            toReplace.Enqueue((m.Value, ""));
-                            closingTagReplacement.Push(($"</{tag}>", "\n"));
+                            toReplace.Enqueue((m.Value, endTagInstant ? "\n" : ""));
+
+                            if (!endTagInstant)
+                                closingTagReplacement.Push(($"</{tag}>", "\n"));
                             break;
                     }
 
                     if (failed)
                     {
                         toReplace.Enqueue((m.Value, ""));
-                        closingTagReplacement.Push(($"</{tag}>", ""));
+
+                        if (!endTagInstant)
+                            closingTagReplacement.Push(($"</{tag}>", ""));
                     }
                 }
 
@@ -2106,7 +2115,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     var (oldStr, newStr) = toReplace.Dequeue();
                     givenStr = givenStr.ReplaceFirst(oldStr, newStr);
                 }
-                return WebUtility.HtmlDecode(givenStr);
+
+                string outp = WebUtility.HtmlDecode(givenStr);
+
+                Plugin.Log.Info("Text: " + outp);
+
+                return outp;
             }
         }
     }

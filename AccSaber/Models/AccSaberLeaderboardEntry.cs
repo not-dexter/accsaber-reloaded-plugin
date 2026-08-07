@@ -38,7 +38,7 @@ namespace AccSaber.Models
         public int BadCuts { get; set; }
 
         [JsonProperty("baseXp")]
-        public int BaseXp { get; set; }
+        public float BaseXp { get; set; }
 
         [JsonProperty("blScoreId")]
         public string? BlScoreId { get; set; }
