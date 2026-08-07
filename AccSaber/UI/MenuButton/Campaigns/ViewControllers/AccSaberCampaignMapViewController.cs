@@ -63,6 +63,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapNode> campaignMapNodes = [];
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
         private readonly List<CampaignMapText> campaignMapTexts = [];
+        private CampaignMapBackground? campaignMapBackground;
         private readonly List<(Guid fromNode, Guid toNode, UIArrow arrow)> mapNodeArrows = [];
         private ScrollRect scrollRect = null!;
         private Color currentBgColor, maxBgColors;
@@ -190,13 +191,20 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign)).Unwrap();
 
-                CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<IAccSaberCampaignScalable>()
-                    .Concat(campaign.Barriers?.Cast<IAccSaberCampaignScalable>() ?? [])
-                    .Concat(campaign.Texts?.Cast<IAccSaberCampaignScalable>() ?? []));
+                List<IAccSaberCampaignScalable> scalableObjs = [.. MiscUtils.CombineAllAsType<IAccSaberCampaignScalable>(campaign.Difficulties, campaign.Barriers ?? [], campaign.Texts ?? [])];
+
+                if (campaign.BackgroundSizeInfo is not null)
+                    scalableObjs.Add(campaign.BackgroundSizeInfo);
+
+                CurrentOffsetData = new(scaleFactor, scalableObjs);
 
                 UpdateContainerValues(resetScrollbars);
 
                 await PreloadStandardSprites(config.CampaignMaxCoverageLoadsPerFrame);
+
+                Task bgUrlTask = Task.CompletedTask;
+                if (campaign.BackgroundUrl is not null)
+                    bgUrlTask = MiscUtils.GetImage(campaign.BackgroundUrl); // this will allow for the bg image to be cached.
 
                 CampaignProgress = await campaignProgressTask;
 
@@ -287,14 +295,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                             yield return null;
                         }
                     }
-
-                        CurrentOffsetData.RecalculateValues();
-                        UpdateContainerValues(resetScrollbars);
                 }
 
                 await Coroutines.AsTask(LoadSlowly());
 
                 await RebuildArrows(loads);
+
+                await bgUrlTask;
+
+                if (campaign.BackgroundSizeInfo is not null && campaign.BackgroundUrl is not null)
+                    campaignMapBackground = new(NodeContainer.transform, campaign.BackgroundSizeInfo, CurrentOffsetData, campaign.BackgroundUrl);
+
+                CurrentOffsetData.RecalculateValues();
+                UpdateContainerValues(resetScrollbars);
 
                 if (!ScrollToFirstValidNode(CampaignProgress.Nodes.Heads.Select(node => node.Current.Id)))
                 {
@@ -384,7 +397,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             CustomBackground customBg;
 
-            if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null))
+            if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null) || CurrentCampaign.BackgroundSizeInfo is not null)
             {
                 customBg = ScrollContainer.GetComponent<CustomBackground>();
 
@@ -455,6 +468,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             foreach (var (_, _, go) in mapNodeArrows)
                 UnityEngine.Object.Destroy(go);
 
+            if (campaignMapBackground is not null)
+            {
+                campaignMapBackground.Dispose();
+                campaignMapBackground = null;
+            }
+
             campaignMapNodes.Clear();
             campaignMapBarriers.Clear();
             campaignMapTexts.Clear();
@@ -521,8 +540,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             UpdateContainerValues(false);
 
-            //RebuildArrows();
-            //TODO
             SetArrowColors();
         }
         public bool ScrollToNode(Guid nodeId, bool printWarning = true)
@@ -1012,6 +1029,87 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 new(position, size, Shape);
 
             public static implicit operator PositionData(DependentPositionData d) => d.ToPositionData();
+        }
+        internal class CampaignMapBackground : IDisposable
+        {
+            private readonly Transform parent;
+            private readonly AccSaberCampaignBackgroundSizeInfo sizeInfo;
+
+            public readonly AccSaberCampaignOffsetData OffsetData;
+
+            private readonly GameObject bg;
+            private readonly CancellationTokenSource imageTokenSource;
+            private readonly float widthToHeight;
+
+            public CampaignMapBackground(Transform parent, AccSaberCampaignBackgroundSizeInfo bgSize, AccSaberCampaignOffsetData offsetData, string bgUrl)
+            {
+                this.parent = parent;
+                sizeInfo = bgSize;
+                OffsetData = offsetData;
+
+                bg = new("CampaignMapBackground");
+
+                RectTransform rt = bg.AddComponent<RectTransform>();
+                bg.transform.SetParent(parent, false);
+
+                rt.anchorMin = new(0.5f, 0.5f);
+                rt.anchorMax = new(0.5f, 0.5f);
+                rt.pivot = new(0.5f, 0.5f);
+                rt.localScale = Vector3.one;
+
+                bg.AddComponent<LayoutElement>().ignoreLayout = true;
+
+                ImageView image = bg.AddComponent<ImageView>();
+                image.material = Utilities.ImageResources.NoGlowMat;
+                image.type = Image.Type.Simple;
+
+                imageTokenSource = new();
+                image.LoadImage(bgUrl, imageTokenSource.Token).GetAwaiter().GetResult(); // This has to be awaited for.
+
+                widthToHeight = image.sprite.textureRect.height / image.sprite.textureRect.width;
+
+                bg.transform.SetAsFirstSibling();
+
+                offsetData.OnScaleChanging += OnOffsetDataUpdating;
+                offsetData.OnScaleChanged += OnOffsetDataUpdate;
+            }
+
+            private void OnOffsetDataUpdating()
+            {
+                float normalSizeX = OffsetData.OffsetSize * 20f;
+                float normalSizeY = normalSizeX * widthToHeight;
+
+                RectTransform rt = bg.GetComponent<RectTransform>();
+
+                Vector2 size = new(normalSizeX * sizeInfo.Scale, normalSizeY * sizeInfo.Scale);
+                rt.sizeDelta = size;
+                sizeInfo.Size = size;
+
+                LayoutElement le = bg.GetComponent<LayoutElement>();
+
+                le.preferredWidth = size.x;
+                le.preferredHeight = size.y;
+            }
+            private void OnOffsetDataUpdate()
+            {
+                RectTransform rt = bg.GetComponent<RectTransform>();
+
+                rt.anchoredPosition = new(
+                    sizeInfo.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x,
+                    -sizeInfo.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
+                );
+            }
+
+            public void Dispose()
+            {
+                OffsetData.OnScaleChanged -= OnOffsetDataUpdate;
+                OffsetData.OnScaleChanging -= OnOffsetDataUpdating;
+
+                imageTokenSource.Cancel();
+                imageTokenSource.Dispose();
+
+                UnityEngine.Object.Destroy(bg);
+            }
         }
         internal class CampaignMapNode : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
         {
@@ -1859,10 +1957,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 Text = text;
                 OffsetData = offsetData;
 
+                string content = ParseGivenContent(text.Content);
+
+                if (text.Color is not null)
+                    content = $"<color={text.Color}>{content}</color>";
+
 #if V41
-                TextObj = BeatSaberUI.CreateCurvedUIText(parent, ParseGivenContent(text.Content));
+                TextObj = BeatSaberUI.CreateCurvedUIText(parent, content);
 #else
-                TextObj = BeatSaberUI.CreateText(parent, ParseGivenContent(text.Content), Vector2.zero);
+                TextObj = BeatSaberUI.CreateText(parent, content, Vector2.zero);
 #endif
 
                 RectTransform rt = TextObj.rectTransform;
@@ -1901,9 +2004,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
             private void UpdateTextSize()
             {
-                TextObj.fontSize = Text.Scale * 15f * OffsetData.ScaleFactor;
+                const float FONT_SCALE = 12f;
+                const float BOUNDS_SCALE = 12f; // originally = 16
+                const float TRUE_BOUNDS_SCALE = FONT_SCALE * BOUNDS_SCALE;
 
-                ResizeTextToFit(240f * Text.Scale * OffsetData.ScaleFactor);
+                TextObj.fontSize = Text.Scale * FONT_SCALE * OffsetData.ScaleFactor;
+
+                ResizeTextToFit(TRUE_BOUNDS_SCALE * Text.Scale * OffsetData.ScaleFactor);
 
                 Canvas.ForceUpdateCanvases();
 #if NEW_VERSION
@@ -1981,6 +2088,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private static string ParseGivenContent(string givenStr)
             {
+                givenStr = givenStr.Replace("\n", "");
+
                 MatchCollection mc = TagMatcher.Matches(givenStr);
                 Queue<(string oldStr, string newStr)> toReplace = [];
                 Stack<(string oldStr, string newStr)> closingTagReplacement = [];
@@ -2118,7 +2227,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 string outp = WebUtility.HtmlDecode(givenStr);
 
+#if PRINT_DEBUG
                 Plugin.Log.Info("Text: " + outp);
+#endif
 
                 return outp;
             }
@@ -2283,8 +2394,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             float shaftThickness = this.shaftThickness * scale;
             float headLength = this.headLength * scale;
             float headWidth = this.headWidth * scale;
-
-            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg; // no change
 
             headLength = Mathf.Min(headLength, length);
             float shaftLength = Mathf.Max(0f, length - headLength);

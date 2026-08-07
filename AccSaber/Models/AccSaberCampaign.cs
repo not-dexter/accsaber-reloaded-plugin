@@ -1,4 +1,4 @@
-﻿//#define PRINT_DEBUG
+﻿#define PRINT_DEBUG
 
 using AccSaber.Models.Base;
 using AccSaber.Models.JsonConverters;
@@ -226,16 +226,25 @@ namespace AccSaber.Models
     }
     internal class AccSaberCampaign : AccSaberCampaign<AccSaberCampaignMap>;
 
-    internal class AccSaberCampaignBackgroundSizeInfo : CampaignModel
+    internal class AccSaberCampaignBackgroundSizeInfo : CampaignModel, IAccSaberCampaignSizable, IAccSaberCampaignScalable
     {
         [JsonProperty("size")]
-        public float Size { get; set; }
+        public float Scale { get; set; }
 
         [JsonProperty("x")]
-        public float X { get; set; }
+        public float PositionX { get; set; }
 
         [JsonProperty("y")]
-        public float Y { get; set; }
+        public float PositionY { get; set; }
+
+        [JsonIgnore]
+        public Vector2 Size { get; set; }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            Scale /= 100f;
+        }
     }
 
     internal class AccSaberCampaignOffsetData
@@ -245,7 +254,7 @@ namespace AccSaber.Models
 
         public event Action? OnScaleChanging, OnScaleChanged;
 
-        private readonly List<IAccSaberCampaignScalable> nodes;
+        private readonly IAccSaberCampaignScalable[] nodes;
 
         public Vector2 ContainerSize { get; private set; }
         public Vector2 Offset { get; private set; }
@@ -670,7 +679,7 @@ namespace AccSaber.Models
         public override float Scale { get; set; } = 1.0f;
 
         [JsonProperty("color")]
-        public string Color { get; set; } = null!;
+        public string? Color { get; set; } = null;
 
         [JsonProperty("effects")]
         public string Effects { get; set; } = null!;

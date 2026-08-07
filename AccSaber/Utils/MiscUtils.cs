@@ -176,7 +176,7 @@ namespace AccSaber.Utils
             if (mods.proMode) outp.Add("PM");
             if (mods.smallCubes) outp.Add("SC");
             if (mods.instaFail) outp.Add("IF");
-            // TODO: Add Off Platform detection (if it ever is an issue)
+            // NOTE: Add Off Platform detection (if it ever is an issue)
 
             return outp;
         }
@@ -231,6 +231,17 @@ namespace AccSaber.Utils
         }
         public static IEnumerable<T> MergeSortedLists<T>(params IEnumerable<IEnumerable<T>> lists) where T : IComparable<T> =>
             MergeSortedLists(Comparer<T>.Default, lists);
+
+        public static IEnumerable<T> CombineAs<T, L1, L2>(IEnumerable<L1> list1, IEnumerable<L2> list2) where L1 : T where L2 : T => list1.Cast<T>().Concat(list2.Cast<T>());
+        public static IEnumerable<T> CombineAllAsType<T>(params IEnumerable<IEnumerable> lists)
+        {
+            foreach (IEnumerable list in lists)
+                foreach (object item in list)
+                    if (item is T good)
+                        yield return good;
+                    else
+                        throw new ArgumentException($"Cannot combine item \"{item}\", it is not of type {typeof(T).FullName}!");
+        }
 
         public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default)
         {
