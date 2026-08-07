@@ -1959,7 +1959,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 string content = ParseGivenContent(text.Content);
 
-                if (text.Color is not null)
+                if (!string.IsNullOrEmpty(text.Color))
                     content = $"<color={text.Color}>{content}</color>";
 
 #if V41
