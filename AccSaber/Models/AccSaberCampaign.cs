@@ -1,4 +1,4 @@
-﻿#define PRINT_DEBUG
+﻿//#define PRINT_DEBUG
 
 using AccSaber.Models.Base;
 using AccSaber.Models.JsonConverters;
@@ -394,7 +394,9 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            PositionY += 0.5f * (1 - Mathf.Abs(1 - (Mathf.Abs(PositionX) % 2)));
+            const float OFFSET_AMOUNT = 0.5f;
+
+            PositionY += OFFSET_AMOUNT * (1 - Mathf.Abs(1 - (Mathf.Abs(PositionX) % 2)));
         }
     }
 

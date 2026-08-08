@@ -67,6 +67,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<(Guid fromNode, Guid toNode, UIArrow arrow)> mapNodeArrows = [];
         private ScrollRect scrollRect = null!;
         private Color currentBgColor, maxBgColors;
+        private Action? UpdateArrowClipping;
 
         public AccSaberCampaignOffsetData? CurrentOffsetData 
         { 
@@ -465,8 +466,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             foreach (IDisposable node in campaignMapNodes.Cast<IDisposable>().Concat(campaignMapBarriers).Concat(campaignMapTexts))
                 node.Dispose();
 
-            foreach (var (_, _, go) in mapNodeArrows)
-                UnityEngine.Object.Destroy(go);
+            foreach (var (_, _, arrow) in mapNodeArrows)
+                arrow.Dispose();
+
+            if (CurrentOffsetData is not null && UpdateArrowClipping is not null)
+            {
+                CurrentOffsetData.OnScaleChanged -= UpdateArrowClipping;
+                UpdateArrowClipping = null;
+            }
 
             if (campaignMapBackground is not null)
             {
@@ -637,8 +644,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         }
         private async Task RebuildArrows(int loads = 0)
         {
-            foreach (var (_, _, go) in mapNodeArrows)
-                UnityEngine.Object.Destroy(go);
+            foreach (var (_, _, arrow) in mapNodeArrows)
+                arrow.Dispose();
 
             mapNodeArrows.Clear();
 
@@ -714,7 +721,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             await Coroutines.AsTask(LoadSlowly());
 
-            UpdateBarrierRotationsAndArrowClipping([with(knownPositions.Select(kvp => new KeyValuePair<Guid, PositionData>(kvp.Key, kvp.Value)))]);
+            UpdateArrowClipping = () => UpdateBarrierRotationsAndArrowClipping([with(knownPositions.Select(kvp => new KeyValuePair<Guid, PositionData>(kvp.Key, kvp.Value)))]);
+
+            CurrentOffsetData?.OnScaleChanged += UpdateArrowClipping;
+
+            UpdateArrowClipping();
         }
         private Color GetPrereqColor(AccSaberCampaignPrereqInfo prereq) =>
             (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color();
@@ -970,15 +981,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             internal IndependentPositionData(CampaignMapNode node)
             {
-                PositionFunc = offset => new(node.Map.PositionX * offset.OffsetSize + offset.Offset.x, -node.Map.PositionY * offset.OffsetSize - offset.Offset.y);
-                SizeFunc = offset => new(node.Map.Scale * offset.ScaleFactor, node.Map.Scale * offset.ScaleFactor);
+                //PositionFunc = offset => new(node.Map.PositionX * offset.OffsetSize + offset.Offset.x, -node.Map.PositionY * offset.OffsetSize - offset.Offset.y);
+                //SizeFunc = offset => new(node.Map.Scale * offset.ScaleFactor, node.Map.Scale * offset.ScaleFactor);
+                PositionFunc = offset => new(node.NodeXPos, node.NodeYPos);
+                SizeFunc = offset => new(node.NodeWidth, node.NodeHeight);
                 Shape = node.Shape;
                 PositionOffset = node.OffsetData;
             }
             internal IndependentPositionData(CampaignMapBarrier node)
             {
-                PositionFunc = offset => new(node.Barrier.PositionX * offset.OffsetSize + offset.Offset.x, -node.Barrier.PositionY * offset.OffsetSize - offset.Offset.y);
-                SizeFunc = offset => new(CampaignMapBarrier.WIDTH * offset.ScaleFactor, node.Barrier.Scale * offset.ScaleFactor);
+                //PositionFunc = offset => new(node.Barrier.PositionX * offset.OffsetSize + offset.Offset.x, -node.Barrier.PositionY * offset.OffsetSize - offset.Offset.y);
+                //SizeFunc = offset => new(CampaignMapBarrier.WIDTH * offset.ScaleFactor, node.Barrier.Scale * offset.ScaleFactor);
+                PositionFunc = offset => node.Position;
+                SizeFunc = offset => node.SizeDelta;
                 Shape = NodeShape.Square;
                 PositionOffset = node.OffsetData;
             }
@@ -2454,9 +2469,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Vector2 direction = delta.normalized;
 
-            arrowStart = GetRotatedShapeEdgePoint(from.Position, from.Size, from.Shape, fromRotation, direction, padding);
+            arrowStart = GetRotatedShapeEdgePoint(from, fromRotation, direction, padding);
 
-            arrowEnd = GetRotatedShapeEdgePoint(to.Position, to.Size, to.Shape, toRotation, -direction, padding);
+            arrowEnd = GetRotatedShapeEdgePoint(to, toRotation, -direction, padding);
 
             if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
                 return false;
@@ -2464,6 +2479,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             return true;
         }
 
+        private static Vector2 GetRotatedShapeEdgePoint(PositionData data, Quaternion rotation, Vector2 worldDirection, float padding = 0f) =>
+            GetRotatedShapeEdgePoint(data.Position, data.Size, data.Shape, rotation, worldDirection, padding);
         private static Vector2 GetRotatedShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Quaternion rotation, Vector2 worldDirection, float padding = 0f)
         {
             if (worldDirection.sqrMagnitude < 0.0001f)

@@ -50,8 +50,11 @@ namespace AccSaber.UI.MenuButton.Campaigns
                 
                 ProvideInitialViewControllers(_campaignController, _gameplaySetupViewController, null);
             }
-            _panelViewController.LogoDoesTransition = false;
-            _panelViewController.OnLogoClicked += OnLogoClicked;
+            if (_panelViewController.LogoDoesTransition)
+            {
+                _panelViewController.LogoDoesTransition = false;
+                _panelViewController.OnLogoClicked += OnLogoClicked;
+            }
         }
 
 #if NEW_VERSION
@@ -129,6 +132,9 @@ namespace AccSaber.UI.MenuButton.Campaigns
                     else
                         PresentFlowCoordinator(instant: true);
                 });
+#if DEBUG
+                Plugin.Log.Info("Back button action pushed.");
+#endif
             }
             else
                 ExitToMenu();

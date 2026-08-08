@@ -88,7 +88,12 @@ namespace AccSaber.UI.MenuButton
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
             if (BackButtonActions.Count > 0)
+            {
                 BackButtonActions.Pop().Invoke();
+#if DEBUG
+                Plugin.Log.Info("Back button action popped.");
+#endif
+            }
             else
                 base.BackButtonWasPressed(topViewController);
         }
