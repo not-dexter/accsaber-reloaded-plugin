@@ -1,4 +1,4 @@
-﻿#define TEST_SUBMIT
+﻿//#define TEST_SUBMIT
 
 using AccSaber.Configuration;
 using AccSaber.Consts;
@@ -93,6 +93,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [UIComponent("campaign-description")]
         private readonly TextMeshProUGUI _campaignDescription = null!;
+
+        [UIComponent("objectives-container")]
+        private readonly ExternalComponents _objectivesContainer = null!;
 
         internal InputFieldView? CampaignSearchInput { get; private set; }
         CurvedTextMeshPro? songSearchPlaceholder = null;
@@ -1033,7 +1036,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #if NEW_VERSION
         public async Task SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
-#if DEBUG && TEST_SUBMIT
+#if DEBUG && TEST_SUBMIT && V40
             bool doTestSubmit = withSound && completion.Completion != CompletionStatus.Complete && (CurrentBeatMapLevel?.levelID ?? "") == beatmapLevel.levelID && CurrentBeatMapKey == beatmapKey && InMap;
 #endif
 
@@ -1070,7 +1073,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #endif
                 }
 
-#if DEBUG && TEST_SUBMIT
+#if DEBUG && TEST_SUBMIT && V40
                 if (doTestSubmit)
                 {
                     // purely for testing, this will simulate submitting a 100% score (without the server call of course).
@@ -1318,6 +1321,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #endif
             InBarrier = false;
             InMap = true;
+
+            _objectivesContainer.Get<BSMLScrollView>().ScrollTo(0f, false);
         }
         public async void SetBarrierInfo(AccSaberCampaignMapViewController.CampaignMapBarrier barrier, CampaignProgressValue progress)
         {
@@ -1363,6 +1368,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             InMap = false;
             InBarrier = true;
+
+            _objectivesContainer.Get<BSMLScrollView>().ScrollTo(0f, false);
         }
 
         private IEnumerable<AccSaberCampaignMap> GetAllMapsOfDiffId(Guid diffId)

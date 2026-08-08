@@ -111,7 +111,7 @@
           </horizontal>
         </vertical>
 
-        <settings-container pref-width='60' pref-height='55' child-align='MiddleCenter' child-expand-height='false' child-control-width='true'>
+        <settings-container id='objectives-container' pref-width='60' pref-height='55' child-align='MiddleCenter' child-expand-height='false' child-control-width='true'>
 
           <vertical pref-height='10' pad-top='2' vertical-fit='PreferredSize' child-align='MiddleCenter' active='~MissionComplete'>
             <text text='Completed!' align='Center' face-color='green' font-size='4' />
