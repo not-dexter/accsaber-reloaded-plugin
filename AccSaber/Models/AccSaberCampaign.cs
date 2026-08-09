@@ -613,7 +613,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionableScalablePrereq, Utils.Misc.INodeAffected<Guid>
+    internal class AccSaberCampaignBarrier : AccSaberCampaignPositionableSizablePrereq, Utils.Misc.INodeAffected<Guid>
     {
         [JsonProperty("conditionType"), JsonConverter(typeof(EnumJsonConverter<BarrierConditionType>))]
         public BarrierConditionType? ConditionType { get; set; }

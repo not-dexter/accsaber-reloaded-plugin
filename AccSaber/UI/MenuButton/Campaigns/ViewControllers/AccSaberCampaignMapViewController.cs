@@ -1677,6 +1677,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 set
                 {
                     barrierRt.localRotation = value;
+
+                    UpdateBarrierSizeBounds();
                     UpdateTextPos();
                 }
             }
@@ -1691,6 +1693,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     barrierLayout.preferredWidth = value.x;
                     barrierLayout.preferredHeight = value.y;
 
+                    UpdateBarrierSizeBounds();
                     UpdateTextPos();
                 }
             }
@@ -1750,8 +1753,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 ActiveBarriers.Add(this);
 
-                OffsetData.OnScaleChanged += OnOffsetDataUpdate;
-                OnOffsetDataUpdate();
+                OffsetData.OnScaleChanging += OnOffsetDataUpdateStarted;
+                OffsetData.OnScaleChanged += OnOffsetDataUpdateFinished;
+                OnOffsetDataUpdateFinished();
 
 #if PRINT_DEBUG && DEBUG
         Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
@@ -1773,21 +1777,42 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 rt.localScale = Vector3.one;
             }
 
-            private void OnOffsetDataUpdate()
+            private void OnOffsetDataUpdateStarted()
             {
-                barrierRt.anchoredPosition = new Vector2(
-                    Barrier.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x,
-                    -Barrier.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
-                );
-
-                SizeDelta = new Vector2(
+                SizeDelta = new(
                     WIDTH * OffsetData.ScaleFactor,
                     Barrier.Scale * OffsetData.ScaleFactor
                 );
 
                 text.fontSize = FONT_SIZE * OffsetData.ScaleFactor;
 
-                UpdateProgress();
+                UpdateText();
+                UpdateTextSize();
+
+                // This updates Barrier.Size to include:
+                // - the rotated barrier rectangle
+                // - the label on the default end
+                // - the label on the opposite end
+                //
+                // Including both ends is important because text collision resolution
+                // may flip the label after the parent has already calculated bounds.
+                UpdateBarrierSizeBounds();
+
+                // Apply current visual position using the current/old offset.
+                // Do not force collision resolution here; final positions are not ready yet.
+                UpdateTextPos(resolveCollisions: false);
+            }
+
+            private void OnOffsetDataUpdateFinished()
+            {
+                barrierRt.anchoredPosition = new(
+                    Barrier.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x,
+                    -Barrier.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
+                );
+
+                // Text is a separate object under the same parent, so it must be moved
+                // after the barrier anchored position changes.
+                UpdateTextPos();
             }
 
             private void UpdateTextSize()
@@ -1806,6 +1831,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 textLayout.preferredHeight = preferredSize.y;
 
                 textRt.sizeDelta = preferredSize;
+
+                UpdateBarrierSizeBounds();
             }
 
             private void UpdateTextPos() => UpdateTextPos(resolveCollisions: true);
@@ -1825,26 +1852,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 Vector2 textSize = textRt.sizeDelta;
 
-                // Default end is down. Opposite end is up.
-                // This flips the label placement direction 180 degrees without rotating the text itself.
-                Vector3 localEndDirection = textOnOppositeEnd ? Vector3.up : Vector3.down;
-
-                Vector3 endDirection3D = barrierRt.localRotation * localEndDirection;
-                Vector2 endDirection = new(endDirection3D.x, endDirection3D.y);
-
-                if (endDirection.sqrMagnitude < 0.0001f)
-                {
-                    endDirection = textOnOppositeEnd ? Vector2.up : Vector2.down;
-                }
-                else
-                {
-                    endDirection.Normalize();
-                }
+                Vector2 endDirection = GetTextEndDirection(textOnOppositeEnd);
 
                 float barrierHalfLength = SizeDelta.y * 0.5f;
 
                 // The text remains unrotated/upright.
-                // Because of that, we calculate the axis-aligned half extent of the text
+                // Because of that, calculate the axis-aligned half-extent of the text
                 // in the direction we are moving it.
                 float textHalfExtentInDirection =
                     Mathf.Abs(endDirection.x) * textSize.x * 0.5f +
@@ -1927,12 +1940,116 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     }
 
                     foreach (CampaignMapBarrier barrier in ActiveBarriers)
+                    {
+                        barrier.UpdateBarrierSizeBounds();
                         barrier.textRt.SetAsLastSibling();
+                    }
                 }
                 finally
                 {
                     resolvingTextCollisions = false;
                 }
+            }
+
+            private void UpdateBarrierSizeBounds()
+            {
+                if (barrierRt is null || textRt is null)
+                    return;
+
+                Barrier.Size = CalculateRequiredBarrierSize();
+            }
+
+            private Vector2 CalculateRequiredBarrierSize()
+            {
+                Vector2 totalHalfExtents = GetRotatedBarrierHalfExtents();
+
+                // Include the text on the default end.
+                ExpandHalfExtentsToIncludeTextEnd(ref totalHalfExtents, oppositeEnd: false);
+
+                // Also include the text on the opposite end.
+                //
+                // This is intentionally conservative. It prevents the parent view from
+                // calculating bounds that are too small before collision resolution flips
+                // the text to the other side.
+                ExpandHalfExtentsToIncludeTextEnd(ref totalHalfExtents, oppositeEnd: true);
+
+                // Barrier.Size is the full bounding-box size, not half-extents.
+                return totalHalfExtents * 2f;
+            }
+
+            private Vector2 GetRotatedBarrierHalfExtents()
+            {
+                Vector2 size = SizeDelta;
+
+                float halfWidth = size.x * 0.5f;
+                float halfHeight = size.y * 0.5f;
+
+                Vector3 right3D = barrierRt.localRotation * Vector3.right;
+                Vector3 up3D = barrierRt.localRotation * Vector3.up;
+
+                Vector2 right = new(right3D.x, right3D.y);
+                Vector2 up = new(up3D.x, up3D.y);
+
+                // Axis-aligned half extents of a rotated rectangle.
+                return new Vector2(
+                    Mathf.Abs(right.x) * halfWidth + Mathf.Abs(up.x) * halfHeight,
+                    Mathf.Abs(right.y) * halfWidth + Mathf.Abs(up.y) * halfHeight
+                );
+            }
+
+            private void ExpandHalfExtentsToIncludeTextEnd(ref Vector2 totalHalfExtents, bool oppositeEnd)
+            {
+                Vector2 textSize = textRt.sizeDelta;
+                Vector2 endDirection = GetTextEndDirection(oppositeEnd);
+
+                float barrierHalfLength = SizeDelta.y * 0.5f;
+
+                float textHalfExtentInDirection =
+                    Mathf.Abs(endDirection.x) * textSize.x * 0.5f +
+                    Mathf.Abs(endDirection.y) * textSize.y * 0.5f;
+
+                float margin = TEXT_MARGIN * OffsetData.ScaleFactor;
+
+                Vector2 textCenterRelativeToBarrier =
+                    endDirection * (barrierHalfLength + textHalfExtentInDirection + margin);
+
+                float collisionPadding = TEXT_COLLISION_PADDING * OffsetData.ScaleFactor;
+
+                Vector2 textHalfExtents = new(
+                    textSize.x * 0.5f + collisionPadding,
+                    textSize.y * 0.5f + collisionPadding
+                );
+
+                // Because Barrier.Size is only a Vector2, it cannot represent an offset center.
+                // So we calculate a symmetric bounding box around the barrier center.
+                //
+                // This means:
+                // required half extent X = abs(text center X) + text half width
+                // required half extent Y = abs(text center Y) + text half height
+                totalHalfExtents.x = Mathf.Max(
+                    totalHalfExtents.x,
+                    Mathf.Abs(textCenterRelativeToBarrier.x) + textHalfExtents.x
+                );
+
+                totalHalfExtents.y = Mathf.Max(
+                    totalHalfExtents.y,
+                    Mathf.Abs(textCenterRelativeToBarrier.y) + textHalfExtents.y
+                );
+            }
+
+            private Vector2 GetTextEndDirection(bool oppositeEnd)
+            {
+                // Default end is down. Opposite end is up.
+                Vector3 localEndDirection = oppositeEnd ? Vector3.up : Vector3.down;
+
+                Vector3 endDirection3D = barrierRt.localRotation * localEndDirection;
+                Vector2 endDirection = new(endDirection3D.x, endDirection3D.y);
+
+                if (endDirection.sqrMagnitude < 0.0001f)
+                    return oppositeEnd ? Vector2.up : Vector2.down;
+
+                endDirection.Normalize();
+                return endDirection;
             }
 
             private static bool IsValidBarrier(CampaignMapBarrier barrier)
@@ -2019,7 +2136,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             public void Dispose()
             {
-                OffsetData.OnScaleChanged -= OnOffsetDataUpdate;
+                OffsetData.OnScaleChanging -= OnOffsetDataUpdateStarted;
+                OffsetData.OnScaleChanged -= OnOffsetDataUpdateFinished;
 
                 ActiveBarriers.Remove(this);
 

@@ -240,7 +240,7 @@
         /// <summary>
         /// Retrieves all campaign entries.
         /// </summary>
-        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns"; //no params
+        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns?size=1000"; //no params
 
         /// <summary>
         /// Retrieves specified campaign entries.

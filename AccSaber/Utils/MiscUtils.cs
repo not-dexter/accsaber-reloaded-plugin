@@ -373,7 +373,7 @@ namespace AccSaber.Utils
             try
             {
                 UnityWebRequestAsyncOperation operation = request.SendWebRequest();
-                Plugin.Log.Info("Unity API Call: " + url);
+                Plugin.Log.Debug("Unity API Call: " + url);
 
                 while (!operation.isDone)
                 {
