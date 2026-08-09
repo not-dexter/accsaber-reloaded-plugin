@@ -45,10 +45,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignViewController acvc = null!;
 
         private bool parsed = false;
-        private int setCampaignVersion = 0;
         private bool disposed = false;
 
         private readonly API.Throttler fetchThrottler = new(1, 60);
+        private readonly AsyncLock setCampaignLock = new();
 
         private AccSaberCampaign? CurrentCampaign
         {
@@ -68,6 +68,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private ScrollRect scrollRect = null!;
         private Color currentBgColor, maxBgColors;
         private Action? UpdateArrowClipping;
+        private Task setCampaignTask = Task.CompletedTask;
+        private CancellationTokenSource? setCampaignCts;
 
         public AccSaberCampaignOffsetData? CurrentOffsetData 
         { 
@@ -170,14 +172,49 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void Dispose()
         {
             disposed = true;
-            setCampaignVersion++;
+            setCampaignCts?.Cancel();
+            ClearDisplay();
+        }
+        public async Task Cleanup()
+        {
+            setCampaignCts?.Cancel();
+
+            await setCampaignTask;
+
             ClearDisplay();
         }
 
         public async Task SetCampaign(AccSaberCampaign campaign, float scaleFactor = -1f, bool resetScrollbars = true)
         {
-            int version = Interlocked.Increment(ref setCampaignVersion);
+            setCampaignCts?.Cancel();
 
+            await setCampaignTask;
+
+            setCampaignCts = new();
+
+            AsyncLock.Releaser locker = await setCampaignLock.LockAsync(setCampaignCts.Token);
+
+            setCampaignTask = UnityMainThreadTaskScheduler.Factory.StartNew(async () =>
+            {
+                try
+                {
+                    await SetCampaignInternal(campaign, scaleFactor, resetScrollbars, setCampaignCts.Token);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
+                finally
+                {
+                    setCampaignCts?.Dispose();
+                    setCampaignCts = null;
+
+                    locker.Dispose();
+                }
+            }, setCampaignCts.Token).Unwrap();
+        }
+        private async Task SetCampaignInternal(AccSaberCampaign campaign, float scaleFactor, bool resetScrollbars, CancellationToken ct)
+        {
             try
             {
                 if (!parsed || campaign.Difficulties is null)
@@ -190,7 +227,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 CurrentCampaign = campaign;
 
-                Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign)).Unwrap();
+                Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign), ct).Unwrap();
+                Task preloadSpritesTask = PreloadStandardSprites(config.CampaignMaxCoverageLoadsPerFrame);
 
                 List<IAccSaberCampaignScalable> scalableObjs = [.. MiscUtils.CombineAllAsType<IAccSaberCampaignScalable>(campaign.Difficulties, campaign.Barriers ?? [], campaign.Texts ?? [])];
 
@@ -201,16 +239,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 UpdateContainerValues(resetScrollbars);
 
-                await PreloadStandardSprites(config.CampaignMaxCoverageLoadsPerFrame);
-
                 Task bgUrlTask = Task.CompletedTask;
                 if (campaign.BackgroundUrl is not null)
                     bgUrlTask = MiscUtils.GetImage(campaign.BackgroundUrl); // this will allow for the bg image to be cached.
 
                 CampaignProgress = await campaignProgressTask;
-
-                if (disposed || version != setCampaignVersion)
-                    return;
 
                 HandleCheckpointCollisions();
 
@@ -218,20 +251,33 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 IEnumerator LoadSlowly()
                 {
+#if PRINT_DEBUG && DEBUG
+                    int expectedLoads = (campaign.Texts?.Count ?? 0) + (campaign.Barriers?.Count ?? 0) + campaign.Difficulties.Count;
+                    Plugin.Log.Info($"There are {expectedLoads} loads expected that will take a total of {expectedLoads / config.CampaignMaxObjectLoadsPerFrame} frames.");
+                    int frames = 0;
+#endif
+
                     if (campaign.Texts is not null)
                     {
                         foreach (AccSaberCampaignText text in campaign.Texts)
                         {
-                                CampaignMapText mapText = new(text, (RectTransform)NodeContainer.transform, CurrentOffsetData);
+                            CampaignMapText mapText = new(text, (RectTransform)NodeContainer.transform, CurrentOffsetData);
 
-                                campaignMapTexts.Add(mapText);
+                            campaignMapTexts.Add(mapText);
 
-                                ++loads;
+                            ++loads;
 
                             if (loads >= config.CampaignMaxObjectLoadsPerFrame)
                             {
                                 loads = 0;
                                 yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                                ++frames;
+#endif
+
+                                if (ct.IsCancellationRequested)
+                                    yield break;
                             }
                         }
                     }
@@ -255,6 +301,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                             {
                                 loads = 0;
                                 yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                                ++frames;
+#endif
+
+                                if (ct.IsCancellationRequested)
+                                    yield break;
                             }
                         }
                     }
@@ -263,7 +316,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     {
                         AccSaberBasicDifficulty? diff = null;
                         
-                        yield return serialHandler.GetDiffByIdAsync(map.MapDifficultyId).WaitWithRoutine(loadedDiff => diff = loadedDiff);
+                        yield return serialHandler.GetDiffByIdAsync(map.MapDifficultyId, loads, true).WaitWithRoutine(info => { diff = info.Diff; loads = info.Loads; });
+
+                        if (loads == -1)
+                        {
+                            loads = 0;
+
+                            if (ct.IsCancellationRequested)
+                                yield break;
+                        }
 
                         if (diff is null)
                         {
@@ -288,27 +349,55 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_CELL, NodeContainer, node);
 
-                        loads += 2;
+                        ++loads;
 
                         if (loads >= config.CampaignMaxObjectLoadsPerFrame)
                         {
                             loads = 0;
                             yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                            ++frames;
+#endif
+
+                            if (ct.IsCancellationRequested)
+                                yield break;
                         }
                     }
+
+#if PRINT_DEBUG && DEBUG
+                    Plugin.Log.Info($"There was a total of {frames} frames awaited.");
+#endif
                 }
+
+                await preloadSpritesTask;
+
+                if (disposed || ct.IsCancellationRequested) // Need to check after every await as a decent amount of time can pass in each Task.
+                    return;
 
                 await Coroutines.AsTask(LoadSlowly());
 
-                await RebuildArrows(loads);
+                if (disposed || ct.IsCancellationRequested) 
+                    return;
+
+                await RebuildArrows(loads, ct);
+
+                if (disposed || ct.IsCancellationRequested)
+                    return;
 
                 await bgUrlTask;
+
+                if (disposed || ct.IsCancellationRequested)
+                    return;
 
                 if (campaign.BackgroundSizeInfo is not null && campaign.BackgroundUrl is not null)
                     campaignMapBackground = new(NodeContainer.transform, campaign.BackgroundSizeInfo, CurrentOffsetData, campaign.BackgroundUrl);
 
                 CurrentOffsetData.RecalculateValues();
                 UpdateContainerValues(resetScrollbars);
+
+                if (ct.IsCancellationRequested)
+                    return;
 
                 if (!ScrollToFirstValidNode(CampaignProgress.Nodes.Heads.Select(node => node.Current.Id)))
                 {
@@ -351,6 +440,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 if (ids.Count <= 1)
                     continue;
+
+#if PRINT_DEBUG && DEBUG
+                Plugin.Log.Info($"There are {ids.Count} milestones with that name \"{key}\".");
+#endif
 
                 float xPos = 0, yPos = 0;
 
@@ -475,11 +568,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 UpdateArrowClipping = null;
             }
 
-            if (campaignMapBackground is not null)
-            {
-                campaignMapBackground.Dispose();
-                campaignMapBackground = null;
-            }
+            campaignMapBackground?.Dispose();
+            campaignMapBackground = null;
 
             campaignMapNodes.Clear();
             campaignMapBarriers.Clear();
@@ -571,7 +661,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             Vector2 actualSize = scrollRect.content.sizeDelta;
             Vector2 trueNodePos = new(node.NodeXPos + actualSize.x / 2f, node.NodeYPos + actualSize.y / 2f);
 
-#if PRINT_DEBUG
+#if PRINT_DEBUG && DEBUG
             Plugin.Log.Info($"viewSize = {viewSize}, actualSize = {actualSize}, node size = {trueNodePos}");
 #endif
 
@@ -590,8 +680,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             else
                 scrollRect.verticalScrollbar.value =
                     (trueNodePos.y - viewSize.y / 2f) / (actualSize.y - viewSize.y);
-#if PRINT_DEBUG
-            Plugin.Log.Info($"Final scroll percent = ({scrollableContainer.horizontalScrollbar.value * 100f:N2}%, {scrollableContainer.verticalScrollbar.value * 100f:N2}%)");
+#if PRINT_DEBUG && DEBUG
+            Plugin.Log.Info($"Final scroll percent = ({scrollRect.horizontalScrollbar.value * 100f:N2}%, {scrollRect.verticalScrollbar.value * 100f:N2}%)");
 #endif
 
             return true;
@@ -642,7 +732,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 }
             }
         }
-        private async Task RebuildArrows(int loads = 0)
+        private async Task RebuildArrows(int loads = 0, CancellationToken ct = default)
         {
             foreach (var (_, _, arrow) in mapNodeArrows)
                 arrow.Dispose();
@@ -651,6 +741,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Dictionary<Guid, IndependentPositionData> knownPositions = [];
             Queue<(AccSaberCampaignPrereqInfo prereq, Guid toNode)> neededPositions = [];
+
+            if (ct.IsCancellationRequested)
+                return;
 
             IEnumerator LoadSlowly()
             {
@@ -682,6 +775,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         {
                             loads = 0;
                             yield return null;
+
+                            if (ct.IsCancellationRequested)
+                                yield break;
                         }
                     }
                 }
@@ -715,11 +811,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     {
                         loads = 0;
                         yield return null;
+
+                        if (ct.IsCancellationRequested)
+                            yield break;
                     }
                 }
             }
 
             await Coroutines.AsTask(LoadSlowly());
+
+            if (ct.IsCancellationRequested)
+                return;
 
             UpdateArrowClipping = () => UpdateBarrierRotationsAndArrowClipping([with(knownPositions.Select(kvp => new KeyValuePair<Guid, PositionData>(kvp.Key, kvp.Value)))]);
 
@@ -1299,7 +1401,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     SetupCheckpointLabel();
                     UpdateCover();
                     UpdateProgress();
-#if PRINT_DEBUG
+#if PRINT_DEBUG && DEBUG
                 Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
 #endif
                 }
@@ -1651,7 +1753,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 OffsetData.OnScaleChanged += OnOffsetDataUpdate;
                 OnOffsetDataUpdate();
 
-#if PRINT_DEBUG
+#if PRINT_DEBUG && DEBUG
         Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
 #endif
             }
@@ -2242,7 +2344,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 string outp = WebUtility.HtmlDecode(givenStr);
 
-#if PRINT_DEBUG
+#if PRINT_DEBUG && DEBUG
                 Plugin.Log.Info("Text: " + outp);
 #endif
 
@@ -2701,12 +2803,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private static readonly ConcurrentDictionary<string, Sprite> _fillSpriteCache = [];
 
         private static bool _preloadedSprites = false;
+#if PRINT_DEBUG && DEBUG
+        private static int _extraFrames;
+#endif
 
         public static async Task PreloadStandardSprites(int maxCoverageLoads)
         {
             if (_preloadedSprites)
                 return;
             _preloadedSprites = true;
+#if PRINT_DEBUG && DEBUG
+            _extraFrames = 0;
+#endif
 
             NodeShape[] shapes = (NodeShape[])Enum.GetValues(typeof(NodeShape));
 
@@ -2723,6 +2831,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             await Coroutines.AsTask(LoadSlowly());
+
+#if PRINT_DEBUG && DEBUG
+            Plugin.Log.Info($"When preloading sprites, there were {_extraFrames + 2} frames of delay.");
+#endif
         }
 
         public static async Task<Sprite> GetBorderSprite(NodeShape shape, int maxCoverageLoads, int size = 256, int borderPixels = 10)
@@ -2774,6 +2886,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         {
                             coverages = 0;
                             yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                            ++_extraFrames;
+#endif
                         }
                     }
                 }
@@ -2829,6 +2945,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         {
                             coverages = 0;
                             yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                            ++_extraFrames;
+#endif
                         }
                     }
                 }

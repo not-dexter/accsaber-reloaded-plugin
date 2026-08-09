@@ -261,7 +261,7 @@ namespace AccSaber.Utils
                     s = await level.GetCoverImageAsync(ct);
 #endif
 
-                if (!image.gameObject.activeSelf)
+                if (!(image.gameObject?.activeSelf ?? true))
                     return;
 
                 if (s is not null)
@@ -355,6 +355,9 @@ namespace AccSaber.Utils
             }
 
             // Limit concurrent downloads/decodes.
+            if (activeImageDownloads >= MaxConcurrentImageDownloads)
+                Plugin.Log.Warn("Waiting for concurrent image downloads to clear up...");
+
             while (activeImageDownloads >= MaxConcurrentImageDownloads)
             {
                 if (ct.IsCancellationRequested || image is null)
@@ -370,6 +373,7 @@ namespace AccSaber.Utils
             try
             {
                 UnityWebRequestAsyncOperation operation = request.SendWebRequest();
+                Plugin.Log.Info("Unity API Call: " + url);
 
                 while (!operation.isDone)
                 {

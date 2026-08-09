@@ -328,7 +328,7 @@ namespace AccSaber.Models
 
             OnScaleChanged?.Invoke();
 
-#if PRINT_DEBUG
+#if PRINT_DEBUG && DEBUG
         Plugin.Log.Info($"BoundsMin = {BoundsMin}, BoundsMax = {BoundsMax}");
         Plugin.Log.Info($"ContainerSize = {ContainerSize}, Offset = {Offset}");
         Plugin.Log.Info($"ScaleFactor = {ScaleFactor}, OffsetSize = {OffsetSize}");

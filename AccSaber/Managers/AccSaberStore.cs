@@ -973,6 +973,11 @@ namespace AccSaber.Managers
                 _ => throw new ArgumentException("Given argument is not valid!")
             };
 
+            if (ids is null || ids.Count == 0)
+            {
+                Plugin.Log.Warn($"There are no nodes that have the completion status of {status}.");
+                return [];
+            }
 
             List<(int distance, Guid id)> list = [with(ids.Count)];
 

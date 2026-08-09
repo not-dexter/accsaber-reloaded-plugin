@@ -691,6 +691,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     _campaignSettingsModalController.HideModal(false);
                     _campaignCounterSettingsModalController.HideModal(false);
                     _campaignZoomModalController.HideModal(false);
+
+                    await _campaignMapViewController.Cleanup();
                 }
 
                 InCampaign = false;
