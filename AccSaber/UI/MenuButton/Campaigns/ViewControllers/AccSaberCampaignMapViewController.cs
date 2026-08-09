@@ -1183,7 +1183,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 imageTokenSource = new();
                 image.LoadImage(bgUrl, imageTokenSource.Token).GetAwaiter().GetResult(); // This has to be awaited for.
 
-                widthToHeight = image.sprite.textureRect.height / image.sprite.textureRect.width;
+                const float sqrt3over2 = 0.86602540378443864676372317075294f;
+
+                widthToHeight = sqrt3over2 * image.sprite.textureRect.height / image.sprite.textureRect.width;
 
                 bg.transform.SetAsFirstSibling();
 
@@ -1193,7 +1195,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private void OnOffsetDataUpdating()
             {
-                float normalSizeX = OffsetData.OffsetSize * 20f;
+                const int columnNumber = 20;
+                float normalSizeX = OffsetData.OffsetSize * columnNumber;
                 float normalSizeY = normalSizeX * widthToHeight;
 
                 RectTransform rt = bg.GetComponent<RectTransform>();

@@ -15,6 +15,8 @@ namespace AccSaber.Models
 {
     public abstract class CampaignModel : IModel 
     {
+        public const float DEFAULT_NODE_SIZE = 48f;
+
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignStatus.java
         public enum CampaignStatus
         {
@@ -284,8 +286,10 @@ namespace AccSaber.Models
         {
             ScaleFactor = scaleFactor;
 
+            const float SHAPE_OFFSET = 0.75f;
+
             // This is the distance between logical map coordinates.
-            OffsetSize = 48f * scaleFactor + NODE_PADDING;
+            OffsetSize = SHAPE_OFFSET * CampaignModel.DEFAULT_NODE_SIZE * scaleFactor + NODE_PADDING;
 
             OnScaleChanging?.Invoke();
 
@@ -394,7 +398,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            const float OFFSET_AMOUNT = 0.5f;
+            const float OFFSET_AMOUNT = 0.45f;
 
             PositionY += OFFSET_AMOUNT * (1 - Mathf.Abs(1 - (Mathf.Abs(PositionX) % 2)));
         }
@@ -559,7 +563,7 @@ namespace AccSaber.Models
         private void OnDeserialized(StreamingContext context)
         {
             if (Scale == default)
-                Scale = 48;
+                Scale = DEFAULT_NODE_SIZE;
 
             if (CategoryId is not null)
                 Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
@@ -662,7 +666,7 @@ namespace AccSaber.Models
         private void OnDeserialized(StreamingContext context)
         {
             if (Scale == default)
-                Scale = 48;
+                Scale = DEFAULT_NODE_SIZE;
 
             AffectedByIds = [.. AffectedCampaignDifficultyIds.Union(InwardArrows)];
         }
