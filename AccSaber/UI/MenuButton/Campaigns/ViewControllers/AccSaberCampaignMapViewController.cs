@@ -2242,7 +2242,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
             private void UpdateTextSize()
             {
-                const float FONT_SCALE = 12f;
+                const float FONT_SCALE = 8f;
                 const float BOUNDS_SCALE = 12f; // originally = 16
                 const float TRUE_BOUNDS_SCALE = FONT_SCALE * BOUNDS_SCALE;
 
