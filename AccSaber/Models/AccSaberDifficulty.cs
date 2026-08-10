@@ -23,9 +23,6 @@ namespace AccSaber.Models
         [JsonProperty("categoryId")]
         public Guid? CategoryId { get; set; }
 
-        [JsonProperty("characteristic")]
-        public string Characteristic { get; set; } = null!;
-
         //coverUrl, createdAt, mapAuthor, mapId, maxScore, rankedAt, songAuthor, songName, ssLeaderboardId, statistics
 
         [JsonProperty("status")]
@@ -66,6 +63,9 @@ namespace AccSaber.Models
         [JsonIgnore]
         public BeatmapDifficulty Difficulty;
 
+        [JsonProperty("characteristic")]
+        public string Characteristic { get; set; } = "Standard";
+
         [JsonProperty("complexity")]
         public float Complexity { get; set; }
 
@@ -100,6 +100,9 @@ namespace AccSaber.Models
         private void OnSerializing(StreamingContext context)
         {
             Hash = null!;
+
+            if (string.Equals(Characteristic, "Standard", StringComparison.OrdinalIgnoreCase))
+                Characteristic = null!;
         }
 
         public bool Equals(AccSaberBasicDifficulty other) => DifficultyId.Equals(other.DifficultyId);
