@@ -250,6 +250,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         } = null!;
 
+        [UIValue("CampaignCompletion")]
+        private string CampaignCompletion
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
         [UIValue("MissionMapName")]
         private string MissionMapName
         {
@@ -988,6 +999,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             CampaignRewards = "";
             CampaignCurated = false;
 
+            CampaignCompletion = campaign.CompletionMode switch
+            {
+                CampaignCompletionMode.TERMINAL => $"Reach a <color={ColorUtils.RANK}>terminal node</color>.",
+                CampaignCompletionMode.ALL => $"Complete <color={ColorUtils.RANK}>all nodes</color>.",
+                _ => ""
+            };
+
             if (campaign.Status == CampaignStatus.CURATED)
             {
                 string items = string.Empty;
@@ -1016,15 +1034,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (campaign.Tags is not null)
             {
-                foreach (var tag in campaign.Tags)
+                StringBuilder sb = new();
+                foreach (CampaignTag tag in campaign.Tags)
                 {
                     if (tag.Kind != CampaignTagKind.CATEGORY)
                         continue;
 
-                    CampaignCategory = CampaignCategory == "" ? $"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color>" :
-                        CampaignCategory + $" | <color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color>";
+                    sb.Append($"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color> | ");
                 }
 
+                CampaignCategory = sb.ToString()[..^3];
             }
 
             if ((campaign.IconUrl is not null && campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
