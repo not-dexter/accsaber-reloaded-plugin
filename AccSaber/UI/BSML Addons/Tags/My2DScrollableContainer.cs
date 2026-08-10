@@ -79,6 +79,9 @@ namespace AccSaber.UI.BSML_Addons.Tags
             scrollRect.scrollSensitivity = 2f;
             scrollRect.scrollInputMode = AxisFilteredScrollRect.ScrollInputMode.DominantAxis;
 
+            // Disable click-dragging the viewport/content.
+            scrollRect.viewportDraggingEnabled = false;
+
             AddScrollbars(scrollRect);
 
             return content;
@@ -504,20 +507,31 @@ namespace AccSaber.UI.BSML_Addons.Tags
             Both,
             VerticalOnly,
             HorizontalOnly,
-            DominantAxis
+            DominantAxis,
+            Disabled
         }
 
         public ScrollInputMode scrollInputMode = ScrollInputMode.DominantAxis;
 
         public float inputDeadzone = 0.01f;
+        public bool viewportDraggingEnabled = false;
 
         public override void OnScroll(PointerEventData eventData)
         {
+            if (scrollInputMode == ScrollInputMode.Disabled)
+            {
+                eventData.Use();
+                return;
+            }
+
             Vector2 originalDelta = eventData.scrollDelta;
             Vector2 filteredDelta = FilterScrollDelta(originalDelta);
 
             if (filteredDelta.sqrMagnitude <= inputDeadzone * inputDeadzone)
+            {
+                eventData.Use();
                 return;
+            }
 
             eventData.scrollDelta = filteredDelta;
 
@@ -535,12 +549,64 @@ namespace AccSaber.UI.BSML_Addons.Tags
                 newVelocity.y = 0f;
 
             velocity = newVelocity;
+
+            eventData.Use();
+        }
+
+        public override void OnInitializePotentialDrag(PointerEventData eventData)
+        {
+            if (!viewportDraggingEnabled)
+            {
+                eventData.Use();
+                return;
+            }
+
+            base.OnInitializePotentialDrag(eventData);
+        }
+
+        public override void OnBeginDrag(PointerEventData eventData)
+        {
+            if (!viewportDraggingEnabled)
+            {
+                velocity = Vector2.zero;
+                eventData.Use();
+                return;
+            }
+
+            base.OnBeginDrag(eventData);
+        }
+
+        public override void OnDrag(PointerEventData eventData)
+        {
+            if (!viewportDraggingEnabled)
+            {
+                velocity = Vector2.zero;
+                eventData.Use();
+                return;
+            }
+
+            base.OnDrag(eventData);
+        }
+
+        public override void OnEndDrag(PointerEventData eventData)
+        {
+            if (!viewportDraggingEnabled)
+            {
+                velocity = Vector2.zero;
+                eventData.Use();
+                return;
+            }
+
+            base.OnEndDrag(eventData);
         }
 
         private Vector2 FilterScrollDelta(Vector2 delta)
         {
             switch (scrollInputMode)
             {
+                case ScrollInputMode.Disabled:
+                    return Vector2.zero;
+
                 case ScrollInputMode.VerticalOnly:
                     return new Vector2(0f, delta.y);
 

@@ -212,6 +212,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     locker.Dispose();
                 }
             }, setCampaignCts.Token).Unwrap();
+
+            await setCampaignTask;
         }
         private async Task SetCampaignInternal(AccSaberCampaign campaign, float scaleFactor, bool resetScrollbars, CancellationToken ct)
         {
@@ -232,10 +234,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 List<IAccSaberCampaignScalable> scalableObjs = [.. MiscUtils.CombineAllAsType<IAccSaberCampaignScalable>(campaign.Difficulties, campaign.Barriers ?? [], campaign.Texts ?? [])];
 
-                if (campaign.BackgroundSizeInfo is not null)
-                    scalableObjs.Add(campaign.BackgroundSizeInfo);
+                bool hasBackground = campaign.BackgroundSizeInfo is not null;
+                if (hasBackground)
+                    scalableObjs.Add(campaign.BackgroundSizeInfo!);
 
-                CurrentOffsetData = new(scaleFactor, scalableObjs);
+                CurrentOffsetData = new(scaleFactor, scalableObjs, hasBackground);
 
                 UpdateContainerValues(resetScrollbars);
 
@@ -1448,7 +1451,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 #if NEW_VERSION
                     IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
-                    BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == Map.Characteristic);
+                    BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => string.Equals(c.serializedName, Map.Characteristic, StringComparison.OrdinalIgnoreCase));
                     BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(Map.Difficulty));
 
                     campaignFlow.ShowLeaderboard(key);
@@ -1456,7 +1459,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     await campaignController.SetMission(Map, key, level, Progress);
 #else
                     BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(Map.Difficulty);
-                    IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
+                    IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals(Map.Characteristic, StringComparison.OrdinalIgnoreCase));
                     IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == mapDiff);
 
                     campaignFlow.ShowLeaderboard(diff);
@@ -2242,7 +2245,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
             private void UpdateTextSize()
             {
-                const float FONT_SCALE = 8f;
+                const float FONT_SCALE = 7.5f;
                 const float BOUNDS_SCALE = 12f; // originally = 16
                 const float TRUE_BOUNDS_SCALE = FONT_SCALE * BOUNDS_SCALE;
 

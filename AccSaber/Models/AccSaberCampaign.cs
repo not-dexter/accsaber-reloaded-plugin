@@ -257,6 +257,7 @@ namespace AccSaber.Models
         public event Action? OnScaleChanging, OnScaleChanged;
 
         private readonly IAccSaberCampaignScalable[] nodes;
+        public bool IgnorePadding { get; set; }
 
         public Vector2 ContainerSize { get; private set; }
         public Vector2 Offset { get; private set; }
@@ -267,12 +268,13 @@ namespace AccSaber.Models
         public Vector2 BoundsMin { get; private set; }
         public Vector2 BoundsMax { get; private set; }
 
-        public AccSaberCampaignOffsetData(float scaleFactor, IEnumerable<IAccSaberCampaignScalable> nodes)
+        public AccSaberCampaignOffsetData(float scaleFactor, IEnumerable<IAccSaberCampaignScalable> nodes, bool ignorePadding)
         {
             if (nodes is null || !nodes.Any())
                 throw new ArgumentException("The node IEnumerable given must not be null and contain elements!");
 
             this.nodes = [.. nodes];
+            IgnorePadding = ignorePadding;
 
             RecalculateValuesWithScale(scaleFactor);
         }
@@ -321,10 +323,7 @@ namespace AccSaber.Models
             float width = right - left;
             float height = top - bottom;
 
-            ContainerSize = new Vector2(
-                width + NODE_CONTAINER_PADDING * 2f,
-                height + NODE_CONTAINER_PADDING * 2f
-            );
+            ContainerSize = IgnorePadding ? new(width, height) : new(width + NODE_CONTAINER_PADDING * 2f, height + NODE_CONTAINER_PADDING * 2f);
 
             Vector2 boundsCenter = new((left + right) * 0.5f, (bottom + top) * 0.5f);
 

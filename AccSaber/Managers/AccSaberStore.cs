@@ -965,6 +965,9 @@ namespace AccSaber.Managers
         }
         public IEnumerable<Guid> NodesSortedByProgression(CompletionStatus status)
         {
+            if (PlayerValues is null)
+                throw new Exception("Cannot call this function on a default struct. If this error is reached, something is broken in the code.");
+
             ICollection<Guid> ids = status switch
             {
                 CompletionStatus.Incomplete => PlayerValues.Keys,
