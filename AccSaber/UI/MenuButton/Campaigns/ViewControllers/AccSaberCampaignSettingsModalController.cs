@@ -25,6 +25,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.ScrollSpeed = value;
         }
 
+        [UIValue(nameof(ShowTerminalIndicator))]
+        private bool ShowTerminalIndicator
+        {
+            get => config.ShowTerminalIndicator;
+            set => config.ShowTerminalIndicator = value;
+        }
+
         [UIValue(nameof(ShowPrereqIndicator))]
         private bool ShowPrereqIndicator
         {

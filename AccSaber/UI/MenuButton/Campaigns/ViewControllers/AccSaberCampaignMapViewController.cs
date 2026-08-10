@@ -1272,6 +1272,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             [UIComponent("coverImage")]
             private readonly ClickableImage CoverImage = null!;
 
+            [UIComponent("terminalImage")]
+            private readonly ImageView TerminalImage = null!;
+
             [UIComponent("completionImage")]
             private readonly ImageView CompletionImage = null!;
 
@@ -1295,11 +1298,28 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public float NodeYPos => -Map.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y;
 
 
+            [UIValue("TerminalSrc")]
+            private const string TerminalSrc = ResourcePaths.TERMINAL;
+
             [UIValue("CheckmarkSrc")]
             private const string CheckmarkSrc = ResourcePaths.CHECKMARK;
 
             [UIValue("RequiresAllSrc")]
             private const string RequiresAllSrc = ResourcePaths.CAMPAIGN_ALL;
+
+            [UIValue("IsTerminal")]
+            private bool IsTerminal
+            {
+                get;
+                set
+                {
+                    if (field == value)
+                        return;
+
+                    field = value;
+                    NotifyPropertyChanged();
+                }
+            }
 
             [UIValue("IsComplete")]
             private bool IsComplete 
@@ -1360,6 +1380,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 this.config = config;
 
                 IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
+                IsTerminal = config.ShowTerminalIndicator && Map.Terminal;
                 requiresAllPrereqs = map.PrerequisiteMode == CampaignPrerequisiteMode.AND;
                 ShowPrereqIndicator = config.ShowPrereqIndicator && requiresAllPrereqs;
 
@@ -1395,6 +1416,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     m.showMaskGraphic = false;
 
                     CompletionImage.raycastTarget = false;
+                    TerminalImage.raycastTarget = false;
 
                     LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
                     mainLayout.preferredWidth = NodeWidth;
@@ -1402,6 +1424,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                     RectTransform transform = (RectTransform)RequiresAllImage.transform;
                     transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+
+                    if (Map.Terminal)
+                    {
+                        transform = (RectTransform)TerminalImage.transform;
+                        transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                    }
 
                     postParse = true;
                     SetupCheckpointLabel();
@@ -1573,7 +1601,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private void OnPluginUpdate(object sender, PropertyChangedEventArgs args)
             {
-                if (args.PropertyName.Equals(nameof(PluginConfig.ShowPrereqIndicator)))
+                if (args.PropertyName.Equals(nameof(PluginConfig.ShowTerminalIndicator)))
+                    IsTerminal = Map.Terminal && config.ShowTerminalIndicator;
+                else if (args.PropertyName.Equals(nameof(PluginConfig.ShowPrereqIndicator)))
                     ShowPrereqIndicator = requiresAllPrereqs && config.ShowPrereqIndicator;
             }
             private void UpdateCover()
@@ -1610,6 +1640,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 ((RectTransform)CompletionImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
                 ((RectTransform)RequiresAllImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                ((RectTransform)TerminalImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
 
                 LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
                 mainLayout.preferredWidth = NodeWidth;

@@ -1,7 +1,8 @@
-<modal id='modal' clickerino-offerino-closerino='true' hide-event='CloseModal' size-delta-x='160' size-delta-y='56' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+<modal id='modal' clickerino-offerino-closerino='true' hide-event='CloseModal' size-delta-x='160' size-delta-y='61' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical child-expand-height='false'>
     <horizontal child-expand-width='false'>
-      <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='80' pref-height='49' child-expand-width='false' pad='2'>
+      <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='80' pref-height='54' child-expand-width='false' pad='2'>
+        <checkbox-setting text='Show Terminal Indicator' hover-hint='Whether or not to show the flag on end nodes' apply-on-change='true' value='ShowTerminalIndicator' scale='0.8' />
         <checkbox-setting text='Show Prereq Indicator' hover-hint='Whether or not to show the asterisk on nodes' apply-on-change='true' value='ShowPrereqIndicator' scale='0.8' />
         <checkbox-setting text='Allow Stick Scrolling' apply-on-change='true' value='StickScrolling' scale='0.8' />
         <checkbox-setting text='Campaign Back Button' hover-hint='Whether or not the back button takes you back to the campaign' apply-on-change='true' value='CampaignBackButton' scale='0.8' />
@@ -20,7 +21,7 @@
           <slider-setting text='Image Brightness' apply-on-change='true' value='ImgBGBrightness' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.7' />
           <slider-setting text='Image Opacity' apply-on-change='true' value='ImgBGAlpha' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.7' />
         </vertical>
-        <vertical pref-height='15' />
+        <vertical pref-height='20' />
         <vertical>
           <text text='Solid Background Color Settings' align='Center' font-size='4' scale='0.8' />
           <slider-setting text='Color Brightness' apply-on-change='true' value='ColorBGBrightness' min='0' max='1' increment='0.05' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.7' />

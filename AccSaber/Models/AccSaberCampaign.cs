@@ -518,6 +518,9 @@ namespace AccSaber.Models
         [JsonProperty("prerequisiteMode"), JsonConverter(typeof(EnumJsonConverter<CampaignPrerequisiteMode>))]
         public CampaignPrerequisiteMode? PrerequisiteMode { get; set; }
 
+        [JsonProperty("terminal")]
+        public bool Terminal { get; set; }
+
         [JsonProperty("description")]
         public string Description { get; set; } = null!;
 

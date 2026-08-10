@@ -30,6 +30,7 @@ namespace AccSaber.Configuration
 
         public virtual bool StickScrolling { get; set; } = true;
         public virtual float ScrollSpeed { get; set; } = 2.0f;
+        public virtual bool ShowTerminalIndicator { get; set; } = true;
         public virtual bool ShowPrereqIndicator { get; set; } = true;
         public virtual bool CampaignBackButton { get; set; } = true;
 

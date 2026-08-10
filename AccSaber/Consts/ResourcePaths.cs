@@ -39,6 +39,7 @@ namespace AccSaber.Consts
         public const string CAMPAIGN_ALL = RESOURCE_PATH + ".campaignAll.png";
         public const string LOCK = RESOURCE_PATH + ".lock.png";
         public const string COUNT = RESOURCE_PATH + ".123.png";
+        public const string TERMINAL = RESOURCE_PATH + ".terminal.png";
 
         #endregion
         #region BSML File Paths
