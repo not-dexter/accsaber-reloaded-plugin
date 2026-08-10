@@ -1448,7 +1448,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 #if NEW_VERSION
                     IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
-                    BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
+                    BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == Map.Characteristic);
                     BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(Map.Difficulty));
 
                     campaignFlow.ShowLeaderboard(key);
