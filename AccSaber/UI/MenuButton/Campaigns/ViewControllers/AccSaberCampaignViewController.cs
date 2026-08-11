@@ -1,5 +1,6 @@
 ﻿//#define TEST_SUBMIT
 
+using AccSaber.API;
 using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Counter;
@@ -14,6 +15,7 @@ using BeatSaberMarkupLanguage.Tags;
 using HMUI;
 using IPA.Loader;
 using IPA.Utilities;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -96,6 +98,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [UIComponent("objectives-container")]
         private readonly ExternalComponents _objectivesContainer = null!;
+
+        [UIComponent(nameof(PercentBarTop))] private readonly LayoutElement PercentBarTop = null!;
+        [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
+        [UIComponent(nameof(PercentBarBottom))] private readonly LayoutElement PercentBarBottom = null!;
+        [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!;
 
         internal InputFieldView? CampaignSearchInput { get; private set; }
         CurvedTextMeshPro? songSearchPlaceholder = null;
@@ -261,6 +268,39 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         } = null!;
 
+
+        [UIValue("CampaignCompletionCount")]
+        private string CampaignCompletionCount
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("CampaignCompletionStatus")]
+        private string CampaignCompletionStatus
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("ShouldShowStatus")]
+        private bool ShouldShowStatus
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        }
         [UIValue("MissionMapName")]
         private string MissionMapName
         {
@@ -562,8 +602,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     _textTemplate = new ClickableTextTag().CreateObject(_categoryFilter.transform).GetComponent<ClickableText>();
                     _textTemplate.gameObject.SetActive(false);
                 }
-
-                _ = GetFilters();
+                _campaignImage.material = ResourcePaths.BORDER_MATERIAL;
+                _ = GetFilters();            
             }
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_VIEW, _campaignMapContainer, _campaignMapViewController);
@@ -1050,6 +1090,35 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 await _campaignImage.SetImageAsync(ResourcePaths.ACCSABER, false);
             else
                 StartCoroutine(_campaignImage.LoadImageRoutine(campaign.IconUrl));
+
+            JObject? campaignObj = await APIHandler.CallAPI_Json<JObject>(
+            string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler);
+
+            if (campaignObj is not null)
+            {
+                JToken? campaignInfo = campaignObj["campaign"];
+
+                float completedDiffs = (float)campaignObj!["completedDifficulties"]!;
+                int totalDiffs = (int)campaignInfo!["difficultyCount"]!;
+
+                CampaignCompletionCount = $"{(int)completedDiffs}/{totalDiffs}";
+
+                ShouldShowStatus = (string)campaignObj["progressStatus"]! == "IN_PROGRESS";
+
+                CampaignCompletionStatus = (string)campaignObj["progressStatus"]! switch
+                {
+                    "IN_PROGRESS" => $"<color={ColorUtils.STANDARD}>In Progress</color>",
+                    "COMPLETED" => $"<color={ColorUtils.TRUE}>Completed</color>",
+                    "ABANDONED" => $"<color={ColorUtils.TECH}>Abandoned</color>",
+                    _ => throw new NotImplementedException(),
+                };
+
+                PercentBarTop.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 25f * (completedDiffs / totalDiffs));
+                PercentBarBottom.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 25f * (1 - (completedDiffs / totalDiffs)));
+                PercentBarTop_image?.color = ColorUtils.Color(ColorUtils.STANDARD);
+                PercentBarBottom_image?.color = ColorUtils.GREY.Color().ColorWithAlpha(0.15f);
+            }
+
 
 
         }
