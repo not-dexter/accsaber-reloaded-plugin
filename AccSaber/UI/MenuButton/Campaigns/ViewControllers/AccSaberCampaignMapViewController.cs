@@ -4,6 +4,8 @@ using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.UI.BSML_Addons.Components;
+using AccSaber.UI.BSML_Addons.Tags;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.Components;
@@ -65,7 +67,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly List<CampaignMapText> campaignMapTexts = [];
         private CampaignMapBackground? campaignMapBackground;
         private readonly List<(Guid fromNode, Guid toNode, UIArrow arrow)> mapNodeArrows = [];
-        private ScrollRect scrollRect = null!;
+        private AxisFilteredScrollRect scrollRect = null!;
+        private ImageViewTiler? backgroundTiler;
         private Color currentBgColor, maxBgColors;
         private Action? UpdateArrowClipping;
         private Task setCampaignTask = Task.CompletedTask;
@@ -161,7 +164,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (!parsed)
                 parsed = true;
 
-            scrollRect = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
+            scrollRect = ScrollContainer.transform.parent.parent.GetComponent<AxisFilteredScrollRect>();
 
             ScrollSpeed = config.ScrollSpeed;
             StickScrolling = config.StickScrolling;
@@ -240,7 +243,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 CurrentOffsetData = new(scaleFactor, scalableObjs, hasBackground);
 
-                UpdateContainerValues(resetScrollbars);
+                //UpdateContainerValues(resetScrollbars);
 
                 Task bgUrlTask = Task.CompletedTask;
                 if (campaign.BackgroundUrl is not null)
@@ -265,6 +268,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         foreach (AccSaberCampaignText text in campaign.Texts)
                         {
                             CampaignMapText mapText = new(text, (RectTransform)NodeContainer.transform, CurrentOffsetData);
+
+                            scrollRect.RegisterCullTarget(mapText.TextObj.rectTransform);
 
                             campaignMapTexts.Add(mapText);
 
@@ -295,6 +300,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                                 parentVC: this,
                                 offsetData: CurrentOffsetData
                             );
+
+                            scrollRect.RegisterCullTarget(barrierNode.obj);
+                            scrollRect.RegisterCullTarget(barrierNode.textObj);
 
                             campaignMapBarriers.Add(barrierNode);
 
@@ -352,6 +360,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_CELL, NodeContainer, node);
 
+                        scrollRect.RegisterCullTarget(node.Container);
+
                         ++loads;
 
                         if (loads >= config.CampaignMaxObjectLoadsPerFrame)
@@ -394,7 +404,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     return;
 
                 if (campaign.BackgroundSizeInfo is not null && campaign.BackgroundUrl is not null)
-                    campaignMapBackground = new(NodeContainer.transform, campaign.BackgroundSizeInfo, CurrentOffsetData, campaign.BackgroundUrl);
+                    campaignMapBackground = new(NodeContainer.transform, scrollRect, campaign.BackgroundSizeInfo, CurrentOffsetData, campaign.BackgroundUrl);
 
                 CurrentOffsetData.RecalculateValues();
                 UpdateContainerValues(resetScrollbars);
@@ -494,6 +504,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             CustomBackground customBg;
 
+            backgroundTiler?.Dispose();
+            backgroundTiler = null;
+
             if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null) || CurrentCampaign.BackgroundSizeInfo is not null)
             {
                 customBg = ScrollContainer.GetComponent<CustomBackground>();
@@ -508,12 +521,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 BackgroundAlpha = config.CampaignColorBackgroundAlpha;
                 BackgroundBrightness = config.CampaignColorBackgroundBrightness;
 
+                backgroundTiler = ImageViewTiler.Create(customBg.Background!, scrollRect);
+
                 return;
             }
 
             customBg = ScrollContainer.GetComponent<CustomBackground>();
-
-            UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
 
             bool bgColorExists = CurrentCampaign.BackgroundColor is not null;
 
@@ -533,6 +546,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         BackgroundAlpha = config.CampaignImageBackgroundAlpha;
                         BackgroundBrightness = config.CampaignImageBackgroundBrightness;
+
+                        backgroundTiler = ImageViewTiler.Create(customBg.Background!, scrollRect);
                     }
                     catch (Exception e)
                     {
@@ -571,6 +586,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 UpdateArrowClipping = null;
             }
 
+            backgroundTiler?.Dispose();
+            backgroundTiler = null;
+
             campaignMapBackground?.Dispose();
             campaignMapBackground = null;
 
@@ -578,6 +596,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             campaignMapBarriers.Clear();
             campaignMapTexts.Clear();
             mapNodeArrows.Clear();
+
+            scrollRect.ClearCullTargets();
         }
         private void UpdateContainerValues(bool resetScrollbars)
         {
@@ -593,6 +613,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             Vector2 newContentSize = CurrentOffsetData.ContainerSize;
             Vector2 viewportSize = viewport.rect.size;
 
+#if PRINT_DEBUG && DEBUG
+            Plugin.Log.Info($"old size = {oldContentSize}\nnew size = {newContentSize}");
+#endif
+
             Vector2 oldNormalizedPosition = scrollRect.normalizedPosition;
             Vector2 newNormalizedPosition = oldNormalizedPosition;
 
@@ -606,7 +630,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             content.sizeDelta = newContentSize;
 
-            Canvas.ForceUpdateCanvases();
+            if (NodeContainer.TryGetComponent(out CustomBackground bg) && bg.Background is not null)
+                bg.Background.rectTransform.sizeDelta = newContentSize;
+
+            backgroundTiler?.RequestRebuild();
 
             scrollRect.StopMovement();
 
@@ -691,8 +718,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         {
             if (!parsed || CurrentCampaign is null || CurrentOffsetData is null || Mathf.Approximately(CurrentOffsetData.ScaleFactor, scaleFactor))
                 return;
-
-            float deltaScale = scaleFactor - CurrentOffsetData.ScaleFactor;
 
             CurrentOffsetData.RecalculateValuesWithScale(scaleFactor);
             UpdateDisplay(false);
@@ -1230,11 +1255,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             public readonly AccSaberCampaignOffsetData OffsetData;
 
-            private readonly GameObject bg;
+            public readonly GameObject bg;
             private readonly CancellationTokenSource imageTokenSource;
             private readonly float widthToHeight;
+            private ImageViewTiler imageTiler = null!;
 
-            public CampaignMapBackground(Transform parent, AccSaberCampaignBackgroundSizeInfo bgSize, AccSaberCampaignOffsetData offsetData, string bgUrl)
+            public CampaignMapBackground(Transform parent, AxisFilteredScrollRect scrollRect, AccSaberCampaignBackgroundSizeInfo bgSize, AccSaberCampaignOffsetData offsetData, string bgUrl)
             {
                 this.parent = parent;
                 sizeInfo = bgSize;
@@ -1255,15 +1281,18 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 ImageView image = bg.AddComponent<ImageView>();
                 image.material = Utilities.ImageResources.NoGlowMat;
                 image.type = Image.Type.Simple;
+                image.raycastTarget = false;
 
                 imageTokenSource = new();
-                image.LoadImage(bgUrl, imageTokenSource.Token).GetAwaiter().GetResult(); // This has to be awaited for.
+                image.LoadImage(bgUrl, imageTokenSource.Token).GetAwaiter().GetResult(); // This has to be awaited for so that resizing is correct.
 
-                const float sqrt3over2 = 0.86602540378443864676372317075294f;
+                const float sqrt3over2 = 0.86602540378443864676372317075294f; // The best kind of kill is overkill.
 
                 widthToHeight = sqrt3over2 * image.sprite.textureRect.height / image.sprite.textureRect.width;
 
                 bg.transform.SetAsFirstSibling();
+
+                imageTiler = ImageViewTiler.Create(image, scrollRect);
 
                 offsetData.OnScaleChanging += OnOffsetDataUpdating;
                 offsetData.OnScaleChanged += OnOffsetDataUpdate;
@@ -1294,6 +1323,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     sizeInfo.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x,
                     -sizeInfo.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
                 );
+
+                Canvas.ForceUpdateCanvases();
+                imageTiler.Rebuild();
             }
 
             public void Dispose()
@@ -1303,6 +1335,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 imageTokenSource.Cancel();
                 imageTokenSource.Dispose();
+
+                imageTiler?.Dispose();
+                imageTiler = null!;
 
                 UnityEngine.Object.Destroy(bg);
             }
@@ -1334,7 +1369,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
             [UIObject("container")]
-            private readonly GameObject Container = null!;
+            public readonly GameObject Container = null!;
 
             [UIComponent("borderImage")]
             private readonly ImageView BorderImage = null!;
@@ -1762,8 +1797,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             private readonly AccSaberCampaignMapViewController parentVC;
 
-            private readonly GameObject obj;
-            private readonly GameObject textObj;
+            public readonly GameObject obj;
+            public readonly GameObject textObj;
 
             private readonly RectTransform barrierRt;
             private readonly RectTransform textRt;
@@ -2263,7 +2298,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             public readonly AccSaberCampaignText Text;
             public readonly AccSaberCampaignOffsetData OffsetData;
 
-            private readonly TextMeshProUGUI TextObj;
+            public readonly TextMeshProUGUI TextObj;
 
             public Vector2 Position { get; private set; }
             public Vector2 RenderedSize

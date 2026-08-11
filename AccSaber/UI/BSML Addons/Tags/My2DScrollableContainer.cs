@@ -2,6 +2,7 @@
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Tags;
 using HMUI;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -81,6 +82,10 @@ namespace AccSaber.UI.BSML_Addons.Tags
 
             // Disable click-dragging the viewport/content.
             scrollRect.viewportDraggingEnabled = false;
+
+            scrollRect.objectCullingEnabled = true;
+            scrollRect.cullDirectContentChildren = true;
+            scrollRect.cullingPadding = 25f;
 
             AddScrollbars(scrollRect);
 
@@ -329,27 +334,20 @@ namespace AccSaber.UI.BSML_Addons.Tags
         {
             _dragOffset = Vector2.zero;
 
-            if (handleRect == null)
+            if (handleRect is null)
                 return;
 
             RectTransform container = (handleRect.parent as RectTransform)!;
 
-            if (container == null)
+            if (container is null)
                 return;
 
-            if (!RectTransformUtility.RectangleContainsScreenPoint(
-                    handleRect,
-                    eventData.position,
-                    eventData.pressEventCamera))
+            if (!RectTransformUtility.RectangleContainsScreenPoint(handleRect, eventData.position, eventData.pressEventCamera))
             {
                 return;
             }
 
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    container,
-                    eventData.position,
-                    eventData.pressEventCamera,
-                    out Vector2 localPointer))
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(container, eventData.position, eventData.pressEventCamera, out Vector2 localPointer))
             {
                 return;
             }
@@ -380,14 +378,8 @@ namespace AccSaber.UI.BSML_Addons.Tags
             if (container is null)
                 return false;
 
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                    container,
-                    eventData.position,
-                    eventData.pressEventCamera,
-                    out Vector2 localPointer))
-            {
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(container, eventData.position, eventData.pressEventCamera, out Vector2 localPointer))
                 return false;
-            }
 
             localPointer -= _dragOffset;
 
@@ -477,11 +469,9 @@ namespace AccSaber.UI.BSML_Addons.Tags
                 SetValueSafely(_lastGoodValue, true);
             }
 
-            if (handleRect != null)
+            if (handleRect is not null)
             {
-                if (!IsFinite(handleRect.anchorMin) ||
-                    !IsFinite(handleRect.anchorMax) ||
-                    !IsFinite(handleRect.anchoredPosition))
+                if (!IsFinite(handleRect.anchorMin) || !IsFinite(handleRect.anchorMax) || !IsFinite(handleRect.anchoredPosition))
                 {
                     size = _lastGoodSize;
                     SetValueSafely(_lastGoodValue, true);
@@ -516,6 +506,50 @@ namespace AccSaber.UI.BSML_Addons.Tags
         public float inputDeadzone = 0.01f;
         public bool viewportDraggingEnabled = false;
 
+        // Generic culling options
+        public bool objectCullingEnabled = true;
+
+        // If true, culls direct children of content automatically.
+        // Registered cull targets are always considered.
+        public bool cullDirectContentChildren = false;
+
+        public float cullingPadding = 20f;
+
+        private readonly List<RectTransform> _registeredCullTargets = [];
+
+        private readonly Vector3[] _viewportWorldCorners = new Vector3[4];
+        private readonly Vector3[] _targetWorldCorners = new Vector3[4];
+
+        public void RegisterCullTarget(RectTransform target)
+        {
+            if (target is null)
+                return;
+
+            if (!_registeredCullTargets.Contains(target))
+                _registeredCullTargets.Add(target);
+        }
+
+        public void RegisterCullTarget(GameObject obj)
+        {
+            RectTransform? rt = obj.transform as RectTransform;
+
+            if (rt is not null)
+                RegisterCullTarget(rt);
+        }
+
+        public void UnregisterCullTarget(RectTransform target)
+        {
+            if (target is null)
+                return;
+
+            _registeredCullTargets.Remove(target);
+        }
+
+        public void ClearCullTargets()
+        {
+            _registeredCullTargets.Clear();
+        }
+
         public override void OnScroll(PointerEventData eventData)
         {
             if (scrollInputMode == ScrollInputMode.Disabled)
@@ -539,7 +573,6 @@ namespace AccSaber.UI.BSML_Addons.Tags
 
             eventData.scrollDelta = originalDelta;
 
-            // Prevent leftover inertia on the axis we did not intend to scroll.
             Vector2 newVelocity = velocity;
 
             if (Mathf.Abs(filteredDelta.x) <= inputDeadzone)
@@ -600,6 +633,16 @@ namespace AccSaber.UI.BSML_Addons.Tags
             base.OnEndDrag(eventData);
         }
 
+        public override void LateUpdate()
+        {
+            base.LateUpdate();
+
+            RepairInvalidState();
+
+            if (objectCullingEnabled)
+                UpdateObjectCulling();
+        }
+
         private Vector2 FilterScrollDelta(Vector2 delta)
         {
             switch (scrollInputMode)
@@ -626,5 +669,139 @@ namespace AccSaber.UI.BSML_Addons.Tags
                     return delta;
             }
         }
+
+        private void UpdateObjectCulling()
+        {
+            if (viewport is null || content is null)
+                return;
+
+            Rect visibleRect = GetViewportRectInContentSpace();
+
+            visibleRect.xMin -= cullingPadding;
+            visibleRect.xMax += cullingPadding;
+            visibleRect.yMin -= cullingPadding;
+            visibleRect.yMax += cullingPadding;
+
+            if (cullDirectContentChildren)
+            {
+                for (int i = 0; i < content.childCount; i++)
+                {
+                    if (content.GetChild(i) is not RectTransform child)
+                        continue;
+
+                    if (ShouldIgnoreCull(child))
+                        continue;
+
+                    CullTarget(child, visibleRect);
+                }
+            }
+
+            for (int i = _registeredCullTargets.Count - 1; i >= 0; i--)
+            {
+                RectTransform target = _registeredCullTargets[i];
+
+                if (target is null)
+                {
+                    _registeredCullTargets.RemoveAt(i);
+                    continue;
+                }
+
+                if (ShouldIgnoreCull(target))
+                    continue;
+
+                CullTarget(target, visibleRect);
+            }
+        }
+
+        private void CullTarget(RectTransform target, Rect visibleRect)
+        {
+            Rect targetRect = GetRectInContentSpace(target);
+
+            bool shouldBeVisible = visibleRect.Overlaps(targetRect, true);
+
+            if (target.gameObject.activeSelf != shouldBeVisible)
+                target.gameObject.SetActive(shouldBeVisible);
+        }
+
+        private Rect GetViewportRectInContentSpace()
+        {
+            viewport.GetWorldCorners(_viewportWorldCorners);
+
+            float xMin = float.PositiveInfinity;
+            float yMin = float.PositiveInfinity;
+            float xMax = float.NegativeInfinity;
+            float yMax = float.NegativeInfinity;
+
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 local = content.InverseTransformPoint(_viewportWorldCorners[i]);
+
+                xMin = Mathf.Min(xMin, local.x);
+                yMin = Mathf.Min(yMin, local.y);
+                xMax = Mathf.Max(xMax, local.x);
+                yMax = Mathf.Max(yMax, local.y);
+            }
+
+            return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+        }
+
+        private Rect GetRectInContentSpace(RectTransform target)
+        {
+            target.GetWorldCorners(_targetWorldCorners);
+
+            float xMin = float.PositiveInfinity;
+            float yMin = float.PositiveInfinity;
+            float xMax = float.NegativeInfinity;
+            float yMax = float.NegativeInfinity;
+
+            for (int i = 0; i < 4; i++)
+            {
+                Vector3 local = content.InverseTransformPoint(_targetWorldCorners[i]);
+
+                xMin = Mathf.Min(xMin, local.x);
+                yMin = Mathf.Min(yMin, local.y);
+                xMax = Mathf.Max(xMax, local.x);
+                yMax = Mathf.Max(yMax, local.y);
+            }
+
+            return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+        }
+
+        private static bool ShouldIgnoreCull(RectTransform target)
+        {
+            return target.GetComponent<ScrollCullIgnore>() is not null;
+        }
+
+        private void RepairInvalidState()
+        {
+            if (!IsFinite(velocity))
+                velocity = Vector2.zero;
+
+            if (!IsFinite(horizontalNormalizedPosition))
+                horizontalNormalizedPosition = 0f;
+
+            if (!IsFinite(verticalNormalizedPosition))
+                verticalNormalizedPosition = 1f;
+        }
+
+        private static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        private static bool IsFinite(Vector2 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y);
+        }
+
+        public void ForceUpdateCulling()
+        {
+            if (!objectCullingEnabled)
+                return;
+
+            UpdateObjectCulling();
+        }
     }
+
+    public class ScrollCullIgnore : MonoBehaviour { }
 }
