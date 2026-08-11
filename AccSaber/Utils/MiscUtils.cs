@@ -593,6 +593,9 @@ namespace AccSaber.Utils
             }
         }
 
+        public static Task StartOnMainThread(this Func<Task> action) => UnityMainThreadTaskScheduler.Factory.StartNew(action).Unwrap();
+        public static Task<T> StartOnMainThread<T>(this Func<Task<T>> action) => UnityMainThreadTaskScheduler.Factory.StartNew(action).Unwrap();
+
         public static T? ParseEnum<T>(string value) where T : Enum => (T?)Enum.Parse(typeof(T), value);
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)
         {

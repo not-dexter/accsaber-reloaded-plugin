@@ -1555,7 +1555,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             if (doUpdates)
-                _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
+                _mainThreadDispatcher.EnqueueAction(() => _campaignMapViewController.UpdateDisplay(true));
 
             if (setMap && currentMap is not null && CurrentBeatMapLevel is not null)
 #if NEW_VERSION

@@ -586,19 +586,89 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
 
+            RectTransform content = scrollRect.content;
+            RectTransform viewport = scrollRect.viewport ?? (RectTransform)scrollRect.transform;
+
+            Vector2 oldContentSize = content.rect.size;
+            Vector2 newContentSize = CurrentOffsetData.ContainerSize;
+            Vector2 viewportSize = viewport.rect.size;
+
+            Vector2 oldNormalizedPosition = scrollRect.normalizedPosition;
+            Vector2 newNormalizedPosition = oldNormalizedPosition;
+
+            if (!resetScrollbars)
+                newNormalizedPosition = GetNormalizedPositionKeepingCenter(oldNormalizedPosition, oldContentSize, newContentSize, viewportSize);
+
             LayoutElement scrollLayout = NodeContainer.GetComponent<LayoutElement>();
 
-            scrollLayout.preferredWidth = CurrentOffsetData.ContainerSize.x;
-            scrollLayout.preferredHeight = CurrentOffsetData.ContainerSize.y;
+            scrollLayout.preferredWidth = newContentSize.x;
+            scrollLayout.preferredHeight = newContentSize.y;
 
-            scrollRect.content.sizeDelta = CurrentOffsetData.ContainerSize;
+            content.sizeDelta = newContentSize;
+
+            Canvas.ForceUpdateCanvases();
+
+            scrollRect.StopMovement();
 
             if (resetScrollbars)
             {
-                scrollRect.horizontalScrollbar.value = 0;
-                scrollRect.verticalScrollbar.value = 0;
+                scrollRect.normalizedPosition = new Vector2(0.5f, 0f);
+            }
+            else
+            {
+                scrollRect.normalizedPosition = newNormalizedPosition;
             }
         }
+        private static Vector2 GetNormalizedPositionKeepingCenter(Vector2 oldNormalizedPosition, Vector2 oldContentSize, Vector2 newContentSize, Vector2 viewportSize)
+        {
+            return new Vector2(
+                GetHorizontalNormalizedPositionKeepingCenter(oldNormalizedPosition.x, oldContentSize.x, newContentSize.x, viewportSize.x),
+                GetVerticalNormalizedPositionKeepingCenter(oldNormalizedPosition.y, oldContentSize.y, newContentSize.y, viewportSize.y)
+            );
+        }
+
+        private static float GetHorizontalNormalizedPositionKeepingCenter(float oldNormalizedX, float oldContentWidth, float newContentWidth, float viewportWidth)
+        {
+            float oldScrollableWidth = Mathf.Max(0f, oldContentWidth - viewportWidth);
+            float newScrollableWidth = Mathf.Max(0f, newContentWidth - viewportWidth);
+
+            if (newScrollableWidth <= 0f)
+                return 0f;
+
+            // Current center position as a percentage of the old content width.
+            float center01 = oldContentWidth > 0f
+                ? ((oldNormalizedX * oldScrollableWidth) + viewportWidth * 0.5f) / oldContentWidth
+                : 0.5f;
+
+            // Convert that same content percentage into the new content width.
+            float newScrollOffset = center01 * newContentWidth - viewportWidth * 0.5f;
+
+            return Mathf.Clamp01(newScrollOffset / newScrollableWidth);
+        }
+
+        private static float GetVerticalNormalizedPositionKeepingCenter(float oldNormalizedY, float oldContentHeight, float newContentHeight, float viewportHeight)
+        {
+            float oldScrollableHeight = Mathf.Max(0f, oldContentHeight - viewportHeight);
+            float newScrollableHeight = Mathf.Max(0f, newContentHeight - viewportHeight);
+
+            if (newScrollableHeight <= 0f)
+                return 1f;
+
+            // Unity verticalNormalizedPosition is inverted:
+            // 1 = top, 0 = bottom.
+            float oldOffsetFromTop = (1f - oldNormalizedY) * oldScrollableHeight;
+
+            // Current center position as a percentage from the top of the old content.
+            float center01FromTop = oldContentHeight > 0f
+                ? (oldOffsetFromTop + viewportHeight * 0.5f) / oldContentHeight
+                : 0.5f;
+
+            // Convert that same content percentage into the new content height.
+            float newOffsetFromTop = center01FromTop * newContentHeight - viewportHeight * 0.5f;
+
+            return Mathf.Clamp01(1f - newOffsetFromTop / newScrollableHeight);
+        }
+
         public async Task UpdateCampaign()
         {
             if (CurrentCampaign is null)
@@ -610,20 +680,22 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return (campaign, await store.GetCampaignProgress(CurrentCampaign));
             }
 
-            var data = await UnityMainThreadTaskScheduler.Factory.StartNew(GetData).Unwrap();
+            var data = await MiscUtils.StartOnMainThread(GetData);
 
             CurrentCampaign = data.campaign;
             CampaignProgress = data.progress;
 
-            UpdateDisplay();
+            UpdateDisplay(false);
         }
         public void UpdateScaling(float scaleFactor)
         {
             if (!parsed || CurrentCampaign is null || CurrentOffsetData is null || Mathf.Approximately(CurrentOffsetData.ScaleFactor, scaleFactor))
                 return;
 
+            float deltaScale = scaleFactor - CurrentOffsetData.ScaleFactor;
+
             CurrentOffsetData.RecalculateValuesWithScale(scaleFactor);
-            UpdateDisplay();
+            UpdateDisplay(false);
         }
         public void UpdateScalingDelta(float deltaScale)
         {
@@ -631,16 +703,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
 
             CurrentOffsetData.RecalculateValuesWithScale(CurrentOffsetData.ScaleFactor + deltaScale);
-            UpdateDisplay();
+            UpdateDisplay(false);
         }
-        public void UpdateDisplay()
+        public void UpdateDisplay(bool updateArrowColors)
         {
             if (!parsed || CurrentOffsetData is null)
                 return;
 
             UpdateContainerValues(false);
 
-            SetArrowColors();
+            if (updateArrowColors)
+                SetArrowColors();
         }
         public bool ScrollToNode(Guid nodeId, bool printWarning = true)
         {
