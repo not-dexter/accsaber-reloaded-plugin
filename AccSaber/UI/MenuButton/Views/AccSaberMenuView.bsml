@@ -1,80 +1,124 @@
 ﻿<bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-  <vertical pref-width='120'>
-    <horizontal bg='panel-top' skew='0' horizontal-fit='PreferredSize' pref-width='120'>
-      <text text='Profile' align='Center' font-size='7' />
-   </horizontal>
-    <horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize'>
-      <vertical id='container' bg='panel-top' skew='0' pref-width='120' pref-height='60' pad='2'>
-      <loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
-        <horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='105' spacing='-1' active='~is-not-loading'>
-          <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pad-left='0' pref-width='25' pref-height='55' child-expand-height='false'>
-            <vertical pref-height='10' pref-width='30'>
-              <text text='~username' align='Center' bold='true' word-wrapping='false' overflow-mode='Ellipsis'/>
-            </vertical>
-            <vertical pref-height='8' child-align='UpperCenter' pad-bottom='2'>
-              <text id='title-text' align='Center' font-size='3.5'/>
-            </vertical>
-            <stack pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
-              <img id='playerImageBorder' src='~pixelImg' pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' />
-              <vertical pref-width='~playerImageSize' pref-height='~playerImageSize' child-expand-width='false' child-expand-height='false'>
-                <stack pref-width='~playerImageSize' pref-height='~playerImageSize'>
-                  <img id='playerImageBackground' src='~pixelImg' img-color='~dimColor' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
-                  <img id='profile-image' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
-                </stack>
-              </vertical>
-            </stack>
-            <vertical pref-height='8' child-align='LowerCenter' pad-top='2'>
-              <text text='~level' align='Center' font-size='2.5'/>
-            </vertical>
-            <horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
-              <vertical pref-width='2.5'/>
-              <image id='progress-bar' src='~pixelImg' image-color='#FFF' pref-width='20' pref-height='1'/>
-              <image id='progress-bar-inverse' src='~pixelImg' image-color='#CCC' pref-width='30' pref-height='1'/>
-            </horizontal>
-			<vertical pref-height='1'/>
-            <text text='~xp' align='Center' font-size='2.5'/>
-            <vertical pref-height='25' >
-              <horizontal horizontal-fit='PreferredSize' pref-width='25'>
-                <vertical vertical-fit='PreferredSize' pref-height='6'>
-                  <text text='Global' align='Center' font-size='3'/>
-                  <text text='~rank' align='Center' font-size='2.5'/>
-                </vertical>
-                <vertical vertical-fit='PreferredSize' pref-height='6'>
-                  <text text='Country' align='Center' font-size='3'/>
-                  <text text='~country' align='Center' font-size='2.5'/>
-                </vertical>
-              </horizontal>
-              <text text='~ap' align='Center' font-size='2.8'/>
-              <text text='~plays' align='Center' font-size='2.8'/>
-              <text text='~headset' align='Center' font-size='2.8'/>
-            </vertical>
-            <dropdown-list-setting id='category-dropdown'  anchor-pos-x='5.5' text='' align='Center' value='category-value' choices='category-choices' formatter='format-category' bind-value='true' apply-on-change='true'/>
-          </vertical>
-          <vertical pref-width='0.5' pref-height='55'>
-          </vertical>
-          <vertical id='user-info' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='80' pref-height='55' spacing='1' pad-left='15' >
-            <vertical active='~scores-is-loading' vertical-fit='PreferredSize' pref-width='10' pref-height='45'>
-              <loading-indicator  preserve-aspect='true' pref-width='10' pref-height='10'/>
-            </vertical>
-            <my-custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' pref-width='75' clickable-cells='true' select-cell='on-cell-clicked' active='~scores-is-not-loading'/>
-            <horizontal>
-              <button text='Previous' on-click='prev-clicked' pref-width='18'/>
-              <text text='~pagnation' align='Center' />
-              <button text='Next' on-click='next-clicked' pref-width='18'/>
-            </horizontal>
-          </vertical>
-        </horizontal>
-      </vertical>
-    </horizontal>
-  </vertical>
-  
-  <button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign' active='true'/>
-  <button text='View Playlists' align='Left' anchor-pos-x='38' on-click='show-playlist-modal'/>
+	<vertical pref-width='120'>
+		<horizontal bg='panel-top' skew='0' horizontal-fit='PreferredSize' pref-width='120'>
+			<text text='Profile' align='Center' font-size='7' />
+		</horizontal>
 
-  <vertical bg='round-rect-panel' skew='0' anchor-pos-x='70' anchor-pos-y='-5' pref-width='15' pref-height='45' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
-    <text text='Socials' align='Center' font-size='5'/>
-    <clickable-image src='~discordImg' on-click='on-discord-clicked' preserve-aspect='true' preferred-height='12'/>
-	<clickable-image src='~githubImg' on-click='on-github-clicked' preserve-aspect='true' preferred-height='12'/>
-	<clickable-image src='~kofiImg' on-click='on-kofi-clicked' preserve-aspect='true' preferred-height='11'/>
-  </vertical>
+		<tab tags='menu-tabs' tab-name='Profile'/>
+		<tab tags='menu-tabs' tab-name='Rankings'/>
+		
+		<vertical pref-height='7'/>
+		<!--PROFILE TAB-->
+		<horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-profile-tab'>
+			<vertical id='container' bg='panel-top' skew='0' pref-width='120' pref-height='60' pad='2'>
+				<loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
+				<horizontal horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='105' spacing='-1' active='~is-not-loading'>
+					<vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pad-left='0' pref-width='25' pref-height='55' child-expand-height='false'>
+						<vertical pref-height='10' pref-width='30'>
+							<text text='~username' align='Center' bold='true' word-wrapping='false' overflow-mode='Ellipsis'/>
+						</vertical>
+						<vertical pref-height='8' child-align='UpperCenter' pad-bottom='2'>
+							<text id='title-text' align='Center' font-size='3.5'/>
+						</vertical>
+						<stack pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+							<img id='playerImageBorder' src='~pixelImg' pref-width='~playerImageBGSize' pref-height='~playerImageBGSize' />
+							<vertical pref-width='~playerImageSize' pref-height='~playerImageSize' child-expand-width='false' child-expand-height='false'>
+								<stack pref-width='~playerImageSize' pref-height='~playerImageSize'>
+									<img id='playerImageBackground' src='~pixelImg' img-color='~dimColor' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
+									<img id='profile-image' preserve-aspect='true' pref-width='~playerImageSize' pref-height='~playerImageSize'/>
+								</stack>
+							</vertical>
+						</stack>
+						<vertical pref-height='8' child-align='LowerCenter' pad-top='2'>
+							<text text='~level' align='Center' font-size='2.5'/>
+						</vertical>
+						<horizontal pref-height='1' child-expand-width='false' child-control-width='false'>
+							<vertical pref-width='2.5'/>
+							<image id='progress-bar' src='~pixelImg' image-color='#FFF' pref-width='20' pref-height='1'/>
+							<image id='progress-bar-inverse' src='~pixelImg' image-color='#CCC' pref-width='30' pref-height='1'/>
+						</horizontal>
+						<vertical pref-height='1'/>
+						<text text='~xp' align='Center' font-size='2.5'/>
+						<vertical pref-height='25' >
+							<horizontal horizontal-fit='PreferredSize' pref-width='25'>
+								<vertical vertical-fit='PreferredSize' pref-height='6'>
+									<text text='Global' align='Center' font-size='3'/>
+									<text text='~rank' align='Center' font-size='2.5'/>
+								</vertical>
+								<vertical vertical-fit='PreferredSize' pref-height='6'>
+									<text text='Country' align='Center' font-size='3'/>
+									<text text='~country' align='Center' font-size='2.5'/>
+								</vertical>
+							</horizontal>
+							<text text='~ap' align='Center' font-size='2.8'/>
+							<text text='~plays' align='Center' font-size='2.8'/>
+							<text text='~headset' align='Center' font-size='2.8'/>
+						</vertical>
+						<dropdown-list-setting id='category-dropdown'  anchor-pos-x='5.5' text='' align='Center' value='category-value' choices='category-choices' formatter='format-category' bind-value='true' apply-on-change='true'/>
+					</vertical>
+					<vertical pref-width='0.5' pref-height='55'>
+					</vertical>
+					<vertical id='user-info' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='80' pref-height='55' spacing='1' pad-left='15' >
+						<vertical active='~scores-is-loading' vertical-fit='PreferredSize' pref-width='10' pref-height='45'>
+							<loading-indicator  preserve-aspect='true' pref-width='10' pref-height='10'/>
+						</vertical>
+						<my-custom-list id='top-scores-list' visible-cells='5' cell-size='9' contents='score-cells' pref-width='75' clickable-cells='true' select-cell='on-cell-clicked' active='~scores-is-not-loading'/>
+						<horizontal>
+							<button text='Previous' on-click='prev-clicked' pref-width='18'/>
+							<text text='~pagnation' align='Center' />
+							<button text='Next' on-click='next-clicked' pref-width='18'/>
+						</horizontal>
+					</vertical>
+				</horizontal>	
+			</vertical>
+		</horizontal>
+		<!--RANKINGS TAB-->
+		<horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-rankings-tab'>
+			  <vertical id='selectorContainer' vertical-fit='PreferredSize' pref-height='40' pref-width='12' bg='round-rect-panel'>
+				  <vertical pref-width='12' horizontal-fit='PreferredSize'>
+					  <vertical>
+						  <clickable-image id='global-image' preserve-aspect='true' pref-height='5' pref-width='5' on-click='on-global-clicked' src='AccSaber.Resources.global.png'/>
+						  <clickable-image id='followed-image' preserve-aspect='true' pref-height='5' pref-width='5' on-click='on-followed-clicked' src='AccSaber.Resources.friend.png'/>
+						  <clickable-image id='country-image' preserve-aspect='true' pref-height='5' pref-width='5' on-click='on-country-clicked' src='AccSaber.Resources.country.png'/>
+					  </vertical>
+					   <vertical pref-width='8' pref-height='0.3' vertical-fit='PreferredSize'>
+						 <image id='separator' src='AccSaber.Resources.Pixel.png' pref-width='8' pref-height='0.5' size-delta-x='8' size-delta-y='0.5' />
+					  </vertical> 
+					  <clickable-image preserve-aspect='true' pref-height='4' hover-hint='Go to player page' on-click='on-you-clicked' pref-width='4' src='AccSaber.Resources.PlayerIcon.png'/>
+					  <vertical/>
+				  </vertical>
+			  </vertical>
+			<vertical id='container' spacing='0' pref-width='120' pref-height='62' pad='2'>
+				<loading-indicator active='~is-loading' preserve-aspect='true' pref-width='10' pref-height='10'/>
+				<vertical preferred-height='8'/>
+				<vertical active='~ranking-is-loading' vertical-fit='PreferredSize' pref-width='10' pref-height='45'>
+					<loading-indicator  preserve-aspect='true' pref-width='10' pref-height='10'/>
+				</vertical>
+				<my-custom-list id='rankings-list' visible-cells='5' cell-size='8' contents='player-cells' pref-width='100' active='~ranking-is-not-loading'/>
+				<horizontal pref-width='70' horizontal-fit='PreferredSize'>
+					<button text='Previous' on-click='rankings-prev-clicked' pref-width='18'/>
+					<text text='~rankings-pagnation' align='Center' />
+					<button text='Next' on-click='rankings-next-clicked' pref-width='18'/>
+				</horizontal>
+			</vertical>
+		</horizontal>
+	</vertical>
+
+	<button text='Campaigns' align='Right' anchor-pos-x='125' on-click='show-campaign' active='true'/>
+	<button text='View Playlists' align='Left' anchor-pos-x='38' on-click='show-playlist-modal'/>
+	<tab-selector tab-tag='menu-tabs' select-cell='menu-tab-selected' anchor-pos-y='-11'/>
+	<tab-selector tab-tag='rankings-tabs' select-cell='rankings-tab-selected' anchor-pos-y='-18' active='~is-rankings-tab'/>
+	
+	<tab tags='rankings-tabs' tab-name='Overall'/>
+	<tab tags='rankings-tabs' tab-name='True'/>
+	<tab tags='rankings-tabs' tab-name='Standard'/>
+	<tab tags='rankings-tabs' tab-name='Tech'/>
+	
+
+	<vertical bg='round-rect-panel' skew='0' anchor-pos-x='70' anchor-pos-y='-5' pref-width='15' pref-height='45' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' spacing='1' child-expand-height='false'>
+		<text text='Socials' align='Center' font-size='5'/>
+		<clickable-image src='~discordImg' on-click='on-discord-clicked' preserve-aspect='true' preferred-height='12'/>
+		<clickable-image src='~githubImg' on-click='on-github-clicked' preserve-aspect='true' preferred-height='12'/>
+		<clickable-image src='~kofiImg' on-click='on-kofi-clicked' preserve-aspect='true' preferred-height='11'/>
+	</vertical>	
 </bg>

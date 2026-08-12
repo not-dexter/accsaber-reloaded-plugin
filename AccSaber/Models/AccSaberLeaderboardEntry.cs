@@ -38,7 +38,7 @@ namespace AccSaber.Models
         public int BadCuts { get; set; }
 
         [JsonProperty("baseXp")]
-        public int BaseXp { get; set; }
+        public float BaseXp { get; set; }
 
         [JsonProperty("blScoreId")]
         public string? BlScoreId { get; set; }
@@ -302,7 +302,7 @@ namespace AccSaber.Models
 
         private void OnSettingsUpdate(object sender, PropertyChangedEventArgs args)
         {
-            if (!(Container?.gameObject.activeInHierarchy ?? false))
+            if (!(Container?.gameObject?.activeInHierarchy ?? false))
                 return;
 
             switch (args.PropertyName)

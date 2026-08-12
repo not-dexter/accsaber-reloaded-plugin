@@ -38,6 +38,8 @@ namespace AccSaber.Consts
         public const string CHECKMARK = RESOURCE_PATH + ".checkmark.png";
         public const string CAMPAIGN_ALL = RESOURCE_PATH + ".campaignAll.png";
         public const string LOCK = RESOURCE_PATH + ".lock.png";
+        public const string COUNT = RESOURCE_PATH + ".123.png";
+        public const string TERMINAL = RESOURCE_PATH + ".terminal.png";
 
         #endregion
         #region BSML File Paths
@@ -53,6 +55,7 @@ namespace AccSaber.Consts
         public const string MENU_BSML_PATH = "AccSaber.UI.MenuButton.Views";
         public const string ACC_SABER_MENU_VIEW = MENU_BSML_PATH + ".AccSaberMenuView.bsml";
         public const string ACC_SABER_MENU_CELL = MENU_BSML_PATH + ".AccSaberMenuCell.bsml";
+        public const string ACC_SABER_MENU_PLAYER_CELL = MENU_BSML_PATH + ".AccSaberMenuPlayerCell.bsml";
         public const string ACC_SABER_PLAYLIST_MODAL = MENU_BSML_PATH + ".AccSaberPlaylistModal.bsml";
         public const string ACC_SABER_PLAYLIST_SETTINGS_MODAL = MENU_BSML_PATH + ".AccSaberPlaylistSettingsModal.bsml";
         public const string ACC_SABER_PLAYLIST_CELL = MENU_BSML_PATH + ".AccSaberPlaylistCell.bsml";
@@ -69,6 +72,8 @@ namespace AccSaber.Consts
         public const string ACC_SABER_CAMPAIGN_MAP_VIEW = CAMPAIGN_BSML_PATH + ".AccSaberCampaignMapView.bsml";
         public const string ACC_SABER_CAMPAIGN_MAP_CELL = CAMPAIGN_BSML_PATH + ".AccSaberCampaignMapCell.bsml";
         public const string ACC_SABER_CAMPAIGN_SETTINGS_MODAL = CAMPAIGN_BSML_PATH + ".AccSaberCampaignSettingsModal.bsml";
+        public const string ACC_SABER_CAMPAIGN_COUNTER_SETTINGS_MODAL = CAMPAIGN_BSML_PATH + ".AccSaberCampaignCounterSettingsModal.bsml";
+        public const string ACC_SABER_CAMPAIGN_ZOOM_MODAL = CAMPAIGN_BSML_PATH + ".AccSaberCampaignZoomModal.bsml";
 
         #endregion
         #region Data File Paths

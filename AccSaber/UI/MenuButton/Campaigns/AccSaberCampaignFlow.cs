@@ -1,5 +1,8 @@
-﻿using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
+﻿using AccSaber.Configuration;
+using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
+using AccSaber.UI.ViewControllers;
 using HMUI;
+using System;
 using Zenject;
 
 #if !NEW_VERSION
@@ -15,19 +18,22 @@ namespace AccSaber.UI.MenuButton.Campaigns
         private AccSaberCampaignViewController _campaignController = null!;
         private GameplaySetupViewController _gameplaySetupViewController = null!;
         private PlatformLeaderboardViewController _leaderboardController = null!;
+        private AccSaberPanelViewController _panelViewController = null!;
         private SongPreviewPlayer _songPreviewPlayer = null!;
-        public bool disableLogo;
+        private PluginConfig _pluginConfig = null!;
 
         [Inject]
         protected void Construct(AccSaberCampaignViewController campaignController, AccSaberMainFlowCoordinator parentCoordinator,
             GameplaySetupViewController gameplaySetupViewController, PlatformLeaderboardViewController platformLeaderboardViewController,
-            SongPreviewPlayer songPreviewPlayer)
+            AccSaberPanelViewController panelViewController, SongPreviewPlayer songPreviewPlayer, PluginConfig pluginConfig)
         {
             _campaignController = campaignController;
             _parentFlow = parentCoordinator;
             _gameplaySetupViewController = gameplaySetupViewController;
             _leaderboardController = platformLeaderboardViewController;
+            _panelViewController = panelViewController;
             _songPreviewPlayer = songPreviewPlayer;
+            _pluginConfig = pluginConfig;
         }
         protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
         {
@@ -44,7 +50,11 @@ namespace AccSaber.UI.MenuButton.Campaigns
                 
                 ProvideInitialViewControllers(_campaignController, _gameplaySetupViewController, null);
             }
-            disableLogo = true;
+            if (_panelViewController.LogoDoesTransition)
+            {
+                _panelViewController.LogoDoesTransition = false;
+                _panelViewController.OnLogoClicked += OnLogoClicked;
+            }
         }
 
 #if NEW_VERSION
@@ -60,27 +70,74 @@ namespace AccSaber.UI.MenuButton.Campaigns
             _leaderboardController.SetData(beatmapkey);
         }
 #endif
-        public void HideLeaderboard()
+        public void HideLeaderboard(bool instant = false)
         {
-            SetRightScreenViewController(null, ViewController.AnimationType.Out);
+            SetRightScreenViewController(null, instant ? ViewController.AnimationType.None : ViewController.AnimationType.Out);
         }
-        internal void PresentFlowCoordinator()
+        internal void PresentFlowCoordinator(Action? callback = null, bool instant = false)
         {
-            _parentFlow.PresentFlowCoordinator(this);
+            _parentFlow.PresentFlowCoordinator(this, finishedCallback: callback, immediately: instant);
         }
         protected override void BackButtonWasPressed(ViewController topViewController)
         {
             if (_campaignController.InCampaign)
             {
-                _campaignController.BackPressed();
+                _ = _campaignController.BackPressed();
             }
             else
-            { 
-                disableLogo = false;
-                _parentFlow.MenuShown();
-                _songPreviewPlayer.CrossfadeToDefault();
-                _parentFlow.DismissFlowCoordinator(this); 
+            {
+                ExitToMenu();
             }
+        }
+        internal async void ExitToMenu()
+        {
+            if (_campaignController.InCampaign)
+                await _campaignController.BackPressed(false);
+
+            _panelViewController.OnLogoClicked -= OnLogoClicked;
+            _panelViewController.LogoDoesTransition = true;
+
+            _songPreviewPlayer.CrossfadeToDefault();
+            _parentFlow.DismissFlowCoordinator(this, finishedCallback: _parentFlow.MenuShown);
+        }
+
+        private void OnLogoClicked()
+        {
+            if (_pluginConfig.CampaignBackButton)
+            {
+                Models.AccSaberCampaign? campaign = _campaignController.CurrentCampaign;
+                Guid? mapId = _campaignController.InMap && _campaignController.CurrentMap is not null ? _campaignController.CurrentMap.Id : null;
+
+                ExitToMenu();
+
+                _parentFlow.BackButtonActions.Push(() =>
+                {
+
+                    void Callback()
+                    {
+                        System.Threading.Tasks.Task task = _campaignController.OpenCampaign(campaign);
+
+                        if (mapId is not null)
+                            task.ContinueWith(task2 => 
+                            {
+                                if (task2.IsCompletedSuccessfully)
+                                {
+                                    _campaignController._campaignMapViewController.ClickNode(mapId.Value);
+                                }
+                            }, IPA.Utilities.Async.UnityMainThreadTaskScheduler.Default);
+                    }
+
+                    if (campaign is not null)
+                        PresentFlowCoordinator(Callback, true);
+                    else
+                        PresentFlowCoordinator(instant: true);
+                });
+#if DEBUG
+                Plugin.Log.Info("Back button action pushed.");
+#endif
+            }
+            else
+                ExitToMenu();
         }
     }
 }

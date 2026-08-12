@@ -271,12 +271,12 @@ namespace AccSaber.UI.ViewControllers
 			if (_playerData.PlayerFollowedIDs_Internal.Contains(_userId))
 			{
                 await _playerData.RemoveId(_userId, LeaderboardDisplayType.Followed);
-				_friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
+				_friendButton.GetComponentInChildren<TextMeshProUGUI>().SetText("Add Friend");
             }
 			else
             {
                 await _playerData.AddId(_userId, LeaderboardDisplayType.Followed);
-                _friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
+                _friendButton.GetComponentInChildren<TextMeshProUGUI>().SetText("Remove Friend");
             }
         }
 
@@ -291,12 +291,12 @@ namespace AccSaber.UI.ViewControllers
 			if (_playerData.PlayerRivalIDs_Internal.Contains(_userId))
 			{
                 await _playerData.RemoveId(_userId, LeaderboardDisplayType.Rivals);
-                _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
+                _rivalButton.GetComponentInChildren<TextMeshProUGUI>().SetText("Add Rival");
 			}
 			else
 			{
                 await _playerData.AddId(_userId, LeaderboardDisplayType.Rivals);
-                _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
+                _rivalButton.GetComponentInChildren<TextMeshProUGUI>().SetText("Remove Rival");
 			}
         }
 		[UIAction("generate-playlist-clicked")]
@@ -307,10 +307,12 @@ namespace AccSaber.UI.ViewControllers
 
 			await _playerData.LoadTask;
 
-			string previousButtonText = _generatePlaylist.GetComponentInChildren<TextMeshProUGUI>().text;
+			TextMeshProUGUI buttonTextObj = _generatePlaylist.GetComponentInChildren<TextMeshProUGUI>();
+
+            string previousButtonText = buttonTextObj.text;
             void UpdateButtonText(string? buttonText)
 			{
-				_generatePlaylist.SetButtonText(buttonText ?? previousButtonText);
+                buttonTextObj.SetText(buttonText ?? previousButtonText);
 			}
 
 			void ExitMenu()
@@ -374,14 +376,14 @@ namespace AccSaber.UI.ViewControllers
                 _generatePlaylist.gameObject.SetActive(true);
 
                 if (_playerData.PlayerFollowedIDs_Internal.Contains(userId))
-                    _friendButton.gameObject.GetComponent<Button>().SetButtonText("Remove Friend");
+                    _friendButton.gameObject.GetComponentInChildren<TextMeshProUGUI>().SetText("Remove Friend");
                 else
-                    _friendButton.gameObject.GetComponent<Button>().SetButtonText("Add Friend");
+                    _friendButton.gameObject.GetComponentInChildren<TextMeshProUGUI>().SetText("Add Friend");
 
                 if (_playerData.PlayerRivalIDs_Internal.Contains(userId))
-                    _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Remove Rival");
+                    _rivalButton.gameObject.GetComponentInChildren<TextMeshProUGUI>().SetText("Remove Rival");
                 else
-                    _rivalButton.gameObject.GetComponent<Button>().SetButtonText("Add Rival");
+                    _rivalButton.gameObject.GetComponentInChildren<TextMeshProUGUI>().SetText("Add Rival");
             }
             else
             {

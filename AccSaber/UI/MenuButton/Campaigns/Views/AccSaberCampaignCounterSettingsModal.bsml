@@ -1,0 +1,24 @@
+<modal id='modal' clickerino-offerino-closerino='true' size-delta-x='80' size-delta-y='29' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
+  <vertical horizontal-fit='PreferredSize' pref-width='80' pad-top='2' pad-bottom='2'>
+    <slider-setting text='Font Size' apply-on-change='true' value='FontSize' min='0.25' max='10' increment='0.25' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+    <checkbox-setting text='Enable Goal Colors' apply-on-change='true' value='GoalColors' scale='0.8' />
+    <slider-setting text='Checkmark Scale' hover-hint='The scale of the checkmark relative to the size of the text' apply-on-change='true' value='CheckmarkScale' min='0.5' max='20' increment='0.5' integer-only='false' show-buttons='true' word-wrapping='false' scale='0.8' />
+    <vertical pref-height='5'/>
+    <button text='Color Settings' click-event='ShowColorSettings' align='Center' />
+    <modal id='colorModal' clickerino-offerino-closerino='true' show-event='ShowColorSettings' size-delta-x='80' size-delta-y='64'>
+      <vertical horizontal-fit='PreferredSize' pref-width='80' pad-top='2' pad-bottom='2'>
+        <text text='Color Settings' align='Center' font-size='4' scale='0.8' />
+        <color-setting text='Neutral Color' apply-on-change='true' value='NeutralColor' scale='0.8' />
+        <slider-setting text='Alpha' apply-on-change='true' value='NeutralAlpha' min='0' max='255' increment='1' integer-only='true' show-buttons='true' word-wrapping='false' scale='0.65' />
+        <color-setting text='Passing Color' apply-on-change='true' value='GoodColor' scale='0.8' />
+        <slider-setting text='Alpha' apply-on-change='true' value='GoodAlpha' min='0' max='255' increment='1' integer-only='true' show-buttons='true' word-wrapping='false' scale='0.65' />
+        <color-setting text='Failing Color' apply-on-change='true' value='BadColor' scale='0.8' />
+        <slider-setting text='Alpha' apply-on-change='true' value='BadAlpha' min='0' max='255' increment='1' integer-only='true' show-buttons='true' word-wrapping='false' scale='0.65' />
+        <color-setting text='Checkmark Passing Color' apply-on-change='true' value='CheckmarkGoodColor' scale='0.8' />
+        <slider-setting text='Alpha' apply-on-change='true' value='CheckmarkGoodAlpha' min='0' max='255' increment='1' integer-only='true' show-buttons='true' word-wrapping='false' scale='0.65' />
+        <color-setting text='Checkmark Failing Color' apply-on-change='true' value='CheckmarkBadColor' scale='0.8' />
+        <slider-setting text='Alpha' apply-on-change='true' value='CheckmarkBadAlpha' min='0' max='255' increment='1' integer-only='true' show-buttons='true' word-wrapping='false' scale='0.65' />
+      </vertical>
+    </modal>
+  </vertical>
+</modal>

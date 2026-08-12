@@ -1,24 +1,15 @@
 ﻿using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Utils;
-using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage.Attributes;
-using HMUI;
 using UnityEngine;
 using Zenject;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 {
-    internal class AccSaberCampaignSettingsModalController
+    internal class AccSaberCampaignSettingsModalController : Utils.Misc.BasicModalController
     {
-        private bool parsed = false;
-
         [Inject] private readonly PluginConfig config = null!;
-
-
-        [UIComponent("modal")]
-        private ModalView modal = null!;
-
 
         [UIValue(nameof(StickScrolling))]
         private bool StickScrolling
@@ -34,6 +25,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.ScrollSpeed = value;
         }
 
+        [UIValue(nameof(ShowTerminalIndicator))]
+        private bool ShowTerminalIndicator
+        {
+            get => config.ShowTerminalIndicator;
+            set => config.ShowTerminalIndicator = value;
+        }
+
         [UIValue(nameof(ShowPrereqIndicator))]
         private bool ShowPrereqIndicator
         {
@@ -41,37 +39,56 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             set => config.ShowPrereqIndicator = value;
         }
 
-        [UIValue(nameof(BGBrightness))]
-        private float BGBrightness
+        [UIValue(nameof(CampaignBackButton))]
+        private bool CampaignBackButton
         {
-            get => config.CampaignBackgroundBrightness;
-            set => config.CampaignBackgroundBrightness = value;
+            get => config.CampaignBackButton;
+            set => config.CampaignBackButton = value;
         }
 
-        [UIValue(nameof(BGAlpha))]
-        private float BGAlpha
+        [UIValue(nameof(ImgBGBrightness))]
+        private float ImgBGBrightness
         {
-            get => config.CampaignBackgroundAlpha;
-            set => config.CampaignBackgroundAlpha = value;
+            get => config.CampaignImageBackgroundBrightness;
+            set => config.CampaignImageBackgroundBrightness = value;
         }
 
-        private void Parse(Transform parent)
+        [UIValue(nameof(ImgBGAlpha))]
+        private float ImgBGAlpha
         {
-            if (!parsed)
-            {
-                VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_SETTINGS_MODAL, parent, this);
-
-                parsed = true;
-            }
-
-            modal.transform.SetParent(parent.transform);
-            Accessors.ViewValidAccessor(ref modal) = false;
+            get => config.CampaignImageBackgroundAlpha;
+            set => config.CampaignImageBackgroundAlpha = value;
         }
-        public void ShowModal(Transform parent)
+
+        [UIValue(nameof(ColorBGBrightness))]
+        private float ColorBGBrightness
         {
-            Parse(parent);
-
-            modal.Show(true, true);
+            get => config.CampaignColorBackgroundBrightness;
+            set => config.CampaignColorBackgroundBrightness = value;
         }
+
+        [UIValue(nameof(ColorBGAlpha))]
+        private float ColorBGAlpha
+        {
+            get => config.CampaignColorBackgroundAlpha;
+            set => config.CampaignColorBackgroundAlpha = value;
+        }
+
+        [UIValue(nameof(PixelsPerFrame))]
+        private int PixelsPerFrame
+        {
+            get => config.CampaignMaxCoverageLoadsPerFrame;
+            set => config.CampaignMaxCoverageLoadsPerFrame = value;
+        }
+
+        [UIValue(nameof(ObjectsPerFrame))]
+        private int ObjectsPerFrame
+        {
+            get => config.CampaignMaxObjectLoadsPerFrame;
+            set => config.CampaignMaxObjectLoadsPerFrame = value;
+        }
+
+        protected override void FirstParse(Transform parent) => 
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_SETTINGS_MODAL, parent, this);
     }
 }

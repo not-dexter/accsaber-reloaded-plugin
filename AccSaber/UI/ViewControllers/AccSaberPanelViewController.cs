@@ -37,6 +37,8 @@ namespace AccSaber.UI.ViewControllers
 		private bool _loadingActive;
 		private string _promptText = "";
 
+		public bool LogoDoesTransition { get; set; } = true;
+
 		private SiraLog _log = null!;
 		private PluginConfig _pluginConfig = null!;
 		private AccSaberStore _accSaberStore = null!;
@@ -44,7 +46,7 @@ namespace AccSaber.UI.ViewControllers
 		private AccSaberMainFlowCoordinator _mainFlowCoordinator = null!;
         private AccSaberCampaignFlow _campaignFlowCoordinator = null!;
         private AccsaberAPI _api = null!;
-		public event Action? OnSettingsClicked;
+		public event Action? OnSettingsClicked, OnLogoClicked;
 
 		[Inject]
 		public void Construct(SiraLog siraLog, PluginConfig pluginConfig, AccSaberStore accSaberStore, TimeTweeningManager timeTweeningManager, AccSaberMainFlowCoordinator accSaberMainFlowCoordinator, AccsaberAPI api, AccSaberCampaignFlow accSaberCampaignFlow)
@@ -151,7 +153,7 @@ namespace AccSaber.UI.ViewControllers
             _api.OnLoginUpdated -= AccSaberAPIOnOnLoginUpdated;
         }
 
-		protected override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
+		public override void DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling)
 		{
 			base.DidActivate(firstActivation, addedToHierarchy, screenSystemEnabling);
 			
@@ -164,7 +166,7 @@ namespace AccSaber.UI.ViewControllers
 			}
 		}
 
-		protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
+		public override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling)
 		{
 			base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
 			
@@ -293,10 +295,14 @@ namespace AccSaber.UI.ViewControllers
 		[UIAction("logo-clicked")]
 		public void LogoClicked()
 		{
-			if (!_logoClickable || _campaignFlowCoordinator.disableLogo)
+			bool logoDoesTransition = LogoDoesTransition;
+
+			OnLogoClicked?.Invoke();
+
+			if (!_logoClickable || !logoDoesTransition)
 				return;
 
-			_mainFlowCoordinator.PresentFlowCoordinator();
+			_mainFlowCoordinator.PresentFlowCoordinatorSafe();
 		}
 
 		[UIAction("settings-clicked")]

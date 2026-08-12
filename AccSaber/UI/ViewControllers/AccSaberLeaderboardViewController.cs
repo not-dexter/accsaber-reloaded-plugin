@@ -129,8 +129,8 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly PluginConfig PC = null!;
         [Inject] private readonly AccsaberAPI api = null!;
         [Inject] private readonly PlayerSocialLife playerInfo = null!;
-        //[Inject] private readonly StandardLevelDetailViewController sldvc = null!;
         [Inject] private readonly AccSaberStore store = null!;
+        [Inject] private readonly AccSaberManager manager = null!;
         [Inject] private readonly AccSaberPanelViewController aspvc = null!;
         [Inject] private readonly LeaderboardScoreModalController lsmc = null!;
         [Inject] private readonly LeaderboardSettingsModalController lbsmc = null!;
@@ -620,8 +620,8 @@ namespace AccSaber.UI.ViewControllers
         }
 
 #if NEW_VERSION
-        private void OnUpdateDiff(BeatmapKey key, BeatmapLevel beatmap) => UpdateDiff(beatmap, key);
-        private bool UpdateDiff(BeatmapLevel beatmap, BeatmapKey key)
+        private void OnUpdateDiff(BeatmapKey key, BeatmapLevel? beatmap) => UpdateDiff(beatmap, key);
+        private bool UpdateDiff(BeatmapLevel? beatmap, BeatmapKey key)
         {
 #else
         private void OnUpdateDiff(IDifficultyBeatmap beatmap) => UpdateDiff(beatmap);
@@ -633,26 +633,28 @@ namespace AccSaber.UI.ViewControllers
                 if (!loaded || !gameObject.activeInHierarchy)
                     return false;
 
-                // Get hash from the level (custom levels use levelID format: "custom_level_HASH")
 #if NEW_VERSION
-                string levelId = beatmap.levelID;
-#else
-                string levelId = beatmap.level.levelID;
-#endif
-                string hash;
-                string[] parts = levelId.Split('_');
+                string? hash = manager.GetHash(key);
 
-                if (parts.Length >= 3 && parts[0].Equals("custom") && parts[1].Equals("level"))
-                    hash = levelId.Split('_')[2];
-                else
-                    hash = levelId; // fallback for official levels
+                if (string.IsNullOrEmpty(hash))
+                {
+                    Plugin.Log.Critical("Cannot update leaderboard, current hash is null!!!");
+                    return false;
+                }
 
-#if NEW_VERSION
-                if (hash.Equals(CurrentHash) && key.difficulty.Equals(CurrentDiff))
+                if (hash!.Equals(CurrentHash) && key.difficulty.Equals(CurrentDiff))
                     return false; // same map, no need to update
                 CurrentDiff = key.difficulty;
 #else
-                if (hash.Equals(CurrentHash) && beatmap.difficulty.Equals(CurrentDiff))
+                string? hash = manager.GetHash(beatmap);
+                
+                if (string.IsNullOrEmpty(hash))
+                {
+                    Plugin.Log.Critical("Cannot update leaderboard, current hash is null!!!");
+                    return false;
+                }
+
+                if (hash!.Equals(CurrentHash) && beatmap.difficulty.Equals(CurrentDiff))
                     return false; // same map, no need to update
                 CurrentDiff = beatmap.difficulty;
 #endif

@@ -176,7 +176,7 @@ namespace AccSaber.Utils
             if (mods.proMode) outp.Add("PM");
             if (mods.smallCubes) outp.Add("SC");
             if (mods.instaFail) outp.Add("IF");
-            // TODO: Add Off Platform detection (if it ever is an issue)
+            // NOTE: Add Off Platform detection (if it ever is an issue)
 
             return outp;
         }
@@ -232,6 +232,17 @@ namespace AccSaber.Utils
         public static IEnumerable<T> MergeSortedLists<T>(params IEnumerable<IEnumerable<T>> lists) where T : IComparable<T> =>
             MergeSortedLists(Comparer<T>.Default, lists);
 
+        public static IEnumerable<T> CombineAs<T, L1, L2>(IEnumerable<L1> list1, IEnumerable<L2> list2) where L1 : T where L2 : T => list1.Cast<T>().Concat(list2.Cast<T>());
+        public static IEnumerable<T> CombineAllAsType<T>(params IEnumerable<IEnumerable> lists)
+        {
+            foreach (IEnumerable list in lists)
+                foreach (object item in list)
+                    if (item is T good)
+                        yield return good;
+                    else
+                        throw new ArgumentException($"Cannot combine item \"{item}\", it is not of type {typeof(T).FullName}!");
+        }
+
         public static async Task LoadCoverImage(this Image image, string hash, string? coverUrl, CancellationToken ct = default)
         {
             try
@@ -250,7 +261,7 @@ namespace AccSaber.Utils
                     s = await level.GetCoverImageAsync(ct);
 #endif
 
-                if (!image.gameObject.activeSelf)
+                if (!(image.gameObject?.activeSelf ?? true))
                     return;
 
                 if (s is not null)
@@ -337,13 +348,16 @@ namespace AccSaber.Utils
 
             if (ImageCache.TryGetCachedItem(url, out Texture2D? val))
             {
-                if (!ct.IsCancellationRequested && image != null && image.gameObject.activeInHierarchy)
+                if (!ct.IsCancellationRequested && image is not null && image.gameObject.activeInHierarchy)
                     image.sprite = Sprite.Create(val, new(0, 0, val!.width, val.height), new Vector2(0.5f, 0.5f), val.width);
 
                 yield break;
             }
 
             // Limit concurrent downloads/decodes.
+            if (activeImageDownloads >= MaxConcurrentImageDownloads)
+                Plugin.Log.Warn("Waiting for concurrent image downloads to clear up...");
+
             while (activeImageDownloads >= MaxConcurrentImageDownloads)
             {
                 if (ct.IsCancellationRequested || image is null)
@@ -359,6 +373,7 @@ namespace AccSaber.Utils
             try
             {
                 UnityWebRequestAsyncOperation operation = request.SendWebRequest();
+                Plugin.Log.Debug("Unity API Call: " + url);
 
                 while (!operation.isDone)
                 {
@@ -478,6 +493,27 @@ namespace AccSaber.Utils
 
             onSuccess?.Invoke(task.Result);
         }
+        public static Color32 GetMaxColorValues(this Texture2D tex)
+        {
+            // Get all pixels as a flat 1D array (byte-based 0-255)
+            Color32[] pixels = tex.GetPixels32();
+
+            byte maxR = 0;
+            byte maxG = 0;
+            byte maxB = 0;
+            byte maxA = 0;
+
+            // Iterate through all pixels to capture the highest channel values
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                if (pixels[i].r > maxR) maxR = pixels[i].r;
+                if (pixels[i].g > maxG) maxG = pixels[i].g;
+                if (pixels[i].b > maxB) maxB = pixels[i].b;
+                if (pixels[i].a > maxA) maxA = pixels[i].a;
+            }
+
+            return new Color32(maxR, maxG, maxB, maxA);
+        }
 
         public static int MaxScoreForNotes(int notes)
         {
@@ -502,6 +538,16 @@ namespace AccSaber.Utils
         public static T Max<T>(T item1, T item2) where T : IComparable<T> => item1.CompareTo(item2) <= 0 ? item2 : item1;
         public static T Min<T>(T item1, T item2) where T : IComparable<T> => item1.CompareTo(item2) <= 0 ? item1 : item2;
 
+        public static string ReplaceFirst(this string text, string search, string replace)
+        {
+            int pos = text.IndexOf(search);
+
+            if (pos < 0)
+                return text; // Search string not found, return original
+
+            return text[..pos] + replace + text[(pos + search.Length)..];
+        }
+
         public static string GenerateNonce(int byteLength = 32)
         {
             byte[] byteArray = new byte[byteLength];
@@ -522,6 +568,33 @@ namespace AccSaber.Utils
                 return hash;
             }
         }
+        public static int GetHashCode<T>(params IEnumerable<T> items)
+        {
+            unchecked
+            {
+                int hash = 17;
+
+                foreach (T? item in items)
+                    hash = hash * 23 + item?.GetHashCode() ?? 0;
+                
+                return hash;
+            }
+        }
+        public static int GetHashCode(params IEnumerable<object?> items)
+        {
+            unchecked
+            {
+                int hash = 17;
+
+                foreach (object? item in items)
+                    hash = hash * 23 + item?.GetHashCode() ?? 0;
+                
+                return hash;
+            }
+        }
+
+        public static Task StartOnMainThread(this Func<Task> action) => UnityMainThreadTaskScheduler.Factory.StartNew(action).Unwrap();
+        public static Task<T> StartOnMainThread<T>(this Func<Task<T>> action) => UnityMainThreadTaskScheduler.Factory.StartNew(action).Unwrap();
 
         public static T? ParseEnum<T>(string value) where T : Enum => (T?)Enum.Parse(typeof(T), value);
         public static void AddRange<K, V>(this IDictionary<K, V> dict, IEnumerable<KeyValuePair<K, V>> vals)

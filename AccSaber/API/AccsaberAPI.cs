@@ -1141,26 +1141,6 @@ namespace AccSaber.API
             return await tcs.Task;
         }
 #endif
-        internal async Task<bool> SubmitScore(AccSaberScore score)
-        {
-            if (!SubmissionPatch.Submit)
-                return false;
-
-            score.Nonce = MiscUtils.GenerateNonce(64); // Regenerate this just to make sure no one can steal the nonce.
-
-            HttpRequestMessage request = new(HttpMethod.Post, APAPI_SCORE_SUBMIT)
-            {
-                Content = new StringContent(JsonConvert.SerializeObject(score), System.Text.Encoding.UTF8, "application/json")
-            };
-
-            var (success, _) = await CallAPI(request, null, maxRetries: 1).ConfigureAwait(false); // No Throttler because this should throw an error if it is called more than once a minute.
-
-            Plugin.Log.Info(success ? "Score submitted!" : "Score failed to submit.");
-
-            return success;
-
-            //Note: Currently this will submit on party mode and probably multiplayer, which will need to be fixed
-        }
 
 #endregion
         #region Misc structs

@@ -6,7 +6,6 @@ using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
-using IPA.Loader;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -27,6 +26,7 @@ namespace AccSaber.ScoreTracking
         [Inject] private readonly BeatmapObjectManager bomb = null!;
         [Inject] private readonly PlayerHeadAndObstacleInteraction wall = null!;
         [Inject] private readonly PauseController pause = null!;
+        [Inject] private readonly ScoreSubmissionHandler submission = null!;
         private StandardLevelScenesTransitionSetupDataSO transition = null!;
         private GameEnergyCounter? energy = null;
         private AccSaberStore? store = null;
@@ -43,6 +43,8 @@ namespace AccSaber.ScoreTracking
         private readonly object submitLock = new();
         private bool transitionFinished, counterDisposed, failed;
         private string? gamemode = null;
+
+        public event Action? OnMistake;
 
         private bool AtEndsOfMap => notes == 0 || notes == totalNotes;
 
@@ -82,13 +84,108 @@ namespace AccSaber.ScoreTracking
                 return;
             }
 
+            totalNotes = beatmapData.cuttableNotesCount;
+
+            if (totalNotes == 0)
+                totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
+
+#if NEW_VERSION
+            bool IsInvalidLevel()
+            {
+                if (transition.beatmapLevel is null)
+                {
+                    Plugin.Log.Critical("The beatmap transition beatmap level is somehow null, this should not be possible.");
+                    return false;
+                }
+
+                string currentHash = transition.beatmapLevel.levelID.ToLower();
+                
+                if (currentHash.StartsWith(AccSaberManager.CUSTOM_LEVEL_HASH))
+                    currentHash = currentHash[AccSaberManager.CUSTOM_LEVEL_HASH.Length..];
+
+                return !currentHash.Equals(currentMap.ParentInfo?.Hash, StringComparison.OrdinalIgnoreCase) || transition.beatmapKey.difficulty != currentMap.Difficulty;
+            }
+#else
+            bool IsInvalidLevel()
+            {
+                string currentHash = transition.difficultyBeatmap.level.levelID.ToLower();
+
+                if (currentHash.StartsWith(AccSaberManager.CUSTOM_LEVEL_HASH))
+                    currentHash = currentHash[AccSaberManager.CUSTOM_LEVEL_HASH.Length..];
+
+                return !currentHash.Equals(currentMap.ParentInfo?.Hash, StringComparison.OrdinalIgnoreCase) || transition.difficultyBeatmap.difficulty != currentMap.Difficulty;
+            }
+#endif
+
+            if (IsInvalidLevel())
+            {
+                Plugin.Log.Critical("What?? The current map is not equal to the recorded map!!! Attempting to recorrect...");
+
+#if NEW_VERSION
+                Plugin.Log.Info($"transition level id = {transition.beatmapLevel?.levelID}, transition difficulty = {transition.beatmapKey.difficulty}");
+#else
+                Plugin.Log.Info($"transition level id = {transition.difficultyBeatmap.level.levelID}, transition difficulty = {transition.difficultyBeatmap.difficulty}");
+#endif
+
+                Plugin.Log.Info($"current level id = {currentMap.ParentInfo?.Hash}, current difficulty = {currentMap.Difficulty}");
+
+                PlatformLeaderboardViewController? viewController = Plugin.Container.TryResolve<PlatformLeaderboardViewController>();
+
+                if (viewController is not null)
+                {
+#if NEW_VERSION
+                    BeatmapKey key = transition.beatmapKey;
+                    viewController.SetData(in key);
+#else
+                    IDifficultyBeatmap key = transition.difficultyBeatmap;
+                    viewController.SetData(key);
+#endif
+
+                    SerializationHandler? serialHandler = Plugin.Container.TryResolve<SerializationHandler>();
+                    AccSaberManager manager = Plugin.Container.TryResolve<AccSaberManager>();
+
+                    bool failed = true;
+
+                    if (serialHandler is not null && manager is not null)
+                    {
+                        string? hash = manager.GetHash(key);
+
+                        if (hash is not null)
+                        {
+                            Models.CacheModels.AccSaberBasicMap? map = await serialHandler.GetMapByHashAsync(hash);
+
+                            if (map is not null)
+                            {
+                                BeatmapDifficulty diff = key.difficulty;
+                                currentMap = map.Difficulties.FirstOrDefault(basicDiff => basicDiff.Difficulty == diff);
+                                failed = false;
+                            }
+                        }
+                    }
+
+                    if (failed)
+                    {
+                        Plugin.Log.Warn("Failed to directly get map from cache, attempting to get it from the store.");
+
+                        currentMap = store.CurrentRankedMap ?? await store.GetCurrentMap();
+                    }
+                }
+
+                if (currentMap is null || IsInvalidLevel())
+                {
+                    Plugin.Log.Critical("Current map was still not updated correctly, score submission disabled for this map.");
+                    currentMap = null;
+                    return;
+                }
+                else
+                    Plugin.Log.Warn("Current map was fixed.");
+            }
+
             score = new()
             {
                 MapDifficultyId = currentMap.DifficultyId,
-                Headset = (await store.GetCurrentUserAsync()).Headset,
+                Headset = (await store.GetCurrentUserAsync()).Headset
             };
-
-            totalNotes = beatmapData.GetBeatmapDataItems<NoteData>(0).Count(noteData => noteData.gameplayType != NoteData.GameplayType.Bomb);
 
             current115Streak = 0;
             combo = 0;
@@ -162,6 +259,8 @@ namespace AccSaber.ScoreTracking
                 score.MaxCombo = Math.Max(score.MaxCombo, combo);
                 combo = 0;
                 current115Streak = 0;
+
+                OnMistake?.Invoke();
                 return;
             }
             else combo++;
@@ -183,6 +282,8 @@ namespace AccSaber.ScoreTracking
 
             combo = 0;
             score.BombHits++;
+
+            OnMistake?.Invoke();
         }
         private void OnWallHit(ObstacleController oc)
         {
@@ -191,6 +292,8 @@ namespace AccSaber.ScoreTracking
 
             combo = 0;
             score.WallHits++;
+
+            OnMistake?.Invoke();
         }
         private void OnUnpause()
         {
@@ -246,6 +349,18 @@ namespace AccSaber.ScoreTracking
                     return;
                 }
 
+                if (currentMap is null)
+                {
+                    Plugin.Log.Critical("There is an issue with this map and score submission! The current map is null.");
+                    return;
+                }
+
+                if (score.Score == 0)
+                {
+                    Plugin.Log.Debug("No score submit: The score was 0.");
+                    return;
+                }
+
                 if (totalNotes < 115 || notes > totalNotes)
                 {
                     Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
@@ -265,12 +380,14 @@ namespace AccSaber.ScoreTracking
                 if (!mapIncomplete)
                     scoreBeaten = aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score, true, TimeSpan.FromSeconds(7));
 
-                bool submitted = await api.SubmitScore(score);
+                score.BeatPreviousScore = scoreBeaten;
+
+                bool submitted = await submission.AttemptSubmitScore(score);
                 SerializationHandler.LastScoreTime = DateTime.UtcNow;
 
                 OnScoreSubmit?.Invoke(score, scoreBeaten);
 
-                if (!submitted && !PluginManager.EnabledPlugins.Any(plugin => plugin.Id.Equals("BeatLeader") || plugin.Id.Equals("ScoreSaber")))
+                if (!submitted && ScoreSubmissionHandler.CheckFullSubmissionFailure(score))
                     aslvc.ForceShowLeaderboard();
             }
             catch (Exception e)

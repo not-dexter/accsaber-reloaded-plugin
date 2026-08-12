@@ -20,11 +20,26 @@
   <!--Runs a build task to get info about the project used by later targets.-->
   <Target Name="GetProjectInfo" AfterTargets="CheckBSMTInstalled" DependsOnTargets="CheckBSMTInstalled" Condition="'$(BSMTTaskAssembly)' != ''">
     <Message Text="Using AssemblyVersion defined in project instead of 'Properties\AssemblyInfo.cs'" Importance="high" Condition="'$(AssemblyVersion)' != ''" />
-    <GetManifestInfo FailOnError="$(ErrorOnMismatchedVersions)">
+    <PropertyGroup>
+      <_GetManifestInfoFailOnError>$(ErrorOnMismatchedVersions)</_GetManifestInfoFailOnError>
+
+      <!-- If we manually supplied a GameVersionOverride, do not fail because manifest.json has another game version. -->
+      <_GetManifestInfoFailOnError Condition="'$(GameVersionOverride)' != ''">False</_GetManifestInfoFailOnError>
+    </PropertyGroup>
+
+    <GetManifestInfo FailOnError="$(_GetManifestInfoFailOnError)">
       <Output TaskParameter="PluginVersion" PropertyName="PluginVersion" />
       <Output TaskParameter="BasePluginVersion" PropertyName="BasePluginVersion" />
-      <Output TaskParameter="GameVersion" PropertyName="GameVersion" />
+      <Output TaskParameter="GameVersion" PropertyName="_ManifestGameVersion" />
     </GetManifestInfo>
+
+    <PropertyGroup>
+      <!-- Manual override wins. -->
+      <GameVersion Condition="'$(GameVersionOverride)' != ''">$(GameVersionOverride)</GameVersion>
+
+      <!-- Otherwise use the value from manifest.json. -->
+      <GameVersion Condition="'$(GameVersion)' == ''">$(_ManifestGameVersion)</GameVersion>
+    </PropertyGroup>
     <PropertyGroup>
       <AssemblyVersion>$(BasePluginVersion)</AssemblyVersion>
       <FileVersion>$(BasePluginVersion)</FileVersion>
@@ -98,4 +113,49 @@
     <Copy SourceFiles="$(OutputAssemblyName).pdb" DestinationFiles="$(PluginDir)\$(AssemblyName).pdb" Condition="'$(CanCopyToPlugins)' == 'True' AND Exists('$(OutputAssemblyName).pdb')"  />
     <Warning Text="Beat Saber is running, restart the game to use the latest build." Condition="'$(IsRunning)' == 'True'" />
   </Target>
+
+  <!--
+    When BuildAllBeatSaberVersions=true and Configuration=Release,
+    replace the normal outer Build with our multi-build target.
+    The inner builds still run the normal Build target.
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' AND '$(BuildAllBeatSaberVersions)' == 'true' AND '$(IsBeatSaberMultiBuildInner)' != 'true'">
+    <BuildDependsOn>BuildBeatSaberVersions</BuildDependsOn>
+
+    <!-- Prevent the outer build from trying to copy/zip stale output after the inner builds finish -->
+    <DisableCopyToPlugins>True</DisableCopyToPlugins>
+    <DisableZipRelease>True</DisableZipRelease>
+  </PropertyGroup>
+
+  <Target Name="BuildBeatSaberVersions" Condition="'$(IsBeatSaberMultiBuildInner)' != 'true'">
+    <Error
+      Text="BeatSaberInstancesRoot is not set. Set it in your .csproj.user file."
+      Condition="'$(BeatSaberInstancesRoot)' == ''" />
+
+    <PropertyGroup>
+      <_InnerPlatform Condition="'$(Platform)' != ''">;Platform=$(Platform)</_InnerPlatform>
+    </PropertyGroup>
+
+    <Message
+      Text="Building $(MSBuildProjectName) for Beat Saber folders: @(BeatSaberMultiBuild->'%(FolderName)', ', ')"
+      Importance="high" />
+
+    <MSBuild
+      Projects="$(MSBuildProjectFullPath)"
+      Targets="Build"
+      Properties="
+        Configuration=Release$(_InnerPlatform);
+        IsBeatSaberMultiBuildInner=true;
+        BuildAllBeatSaberVersions=false;
+        BeatSaberFolderName=%(BeatSaberMultiBuild.FolderName);
+        BeatSaberDir=$(BeatSaberInstancesRoot)\%(BeatSaberMultiBuild.FolderName);
+        GameVersionOverride=%(BeatSaberMultiBuild.GameVersion);
+        ErrorOnMismatchedVersions=false;
+        OutputPath=$(MSBuildProjectDirectory)\bin\Release\%(BeatSaberMultiBuild.Identity)\;
+        OutDir=$(MSBuildProjectDirectory)\bin\Release\%(BeatSaberMultiBuild.Identity)\;
+        IntermediateOutputPath=$(MSBuildProjectDirectory)\obj\Release\%(BeatSaberMultiBuild.Identity)\;
+        DisableCopyToPlugins=false;
+        DisableZipRelease=false" />
+  </Target>
+
 </Project>

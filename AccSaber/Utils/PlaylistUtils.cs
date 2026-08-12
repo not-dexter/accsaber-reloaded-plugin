@@ -456,7 +456,7 @@ namespace AccSaber.Utils
                 do
                 {
                     index = Math.Min(idSet[basicDiff.DifficultyId], index);
-                    diffInfo.Add(new("Standard", basicDiff.Difficulty)); // characteristic is always standard for now, but this is where we'd add it if we added more characteristics to the API
+                    diffInfo.Add(new(basicDiff.Characteristic, basicDiff.Difficulty));
                     idSet.Remove(basicDiff.DifficultyId);
                     basicDiff = map.Difficulties.FirstOrDefault(diff => idSet.ContainsKey(diff.DifficultyId));
                 } while (basicDiff is not null);

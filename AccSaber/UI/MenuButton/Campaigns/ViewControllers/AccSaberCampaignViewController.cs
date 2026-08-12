@@ -1,4 +1,7 @@
-﻿using AccSaber.Configuration;
+﻿//#define TEST_SUBMIT
+
+using AccSaber.API;
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Counter;
 using AccSaber.Managers;
@@ -8,8 +11,11 @@ using AccSaber.Utils.Misc;
 using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
+using BeatSaberMarkupLanguage.Tags;
 using HMUI;
 using IPA.Loader;
+using IPA.Utilities;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -19,10 +25,13 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
+
 using static AccSaber.Managers.CampaignProgress;
+using static AccSaber.Models.CampaignModel;
 
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
@@ -39,6 +48,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private AccSaberCampaign? _currentCampaign;
         private List<AccSaberCampaign> _activeCampaigns = null!;
         private readonly Queue<Guid> _nextGotoMapId = [];
+        private readonly List<Guid> _includedTags = [];
 
         private CampaignProgressValue CampaignProgressVal
         {
@@ -59,6 +69,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public AccSaberCampaignMap? CurrentMap;
         public int CurrentMaxNoteCount;
         public bool MapStarted { get; private set; } = false;
+        public AccSaberCampaign? CurrentCampaign => _currentCampaign;
 
         [UIObject("CampaignMapContainer")]
         private readonly GameObject _campaignMapContainer = null!;
@@ -71,13 +82,30 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private readonly ImageView _missionImage = null!;
 
         [UIComponent("MissionButton")]
-        private readonly Button _missionButton = null!;
+        private readonly TextMeshProUGUI _missionButton = null!;
 
         [UIComponent("campaign-list")]
         private readonly CustomCellListTableData _campaignList = null!;
 
         [UIValue("campaign-cells")]
         private readonly List<object> _campaignCells = [];
+
+        [UIComponent("search-container")]
+        private readonly VerticalLayoutGroup _campaignSearchContainer = null!;
+
+        [UIComponent("campaign-description")]
+        private readonly TextMeshProUGUI _campaignDescription = null!;
+
+        [UIComponent("objectives-container")]
+        private readonly ExternalComponents _objectivesContainer = null!;
+
+        [UIComponent(nameof(PercentBarTop))] private readonly LayoutElement PercentBarTop = null!;
+        [UIComponent(nameof(PercentBarTop))] private readonly ImageView PercentBarTop_image = null!;
+        [UIComponent(nameof(PercentBarBottom))] private readonly LayoutElement PercentBarBottom = null!;
+        [UIComponent(nameof(PercentBarBottom))] private readonly ImageView PercentBarBottom_image = null!;
+
+        internal InputFieldView? CampaignSearchInput { get; private set; }
+        CurvedTextMeshPro? songSearchPlaceholder = null;
 
         private enum CategoryTab
         {
@@ -92,9 +120,13 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberStore _accSaberStore = null!;
         [Inject] private readonly SerializationHandler _serialHandler = null!;
         [Inject] private readonly PluginConfig _config = null!;
+        [Inject] private readonly PlayerSocialLife _playerInfo = null!;
         [Inject] private readonly AccSaberCampaignFlow _campaignFlow = null!;
-        [Inject] private readonly AccSaberCampaignMapViewController _campaignMapViewController = null!;
+        // generally try not to expose injected stuff, but these 2 classes are so close to each other I might as well
+        [Inject] internal readonly AccSaberCampaignMapViewController _campaignMapViewController = null!; 
         [Inject] private readonly AccSaberCampaignSettingsModalController _campaignSettingsModalController = null!;
+        [Inject] private readonly AccSaberCampaignCounterSettingsModalController _campaignCounterSettingsModalController = null!;
+        [Inject] private readonly AccSaberCampaignZoomModalController _campaignZoomModalController = null!;
         [Inject] private readonly MenuTransitionsHelper _menuTransitionsHelper = null!;
         [Inject] private readonly PlayerDataModel _playerDataModel = null!;
         [Inject] private readonly SongPreviewPlayer _songPreviewPlayer = null!;
@@ -104,6 +136,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly BeatmapDataLoader _beatmapDataLoader = null!;
         [Inject] private readonly EnvironmentsListModel _environmentsListModel = null!;
 #endif
+
+        [UIValue("count-img")]
+        private const string CountImg = ResourcePaths.COUNT;
+
+
         private CategoryTab CurrentTab
         {
             get;
@@ -220,6 +257,50 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
         } = null!;
 
+        [UIValue("CampaignCompletion")]
+        private string CampaignCompletion
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+
+        [UIValue("CampaignCompletionCount")]
+        private string CampaignCompletionCount
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("CampaignCompletionStatus")]
+        private string CampaignCompletionStatus
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("ShouldShowStatus")]
+        private bool ShouldShowStatus
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        }
         [UIValue("MissionMapName")]
         private string MissionMapName
         {
@@ -294,6 +375,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 field = value;
                 NotifyPropertyChanged();
+                NotifyPropertyChanged(nameof(DetailContainerHeight));
             }
         } = null!;
 
@@ -332,6 +414,45 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         [UIValue("MissionProgress")]
         private string MissionProgress
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("DetailContainerHeight")]
+        private float DetailContainerHeight
+        {
+            get => 10f + 5f * MissionObjective?[..^1].Count(c => c == '\n') ?? 0f;
+        }
+
+        [UIValue("ShowModifiers")]
+        private bool ShowModifiers
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = false;
+
+        [UIValue("RequiredModifiers")]
+        private string RequiredModifiers
+        {
+            get;
+            set
+            {
+                field = value;
+                NotifyPropertyChanged();
+            }
+        } = null!;
+
+        [UIValue("DisallowedModifiers")]
+        private string DisallowedModifiers
         {
             get;
             set
@@ -394,17 +515,114 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("in-map-or-barrier")]
         private bool InMapOrBarrier => InMap || InBarrier;
 
+        [UIComponent("category-filter")]
+        private readonly GridLayoutGroup _categoryFilter = null!;
+
+        [UIComponent("difficulty-filter")]
+        private readonly GridLayoutGroup _difficultyFilter = null!;
+
+        [UIComponent("theme-filter")]
+        private readonly GridLayoutGroup _themeFilter = null!;
+
+        //[UIComponent("genre-scrollable")]
+        //private readonly ScrollView _genreContainer = null!;
+
+        [UIComponent("genre-filter")]
+        private readonly GridLayoutGroup _genreFilter = null!;
+
+        private ClickableText _textTemplate = null!;
+        private async Task GetFilters()
+        {
+            try
+            {
+                foreach (CampaignTag tag in await _accSaberStore.GetCampaignTags())
+                {
+                    GridLayoutGroup? tagGrid = tag.Kind switch
+                    {
+                        CampaignTagKind.CATEGORY => _categoryFilter,
+                        CampaignTagKind.DIFFICULTY => _difficultyFilter,
+                        CampaignTagKind.THEME => _themeFilter,
+                        CampaignTagKind.GENRE => _genreFilter,
+                        _ => throw new NotImplementedException()
+                    };
+
+                    if (tagGrid is not null)
+                    { 
+                        ClickableText newText = Instantiate(_textTemplate, tagGrid.transform, false); // need to do this since for some reason it didnt wanna be curved <3
+
+                        newText.text = tag.Name;
+                        newText.fontSize = 2.5f;
+                        newText.alignment = TextAlignmentOptions.Center;
+                        newText.gameObject.SetActive(true);
+
+                        newText.OnClickEvent += (pointerData) => OnTagClicked(tag, newText);
+                    }
+                }
+
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(_genreFilter.rectTransform);
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Error(ex);
+            }
+        }
+
+        private void OnTagClicked(CampaignTag tag, ClickableText text)
+        {
+            if (_includedTags.Contains(tag.Id))
+            {
+                _includedTags.Remove(tag.Id);
+                text.color = Color.white;
+                text.DefaultColor = Color.white;
+            }
+            else
+            {
+                _includedTags.Add(tag.Id);
+                text.color = ColorUtils.Color(ColorUtils.TRUE);
+                text.DefaultColor = ColorUtils.Color(ColorUtils.TRUE);
+            }
+            _ = UpdateTabs();
+        }
+
+
         [UIAction("#post-parse")]
-        private async void Parsed()
+        private void Parsed()
         {
             if(!_parsed)
             {
                 _parsed = true;
+
+                _genreFilter.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                _genreFilter.constraintCount = 3;
+
+                if (_textTemplate is null)
+                {
+                    // transform here doesn't matter at all.
+                    _textTemplate = new ClickableTextTag().CreateObject(_categoryFilter.transform).GetComponent<ClickableText>();
+                    _textTemplate.gameObject.SetActive(false);
+                }
+                _campaignImage.material = ResourcePaths.BORDER_MATERIAL;
+                _ = GetFilters();            
             }
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_VIEW, _campaignMapContainer, _campaignMapViewController);
+            GameObject? searchBox = Resources.FindObjectsOfTypeAll<InputFieldView>().FirstOrDefault(x => x.gameObject.name == "SearchInputField")?.gameObject;
 
-            NoCampaignSelected = true;
+            if (searchBox is not null)
+            {
+                GameObject newSearchBox = Instantiate(searchBox, _campaignSearchContainer.transform, false);
+                CampaignSearchInput = newSearchBox.GetComponent<InputFieldView>();
+                CampaignSearchInput.SetText(string.Empty);
+                songSearchPlaceholder = newSearchBox.transform.Find("PlaceholderText")?.GetComponent<CurvedTextMeshPro>();
+                CampaignSearchInput.SetField("_keyboardPositionOffset", new Vector3(-45, -25));
+                CampaignSearchInput.onValueChanged.AddListener(__ => _ = UpdateTabs());
+                NoCampaignSelected = true;
+            }
+            _campaignDescription.enableAutoSizing = true;
+            _campaignDescription.fontSizeMax = 3.5f;
+            _campaignDescription.fontSizeMin = 1f;
+
             CurrentTab = 0;
             InCampaign = false;
             InMap = false;
@@ -428,9 +646,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("ZoomIn")]
         private void ZoomIn()
         {
-            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor < 0.75f)
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor < _config.CampaignMaxZoomValue)
             {
-                _campaignMapViewController.UpdateScalingDelta(0.025f);
+                _campaignMapViewController.UpdateScalingDelta(_config.CampaignZoomIncrementValue);
 
                 if (InMap && CurrentMap is not null)
                     _campaignMapViewController.ScrollToNode(CurrentMap.Id);
@@ -440,9 +658,33 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [UIValue("ZoomOut")]
         private void ZoomOut()
         {
-            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor > 0.025f)
+            if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor > _config.CampaignMinZoomValue)
             {
-                _campaignMapViewController.UpdateScalingDelta(-0.025f);
+                _campaignMapViewController.UpdateScalingDelta(-_config.CampaignZoomIncrementValue);
+
+                if (InMap && CurrentMap is not null)
+                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
+            }
+        }
+
+        [UIValue("ResetZoom")]
+        private void ResetZoom()
+        {
+            if (_currentCampaign is not null)
+            {
+                _campaignMapViewController.UpdateScaling(_config.CampaignDefaultZoomValue);
+
+                if (InMap && CurrentMap is not null)
+                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
+            }
+        }
+
+        [UIValue("ZoomFullyOut")]
+        private void ZoomFullyOut()
+        {
+            if (_currentCampaign is not null)
+            {
+                _campaignMapViewController.UpdateScaling(_config.CampaignMinZoomValue);
 
                 if (InMap && CurrentMap is not null)
                     _campaignMapViewController.ScrollToNode(CurrentMap.Id);
@@ -462,6 +704,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _nextGotoMapId.Enqueue(current);
         }
 
+        [UIAction("ZoomSettings")]
+        private void ZoomSettings()
+        {
+            if (!_parsed)
+                return;
+
+            _campaignZoomModalController.ShowModal(_campaignMapContainer.transform);
+        }
+
         [UIAction("ShowSettings")]
         private void ShowSettings()
         {
@@ -471,34 +722,46 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             _campaignSettingsModalController.ShowModal(_campaignMapContainer.transform);
         }
 
-        public void BackPressed()
+        [UIAction("ShowCounterSettings")]
+        private void ShowCounterSettings()
         {
-            _campaignFlow.HideLeaderboard();
-            InCampaign = false;
-            InBarrier = false;
-            InMap = false;
-            _songPreviewPlayer.CrossfadeToDefault();
-            _ = UpdateTabs();
+            if (!_parsed)
+                return;
+
+            _campaignCounterSettingsModalController.ShowModal(_campaignMapContainer.transform);
+        }
+
+        public async Task BackPressed(bool update = true)
+        {
+            try
+            {
+                _campaignFlow.HideLeaderboard(true);
+
+                if (InCampaign)
+                {
+                    _campaignSettingsModalController.HideModal(false);
+                    _campaignCounterSettingsModalController.HideModal(false);
+                    _campaignZoomModalController.HideModal(false);
+
+                    await _campaignMapViewController.Cleanup();
+                }
+
+                InCampaign = false;
+                InBarrier = false;
+                InMap = false;
+                _songPreviewPlayer.CrossfadeToDefault();
+
+                if (update)
+                    await UpdateTabs();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("There was an exception on exiting the campaign!!!\n" + e);
+            }
         }
 
         [UIAction("PlayCampaign")]
-        private async void PlayCampaign()
-        {
-            InCampaign = true;
-            if (_currentCampaign is not null)
-            {                  
-                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS)
-                    _missionButton.SetButtonText("Start Campaign");
-                else
-                    _missionButton.SetButtonText("Play");
-
-                _currentCampaign = await _accSaberStore.GetCampaign(_currentCampaign.Id, true);
-
-                await _campaignMapViewController.SetCampaign(_currentCampaign);
-
-                UpdateGoToMapButton();
-            }
-        }
+        private async void PlayCampaign() => await OpenCampaign();
 
         [UIAction("PlayMission")]
         private async void PlayMission()
@@ -511,7 +774,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (_currentCampaign is not null)
             {
-                if (_activeCampaigns.Find(x => x.Id == _currentCampaign.Id) is null && _currentCampaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS)
+                if (!_activeCampaigns.Any(x => x.Id == _currentCampaign.Id) && _currentCampaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS)
                 {
                     if (await _accSaberStore.StartCampaign(_currentCampaign.Id) == false)
                         Plugin.Log.Error("Failed to start campaign!");
@@ -519,13 +782,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     {
                         _invalidateActive = true;
                         _activeCampaigns.Add(await _accSaberStore.GetCampaign(_currentCampaign.Id));
-                        _missionButton.SetButtonText("Play");
+                        _missionButton.SetText("Play");
                     }
                 }
             }
-            var colorScheme = _playerDataModel.playerData.colorSchemesSettings.overrideDefaultColors
+
+            ColorScheme? colorScheme = _playerDataModel.playerData.colorSchemesSettings.overrideDefaultColors
             ? _playerDataModel.playerData.colorSchemesSettings.GetSelectedColorScheme()
             : null;
+
             MapStarted = true;
 
             RecordPlayMethod?.Invoke(null, null);
@@ -666,8 +931,36 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 _nextGotoMapId.Enqueue(unlockedIds);
         }
 
+        public async Task OpenCampaign()
+        {
+            if (_currentCampaign is null)
+            {
+                Plugin.Log.Warn("Current campaign is null, cannot open the current campaign!");
+                return;
+            }
+
+            await OpenCampaign(_currentCampaign);
+        }
+        public async Task OpenCampaign(AccSaberCampaign campaign)
+        {
+            if (!_activeCampaigns.Any(x => x.Id == campaign.Id) && campaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS)
+                _missionButton.SetText("Start Campaign");
+            else
+                _missionButton.SetText("Play");
+
+            _currentCampaign = await _accSaberStore.GetCampaign(campaign.Id, true);
+
+            InCampaign = true;
+
+            await _campaignMapViewController.SetCampaign(_currentCampaign);
+
+            UpdateGoToMapButton();
+        }
+
         public async Task UpdateTabs()
         {
+            await _playerInfo.LoadTask;
+
             _campaignCells.Clear();
             _campaignList.Data().Clear();
             _campaignList.TableView().ReloadData();
@@ -683,8 +976,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 List<AccSaberCampaign> tabCampaigns = CurrentTab switch
                 {
                     CategoryTab.Active => _activeCampaigns,
-                    CategoryTab.Official => await _accSaberStore.GetCampaigns(AccSaberCampaign.CampaignStatus.CURATED),
-                    CategoryTab.Curated => await _accSaberStore.GetCampaigns(AccSaberCampaign.CampaignStatus.CURATED),
+                    CategoryTab.Official => await _accSaberStore.GetCampaigns(CampaignStatus.CURATED),
+                    CategoryTab.Curated => await _accSaberStore.GetCampaigns(CampaignStatus.CURATED),
                     CategoryTab.All => await _accSaberStore.GetCampaigns(),
                     CategoryTab.Completed => _activeCampaigns,
                     _ => throw new NotImplementedException(),
@@ -692,9 +985,31 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 foreach (var campaign in tabCampaigns)
                 {
-                    if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.IN_PROGRESS) ||
-                        (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != AccSaberCampaign.UserCampaignProgress.COMPLETED) ||
+                    if ((CurrentTab == CategoryTab.Active && campaign.ProgressStatus != UserCampaignProgress.IN_PROGRESS) ||
+                        (CurrentTab == CategoryTab.Completed && campaign.ProgressStatus != UserCampaignProgress.COMPLETED) ||
                         (CurrentTab == CategoryTab.Official && !campaign.Official))
+                        continue;
+
+                    if (CampaignSearchInput!.text != "" && !campaign.Name.ToLower().Contains(CampaignSearchInput!.text.ToLower()))
+                        continue;
+
+                    bool match = false;
+
+                    if (_includedTags.Count == 0)
+                        match = true;                       
+                    else if (campaign.Tags is not null)
+                    {
+                        foreach (var tagId in _includedTags)
+                        {
+                            if (campaign.Tags.Any(x => x.Id == tagId))
+                            {
+                                match = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (match == false)
                         continue;
 
                     _campaignCells.Add(new CampaignCell(campaign));
@@ -717,14 +1032,23 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         public async Task UpdateCampaign(AccSaberCampaign campaign)
         {
+            Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
+
             CampaignCategory = "";
             CampaignTitle = campaign.Name;
-            CampaignCreator = campaign.CreatorName;
+            CampaignCreator = campaign.CreatorAlias ?? campaign.CreatorName;
             CampaignDescription = campaign.Description;
             CampaignRewards = "";
             CampaignCurated = false;
 
-            if (campaign.Status == AccSaberCampaign<AccSaberCampaignMap>.CampaignStatus.CURATED)
+            CampaignCompletion = campaign.CompletionMode switch
+            {
+                CampaignCompletionMode.TERMINAL => $"Reach a <color={ColorUtils.RANK}>terminal node</color>.",
+                CampaignCompletionMode.ALL => $"Complete <color={ColorUtils.RANK}>all nodes</color>.",
+                _ => ""
+            };
+
+            if (campaign.Status == CampaignStatus.CURATED)
             {
                 string items = string.Empty;
 
@@ -732,7 +1056,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 {
                     foreach (var item in campaign.Items)
                     {
-                        items += $"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>\n";
+
+                        string quantity = item.Quantity == 1 ? "" : $"{item.Quantity}x ";
+
+                        items += $"<color={ColorUtils.RANK}>{quantity}{item.ItemName}</color>\n";
 
                     }
                 }
@@ -749,35 +1076,74 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             if (campaign.Tags is not null)
             {
-                foreach (var tag in campaign.Tags)
+                StringBuilder sb = new();
+                foreach (CampaignTag tag in campaign.Tags)
                 {
-                    if (tag.Kind != CampaignTags.CampaignTagKind.CATEGORY)
+                    if (tag.Kind != CampaignTagKind.CATEGORY)
                         continue;
 
-                    CampaignCategory = CampaignCategory == "" ? $"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color>" :
-                        CampaignCategory + $" | <color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color>";
+                    sb.Append($"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategoryNullable(tag.CategoryId))}>{tag.Name}</color> | ");
                 }
 
+                CampaignCategory = sb.ToString()[..^3];
             }
 
             if ((campaign.IconUrl is not null && campaign.IconUrl.Contains(".webp")) || campaign.IconUrl is null)
-                await _campaignImage.SetImageAsync("AccSaber.Resources.AccSaber.png", false);
+                await _campaignImage.SetImageAsync(ResourcePaths.ACCSABER, false);
             else
                 StartCoroutine(_campaignImage.LoadImageRoutine(campaign.IconUrl));
+
+            JObject? campaignObj = await APIHandler.CallAPI_Json<JObject>(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler);
+
+            if (campaignObj is not null)
+            {
+                JToken? campaignInfo = campaignObj["campaign"];
+
+                if (campaignInfo is null)
+                    return;
+
+                float completedDiffs = (float)(campaignObj["completedDifficulties"] ?? -1f);
+                int totalDiffs = (int)(campaignInfo["difficultyCount"] ?? -1);
+
+                CampaignCompletionCount = $"{(int)completedDiffs}/{totalDiffs}";
+
+                if (campaignObj["progressStatus"] is not null && Enum.TryParse((string)campaignObj["progressStatus"]!, out UserCampaignProgress progress))
+                {
+                    CampaignCompletionStatus = progress switch
+                    {
+                        UserCampaignProgress.IN_PROGRESS => $"<color={ColorUtils.STANDARD}>In Progress</color>",
+                        UserCampaignProgress.COMPLETED => $"<color={ColorUtils.TRUE}>Completed</color>",
+                        UserCampaignProgress.ABANDONED => $"<color={ColorUtils.TECH}>Abandoned</color>",
+                        _ => throw new NotImplementedException(),
+                    };
+
+                    ShouldShowStatus = progress == UserCampaignProgress.IN_PROGRESS;
+                }
+
+                PercentBarTop.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 25f * (completedDiffs / totalDiffs));
+                PercentBarBottom.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 25f * (1 - (completedDiffs / totalDiffs)));
+                PercentBarTop_image?.color = ColorUtils.Color(ColorUtils.STANDARD);
+                PercentBarBottom_image?.color = ColorUtils.GREY.Color().ColorWithAlpha(0.15f);
+            }
+
 
 
         }
 
 #if NEW_VERSION
-        public async void SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion, bool withSound = true)
+        public async Task SetMission(AccSaberCampaignMap map, BeatmapKey beatmapKey, BeatmapLevel beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
+#if DEBUG && TEST_SUBMIT && V40
+            bool doTestSubmit = withSound && completion.Completion != CompletionStatus.Complete && (CurrentBeatMapLevel?.levelID ?? "") == beatmapLevel.levelID && CurrentBeatMapKey == beatmapKey && InMap;
+#endif
+
             CurrentBeatMapKey = beatmapKey;
             CurrentBeatMapLevel = beatmapLevel;
 #else
-        public async void SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion, bool withSound = true)
+        public async Task SetMission(AccSaberCampaignMap map, IDifficultyBeatmap beatmapLevel, CampaignProgressValue completion, bool withSound = true)
         {
             CurrentBeatMapLevel = beatmapLevel;
-#endif            
+#endif
             float nps = 0;
             float njs = 0;
 
@@ -803,6 +1169,26 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     njs = beatmapLevel.noteJumpMovementSpeed;
 #endif
                 }
+
+#if DEBUG && TEST_SUBMIT && V40
+                if (doTestSubmit)
+                {
+                    // purely for testing, this will simulate submitting a 100% score (without the server call of course).
+                    AccSaberScore score = new()
+                    {
+                        MapDifficultyId = map.MapDifficultyId,
+                        Score = (uint)MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount),
+                        MaxCombo = CurrentMaxNoteCount,
+                        Headset = "Index",
+                        UncompletedMap = false,
+                        BeatPreviousScore = true
+                    };
+                    score.ScoreNoMods = score.Score;
+
+                    Plugin.Log.Info("Submitting test score for map: " + map.MapDifficultyId);
+                    OnPlayerScoreSubmit(score, true);
+                }
+#endif
             }
             catch (Exception e)
             {
@@ -816,28 +1202,179 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 StringBuilder str = new();
 
                 foreach (AccSaberCampaignItem item in map.Items)
-                    str.AppendLine($"<color={ColorUtils.RANK}>{item.Quantity}x {item.ItemName}</color>");
+                {
+                    string quantity = item.Quantity == 1 ? "" : $"{item.Quantity}x ";
+                    str.AppendLine($"<color={ColorUtils.RANK}>{quantity}{item.ItemName}</color>");
+                }
 
                 str.AppendLine($"<color={ColorUtils.OVERALL}>+{map.XP:N0}XP</color>");
 
                 MissionRewards = str.ToString();
             }
 
-
+#if DEBUG
+            MissionLocked = false; // for testing purposes
+#else
             MissionLocked = completion.Completion == CompletionStatus.Incomplete;
-            _missionButton.gameObject.SetActive(!MissionLocked);
+#endif
 
-            MissionProgress = map.RequirementType switch
+            _missionButton.transform.parent.parent.gameObject.SetActive(!MissionLocked);
+
+            StringBuilder missionProgressStr = new(), missionObjectiveStr = new();
+
+            foreach (var val in completion.GetProgressWithTargets(map.Targets))
             {
-                AccSaberCampaignMap.CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{completion.Progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{map.RequirementValue * 100f:N2}%</color>",
-                AccSaberCampaignMap.CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{completion.Progress:0.##}ap</color> / <color={ColorUtils.AP}>{map.RequirementValue:0.##}ap</color>",
-                AccSaberCampaignMap.CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{completion.Progress:N0}</color> / <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color>",
-                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{completion.Progress:N0}x</color> / <color={ColorUtils.TECH}>{map.RequirementValue:N0}x</color>",
-                AccSaberCampaignMap.CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{completion.Progress:N0}</color> / <color={ColorUtils.GREY}>{map.RequirementValue:N0}</color>",
-                AccSaberCampaignMap.CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
-                AccSaberCampaignMap.CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
-                _ => $"{completion.Progress}"
-            };
+                AccSaberCampaignTarget target = val.Target;
+                float progress = val.Progress.CurrentValue;
+                string progressStr, objectiveStr;
+
+                if (target.RequirementValueMax is null)
+                {
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> / <color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> / <color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> / <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> / <color={ColorUtils.GREY}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistakes",
+                        _ => $"{progress} / {target.RequirementValue}"
+                    };
+
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score worth at least <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>.",
+                        CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> or better on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points or higher.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score with a combo of at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistakes.",
+                        _ => $"Get something with a requirement value of {target.RequirementValue:N0}."
+                    };
+                }
+                else if (Mathf.Approximately(target.RequirementValue, target.RequirementValueMax.Value))
+                {
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> = <color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> = <color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> = <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> = <color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> = <color={ColorUtils.GREY}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{progress:N0}</color> = <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> = <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistakes",
+                        _ => $"{progress} = {target.RequirementValue}"
+                    };
+
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score with exactly <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score worth exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>.",
+                        CampaignRequirementType.RANK => $"Get exactly rank <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score with a combo of exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistakes.",
+                        _ => $"Get something with a requirement value of {target.RequirementValue:N0}."
+                    };
+                }
+                else if (Mathf.Approximately(target.RequirementValue, 0))
+                {
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{progress * 100f:N2}%</color> <= <color={ColorUtils.ACC}>{target.RequirementValueMax * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{progress:0.##}ap</color> <= <color={ColorUtils.AP}>{target.RequirementValueMax:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{progress:N0}</color> <= <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{progress:N0}x</color> <= <color={ColorUtils.TECH}>{target.RequirementValueMax:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> <= <color={ColorUtils.GREY}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> Mistakes",
+                        _ => $"{progress} <= {target.RequirementValueMax}"
+                    };
+
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score with at most <color={ColorUtils.RANK}>{target.RequirementValueMax * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score worth at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0} AP</color>.",
+                        CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color> or worse on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> points or lower.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score with a combo of at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> mistakes.",
+                        _ => $"Get something with a max requirement value of {target.RequirementValueMax:N0}."
+                    };
+                }
+                else
+                {
+                    progressStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"<color={ColorUtils.ACC}>{target.RequirementValue * 100f:N2}%</color> <= <color={ColorUtils.ACC}>{progress * 100f:N2}%</color> <= <color={ColorUtils.ACC}>{target.RequirementValueMax * 100f:N2}%</color>",
+                        CampaignRequirementType.AP => $"<color={ColorUtils.AP}>{target.RequirementValue:0.##}ap</color> <= <color={ColorUtils.AP}>{progress:0.##}ap</color> <= <color={ColorUtils.AP}>{target.RequirementValueMax:0.##}ap</color>",
+                        CampaignRequirementType.RANK => $"<color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> <= <color={ColorUtils.RANK}>#{progress:N0}</color> <= <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color>",
+                        CampaignRequirementType.STREAK_115 => $"<color={ColorUtils.TECH}>{target.RequirementValue:N0}x</color> <= <color={ColorUtils.TECH}>{progress:N0}x</color> <= <color={ColorUtils.TECH}>{target.RequirementValueMax:N0}x</color>",
+                        CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.GREY}>{progress:N0}</color> <= <color={ColorUtils.GREY}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
+                        CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
+                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
+                            $"<color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color>",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> Mistakes",
+                        _ => $"{target.RequirementValue} <= {progress} <= {target.RequirementValueMax}"
+                    };
+
+                    objectiveStr = target.RequirementType switch
+                    {
+                        CampaignRequirementType.ACC => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue:N0} ap</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0} ap</color>.",
+                        CampaignRequirementType.RANK => $"Get a rank between <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> and <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color> on the map.",
+                        CampaignRequirementType.STREAK_115 => $"Hit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> 115s in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> points.",
+                        CampaignRequirementType.FC => "Set a Full Combo.",
+                        CampaignRequirementType.PASS => "Pass the map without no fail.",
+                        CampaignRequirementType.COMBO => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> bombs.",
+                        CampaignRequirementType.MISTAKES => $"Commit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> mistakes.",
+                        _ => $"Get something with a requirement value between {target.RequirementValueMax:N0} and {target.RequirementValue:N0}."
+                    };
+                }
+
+                missionProgressStr.AppendLine(progressStr);
+
+                missionObjectiveStr.AppendLine(objectiveStr);
+            }
+
+            MissionProgress = missionProgressStr.ToString();
+            MissionObjective = missionObjectiveStr.ToString();
+
+            ShowModifiers = map.Modifiers.Count > 0;
+
+            if (ShowModifiers)
+            {
+                string requiredMods = string.Join(", ", map.Modifiers.Where(mod => mod.Requirement == CampaignModifierRequirement.REQUIRED).Select(mod => mod.Modifier.Code));
+                string disallowedMods = string.Join(", ", map.Modifiers.Where(mod => mod.Requirement == CampaignModifierRequirement.FORBIDDEN).Select(mod => mod.Modifier.Code));
+
+                RequiredModifiers = requiredMods.Length > 0 ? $"Required: <color=#5F5>{requiredMods}</color>" : string.Empty;
+                DisallowedModifiers = disallowedMods.Length > 0 ? $"Forbidden: <color=#F00>{disallowedMods}</color>" : string.Empty;
+            }
 
             MissionMapName = map.SongName;
             MissionMapArtist = $"{map.SongAuthor} [<color=#c0548f>{map.MapAuthor}</color>]";
@@ -852,21 +1389,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 
             MissionMapDuration = string.Format("{0:D1}:{1:D2}", Duration.Minutes, Duration.Seconds);
-
-
-            string objective = map.RequirementType switch
-            {
-                AccSaberCampaignMap.CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{map.RequirementValue * 100:N2}%</color> accuracy",
-                AccSaberCampaignMap.CampaignRequirementType.AP => $"Set a score worth <color={ColorUtils.RANK}>{map.RequirementValue:N0} AP</color>",
-                AccSaberCampaignMap.CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{map.RequirementValue:N0}</color> or better on the map",
-                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> 115s in a row",
-                AccSaberCampaignMap.CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{map.RequirementValue:N0}</color> points or higher",
-                AccSaberCampaignMap.CampaignRequirementType.FC => "Set a Full Combo",
-                AccSaberCampaignMap.CampaignRequirementType.PASS => "Pass the map without no fail",
-                _ => $"Get something with a requirement value of {map.RequirementValue:N0}"
-            };
-
-            MissionObjective = objective;
 
             AccSaberBasicDifficulty? mapDiff = await _serialHandler.GetDiffByIdAsync(map.MapDifficultyId);
 
@@ -896,6 +1418,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 #endif
             InBarrier = false;
             InMap = true;
+
+            _objectivesContainer.Get<BSMLScrollView>().ScrollTo(0f, false);
         }
         public async void SetBarrierInfo(AccSaberCampaignMapViewController.CampaignMapBarrier barrier, CampaignProgressValue progress)
         {
@@ -903,17 +1427,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             MissionObjective = barrier.Barrier.ConditionType switch
             {
-                AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_ACC => $"Get an average accuracy of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue * 100f:N2}%</color>.",
-                AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_AP => $"Get an average ap of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:0.##}</color> AP.",
-                AccSaberCampaignBarrier.BarrierConditionType.AP_MAX => $"Get a score worth at least <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:0.##}</color> AP.",
-                AccSaberCampaignBarrier.BarrierConditionType.ACC_MAX => $"Get a score greater than or equal to <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue * 100f:N2}%</color>.",
-                AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_AVERAGE => $"Get an average 115 streak of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N1}x</color>.",
-                AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_MAX => $"Get a 115 streak greater than or equal to <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}x</color>.",
-                AccSaberCampaignBarrier.BarrierConditionType.FC => $"Full combo <color={ColorUtils.RANK}>{barrier.Barrier.AffectedCampaignDifficultyIds.Count:N0}</color> map(s).",
-                AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_RANK => $"Get an average rank of <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N1}</color>.",
-                AccSaberCampaignBarrier.BarrierConditionType.MAX_RANK => $"Get a rank greater than or equal to <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color>.",
-                AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT => $"Complete <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}</color> nodes.",
-                AccSaberCampaignBarrier.BarrierConditionType.PASS => $"Pass <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}</color> nodes (without no fail).",
+                BarrierConditionType.AVERAGE_ACC => $"Get an average accuracy of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue * 100f:N2}%</color>.",
+                BarrierConditionType.AVERAGE_AP => $"Get an average ap of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:0.##}</color> AP.",
+                BarrierConditionType.AP_MAX => $"Get a score worth at least <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:0.##}</color> AP.",
+                BarrierConditionType.ACC_MAX => $"Get a score greater than or equal to <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue * 100f:N2}%</color>.",
+                BarrierConditionType.STREAK_115_AVERAGE => $"Get an average 115 streak of <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N1}x</color>.",
+                BarrierConditionType.STREAK_115_MAX => $"Get a 115 streak greater than or equal to <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}x</color>.",
+                BarrierConditionType.FC => $"Full combo <color={ColorUtils.RANK}>{barrier.Barrier.AffectedCampaignDifficultyIds.Count:N0}</color> map(s).",
+                BarrierConditionType.AVERAGE_RANK => $"Get an average rank of <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N1}</color>.",
+                BarrierConditionType.MAX_RANK => $"Get a rank greater than or equal to <color={ColorUtils.RANK}>#{barrier.Barrier.ConditionValue:N0}</color>.",
+                BarrierConditionType.COMPLETION_COUNT => $"Complete <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}</color> nodes.",
+                BarrierConditionType.PASS => $"Pass <color={ColorUtils.RANK}>{barrier.Barrier.ConditionValue:N0}</color> nodes (without no fail).",
                 _ => $"Get something with a requirement value of {barrier.Barrier.ConditionValue:0.##}"
             };
 
@@ -935,10 +1459,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             MissionLocked = false;
-            _missionButton.gameObject.SetActive(false);
+            _missionButton.transform.parent.parent.gameObject.SetActive(false);
+
+            ShowModifiers = false;
 
             InMap = false;
             InBarrier = true;
+
+            _objectivesContainer.Get<BSMLScrollView>().ScrollTo(0f, false);
         }
 
         private IEnumerable<AccSaberCampaignMap> GetAllMapsOfDiffId(Guid diffId)
@@ -971,7 +1499,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 List<AccSaberCampaignMap> otherMaps = [.. GetAllMapsOfDiffId(score.MapDifficultyId).Where(map => map.Id != CurrentMap.Id)];
 
-                _ = OnPlayerScoreSubmit(score, scoreBeaten, CurrentMap, doUpdates: otherMaps.Count > 0);
+                _ = OnPlayerScoreSubmit(score, scoreBeaten, CurrentMap, doUpdates: otherMaps.Count == 0);
+
+#if DEBUG
+                Plugin.Log.Info("Other map ids: " + otherMaps.Select(map => map.Id).Print());
+#endif
 
                 for (int i = 0; i < otherMaps.Count; i++)
                     _ = OnPlayerScoreSubmit(score, scoreBeaten, otherMaps[i], setMap: false, doUpdates: i == otherMaps.Count - 1);
@@ -988,8 +1520,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (!InMap || (score.UncompletedMap ?? true))
                 return;
 
-            float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
-
             AccSaberBasicDifficulty? diff = await _serialHandler.GetDiffByIdAsync(score.MapDifficultyId);
 
             if (diff is null)
@@ -998,53 +1528,108 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
             }
 
-            float val = currentMap.RequirementType switch
-            {
-                AccSaberCampaignMap.CampaignRequirementType.ACC => acc,
-                AccSaberCampaignMap.CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
-                AccSaberCampaignMap.CampaignRequirementType.SCORE => score.Score,
-                AccSaberCampaignMap.CampaignRequirementType.STREAK_115 => score.Streak115,
-                AccSaberCampaignMap.CampaignRequirementType.FC => score.Mistakes,
-                AccSaberCampaignMap.CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 1f : 0f,
-                _ => -1f
-            };
+            CampaignProgressValue current = CampaignProgressVal;
 
-            if (val < 0f)
+            if (CheckMapSuccess(score, currentMap, diff, ref current))
             {
-                Plugin.Log.Warn("Cannot handle the campaign type that was completed.");
-                return; // I can only handle certain types, those I can't will be updated once the websocket sends the score.
-            }
-
-            if (CampaignProgressVal.Progress >= val)
-            {
-                Plugin.Log.Info("Player did not beat old pb.");
-                return; // didn't beat old progress.
-            }
-
-            _lastUpdate = now;
-
-            if (currentMap.RequirementValue > CampaignProgressVal.Progress && currentMap.RequirementValue <= val)
-            {
-                CampaignProgressValue? newVal = await _campaignMapViewController.MarkNodeAsComplete(currentMap.Id, val);
+#if DEBUG
+                Plugin.Log.Info("map success:\n" + current.ToString());
+#endif
+                CampaignProgressValue? newVal = await _campaignMapViewController.MarkNodeAsComplete(currentMap.Id, current.Progress);
 
                 if (doUpdates)
                     UpdateGoToMapButton();
 
                 if (newVal is null)
-                    Plugin.Log.Warn("Setting the campaign node to complete failed!");
+                {
+                    Plugin.Log.Warn("Setting the campaign node to complete failed!"); 
+                    return;
+                }
                 else
+                {
+                    _invalidateActive = newVal.Value.Completion == CompletionStatus.Complete;
+
                     CampaignProgressVal = newVal.Value;
+
+                    _lastUpdate = now;
+                }
+            }
+            else
+            {
+                CampaignProgressVal = current;
+                _campaignMapViewController.UpdateNodes(_campaignMapViewController.CampaignProgress.UpdateNode(currentMap.Id, current.Progress));
+                Plugin.Log.Info("Node was not completed, but progress was updated:\n" + current.ToString());
             }
 
             if (doUpdates)
-                _mainThreadDispatcher.EnqueueAction(_campaignMapViewController.UpdateDisplay);
+                _mainThreadDispatcher.EnqueueAction(() => _campaignMapViewController.UpdateDisplay(true));
 
             if (setMap && currentMap is not null && CurrentBeatMapLevel is not null)
 #if NEW_VERSION
-                SetMission(currentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal, false);
+                _ = SetMission(currentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal, false);
 #else
-                SetMission(currentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
+                _ = SetMission(currentMap, CurrentBeatMapLevel, CampaignProgressVal, false);
 #endif
+        }
+        private bool CheckMapSuccess(AccSaberScore score, AccSaberCampaignMap map, AccSaberBasicDifficulty diff, ref CampaignProgressValue progress)
+        {
+            float acc = (float)score.Score / MiscUtils.MaxScoreForNotes(CurrentMaxNoteCount);
+
+            List<CampaignTargetProgess> newVals = [with(map.Targets.Count)];
+            List<bool> completed = [with(map.Targets.Count)];
+
+            var arr = progress.GetProgressWithTargets(map.Targets).ToArray();
+
+            for (int i = 0; i < arr.Length; ++i)
+            {
+                float val = arr[i].Target.RequirementType switch
+                {
+                    CampaignRequirementType.ACC => acc,
+                    CampaignRequirementType.AP => _calc.GetAp(acc, diff.Complexity),
+                    CampaignRequirementType.SCORE => score.Score,
+                    CampaignRequirementType.STREAK_115 => score.Streak115,
+                    CampaignRequirementType.FC => score.Mistakes > 0 ? 0f : 1f,
+                    CampaignRequirementType.PASS => score.ModifierCodes.Contains("NF") ? 0f : 1f,
+                    CampaignRequirementType.COMBO => score.MaxCombo,
+                    CampaignRequirementType.BOMB_HITS => score.BombHits,
+                    CampaignRequirementType.MISTAKES => score.Mistakes,
+                    _ => -1f
+                };
+
+                if (val < 0f)
+                {
+                    Plugin.Log.Warn("Cannot handle a campaign type that was completed.");
+                    return false; // I can only handle certain types, those I can't will be updated once the websocket sends the score.
+                }
+
+                if (CampaignProgressVal.Progress[i] >= val)
+                {
+                    Plugin.Log.Info("Player did not beat old pb.");
+                    newVals.Add(progress.Progress[newVals.Count]);
+                    completed.Add(false);
+                    continue; // didn't beat old progress.
+                }
+
+                newVals.Add(new(arr[i].Target.Id, val));
+
+                bool complete = arr[i].Target.RequirementValue <= val;
+
+                if (arr[i].Target.RequirementValueMax is not null)
+                    complete &= arr[i].Target.RequirementValueMax >= val;
+
+                completed.Add(complete);
+            }
+
+            bool success = map.TargetMode switch
+            {
+                CampaignPrerequisiteMode.OR => completed.Any(success => success),
+                CampaignPrerequisiteMode.AND => completed.All(success => success),
+                _ => false
+            };
+
+            progress = new([.. newVals], progress.Completion);
+
+            return success;
         }
         public async Task WaitForServerUpdate(TimeSpan timeout = default)
         {
@@ -1084,10 +1669,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
 #if NEW_VERSION
                     if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                        SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
+                        _ = SetMission(CurrentMap, CurrentBeatMapKey, CurrentBeatMapLevel, CampaignProgressVal);
 #else
                     if (CurrentMap is not null && CurrentBeatMapLevel is not null)
-                        SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal);
+                        _ = SetMission(CurrentMap, CurrentBeatMapLevel, CampaignProgressVal);
 #endif
                 });
         }
@@ -1101,11 +1686,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 case nameof(PluginConfig.ScrollSpeed):
                     _campaignMapViewController.ScrollSpeed = _config.ScrollSpeed;
                     break;
-                case nameof(PluginConfig.CampaignBackgroundBrightness):
-                    _campaignMapViewController.BackgroundBrightness = _config.CampaignBackgroundBrightness;
+                case nameof(PluginConfig.CampaignColorBackgroundBrightness) when _campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundBrightness = _config.CampaignColorBackgroundBrightness;
                     break;
-                case nameof(PluginConfig.CampaignBackgroundAlpha):
-                    _campaignMapViewController.BackgroundAlpha = _config.CampaignBackgroundAlpha;
+                case nameof(PluginConfig.CampaignImageBackgroundBrightness) when !_campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundBrightness = _config.CampaignImageBackgroundBrightness;
+                    break;
+                case nameof(PluginConfig.CampaignColorBackgroundAlpha) when _campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundAlpha = _config.CampaignColorBackgroundAlpha;
+                    break;
+                case nameof(PluginConfig.CampaignImageBackgroundAlpha) when !_campaignMapViewController.IsSolidBGColor:
+                    _campaignMapViewController.BackgroundAlpha = _config.CampaignImageBackgroundAlpha;
                     break;
             }
         }
@@ -1148,7 +1739,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             {
                 string temp = "";
 
-                if (Data.Status == AccSaberCampaign.CampaignStatus.CURATED)
+                if (Data.Status == CampaignStatus.CURATED)
                     temp = $"<color={ColorUtils.TRUE}>CURATED</color>";
 
                 if (Data.Official)
@@ -1158,10 +1749,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             }
 
             [UIValue(nameof(Name))] private string Name => Data.Name;
-            [UIValue(nameof(Author))] private string Author => Data.CreatorName;
+            [UIValue(nameof(Author))] private string Author => Data.CreatorAlias ?? Data.CreatorName;
             [UIValue(nameof(Tags))] private string Tags => GetTags();
 
         }
-
     }
 }

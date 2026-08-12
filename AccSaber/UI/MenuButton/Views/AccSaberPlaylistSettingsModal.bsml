@@ -1,11 +1,11 @@
 <bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
-  <modal id='modal' clickerino-offerino-closerino='true' size-delta-x='50' size-delta-y='40' move-to-center='true'>
-    <horizontal>
-      <vertical child-expand-width='false' child-expand-height='false' pref-width='50' pref-height='40'>
-        <button text='Clear Custom Playlists' align='Center' on-click='ClearCustomPlaylists'/>
-        <checkbox-setting text='Override Playlists' hover-hint='Only ever generate one playlist, deleting others' value='OverridePlaylists' apply-on-change='true'/>
-        <checkbox-setting text='Show Confirm Popup' hover-hint='When clicking on a mission or milestone, first show a confirmation popup' value='AllowPopups' apply-on-change='true'/>
+  <modal id='modal' clickerino-offerino-closerino='true' size-delta-x='60' size-delta-y='30' move-to-center='true'>
+    <vertical child-expand-width='false' child-expand-height='false' pref-width='60' pref-height='30' pad='3'>
+      <vertical>
+        <button text='Clear Custom Playlists' align='Center' on-click='ClearCustomPlaylists' />
       </vertical>
-    </horizontal>
+      <checkbox-setting text='Override Playlists' hover-hint='Only ever generate one playlist, deleting others' value='OverridePlaylists' apply-on-change='true' />
+      <checkbox-setting text='Show Confirm Popup' hover-hint='When clicking on a mission or milestone, first show a confirmation popup' value='AllowPopups' apply-on-change='true' />
+    </vertical>
   </modal>
 </bg>

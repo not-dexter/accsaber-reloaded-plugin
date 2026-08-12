@@ -22,6 +22,9 @@ using Zenject;
 using AccSaber.Configuration;
 using AccSaber.Utils.Misc;
 using System.Threading;
+using BeatSaberMarkupLanguage.Components;
+
+
 
 
 
@@ -41,20 +44,91 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private bool _firstLoad;
         private bool _isLoading;
 		private bool _isScoresLoading;
-		private int _pageNumber = 0;
-		private int _maxPage = 1;
-		private APCategory _categoryValue = APCategory.Overall;
+        private bool _isRankingLoading;
+        private int _pageNumber = 0;
+        private int _rankingsPageNumber = 0;
+        private int _maxPage = 1;
+        private int _rankingsMaxPage = 1;
+        private APCategory _categoryValue = APCategory.Overall;
+        private string _rankingCategory = string.Empty;
         private string _username = "";
 		private string _pagnation = "";
-		private string _rank = null!;
+        private string _rankingsPagnation = "";
+        private string _rank = null!;
         private string _country = null!;
         private string _level = null!;
         private string _ap = null!;
         private string _xp = null!;
         private string _plays = null!;
         private string _headset = null!;
+		private MenuTab _currentTab;
+        private RankingsTab _rankingTab;
+        private RankingsScope _rankingScope;
+        private readonly Color _selectedColor = new(0.60f, 0.80f, 1);
+        private enum MenuTab
+        {
+            Profile,
+            Rankings
+        }
+        private enum RankingsTab
+        {
+            Overall,
+            True,
+			Standard,
+			Tech
+        }
+		internal enum RankingsScope
+		{
+			Global,
+			Followed,
+			Country
+		}
+        private MenuTab CurrentTab
+        {
+            get => _currentTab;
+            set
+            {
+                _currentTab = value;
+                NotifyPropertyChanged(nameof(IsProfileTab));
+                NotifyPropertyChanged(nameof(IsRankingsTab));
+            }
+        }
+        private RankingsTab RankingTab
+        {
+            get => _rankingTab;
+            set
+            {
+                _rankingTab = value;
+                _rankingsPageNumber = 0;
+				_rankingCategory = RankingTab switch
+                {
+                    RankingsTab.Overall => "b0000000-0000-0000-0000-000000000005",
+                    RankingsTab.True => "b0000000-0000-0000-0000-000000000001",
+                    RankingsTab.Standard => "b0000000-0000-0000-0000-000000000002",
+                    RankingsTab.Tech => "b0000000-0000-0000-0000-000000000003",
+                    _ => throw new NotImplementedException()
+                };
+                _ = UpdateRankings();
+            }
+        }
 
-		private Coroutine? titleRoutine, borderRoutine;
+        private RankingsScope RankingScope
+        {
+            get => _rankingScope;
+            set
+            {
+                _rankingScope = value;
+                RankingsPageNumber = 0;
+            }
+        }
+
+        [UIValue("is-profile-tab")]
+        private bool IsProfileTab => CurrentTab == MenuTab.Profile;
+
+        [UIValue("is-rankings-tab")]
+        private bool IsRankingsTab => CurrentTab == MenuTab.Rankings;
+
+        private Coroutine? titleRoutine, borderRoutine;
 
 		private readonly AsyncLock refreshLock = new();
 
@@ -67,14 +141,27 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly PluginConfig PC = null!;
 		[Inject] private readonly PlayerSocialLife playerInfo = null!;
 		[Inject] private readonly AccsaberAPI api = null!;
-		[Inject] private readonly SerializationHandler serialHandler = null!;
+        [Inject] private readonly AccSaberStore accSaberStore = null!;
+        [Inject] private readonly SerializationHandler serialHandler = null!;
 
 
         [UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
 
+        [UIValue("player-cells")]
+        private readonly List<ICellDataSource> _playerCells = [];
+
         [UIComponent("profile-image")]
         private readonly ImageView _profileImage = null!;
+
+        [UIComponent("global-image")]
+        private readonly ClickableImage _globalImage = null!;
+
+        [UIComponent("followed-image")]
+        private readonly ClickableImage _followedImage = null!;
+
+        [UIComponent("country-image")]
+        private readonly ClickableImage _countryImage = null!;
 
         [UIComponent("user-info")]
         private readonly Transform _userInfo = null!;
@@ -91,7 +178,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIComponent("top-scores-list")]
 		private readonly MyCustomCellListTableData _topScoresList = null!;
 
-		[UIComponent("title-text")]
+        [UIComponent("rankings-list")]
+        private readonly MyCustomCellListTableData _rankingsList = null!;
+
+        [UIComponent("title-text")]
 		private readonly TextMeshProUGUI _titleText = null!;
 
 		private CanvasGroup? _userInfoCanvasGroup;
@@ -104,6 +194,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				_ = RefreshScores();
 			}
 		}
+
+        private int RankingsPageNumber
+        {
+            get => _rankingsPageNumber;
+            set
+            {
+                _rankingsPageNumber = value;
+                _ = UpdateRankings();
+            }
+        }
 
         [UIValue("dimColor")] public const string dimColor = ColorUtils.DARK_BLUE;
         [UIValue("pixelImg")] public const string pixelImg = ResourcePaths.PIXEL;
@@ -146,7 +246,22 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIValue("scores-is-not-loading")]
 		private bool IsScoresNotLoading => !_isScoresLoading;
 
-		[UIValue("category-value")]
+        [UIValue("ranking-is-loading")]
+        private bool IsRankingLoading
+        {
+            get => _isRankingLoading;
+            set
+            {
+                _isRankingLoading = value;
+                NotifyPropertyChanged(nameof(IsRankingLoading));
+                NotifyPropertyChanged(nameof(IsRankingNotLoading));
+            }
+        }
+
+        [UIValue("ranking-is-not-loading")]
+        private bool IsRankingNotLoading => !_isRankingLoading;
+
+        [UIValue("category-value")]
         private string CategoryValue
         {
             get => _categoryValue.ToString();
@@ -259,7 +374,27 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			return value + " Acc";
 		}
 
-		[UIValue("pagnation")]
+
+        [UIValue("rankings-pagnation")]
+        private string RankingsPagnation
+        {
+            get => _rankingsPagnation;
+            set
+            {
+                _rankingsPagnation = value;
+                NotifyPropertyChanged(nameof(RankingsPagnation));
+            }
+        }
+
+
+        [UIValue("rankings-prev-enabled")]
+        private bool RankingsPrevEnabled => RankingsPageNumber != 0;
+
+        [UIValue("rankings-next-enabled")]
+        private bool RankingsNextEnabled => RankingsPageNumber + 1 < _rankingsMaxPage;
+
+
+        [UIValue("pagnation")]
 		private string Pagnation
 		{
 			get => _pagnation;
@@ -286,6 +421,33 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[UIValue("githubImg")]
 		private const string GithubImg = ResourcePaths.GITHUB;
 
+        [UIAction("menu-tab-selected")]
+        private void MenuTabSelected(SegmentedControl segmentedControl, int index)
+        {
+            CurrentTab = (MenuTab)index;
+
+            UpdateTabs();
+        }
+
+        [UIAction("rankings-tab-selected")]
+        private void RankingsTabSelected(SegmentedControl segmentedControl, int index)
+        {
+            RankingTab = (RankingsTab)index;
+        }
+
+        public void UpdateTabs()
+        {
+            switch (CurrentTab)
+            {
+                case MenuTab.Profile:
+					_ = UpdateUserInfo();
+                    break;
+                case MenuTab.Rankings:
+                    _rankingsPageNumber = 0;
+                    _ = UpdateRankings();
+                    break;
+            }
+        }
 
         [UIAction("#post-parse")]
         void Parsed()
@@ -301,8 +463,11 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				VersionUtils.Parse(ResourcePaths.ACC_SABER_PLAYLIST_MODAL, gameObject, playlistModal);
 
                 _parsed = true;
-			}
-			IsLoading = true;
+            }
+            CurrentTab = 0;
+			RankingTab = 0;
+            _globalImage.DefaultColor = _selectedColor;
+            IsLoading = true;
 			_firstLoad = true;
 			CategoryValue = nameof(APCategory.Overall);
         }
@@ -324,7 +489,26 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				PageNumber++;
 			}
 		}
-		// unused for now
+
+        [UIAction("rankings-prev-clicked")]
+        private void RankingsPrevClicked()
+        {
+            if (RankingsPrevEnabled)
+            {
+                RankingsPageNumber--;
+            }
+        }
+
+        [UIAction("rankings-next-clicked")]
+        private void RankingsNextClicked()
+        {
+            if (RankingsNextEnabled)
+            {
+                RankingsPageNumber++;
+            }
+        }
+
+        // unused for now
         [UIAction("show-campaign")]
         private void ShowCampaign()
         {
@@ -361,8 +545,53 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         {
             System.Diagnostics.Process.Start("https://github.com/not-dexter/accsaber-reloaded-plugin");
         }
+        [UIAction("on-global-clicked")]
+        private void OnGlobalClicked()
+        {
+            if (_rankingScope == RankingsScope.Global)
+                return;
 
-		public void PopupSuccess(object source)
+			RankingScope = RankingsScope.Global;
+            _globalImage.DefaultColor = _selectedColor;
+            _followedImage.DefaultColor = Color.white;
+            _countryImage.DefaultColor = Color.white;
+        }
+        [UIAction("on-followed-clicked")]
+        private void OnFollowedClicked()
+        {
+            if (_rankingScope == RankingsScope.Followed)
+                return;
+
+            RankingScope = RankingsScope.Followed;
+            _globalImage.DefaultColor = Color.white;
+            _followedImage.DefaultColor = _selectedColor;
+            _countryImage.DefaultColor = Color.white;
+        }
+        [UIAction("on-country-clicked")]
+        private void OnCountryClicked()
+        {
+            if (_rankingScope == RankingsScope.Country)
+                return;
+
+            RankingScope = RankingsScope.Country;
+            _globalImage.DefaultColor = Color.white;
+            _followedImage.DefaultColor = Color.white;
+            _countryImage.DefaultColor = _selectedColor;
+        }
+        [UIAction("on-you-clicked")]
+        private async void OnYouClicked()
+        {
+            var curUser = await accSaberStore.GetCurrentUserAsync();
+            _rankingsPageNumber = (int)Math.Ceiling(curUser.Statistics.FirstOrDefault(x => x.CategoryId == Guid.Parse(_rankingCategory)).Rank / (float)5) - 1;
+            _rankingScope = RankingsScope.Global;
+            _globalImage.DefaultColor = _selectedColor;
+            _followedImage.DefaultColor = Color.white;
+            _countryImage.DefaultColor = Color.white;
+            _ = UpdateRankings();
+        }
+
+
+        public void PopupSuccess(object source)
 		{
             if (source is ScoreCell cell)
                 _ = levelUtils.GoToSong(cell.Data.DifficultyId, null, () => parentCoordinator.CloseToMainMenu(), cell.UpdateStatus);
@@ -532,8 +761,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 					return;
 				}
 
-				var tween = new FloatTween(0f, 1f, val => _userInfoCanvasGroup.alpha = val, 0.5f, EaseType.OutSine);
-				_timeTweeningManager.AddTween(tween, this);
+				//var tween = new FloatTween(0f, 1f, val => _userInfoCanvasGroup.alpha = val, 0.5f, EaseType.OutSine);
+				//_timeTweeningManager.AddTween(tween, this);
 			}		
 		}
 
@@ -578,6 +807,55 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
         }
 
+		private void SetRankings()
+		{
+
+		}
+
+        private async Task UpdateRankings()
+        {
+            AsyncLock.Releaser? locker = await refreshLock.LockAsync();
+
+            if (locker is null)
+                return;
+
+            using (locker.Value)
+            {
+                Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
+
+				IsRankingLoading = true;
+
+                foreach (PlayerCell cell in _playerCells.Cast<PlayerCell>())
+                    cell.CancelLoading();
+
+                _playerCells.Clear();
+
+                try
+                {
+                    List<AccSaberLeaderboardPlayer> content = await accSaberStore.GetLeaderboardRanking(_rankingCategory, _rankingsPageNumber, _rankingScope);
+
+                    _rankingsMaxPage = content.First().MaxPage;
+
+                    RankingsPagnation = $"{_rankingsPageNumber + 1}/{_rankingsMaxPage}";
+
+                    int placement = 1;
+                    foreach (AccSaberLeaderboardPlayer player in content)
+                    {
+                        _playerCells.Add(new PlayerCell(player, Guid.Parse(_rankingCategory), _rankingScope, _rankingsPageNumber, placement));
+                        placement++;
+                    }
+
+                    _rankingsList.Data = _playerCells;
+					IsRankingLoading = false;
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
+            }
+        }
+
+
         private void OnAccSaberPlayerUpdated(AccSaberLeaderboardEntry entry)
         {
             _user = null;
@@ -596,6 +874,53 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             AccSaberStore.OnPlayerScoreUpdated -= OnAccSaberPlayerUpdated;
             parentCoordinator.OnHubActivated -= OnOpen;
             parentCoordinator.OnHubDeactivated -= OnClose;
+        }
+
+        internal class PlayerCell(AccSaberLeaderboardPlayer data, Guid category, RankingsScope scope, int page, int placement) : Utils.Safety.SafeNotifyPropertyChanged, ICellDataSource
+        {
+            public string TemplatePath => ResourcePaths.ACC_SABER_MENU_PLAYER_CELL;
+            public float CellSize => 9f;
+            public int TemplateId { get; set; }
+
+            public readonly AccSaberLeaderboardPlayer Data = data;
+
+            private readonly CancellationTokenSource tokenSource = new();
+
+            private readonly string rank = scope switch
+            {
+                RankingsScope.Global => $"#{data.Ranking}",
+                RankingsScope.Followed => $"#{placement + (5 * page)}",
+                RankingsScope.Country => $"#{data.CountryRanking}",
+                _ => $"#{data.Ranking}"
+            };
+
+            [UIValue("player-rank")]
+            private string _playerRank => rank;
+
+            [UIValue("player-name")]
+            private readonly string _playerName = data.UserName;
+
+            [UIValue("player-ap")]
+            private readonly string _playerAP = $"<color={ColorUtils.GetColor(EnumUtils.ReloadedCategoryIdToCategory(category))}>{data.AP:N2} AP</color>";
+
+            [UIValue("play-count")]
+            private readonly string _playCount = $"{data.RankedPlays}";
+
+            [UIComponent("avatar")]
+            private readonly ImageView cover = null!;
+
+            [UIAction("#post-parse")]
+            private void Parse()
+            {
+                cover.material = ResourcePaths.BORDER_MATERIAL;
+
+                _ = cover.LoadImage(Data.AvatarUrl, tokenSource.Token);
+            }
+
+            internal void CancelLoading()
+            {
+                tokenSource.Cancel();
+            }
         }
 
         internal class ScoreCell(AccSaberPlayerScore data, string mapHash) : Utils.Safety.SafeNotifyPropertyChanged, ICellDataSource

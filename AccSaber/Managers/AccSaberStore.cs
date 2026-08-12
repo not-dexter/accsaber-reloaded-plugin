@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
 using static AccSaber.Managers.CampaignProgress;
+using static AccSaber.UI.MenuButton.ViewControllers.AccSaberMenuViewController;
 
 #if V41
 using OculusStudios.Platform.Core;
@@ -41,7 +42,7 @@ namespace AccSaber.Managers
 
 		public event Action<AccSaberBasicDifficulty?>? OnAccSaberRankedMapUpdated;
 #if NEW_VERSION
-        public event Action<BeatmapKey, BeatmapLevel>? OnLeaderboardUpdated;
+        public event Action<BeatmapKey, BeatmapLevel?>? OnLeaderboardUpdated;
 #else
         public event Action<IDifficultyBeatmap>? OnLeaderboardUpdated;
 #endif
@@ -52,7 +53,7 @@ namespace AccSaber.Managers
 
 #if NEW_VERSION
         public BeatmapKey CurrentKey { get; private set; }
-        public BeatmapLevel CurrentLevel { get; private set; } = null!;
+        public BeatmapLevel? CurrentLevel { get; private set; }
 #else
         public IDifficultyBeatmap CurrentLevel { get; private set; } = null!;
 #endif
@@ -272,39 +273,24 @@ namespace AccSaber.Managers
         {
             //Plugin.Log.Info(await APIHandler.CallAPI_String(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler) ?? "null");
 
-            List<JObject>? campaignList =
-                await APIHandler.CallAPI_Json<List<JObject>>(
+            JObject? campaignObj = await APIHandler.CallAPI_Json<JObject>(
                     string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler);
 
-            if (campaignList is null)
+            if (campaignObj is null)
                 return default;
 
-            // I don't wanna make an entire new tree of models for this one function, so just using JObjects.
-            // After looking at this mess, maybe I should have made the models 0.o
+            List<AccSaberCampaignProgressDifficulty>? diffList = campaignObj["difficulties"]?.ToObject<List<AccSaberCampaignProgressDifficulty>>();
 
-            JObject campaignObj = campaignList.First();
+            if (diffList is null)
+                return default;
 
-            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> diffValues = 
-                campaignObj["difficulties"]
-                .Select(node => new KeyValuePair<Guid, CampaignProgressValue>(
-                    Guid.Parse(node["node"]?["id"]?.ToString() ?? ""),
-                    new((float)(node["userValue"] ?? 0f),
-                     GetCompletionStatus(
-                         (bool)(node["unlocked"] ?? false),
-                         (bool)(node["completed"] ?? false)
-                    ))));
+            List<AccSaberCampaignProgressBarrier> barrierList = campaignObj["barriers"]?.ToObject<List<AccSaberCampaignProgressBarrier>>() ?? [];
 
-            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> barrierValues = 
-                campaignObj["barriers"]
-                .Select(barrier => new KeyValuePair<Guid, CampaignProgressValue>(
-                    Guid.Parse(barrier["barrier"]?["id"]?.ToString() ?? ""),
-                    new((float)(barrier["currentValue"] ?? 0f),
-                     GetCompletionStatus(
-                         (bool)(barrier["unlocked"] ?? false),
-                         (bool)(barrier["satisfied"] ?? false)
-                         ))));
+            // Cannot use .Cast, because it does not support explicit operators.
+            IEnumerable<KeyValuePair<Guid, CampaignProgressValue>> outp = diffList.Select(d => (KeyValuePair<Guid, CampaignProgressValue>)d);
+            outp = outp.Concat(barrierList.Select(b => (KeyValuePair<Guid, CampaignProgressValue>)b));
 
-            return new([with(diffValues.Concat(barrierValues))], campaign);
+            return new([with(outp)], campaign);
         }
 
         public async Task<List<AccSaberCampaign>> GetActiveCampaigns(int page = 0, int size = 100)
@@ -355,7 +341,19 @@ namespace AccSaber.Managers
 
             return Success;
         }
+        public async Task<List<CampaignTag>> GetCampaignTags()
+        {
 
+            List<CampaignTag>? content = await APIHandler.CallAPI_Json<List<CampaignTag>>(HelpfulPaths.APAPI_CAMPAIGN_TAGS, AccsaberAPI.Throttler);
+
+            if (content is null)
+            {
+                Plugin.Log.Debug("Tags not found");
+                return [];
+            }
+
+            return content;
+        }
         public async Task<List<AccSaberEventMe>> GetEventMissions(int week, bool allWeeks = true, bool overrideCache = false)
         {
             await _serialHandler.RevalidateEvents(overrideCache);
@@ -405,6 +403,33 @@ namespace AccSaber.Managers
             return Success;
         }
 
+        public async Task<List<AccSaberLeaderboardPlayer>> GetLeaderboardRanking(string category, int page, RankingsScope scope)
+        {
+            string call = string.Format(HelpfulPaths.APAPI_LEADERBOARD_CATEGORY, category, page);
+
+            if (scope == RankingsScope.Country)
+                call += $"&country={_currentUser?.Country}";
+            else if (scope == RankingsScope.Followed)
+                call += $"&relation=follower";
+
+
+            AccSaberPagedContent<AccSaberLeaderboardPlayer>? content = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardPlayer>>(call, AccsaberAPI.Throttler);
+
+            if (content is null)
+                return [];
+
+            List<AccSaberLeaderboardPlayer> newLeaderboard = [];
+
+
+            foreach (AccSaberLeaderboardPlayer player in content.Content!)
+            {
+                player.MaxPage = content.TotalPages;
+                newLeaderboard.Add(player);
+            }
+
+            return newLeaderboard;
+        }
+
         private async Task UpdateAccSaberInfo()
 		{
 			OnUpdatingFromAccSaberAPI?.Invoke();
@@ -446,7 +471,7 @@ namespace AccSaber.Managers
             CurrentRankedMap = _api.GetLeaderboard(hash)?.Difficulties.FirstOrDefault(diff => diff.Difficulty == difficulty);
         }
 #if NEW_VERSION
-        public void SetCurrentMap(BeatmapKey key, BeatmapLevel level)
+        public void SetCurrentMap(BeatmapKey key, BeatmapLevel? level)
         {
             CurrentKey = key;
             CurrentLevel = level;
@@ -763,19 +788,15 @@ namespace AccSaber.Managers
             this(
                 playerValues,
                 new(campaign.Difficulties.Cast<INode<Guid>>().Concat(campaign.Barriers)),
-                campaign.Difficulties.Where(map => map.PrerequisiteMode.Equals("AND")).Select(map => map.Id)
+                campaign.Difficulties.Where(map => map.PrerequisiteMode == CampaignModel.CampaignPrerequisiteMode.AND).Select(map => map.Id)
                 )
         { }
 
-        internal HashSet<Guid> MarkAsComplete(Guid id, float progess)
+        public HashSet<Guid> MarkStatusAndUpdateNode(Guid id, IEnumerable<CampaignTargetProgess> progress, CompletionStatus status)
         {
-            if (!UnlockedItems.Contains(id))
+            if (!PlayerValues.ContainsKey(id))
             {
-                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete, it is not marked as unlocked!");
-                if (PlayerValues.TryGetValue(id, out var value))
-                    Plugin.Log.Debug(value.ToString());
-                else
-                    Plugin.Log.Warn($"The id is also not found in the playerValues dictionary!");
+                Plugin.Log.Warn($"The id is not found in the playerValues dictionary!");
                 return [];
             }
 
@@ -785,16 +806,86 @@ namespace AccSaber.Managers
                 return [];
             }
 
-            PlayerValues[id] = new(progess, CompletionStatus.Complete);
+            CompletionStatus before = PlayerValues[id].Completion;
+            bool becameComplete = before != CompletionStatus.Complete && status == CompletionStatus.Complete;
 
-            UnlockedItems.Remove(id);
-            CompletedItems.Add(id);
+            if (before == CompletionStatus.Incomplete && status == CompletionStatus.Complete)
+            {
+                Plugin.Log.Warn($"Cannot mark node \"{id}\" as complete if it is not unlocked first!");
+                return [];
+            }
 
+            PlayerValues[id] = new([.. progress], status);
+
+            UpdateNodePlacement(id, before, status);
+
+            return UpdateNodeInternal(node, becameComplete);
+        }
+        public HashSet<Guid> UpdateNode(Guid id, IEnumerable<CampaignTargetProgess> progress)
+        {
+            if (!PlayerValues.TryGetValue(id, out CampaignProgressValue value))
+            {
+                Plugin.Log.Warn($"The id is not found in the playerValues dictionary!");
+                return [];
+            }
+
+            return MarkStatusAndUpdateNode(id, progress, value.Completion);
+        }
+
+        private void UpdateNodePlacement(Guid id, CompletionStatus before, CompletionStatus after)
+        {
+            if (before == after)
+                return;
+
+            switch (before)
+            {
+                case CompletionStatus.Complete:
+                    
+                    CompletedItems.Remove(id);
+
+                    if (after == CompletionStatus.Unlocked)
+                        UnlockedItems.Add(id);
+
+                    break;
+                case CompletionStatus.Unlocked:
+
+                    UnlockedItems.Remove(id);
+
+                    if (after == CompletionStatus.Complete)
+                        CompletedItems.Add(id);
+
+                    break;
+                case CompletionStatus.Incomplete:
+
+                    if (after == CompletionStatus.Unlocked)
+                        UnlockedItems.Add(id);
+                    else if (after == CompletionStatus.Complete)
+                        CompletedItems.Add(id);
+
+                    break;
+            }
+        }
+
+        private HashSet<Guid> UpdateNodeInternal(AcyclicGraph<Guid>.Node node, bool nodeSetCompleted)
+        {
             HashSet<Guid> outp = [];
 
-            foreach (Guid nodeIdToUpdate in node.AffectedIdsOnUpdate)
-                if (UpdateNode(nodeIdToUpdate))
-                    outp.Add(nodeIdToUpdate);
+            if (nodeSetCompleted)
+            {
+                foreach (Guid nodeIdToUpdate in node.AffectedIdsOnUpdate)
+                    if (UpdateNode(nodeIdToUpdate))
+                        outp.Add(nodeIdToUpdate);
+            }
+            else
+            {
+                foreach (Guid nodeIdToUpdate in node.AffectedIdsOnUpdate)
+                    if (Nodes.NodeIdToNode.TryGetValue(nodeIdToUpdate, out AcyclicGraph<Guid>.Node n) && n.Current is AccSaberCampaignBarrier)
+                        outp.Add(nodeIdToUpdate);
+            }
+
+#if DEBUG
+            Plugin.Log.Info("Updated nodes: " + outp.Print());
+#endif
 
             return outp;
         }
@@ -838,7 +929,7 @@ namespace AccSaber.Managers
                 UnlockedItems.Add(id);
             }
 
-            return success;
+            return success || node.Current is AccSaberCampaignBarrier;
         }
         public IEnumerable<Guid> MostProgressedNodes(CompletionStatus status)
         {
@@ -874,6 +965,9 @@ namespace AccSaber.Managers
         }
         public IEnumerable<Guid> NodesSortedByProgression(CompletionStatus status)
         {
+            if (PlayerValues is null)
+                throw new Exception("Cannot call this function on a default struct. If this error is reached, something is broken in the code.");
+
             ICollection<Guid> ids = status switch
             {
                 CompletionStatus.Incomplete => PlayerValues.Keys,
@@ -882,6 +976,11 @@ namespace AccSaber.Managers
                 _ => throw new ArgumentException("Given argument is not valid!")
             };
 
+            if (ids is null || ids.Count == 0)
+            {
+                Plugin.Log.Warn($"There are no nodes that have the completion status of {status}.");
+                return [];
+            }
 
             List<(int distance, Guid id)> list = [with(ids.Count)];
 
@@ -918,7 +1017,55 @@ namespace AccSaber.Managers
             Incomplete, Unlocked, Complete
         }
 
-        public record struct CampaignProgressValue(float Progress, CompletionStatus Completion);
+        public record struct CampaignProgressValue(CampaignTargetProgess[] Progress, CompletionStatus Completion)
+        {
+            /// <summary>
+            /// Returns a list of tuples containing the target and its corresponding progress for the given targets. the
+            /// parameter is conformed to the Progress list, meaning the order returned is the same as the order of the
+            /// Progress list.
+            /// </summary>
+            /// <param name="targets">The targets to zip with their progress.</param>
+            /// <returns>A list of tuples containing the target and its corresponding progress.</returns>
+            internal readonly IEnumerable<(AccSaberCampaignTarget Target, CampaignTargetProgess Progress)> GetProgressWithTargets(IEnumerable<AccSaberCampaignTarget> targets)
+            {
+                List<AccSaberCampaignTarget> targetList = [.. targets];
 
+                foreach (CampaignTargetProgess progress in Progress)
+                {
+                    int targetIndex = targetList.FindIndex(t => t.Id == progress.TargetId);
+                    if (targetIndex != -1)
+                    {
+                        yield return (targetList[targetIndex], progress);
+                        targetList.RemoveAt(targetIndex);
+                    }
+                }
+            }
+
+            public override readonly string ToString() => $"Progress: {Progress.Print()}, Completion: {Completion}";
+        }
+
+        public record struct CampaignTargetProgess(Guid TargetId, float CurrentValue) : IComparable<Guid>, IComparable<CampaignTargetProgess>
+        {
+            public readonly int CompareTo(Guid other) => TargetId.CompareTo(other);
+            public readonly int CompareTo(CampaignTargetProgess other) => TargetId.CompareTo(other.TargetId);
+
+            public static implicit operator CampaignTargetProgess((Guid targetId, float currentValue) tuple) => new(tuple.targetId, tuple.currentValue);
+            public static implicit operator (Guid targetId, float currentValue)(CampaignTargetProgess progress) => (progress.TargetId, progress.CurrentValue);
+
+            public static bool operator >(float value, CampaignTargetProgess progress) => value > progress.CurrentValue;
+            public static bool operator <(float value, CampaignTargetProgess progress) => value < progress.CurrentValue;
+            public static bool operator >=(float value, CampaignTargetProgess progress) => value >= progress.CurrentValue;
+            public static bool operator <=(float value, CampaignTargetProgess progress) => value <= progress.CurrentValue;
+
+            public static bool operator >(CampaignTargetProgess progress, float value) => progress.CurrentValue > value;
+            public static bool operator <(CampaignTargetProgess progress, float value) => progress.CurrentValue < value;
+            public static bool operator >=(CampaignTargetProgess progress, float value) => progress.CurrentValue >= value;
+            public static bool operator <=(CampaignTargetProgess progress, float value) => progress.CurrentValue <= value;
+
+            public static bool operator ==(float value, CampaignTargetProgess progress) => progress.CurrentValue == value;
+            public static bool operator !=(float value, CampaignTargetProgess progress) => progress.CurrentValue != value;
+            public static bool operator ==(CampaignTargetProgess progress, float value) => progress.CurrentValue == value;
+            public static bool operator !=(CampaignTargetProgess progress, float value) => progress.CurrentValue != value;
+        }
     }
 }

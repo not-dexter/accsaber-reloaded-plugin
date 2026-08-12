@@ -1,8 +1,10 @@
 <bg xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd'>
   <vertical pref-width='120'>
-    <vertical vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='80' pad='1' pad-top='0' active='~not-in-campaign'>
+    <horizontal vertical-fit='PreferredSize' horizontal-fit='PreferredSize' pref-height='8' pref-width='160' pad='1' pad-top='0' active='~not-in-campaign'>
       <tab-selector tab-tag='tabs' id='tab-selector' select-cell='tab-selected' />
-    </vertical>
+      <vertical pref-width='40' id='search-container' />
+      <button text='filters' event-click='open-filters' />
+    </horizontal>
     <tab tags='tabs' tab-name='Active' />
     <tab tags='tabs' tab-name='Official' />
     <tab tags='tabs' tab-name='Curated' />
@@ -29,41 +31,92 @@
         </vertical>
       </horizontal>
       <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
-        <vertical preferred-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
+        <vertical pref-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
           <text text='Welcome to AccSaber Campaigns!' font-size='5' align='Center' word-wrapping='true' />
           <text text='Here you will find custom campaigns ranging in difficulty and category made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber website' font-size='3.5' align='Center' word-wrapping='true' />
         </vertical>
-        <vertical active='~CampaignIsSelected' preferred-width='100' horizontal-fit='PreferredSize'>
-          <horizontal preferred-width='100' horizontal-fit='PreferredSize'>
-            <img preserve-aspect='true' id='CampaignImage' preferred-width='25' pref-height='25' />
-            <vertical preferred-width='60' pref-height='20' vertical-fit='PreferredSize'>
-              <text text='~CampaignTitle' align='Left' font-size='5.5' overflow-mode='Ellipsis' />
-              <text text='~CampaignCreator' align='Left' font-size='3.5' />
-              <text text='~CampaignCategory' align='Left' font-size='3.5' />
+        <horizontal active='~CampaignIsSelected' pref-width='100' horizontal-fit='PreferredSize'>
+          <vertical pref-width='60' preferred-height='70'>
+            <horizontal pref-width='60' pad='2' horizontal-fit='PreferredSize'>
+              <img preserve-aspect='true' id='CampaignImage' pref-width='15' pref-height='15' />
+              <vertical pref-width='30'>
+                <text text='~CampaignTitle' align='Left' font-size='4' overflow-mode='Ellipsis' />
+                <text text='~CampaignCreator' align='Left' font-size='3.5' />
+                <text text='~CampaignCategory' align='Left' font-size='3.5' />
+              </vertical>
+            </horizontal>
+            <vertical pref-height='30' pref-width='60'>
+              <text id='campaign-description' text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
             </vertical>
-          </horizontal>
-          <vertical active='~campaign-curated' pref-height='20' vertical-fit='PreferredSize' child-expand-height='false' spacing='-1'>
-            <text text='Completion Rewards' font-size='5' />
-            <text text='~CampaignRewards' align='Center' font-size='3' />
+            <vertical preferred-height='5'></vertical>
           </vertical>
-          <text text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
-          <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
-        </vertical>
+          <vertical pref-width='40'>
+            <vertical pref-height='15' vertical-fit='PreferredSize'>
+              <vertical pref-height='15' vertical-fit='PreferredSize'>
+                <text text='Objective' align='Center' font-size='4' />
+                <text text='~CampaignCompletion' align='Center' font-size='3.5' />
+              </vertical>
+            </vertical>
+            <vertical pref-height='15' vertical-fit='PreferredSize'>
+              <vertical pref-height='15' vertical-fit='PreferredSize' active='~campaign-curated' child-expand-height='false'>
+                <text text='Completion Rewards' font-size='4' />
+                <text text='~CampaignRewards' align='Center' font-size='3.5' />
+              </vertical>
+            </vertical>
+            <vertical pref-height='30' vertical-fit='PreferredSize'>
+              <vertical pref-height='15' vertical-fit='PreferredSize' active='~ShouldShowStatus'>
+                <text text='Status' align='Center' />
+                <text text='~CampaignCompletionStatus' font-size='3' align='Center' />
+                <horizontal spacing='2'>
+                  <horizontal pad='0' pref-width='25' horizontal-fit='PreferredSize' child-expand-width='false' child-control-width='false'>
+                    <image id='PercentBarTop' src='AccSaber.Resources.Pixel.png' pref-height='1' />
+                    <image id='PercentBarBottom' src='AccSaber.Resources.Pixel.png' pref-height='1' />
+                  </horizontal>
+                  <text text='~CampaignCompletionCount' font-size='3' />
+                </horizontal>
+              </vertical>
+              <vertical pref-height='20' vertical-fit='PreferredSize'>
+                <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' pref-width='30' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
+              </vertical>
+            </vertical>
+          </vertical>
+        </horizontal>
       </vertical>
       <vertical active='~in-campaign'>
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
-        <horizontal>
-          <button text='Zoom In' on-click='ZoomIn' />
-          <button text='Go To Furthest Map' on-click='GotoMap' />
-          <button text='Zoom Out' on-click='ZoomOut' />
-          <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
+        <horizontal vertical-fit='PreferredSize' pref-height='15'>
+
+          <vertical pref-height='20' child-align='MiddleCenter' spacing='-1'>
+            <button text='Zoom In' on-click='ZoomIn' />
+            <button text='Zoom Settings' on-click='ZoomSettings' />
+          </vertical>
+
+          <vertical pref-height='20' child-align='MiddleCenter' spacing='-1'>
+            <button text='Go To Furthest Map' on-click='GotoMap' />
+            <button text='Reset Zoom' on-click='ResetZoom' />
+          </vertical>
+
+          <vertical pref-height='20' child-align='MiddleCenter' spacing='-1'>
+            <button text='Zoom Out' on-click='ZoomOut' />
+            <button text='Zoom Fully Out' on-click='ZoomFullyOut' />
+          </vertical>
+
+          <vertical pref-height='10' pad-right='2'>
+            <clickable-image src='#SettingsIcon' preserve-aspect='true' on-click='ShowSettings' />
+          </vertical>
+
+          <vertical horizontal-fit='PreferredSize' vertical-fit='PreferredSize' pref-width='7' pref-height='7'>
+            <clickable-image src='~count-img' preserve-aspect='true' on-click='ShowCounterSettings' />
+          </vertical>
         </horizontal>
       </vertical>
-      <vertical preferred-width='50' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad ='4' pad-bottom='2' child-expand-height='false'>
-        <vertical preferred-width='42' pref-height='15' vertical-fit='PreferredSize' active='~in-map'>
+      <vertical pref-width='10' active='~in-map-or-barrier' />
+      <vertical pref-width='60' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad='4' child-expand-height='false' child-expand-width='false'>
+
+        <vertical pref-width='42' pref-height='15' vertical-fit='PreferredSize' active='~in-map'>
           <horizontal>
-            <img preserve-aspect='true' id='MissionImage' preferred-width='8' pref-height='8' />
-            <vertical preferred-width='30'>
+            <img preserve-aspect='true' id='MissionImage' pref-width='8' pref-height='8' />
+            <vertical pref-width='30'>
               <text text='~MissionMapName' align='Left' overflow-mode='Ellipsis' italics='true' font-size='4' />
               <text text='~MissionMapArtist' color='#c0c2c5' overflow-mode='Ellipsis' italics='true' align='Left' font-size='2.5' />
             </vertical>
@@ -87,26 +140,72 @@
             </horizontal>
           </horizontal>
         </vertical>
-        <vertical pref-height='45'>
-          <text text='Completed!' align='Center' face-color='green' font-size='4' active='~MissionComplete' />
-          <vertical pref-height='8' vertical-fit='PreferredSize'>
-            <text text='Objective' font-size='4' align='Center' />
-            <text text='~MissionObjective' word-wrapping='true' font-size='3' />
+
+        <settings-container id='objectives-container' pref-width='60' pref-height='55' child-align='MiddleCenter' child-expand-height='false' child-control-width='true'>
+
+          <vertical pref-height='10' pad-top='2' vertical-fit='PreferredSize' child-align='MiddleCenter' active='~MissionComplete'>
+            <text text='Completed!' align='Center' face-color='green' font-size='4' />
           </vertical>
-          <vertical pref-height='8' vertical-fit='PreferredSize'>
+
+          <vertical pref-height='~DetailContainerHeight' pref-width='55' pad-top='2' vertical-fit='PreferredSize' horizontal-fit='PreferredSize'>
+            <text text='Objective(s)' font-size='4' align='Center' />
+            <vertical pad-left='2'>
+              <text text='~MissionObjective' align='Left' word-wrapping='false' font-size='2.5' />
+            </vertical>
+          </vertical>
+
+          <vertical pref-height='15' pad-top='2' vertical-fit='PreferredSize' child-align='MiddleCenter' active='~ShowModifiers'>
+            <text text='Modifiers' font-size='4' align='Center' />
+            <text text='~RequiredModifiers' font-size='3' align='Left' word-wrapping='false' />
+            <text text='~DisallowedModifiers' font-size='3' align='Left' word-wrapping='false' />
+          </vertical>
+
+          <vertical pref-height='~DetailContainerHeight' pad-top='2' vertical-fit='PreferredSize'>
             <text text='Current Progress' font-size='4' align='Center' />
             <text text='~MissionProgress' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
-          <vertical pref-height='16' vertical-fit='PreferredSize' active='~MissionHasRewards'>
+
+          <vertical pref-height='15' vertical-fit='PreferredSize' child-expand-height='false' child-align='MiddleCenter' spacing='-1' active='~MissionHasRewards'>
             <text text='Rewards' font-size='4' align='Center' />
             <text text='~MissionRewards' align='Center' word-wrapping='false' font-size='3' />
           </vertical>
-        </vertical>
-        <vertical pref-height='5'>
+        </settings-container>
+
+        <vertical pref-height='12'>
           <text text='An earlier objective is needed to progress' word-wrapping='true' align='Center' face-color='#fc0d0d' font-size='3.5' active='~MissionLocked' />
-          <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' preferred-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
+          <button id='MissionButton' text='Play' on-click='PlayMission' font-size='4' pref-width='45' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' />
         </vertical>
       </vertical>
     </horizontal>
   </vertical>
+  <modal show-event='open-filters' hide-event='close-filters' clickerino-offerino-closerino='true' size-delta-x='140' size-delta-y='65'>
+    <vertical pref-width='140' horizontal-fit='PreferredSize'>
+      <horizontal pref-width='108' vertical-fit='PreferredSize'>
+        <vertical pref-width='60' pref-height='50'>
+
+          <text text='Category' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <grid id='category-filter' cell-size-x='19.3' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
+
+          <text text='Tier' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <grid id='difficulty-filter' cell-size-x='19.3' pad-top='2' cell-size-y='3' spacing-x='1' spacing-y='1' />
+        </vertical>
+        <!-- <vertical bg='panel-top' bg-color='white' size-delta-x='1' skew='0' pref-width='0.5'></vertical>-->
+        <vertical pref-width='60' pref-height='50'>
+
+          <text text='Theme' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <grid id='theme-filter' pad-top='2' cell-size-x='19.3' cell-size-y='3' spacing-x='1' spacing-y='1' />
+
+          <text text='Genre' align='Center' />
+          <horizontal bg='panel-top' bg-color='white' size-delta-y='1' pref-height='0.5' />
+          <scrollable-settings-container id='genre-scrollable' pad-top='2' pref-width='60' pref-height='25'>
+            <grid id='genre-filter' cell-size-x='16' cell-size-y='3' spacing-x='1' spacing-y='1' horizontal-fit='Unconstrained' vertical-fit='PreferredSize' />
+          </scrollable-settings-container>
+        </vertical>
+      </horizontal>
+      <button text='Close' align='Center' event-click='close-filters' />
+    </vertical>
+  </modal>
 </bg>

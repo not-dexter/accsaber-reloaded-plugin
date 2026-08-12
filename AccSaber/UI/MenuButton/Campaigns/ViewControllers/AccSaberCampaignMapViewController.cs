@@ -4,6 +4,8 @@ using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.UI.BSML_Addons.Components;
+using AccSaber.UI.BSML_Addons.Tags;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
 using AccsaberLeaderboard.UI.Components;
@@ -19,6 +21,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
@@ -26,6 +30,8 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Zenject;
+using static AccSaber.Models.CampaignModel;
+using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.AccSaberCampaignMapViewController;
 using static AccSaber.UI.MenuButton.Campaigns.ViewControllers.NodeShapeTextures;
 
 namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
@@ -41,8 +47,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         [Inject] private readonly AccSaberCampaignViewController acvc = null!;
 
         private bool parsed = false;
-        private int setCampaignVersion = 0;
         private bool disposed = false;
+
+        private readonly API.Throttler fetchThrottler = new(1, 60);
+        private readonly AsyncLock setCampaignLock = new();
 
         private AccSaberCampaign? CurrentCampaign
         {
@@ -56,9 +64,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         private readonly List<CampaignMapNode> campaignMapNodes = [];
         private readonly List<CampaignMapBarrier> campaignMapBarriers = [];
-        private readonly List<(Guid fromNode, Guid toNode, GameObject go)> mapNodeArrows = [];
-        private ScrollRect scrollRect = null!;
-        private Color currentBgColor;
+        private readonly List<CampaignMapText> campaignMapTexts = [];
+        private CampaignMapBackground? campaignMapBackground;
+        private readonly List<(Guid fromNode, Guid toNode, UIArrow arrow)> mapNodeArrows = [];
+        private AxisFilteredScrollRect scrollRect = null!;
+        private ImageViewTiler? backgroundTiler;
+        private Color currentBgColor, maxBgColors;
+        private Action? UpdateArrowClipping;
+        private Task setCampaignTask = Task.CompletedTask;
+        private CancellationTokenSource? setCampaignCts;
 
         public AccSaberCampaignOffsetData? CurrentOffsetData 
         { 
@@ -110,10 +124,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 field = Mathf.Clamp01(value);
 
                 if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
-                {
-                    float dim = 1f - field;
-                    image.color = currentBgColor - new Color(dim, dim, dim, 1f - BackgroundAlpha);
-                }
+                    image.color = maxBgColors * new Color(field, field, field, BackgroundAlpha);
 
                 NotifyPropertyChanged();
             }
@@ -126,14 +137,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 field = Mathf.Clamp01(value);
 
                 if (parsed && ScrollContainer.TryGetComponent(out ImageView image))
-                {
-                    float dim = 1f - BackgroundBrightness;
-                    image.color = currentBgColor - new Color(dim, dim, dim, 1f - field);
-                }
+                    image.color = maxBgColors * new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, field);
 
                 NotifyPropertyChanged();
             }
         }
+        public bool IsSolidBGColor { get; private set; }
 
         [UIObject(nameof(ScrollContainer))]
         private readonly GameObject ScrollContainer = null!;
@@ -155,95 +164,337 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (!parsed)
                 parsed = true;
 
-            scrollRect = ScrollContainer.transform.parent.parent.GetComponent<ScrollRect>();
+            scrollRect = ScrollContainer.transform.parent.parent.GetComponent<AxisFilteredScrollRect>();
 
             ScrollSpeed = config.ScrollSpeed;
             StickScrolling = config.StickScrolling;
-            BackgroundBrightness = config.CampaignBackgroundBrightness;
-            BackgroundAlpha = config.CampaignBackgroundAlpha;
+
+            //Plugin.Log.Info($"{Resources.FindObjectsOfTypeAll<Sprite>().Select(s => s.name).Where(n => !string.IsNullOrEmpty(n)).Print()}");
         }
 
         public void Dispose()
         {
             disposed = true;
-            setCampaignVersion++;
+            setCampaignCts?.Cancel();
+            ClearDisplay();
+        }
+        public async Task Cleanup()
+        {
+            setCampaignCts?.Cancel();
+
+            await setCampaignTask;
+
             ClearDisplay();
         }
 
-        public async Task SetCampaign(AccSaberCampaign campaign, float scaleFactor = 0.2f, bool resetScrollbars = true)
+        public async Task SetCampaign(AccSaberCampaign campaign, float scaleFactor = -1f, bool resetScrollbars = true)
         {
-            int version = Interlocked.Increment(ref setCampaignVersion);
+            setCampaignCts?.Cancel();
 
+            await setCampaignTask;
+
+            setCampaignCts = new();
+
+            AsyncLock.Releaser locker = await setCampaignLock.LockAsync(setCampaignCts.Token);
+
+            setCampaignTask = UnityMainThreadTaskScheduler.Factory.StartNew(async () =>
+            {
+                try
+                {
+                    await SetCampaignInternal(campaign, scaleFactor, resetScrollbars, setCampaignCts.Token);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
+                finally
+                {
+                    setCampaignCts?.Dispose();
+                    setCampaignCts = null;
+
+                    locker.Dispose();
+                }
+            }, setCampaignCts.Token).Unwrap();
+
+            await setCampaignTask;
+        }
+        private async Task SetCampaignInternal(AccSaberCampaign campaign, float scaleFactor, bool resetScrollbars, CancellationToken ct)
+        {
             try
             {
                 if (!parsed || campaign.Difficulties is null)
                     return;
 
+                if (scaleFactor <= 0f)
+                    scaleFactor = config.CampaignDefaultZoomValue;
+
                 ClearDisplay();
 
                 CurrentCampaign = campaign;
 
-                Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign)).Unwrap();
+                Task<CampaignProgress> campaignProgressTask = UnityMainThreadTaskScheduler.Factory.StartNew(() => store.GetCampaignProgress(campaign), ct).Unwrap();
+                Task preloadSpritesTask = PreloadStandardSprites(config.CampaignMaxCoverageLoadsPerFrame);
 
-                CurrentOffsetData = new(scaleFactor, campaign.Difficulties.Cast<AccSaberCampaignPositionable>().Concat(campaign.Barriers?.Cast<AccSaberCampaignPositionable>() ?? []));
+                List<IAccSaberCampaignScalable> scalableObjs = [.. MiscUtils.CombineAllAsType<IAccSaberCampaignScalable>(campaign.Difficulties, campaign.Barriers ?? [], campaign.Texts ?? [])];
 
-                UpdateContainerValues(resetScrollbars);
+                bool hasBackground = campaign.BackgroundSizeInfo is not null;
+                if (hasBackground)
+                    scalableObjs.Add(campaign.BackgroundSizeInfo!);
 
-                PreloadStandardSprites();
+                CurrentOffsetData = new(scaleFactor, scalableObjs, hasBackground);
+
+                //UpdateContainerValues(resetScrollbars);
+
+                Task bgUrlTask = Task.CompletedTask;
+                if (campaign.BackgroundUrl is not null)
+                    bgUrlTask = MiscUtils.GetImage(campaign.BackgroundUrl); // this will allow for the bg image to be cached.
 
                 CampaignProgress = await campaignProgressTask;
 
-                if (disposed || version != setCampaignVersion)
-                    return;
+                HandleCheckpointCollisions();
 
-                if (campaign.Barriers is not null)
+                int loads = 0;
+
+                IEnumerator LoadSlowly()
                 {
-                    foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
+#if PRINT_DEBUG && DEBUG
+                    int expectedLoads = (campaign.Texts?.Count ?? 0) + (campaign.Barriers?.Count ?? 0) + campaign.Difficulties.Count;
+                    Plugin.Log.Info($"There are {expectedLoads} loads expected that will take a total of {expectedLoads / config.CampaignMaxObjectLoadsPerFrame} frames.");
+                    int frames = 0;
+#endif
+
+                    if (campaign.Texts is not null)
                     {
-                        CampaignMapBarrier barrierNode = new(
-                            barrier: barrier,
-                            parent: NodeContainer.transform,
-                            parentVC: this,
-                            offsetData: CurrentOffsetData
+                        foreach (AccSaberCampaignText text in campaign.Texts)
+                        {
+                            CampaignMapText mapText = new(text, (RectTransform)NodeContainer.transform, CurrentOffsetData);
+
+                            scrollRect.RegisterCullTarget(mapText.TextObj.rectTransform);
+
+                            campaignMapTexts.Add(mapText);
+
+                            ++loads;
+
+                            if (loads >= config.CampaignMaxObjectLoadsPerFrame)
+                            {
+                                loads = 0;
+                                yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                                ++frames;
+#endif
+
+                                if (ct.IsCancellationRequested)
+                                    yield break;
+                            }
+                        }
+                    }
+
+                    if (campaign.Barriers is not null)
+                    {
+                        foreach (AccSaberCampaignBarrier barrier in campaign.Barriers)
+                        {
+                            CampaignMapBarrier barrierNode = new(
+                                barrier: barrier,
+                                parent: NodeContainer.transform,
+                                parentVC: this,
+                                offsetData: CurrentOffsetData
+                            );
+
+                            scrollRect.RegisterCullTarget(barrierNode.obj);
+                            scrollRect.RegisterCullTarget(barrierNode.textObj);
+
+                            campaignMapBarriers.Add(barrierNode);
+
+                            ++loads;
+
+                            if (loads >= config.CampaignMaxObjectLoadsPerFrame)
+                            {
+                                loads = 0;
+                                yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                                ++frames;
+#endif
+
+                                if (ct.IsCancellationRequested)
+                                    yield break;
+                            }
+                        }
+
+                        CurrentOffsetData.OnScaleChanged += CampaignMapBarrier.ResolveTextCollisions;
+                    }
+
+                    foreach (AccSaberCampaignMap map in campaign.Difficulties)
+                    {
+                        AccSaberBasicDifficulty? diff = null;
+                        
+                        yield return serialHandler.GetDiffByIdAsync(map.MapDifficultyId, loads, true).WaitWithRoutine(info => { diff = info.Diff; loads = info.Loads; });
+
+                        if (loads == -1)
+                        {
+                            loads = 0;
+
+                            if (ct.IsCancellationRequested)
+                                yield break;
+                        }
+
+                        if (diff is null)
+                        {
+                            Plugin.Log.Warn($"There was an error loading map with id \"{map.MapDifficultyId}\"");
+                            continue;
+                        }
+
+                        CampaignMapNode node = new(
+                            map: map,
+                            parent: this,
+                            mapHash: diff.Hash,
+                            offsetData: CurrentOffsetData,
+                            flow: accCampaignFlow,
+                            campaignViewController: acvc,
+                            levelUtils: levelUtils,
+                            serialUtils: serialHandler,
+                            threadDispatcher: threadDispatcher,
+                            config: config
                         );
 
-                        campaignMapBarriers.Add(barrierNode);
+                        campaignMapNodes.Add(node);
+
+                        VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_CELL, NodeContainer, node);
+
+                        scrollRect.RegisterCullTarget(node.Container);
+
+                        ++loads;
+
+                        if (loads >= config.CampaignMaxObjectLoadsPerFrame)
+                        {
+                            loads = 0;
+                            yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                            ++frames;
+#endif
+
+                            if (ct.IsCancellationRequested)
+                                yield break;
+                        }
                     }
+
+#if PRINT_DEBUG && DEBUG
+                    Plugin.Log.Info($"There was a total of {frames} frames awaited.");
+#endif
                 }
 
-                foreach (AccSaberCampaignMap map in campaign.Difficulties)
+                await preloadSpritesTask;
+
+                if (disposed || ct.IsCancellationRequested) // Need to check after every await as a decent amount of time can pass in each Task.
+                    return;
+
+                await Coroutines.AsTask(LoadSlowly());
+
+                if (disposed || ct.IsCancellationRequested) 
+                    return;
+
+                await RebuildArrows(loads, ct);
+
+                if (disposed || ct.IsCancellationRequested)
+                    return;
+
+                await bgUrlTask;
+
+                if (disposed || ct.IsCancellationRequested)
+                    return;
+
+                if (campaign.BackgroundSizeInfo is not null && campaign.BackgroundUrl is not null)
+                    campaignMapBackground = new(NodeContainer.transform, scrollRect, campaign.BackgroundSizeInfo, CurrentOffsetData, campaign.BackgroundUrl);
+
+                CurrentOffsetData.RecalculateValues();
+                UpdateContainerValues(resetScrollbars);
+
+                if (ct.IsCancellationRequested)
+                    return;
+
+                if (!ScrollToFirstValidNode(CampaignProgress.Nodes.Heads.Select(node => node.Current.Id)))
                 {
-                    AccSaberBasicDifficulty? diff = await serialHandler.GetDiffByIdAsync(map.MapDifficultyId);
-
-                    if (diff is null)
-                    {
-                        Plugin.Log.Warn($"There was an error loading map with id \"{map.MapDifficultyId}\"");
-                        continue;
-                    }
-
-                    CampaignMapNode node = new(
-                        map: map,
-                        parent: this,
-                        mapHash: diff.Hash,
-                        offsetData: CurrentOffsetData,
-                        flow: accCampaignFlow,
-                        campaignViewController: acvc,
-                        levelUtils: levelUtils,
-                        serialUtils: serialHandler,
-                        threadDispatcher: threadDispatcher,
-                        config: config
-                    );
-
-                    campaignMapNodes.Add(node);
-
-                    VersionUtils.Parse(ResourcePaths.ACC_SABER_CAMPAIGN_MAP_CELL, NodeContainer, node);
+                    Plugin.Log.Warn("There are no valid starting nodes, this is a wacky campaign.");
+                    Plugin.Log.Debug($"Heads: {CampaignProgress.Nodes.Heads.Print()}");
                 }
-
-                RebuildArrows();
             }
             catch (Exception e)
             {
                 Plugin.Log.Error(e);
+            }
+        }
+        private void HandleCheckpointCollisions()
+        {
+            if (CurrentCampaign?.Difficulties is null)
+                return;
+
+            Dictionary<string, List<Guid>> checkpointNames = [];
+            Dictionary<Guid, AccSaberCampaignMap> usedMaps = [];
+
+            foreach (AccSaberCampaignMap map in CurrentCampaign.Difficulties)
+            {
+                if (!string.IsNullOrEmpty(map.CheckpointLabel))
+                {
+                    if (!checkpointNames.TryGetValue(map.CheckpointLabel!, out List<Guid> val))
+                        val = [];
+
+                    val.Add(map.Id);
+                    
+                    if (val.Count == 1)
+                        checkpointNames[map.CheckpointLabel!] = val;
+
+                    usedMaps.Add(map.Id, map);
+                }
+            }
+
+            foreach (string key in checkpointNames.Keys)
+            {
+                List<Guid> ids = checkpointNames[key];
+
+                if (ids.Count <= 1)
+                    continue;
+
+#if PRINT_DEBUG && DEBUG
+                Plugin.Log.Info($"There are {ids.Count} milestones with that name \"{key}\".");
+#endif
+
+                float xPos = 0, yPos = 0;
+
+                foreach (Guid id in ids)
+                {
+                    AccSaberCampaignMap map = usedMaps[id];
+
+                    xPos += map.PositionX;
+                    yPos += map.PositionY;
+                }
+
+                float averageXPos = xPos / ids.Count, averageYPos = yPos / ids.Count;
+                float minDistance = float.PositiveInfinity;
+                int minDistIndex = -1;
+
+                for (int i = 0; i < ids.Count; ++i)
+                {
+                    AccSaberCampaignMap map = usedMaps[ids[i]];
+                    float dist = Mathf.Abs((map.PositionX - averageXPos + map.PositionY - averageYPos) / 2f);
+
+                    if (dist < minDistance)
+                    {
+                        minDistance = dist;
+                        minDistIndex = i;
+                    }
+                }
+
+                for (int i = 0; i < ids.Count; ++i)
+                {
+                    AccSaberCampaignMap map = usedMaps[ids[i]];
+
+                    if (minDistIndex == i)
+                        map.CheckpointSize *= 2;
+                    else
+                        map.CheckpointLabel = null;
+                }
             }
         }
         private void OnCampaignSet()
@@ -253,67 +504,107 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
 
-            Backgroundable bg;
             CustomBackground customBg;
 
-            if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null))
+            backgroundTiler?.Dispose();
+            backgroundTiler = null;
+
+            if (CurrentCampaign is null || (CurrentCampaign.BackgroundColor is null && CurrentCampaign.BackgroundUrl is null) || CurrentCampaign.BackgroundSizeInfo is not null)
             {
-                if (!ScrollContainer.TryGetComponent(out bg))
-                {
-                    if (ScrollContainer.TryGetComponent(out customBg))
-                        UnityEngine.Object.Destroy(customBg);
+                customBg = ScrollContainer.GetComponent<CustomBackground>();
 
-                    UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
+                customBg.Apply(ResourcePaths.PIXEL);
 
-                    bg = ScrollContainer.AddComponent<Backgroundable>();
-                }
+                currentBgColor = Color.white;
+                maxBgColors = Color.white;
 
-                bg.ApplyBackground("round-rect-panel");
+                IsSolidBGColor = true;
+
+                BackgroundAlpha = config.CampaignColorBackgroundAlpha;
+                BackgroundBrightness = config.CampaignColorBackgroundBrightness;
+
+                backgroundTiler = ImageViewTiler.Create(customBg.Background!, scrollRect);
+
                 return;
             }
 
-            if (ScrollContainer.TryGetComponent(out bg))
-                UnityEngine.Object.DestroyImmediate(bg);
-
-            if (!ScrollContainer.TryGetComponent(out customBg))
-                customBg = ScrollContainer.AddComponent<CustomBackground>();
-
-            UnityEngine.Object.DestroyImmediate(ScrollContainer.GetComponent<ImageView>());
-
-            void SetColor(float dim)
-            {
-                currentBgColor = CurrentCampaign.BackgroundColor!.Color();
-                customBg.Background?.color = currentBgColor - new Color(currentBgColor.r * dim, currentBgColor.g * dim, currentBgColor.b * dim, 1f - BackgroundAlpha);
-            }
-                
-            void SetDim() =>
-                customBg.Background?.color = new Color(BackgroundBrightness, BackgroundBrightness, BackgroundBrightness, BackgroundAlpha);
+            customBg = ScrollContainer.GetComponent<CustomBackground>();
 
             bool bgColorExists = CurrentCampaign.BackgroundColor is not null;
 
             if (CurrentCampaign.BackgroundUrl is not null)
             {
-                Task imgTask = customBg.ApplyUrl(CurrentCampaign.BackgroundUrl);
+                void AfterImageLoaded(Task task)
+                {
+                    try
+                    {
+                        if (!task.IsCompletedSuccessfully)
+                            return;
 
-                if (bgColorExists)
-                    imgTask.ContinueWith(task => { if (task.IsCompletedSuccessfully) SetColor(1f - BackgroundBrightness); }, UnityMainThreadTaskScheduler.Default);
-                else
-                    imgTask.ContinueWith(task => { if (task.IsCompletedSuccessfully) SetDim(); }, UnityMainThreadTaskScheduler.Default);
+                        currentBgColor = CurrentCampaign.BackgroundColor?.Color() ?? Color.white;
+                        maxBgColors = customBg.Background!.sprite.texture.GetMaxColorValues();
+
+                        IsSolidBGColor = false;
+
+                        BackgroundAlpha = config.CampaignImageBackgroundAlpha;
+                        BackgroundBrightness = config.CampaignImageBackgroundBrightness;
+
+                        backgroundTiler = ImageViewTiler.Create(customBg.Background!, scrollRect);
+                    }
+                    catch (Exception e)
+                    {
+                        Plugin.Log.Error(e);
+                    }
+                }
+
+                Task imgTask = customBg.ApplyUrl(CurrentCampaign.BackgroundUrl, new(1f, 1f, 1f, 0f));
+
+                imgTask.ContinueWith(AfterImageLoaded, UnityMainThreadTaskScheduler.Default);
             }
             else if (bgColorExists)
-                SetColor(0f);
+            {
+                customBg.Apply(ResourcePaths.PIXEL);
+
+                currentBgColor = CurrentCampaign.BackgroundColor!.Color();
+                maxBgColors = currentBgColor;
+
+                IsSolidBGColor = true;
+
+                BackgroundAlpha = config.CampaignColorBackgroundAlpha;
+                BackgroundBrightness = config.CampaignColorBackgroundBrightness;
+            }
         }
         private void ClearDisplay()
         {
-            foreach (IDisposable node in campaignMapNodes.Cast<IDisposable>().Concat(campaignMapBarriers))
+            foreach (IDisposable node in campaignMapNodes.Cast<IDisposable>().Concat(campaignMapBarriers).Concat(campaignMapTexts))
                 node.Dispose();
 
-            foreach (var (_, _, go) in mapNodeArrows)
-                UnityEngine.Object.Destroy(go);
+            foreach (var (_, _, arrow) in mapNodeArrows)
+                arrow.Dispose();
+
+            if (CurrentOffsetData is not null)
+            {
+                CurrentOffsetData.OnScaleChanged -= CampaignMapBarrier.ResolveTextCollisions;
+
+                if (UpdateArrowClipping is not null)
+                {
+                    CurrentOffsetData.OnScaleChanged -= UpdateArrowClipping;
+                    UpdateArrowClipping = null;
+                }
+            }
+
+            backgroundTiler?.Dispose();
+            backgroundTiler = null;
+
+            campaignMapBackground?.Dispose();
+            campaignMapBackground = null;
 
             campaignMapNodes.Clear();
             campaignMapBarriers.Clear();
+            campaignMapTexts.Clear();
             mapNodeArrows.Clear();
+
+            scrollRect.ClearCullTargets();
         }
         private void UpdateContainerValues(bool resetScrollbars)
         {
@@ -322,19 +613,96 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
 
+            RectTransform content = scrollRect.content;
+            RectTransform viewport = scrollRect.viewport ?? (RectTransform)scrollRect.transform;
+
+            Vector2 oldContentSize = content.rect.size;
+            Vector2 newContentSize = CurrentOffsetData.ContainerSize;
+            Vector2 viewportSize = viewport.rect.size;
+
+#if PRINT_DEBUG && DEBUG
+            Plugin.Log.Info($"old size = {oldContentSize}\nnew size = {newContentSize}");
+#endif
+
+            Vector2 oldNormalizedPosition = scrollRect.normalizedPosition;
+            Vector2 newNormalizedPosition = oldNormalizedPosition;
+
+            if (!resetScrollbars)
+                newNormalizedPosition = GetNormalizedPositionKeepingCenter(oldNormalizedPosition, oldContentSize, newContentSize, viewportSize);
+
             LayoutElement scrollLayout = NodeContainer.GetComponent<LayoutElement>();
 
-            scrollLayout.preferredWidth = CurrentOffsetData.ContainerSize.x;
-            scrollLayout.preferredHeight = CurrentOffsetData.ContainerSize.y;
+            scrollLayout.preferredWidth = newContentSize.x;
+            scrollLayout.preferredHeight = newContentSize.y;
 
-            scrollRect.content.sizeDelta = CurrentOffsetData.ContainerSize;
+            content.sizeDelta = newContentSize;
+
+            //if (NodeContainer.TryGetComponent(out CustomBackground bg) && bg.Background is not null)
+            //    bg.Background.rectTransform.sizeDelta = newContentSize;
+
+            backgroundTiler?.RequestRebuild();
+
+            scrollRect.StopMovement();
 
             if (resetScrollbars)
             {
-                scrollRect.horizontalScrollbar.value = 0;
-                scrollRect.verticalScrollbar.value = 0;
+                scrollRect.normalizedPosition = new Vector2(0.5f, 0f);
+            }
+            else
+            {
+                scrollRect.normalizedPosition = newNormalizedPosition;
             }
         }
+        private static Vector2 GetNormalizedPositionKeepingCenter(Vector2 oldNormalizedPosition, Vector2 oldContentSize, Vector2 newContentSize, Vector2 viewportSize)
+        {
+            return new Vector2(
+                GetHorizontalNormalizedPositionKeepingCenter(oldNormalizedPosition.x, oldContentSize.x, newContentSize.x, viewportSize.x),
+                GetVerticalNormalizedPositionKeepingCenter(oldNormalizedPosition.y, oldContentSize.y, newContentSize.y, viewportSize.y)
+            );
+        }
+
+        private static float GetHorizontalNormalizedPositionKeepingCenter(float oldNormalizedX, float oldContentWidth, float newContentWidth, float viewportWidth)
+        {
+            float oldScrollableWidth = Mathf.Max(0f, oldContentWidth - viewportWidth);
+            float newScrollableWidth = Mathf.Max(0f, newContentWidth - viewportWidth);
+
+            if (newScrollableWidth <= 0f)
+                return 0f;
+
+            // Current center position as a percentage of the old content width.
+            float center01 = oldContentWidth > 0f
+                ? ((oldNormalizedX * oldScrollableWidth) + viewportWidth * 0.5f) / oldContentWidth
+                : 0.5f;
+
+            // Convert that same content percentage into the new content width.
+            float newScrollOffset = center01 * newContentWidth - viewportWidth * 0.5f;
+
+            return Mathf.Clamp01(newScrollOffset / newScrollableWidth);
+        }
+
+        private static float GetVerticalNormalizedPositionKeepingCenter(float oldNormalizedY, float oldContentHeight, float newContentHeight, float viewportHeight)
+        {
+            float oldScrollableHeight = Mathf.Max(0f, oldContentHeight - viewportHeight);
+            float newScrollableHeight = Mathf.Max(0f, newContentHeight - viewportHeight);
+
+            if (newScrollableHeight <= 0f)
+                return 1f;
+
+            // Unity verticalNormalizedPosition is inverted:
+            // 1 = top, 0 = bottom.
+            float oldOffsetFromTop = (1f - oldNormalizedY) * oldScrollableHeight;
+
+            // Current center position as a percentage from the top of the old content.
+            float center01FromTop = oldContentHeight > 0f
+                ? (oldOffsetFromTop + viewportHeight * 0.5f) / oldContentHeight
+                : 0.5f;
+
+            // Convert that same content percentage into the new content height.
+            float newOffsetFromTop = center01FromTop * newContentHeight - viewportHeight * 0.5f;
+
+            return Mathf.Clamp01(1f - newOffsetFromTop / newScrollableHeight);
+        }
+
         public async Task UpdateCampaign()
         {
             if (CurrentCampaign is null)
@@ -346,12 +714,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return (campaign, await store.GetCampaignProgress(CurrentCampaign));
             }
 
-            var data = await UnityMainThreadTaskScheduler.Factory.StartNew(GetData).Unwrap();
+            var data = await MiscUtils.StartOnMainThread(GetData);
 
             CurrentCampaign = data.campaign;
             CampaignProgress = data.progress;
 
-            UpdateDisplay();
+            UpdateDisplay(false);
         }
         public void UpdateScaling(float scaleFactor)
         {
@@ -359,7 +727,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
 
             CurrentOffsetData.RecalculateValuesWithScale(scaleFactor);
-            UpdateDisplay();
+            UpdateDisplay(false);
         }
         public void UpdateScalingDelta(float deltaScale)
         {
@@ -367,38 +735,41 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return;
 
             CurrentOffsetData.RecalculateValuesWithScale(CurrentOffsetData.ScaleFactor + deltaScale);
-            UpdateDisplay();
+            UpdateDisplay(false);
         }
-        public void UpdateDisplay()
+        public void UpdateDisplay(bool updateArrowColors)
         {
             if (!parsed || CurrentOffsetData is null)
                 return;
 
             UpdateContainerValues(false);
 
-            RebuildArrows();
+            if (updateArrowColors)
+                SetArrowColors();
         }
-        public void ScrollToNode(Guid nodeId)
+        public bool ScrollToNode(Guid nodeId, bool printWarning = true)
         {
             if (!parsed)
             {
-                Plugin.Log.Warn("Cannot scroll to node before the map is loaded!");
-                return;
+                if (printWarning)
+                    Plugin.Log.Warn("Cannot scroll to node before the map is loaded!");
+                return false;
             }
 
             CampaignMapNode? node = campaignMapNodes.FirstOrDefault(node => node.Map.Id == nodeId);
 
             if (node is null)
             {
-                Plugin.Log.Warn($"No node of id \"{nodeId}\" found.");
-                return;
+                if (printWarning)
+                    Plugin.Log.Warn($"No node of id \"{nodeId}\" found.");
+                return false;
             }
 
             Vector2 viewSize = new(ViewportWidth, ViewportHeight);
             Vector2 actualSize = scrollRect.content.sizeDelta;
             Vector2 trueNodePos = new(node.NodeXPos + actualSize.x / 2f, node.NodeYPos + actualSize.y / 2f);
 
-#if PRINT_DEBUG
+#if PRINT_DEBUG && DEBUG
             Plugin.Log.Info($"viewSize = {viewSize}, actualSize = {actualSize}, node size = {trueNodePos}");
 #endif
 
@@ -417,9 +788,19 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             else
                 scrollRect.verticalScrollbar.value =
                     (trueNodePos.y - viewSize.y / 2f) / (actualSize.y - viewSize.y);
-#if PRINT_DEBUG
-            Plugin.Log.Info($"Final scroll percent = ({scrollableContainer.horizontalScrollbar.value * 100f:N2}%, {scrollableContainer.verticalScrollbar.value * 100f:N2}%)");
+#if PRINT_DEBUG && DEBUG
+            Plugin.Log.Info($"Final scroll percent = ({scrollRect.horizontalScrollbar.value * 100f:N2}%, {scrollRect.verticalScrollbar.value * 100f:N2}%)");
 #endif
+
+            return true;
+        }
+        public bool ScrollToFirstValidNode(IEnumerable<Guid> ids)
+        {
+            foreach (Guid id in ids)
+                if (ScrollToNode(id, false))
+                    return true;
+
+            return false;
         }
         public void ClickNode(Guid nodeId)
         {
@@ -433,76 +814,131 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             node.OnClick();
         }
-        private void RebuildArrows()
+        private void SetArrowColors()
         {
-            foreach (var (_, _, go) in mapNodeArrows)
-                UnityEngine.Object.Destroy(go);
+            List<(Guid fromNode, Guid toNode, UIArrow arrow)> listCopy = [with(mapNodeArrows)];
+
+            foreach (IAccSaberCampaignPrereq node in 
+                campaignMapNodes.Select(node => (IAccSaberCampaignPrereq)node.Map).Concat(campaignMapBarriers.Select(node => (IAccSaberCampaignPrereq)node.Barrier)))
+            {
+                int searchAmount = node.PrerequisiteInfos.Count;
+
+                for (int i = listCopy.Count - 1; i >= 0; --i)
+                {
+                    var (fromNode, toNode, arrow) = listCopy[i];
+
+                    if (toNode != node.Id)
+                        continue;
+
+                    arrow.Color = GetPrereqColor(node.PrerequisiteInfos.First(prereq => prereq.Id == fromNode));
+                    
+                    --searchAmount;
+                    listCopy.RemoveAt(i);
+
+                    if (searchAmount <= 0)
+                        break;
+                }
+            }
+        }
+        private async Task RebuildArrows(int loads = 0, CancellationToken ct = default)
+        {
+            foreach (var (_, _, arrow) in mapNodeArrows)
+                arrow.Dispose();
 
             mapNodeArrows.Clear();
 
-            Dictionary<Guid, PositionData> knownPositions = [];
-            Queue<(AccSaberCampaignPrereq prereq, Guid toNode)> neededPositions = [];
+            Dictionary<Guid, IndependentPositionData> knownPositions = [];
+            Queue<(AccSaberCampaignPrereqInfo prereq, Guid toNode)> neededPositions = [];
 
-            void HandleArrows(AccSaberCampaignPositionablePrereq node, PositionData current)
+            if (ct.IsCancellationRequested)
+                return;
+
+            IEnumerator LoadSlowly()
             {
-                if (!knownPositions.TryAdd(node.Id, current))
+                IEnumerator HandleArrows(IAccSaberCampaignPrereq node, IndependentPositionData current)
                 {
-                    Plugin.Log.Warn($"Duplicate campaign item id: {node.Id}");
-                    return;
+                    if (!knownPositions.TryAdd(node.Id, current))
+                    {
+                        Plugin.Log.Warn($"Duplicate campaign item id: {node.Id}");
+                        yield break;
+                    }
+
+                    foreach (AccSaberCampaignPrereqInfo prereq in node.PrerequisiteInfos)
+                    {
+                        if (knownPositions.TryGetValue(prereq.Id, out IndependentPositionData from))
+                        {
+                            UIArrow arrow = new(NodeContainer.transform, from, current, GetPrereqColor(prereq));
+
+                            arrow.CreateOrGetArrow()?.transform.SetAsFirstSibling();
+                            mapNodeArrows.Add((prereq.Id, node.Id, arrow));
+                        }
+                        else
+                        {
+                            neededPositions.Enqueue((prereq, node.Id));
+                        }
+
+                        ++loads;
+
+                        if (loads >= config.CampaignMaxObjectLoadsPerFrame)
+                        {
+                            loads = 0;
+                            yield return null;
+
+                            if (ct.IsCancellationRequested)
+                                yield break;
+                        }
+                    }
                 }
 
-                foreach (AccSaberCampaignPrereq prereq in node.PrerequisiteInfos)
+                foreach (CampaignMapBarrier barrier in campaignMapBarriers)
+                    yield return HandleArrows(barrier.Barrier, new IndependentPositionData(barrier));
+
+                foreach (CampaignMapNode node in campaignMapNodes)
+                    yield return HandleArrows(node.Map, new IndependentPositionData(node));
+
+                while (neededPositions.Count > 0)
                 {
-                    if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
-                        CreateArrow(
-                            NodeContainer.transform,
-                            from,
-                            current,
-                            (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
-                            CurrentOffsetData!.ScaleFactor)
-                        is GameObject go)
+                    var (prereq, toNode) = neededPositions.Dequeue();
+
+                    if (knownPositions.TryGetValue(prereq.Id, out IndependentPositionData from) &&
+                        knownPositions.TryGetValue(toNode, out IndependentPositionData to))
                     {
-                        go.transform.SetAsFirstSibling();
-                        mapNodeArrows.Add((prereq.Id, node.Id, go));
+                        UIArrow arrow = new(NodeContainer.transform, from, to, GetPrereqColor(prereq));
+
+                        arrow.CreateOrGetArrow()?.transform.SetAsFirstSibling();
+                        mapNodeArrows.Add((prereq.Id, toNode, arrow));
                     }
                     else
                     {
-                        neededPositions.Enqueue((prereq, node.Id));
+                        Plugin.Log.Error("There is an invalid prereq!\n" + prereq + ", " + toNode);
+                    }
+
+                    ++loads;
+
+                    if (loads >= config.CampaignMaxObjectLoadsPerFrame)
+                    {
+                        loads = 0;
+                        yield return null;
+
+                        if (ct.IsCancellationRequested)
+                            yield break;
                     }
                 }
             }
 
-            foreach (CampaignMapBarrier barrier in campaignMapBarriers)
-                HandleArrows(barrier.Barrier, new PositionData(barrier));
+            await Coroutines.AsTask(LoadSlowly());
 
-            foreach (CampaignMapNode node in campaignMapNodes)
-                HandleArrows(node.Map, new PositionData(node));
+            if (ct.IsCancellationRequested)
+                return;
 
-            while (neededPositions.Count > 0)
-            {
-                var (prereq, toNode) = neededPositions.Dequeue();
+            UpdateArrowClipping = () => UpdateBarrierRotationsAndArrowClipping([with(knownPositions.Select(kvp => new KeyValuePair<Guid, PositionData>(kvp.Key, kvp.Value)))]);
 
-                if (knownPositions.TryGetValue(prereq.Id, out PositionData from) &&
-                    knownPositions.TryGetValue(toNode, out PositionData to) &&
-                    CreateArrow(
-                        NodeContainer.transform,
-                        from,
-                        to,
-                        (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color(),
-                        CurrentOffsetData!.ScaleFactor)
-                    is GameObject go)
-                {
-                    go.transform.SetAsFirstSibling();
-                    mapNodeArrows.Add((prereq.Id, toNode, go));
-                }
-                else
-                {
-                    Plugin.Log.Error("There is an invalid prereq!\n" + prereq + ", " + toNode);
-                }
-            }
+            CurrentOffsetData?.OnScaleChanged += UpdateArrowClipping;
 
-            UpdateBarrierRotationsAndArrowClipping(knownPositions);
+            UpdateArrowClipping();
         }
+        private Color GetPrereqColor(AccSaberCampaignPrereqInfo prereq) =>
+            (CampaignProgress.CompletedItems.Contains(prereq.Id) ? prereq.Color : prereq.DimmedColor).Color();
         private void UpdateBarrierRotationsAndArrowClipping(Dictionary<Guid, PositionData> knownPositions)
         {
             Dictionary<Guid, CampaignMapBarrier> barrierNodeIds =
@@ -568,7 +1004,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 finalBarrierRotations[barrierNodeId] = desiredRotation;
             }
 
-            foreach (var (fromNode, toNode, go) in mapNodeArrows)
+            foreach (var (fromNode, toNode, arrow) in mapNodeArrows)
             {
                 if (!knownPositions.TryGetValue(fromNode, out PositionData fromPositionData))
                     continue;
@@ -584,7 +1020,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     ? foundToRotation
                     : Quaternion.identity;
 
-                if (TryGetClippedArrowPoints(
+                if (UIArrow.TryGetClippedArrowPoints(
                         fromPositionData,
                         fromRotation,
                         toPositionData,
@@ -593,11 +1029,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         out Vector2 newEnd,
                         padding: 0f))
                 {
-                    UpdateExistingArrow(go, newStart, newEnd);
+                    UpdateExistingArrow(arrow!, newStart, newEnd);
                 }
             }
         }
-        public async Task<CampaignProgress.CampaignProgressValue?> MarkNodeAsComplete(Guid id, float progress)
+        public async Task<CampaignProgress.CampaignProgressValue?> MarkNodeAsComplete(Guid id, CampaignProgress.CampaignTargetProgess[] progress)
         {
             if (CurrentCampaign is null || CurrentCampaign.Difficulties is null)
             {
@@ -606,11 +1042,17 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 return null;
             }
 
-            HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkAsComplete(id, progress), id];
+            HashSet<Guid> mapsToUpdate = [.. CampaignProgress.MarkStatusAndUpdateNode(id, progress, CampaignProgress.CompletionStatus.Complete), id];
 
             if (campaignMapBarriers.Any(node => mapsToUpdate.Contains(node.Barrier.Id)))
                 await FetchProgress();
 
+            UpdateNodes(mapsToUpdate);
+
+            return CampaignProgress.PlayerValues[id];
+        }
+        public void UpdateNodes(HashSet<Guid> mapsToUpdate)
+        {
             foreach (CampaignMapBarrier node in campaignMapBarriers)
                 if (mapsToUpdate.Contains(node.Barrier.Id))
                     node.UpdateProgress();
@@ -618,8 +1060,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             foreach (CampaignMapNode node in campaignMapNodes)
                 if (mapsToUpdate.Contains(node.Map.Id))
                     node.UpdateProgress();
-
-            return CampaignProgress.PlayerValues[id];
         }
         private async Task FetchProgress()
         {
@@ -630,7 +1070,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (CurrentCampaign is null || !CurrentCampaign.Equals(current) || !acvc.InCampaign)
                 return;
 
-            CampaignProgress = await store.GetCampaignProgress(CurrentCampaign);
+            if (await fetchThrottler.TryCall())
+                CampaignProgress = await store.GetCampaignProgress(CurrentCampaign);
         }
 
         private static bool TryGetPerpendicularBarrierRotation(List<Vector2> arrowDirections, out Quaternion rotation)
@@ -735,18 +1176,1502 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             headRect.anchoredPosition = new Vector2(shaftLength, 0f);
         }
-        public static GameObject? CreateArrow(
-            Transform parent,
-            PositionData from,
-            PositionData to,
-            Color color,
-            float scale,
-            float shaftThickness = 5f,
-            float headLength = 20f,
-            float headWidth = 20f,
-            string name = "UI Arrow")
+        
+        public record struct PositionData(Vector2 Position, Vector2 Size, NodeShape Shape)
         {
-            if (!TryGetClippedArrowPoints(from, from.Shape, to, to.Shape, out Vector2 fromPos, out Vector2 toPos))
+            internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight), node.Shape) { }
+            internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta, NodeShape.Square) { }
+        }
+        public record class IndependentPositionData
+        {
+            public Func<AccSaberCampaignOffsetData, Vector2> PositionFunc { get; init; }
+            public Func<AccSaberCampaignOffsetData, Vector2> SizeFunc { get; init; }
+            public NodeShape Shape { get; init; }
+            public AccSaberCampaignOffsetData PositionOffset { get; init; }
+
+            internal IndependentPositionData(CampaignMapNode node)
+            {
+                //PositionFunc = offset => new(node.Map.PositionX * offset.OffsetSize + offset.Offset.x, -node.Map.PositionY * offset.OffsetSize - offset.Offset.y);
+                //SizeFunc = offset => new(node.Map.Scale * offset.ScaleFactor, node.Map.Scale * offset.ScaleFactor);
+                PositionFunc = offset => new(node.NodeXPos, node.NodeYPos);
+                SizeFunc = offset => new(node.NodeWidth, node.NodeHeight);
+                Shape = node.Shape;
+                PositionOffset = node.OffsetData;
+            }
+            internal IndependentPositionData(CampaignMapBarrier node)
+            {
+                //PositionFunc = offset => new(node.Barrier.PositionX * offset.OffsetSize + offset.Offset.x, -node.Barrier.PositionY * offset.OffsetSize - offset.Offset.y);
+                //SizeFunc = offset => new(CampaignMapBarrier.WIDTH * offset.ScaleFactor, node.Barrier.Scale * offset.ScaleFactor);
+                PositionFunc = offset => node.Position;
+                SizeFunc = offset => node.SizeDelta;
+                Shape = NodeShape.Square;
+                PositionOffset = node.OffsetData;
+            }
+
+            public DependentPositionData ToDependentPositionData() => new(this);
+            public PositionData ToPositionData() =>
+                new(PositionFunc(PositionOffset), SizeFunc(PositionOffset), Shape);
+
+            public static implicit operator DependentPositionData(IndependentPositionData posData) => posData.ToDependentPositionData();
+            public static implicit operator PositionData(IndependentPositionData posData) => posData.ToPositionData();
+        }
+        public class DependentPositionData
+        {
+            private readonly IndependentPositionData parent;
+
+            private Vector2 position, size;
+            
+            public float Scale { get; private set; }
+
+            public readonly NodeShape Shape;
+
+            public event Action<PositionData>? OnPositionDataUpdate;
+            public event Action OnParentUpdate
+            {
+                add => parent.PositionOffset.OnScaleChanged += value;
+                remove => parent.PositionOffset.OnScaleChanged -= value;
+            }
+
+            public DependentPositionData(IndependentPositionData parent)
+            {
+                this.parent = parent;
+                Shape = parent.Shape;
+
+                parent.PositionOffset.OnScaleChanged += UpdateData;
+                UpdateData();
+            }
+
+            private void UpdateData()
+            {
+                position = parent.PositionFunc(parent.PositionOffset);
+                size = parent.SizeFunc(parent.PositionOffset);
+                Scale = parent.PositionOffset.ScaleFactor;
+
+                OnPositionDataUpdate?.Invoke(ToPositionData());
+            }
+
+            public PositionData ToPositionData() =>
+                new(position, size, Shape);
+
+            public static implicit operator PositionData(DependentPositionData d) => d.ToPositionData();
+        }
+        internal class CampaignMapBackground : IDisposable
+        {
+            private readonly Transform parent;
+            private readonly AccSaberCampaignBackgroundSizeInfo sizeInfo;
+
+            public readonly AccSaberCampaignOffsetData OffsetData;
+
+            public readonly GameObject bg;
+            private readonly CancellationTokenSource imageTokenSource;
+            private readonly float widthToHeight;
+            private ImageViewTiler imageTiler = null!;
+
+            public CampaignMapBackground(Transform parent, AxisFilteredScrollRect scrollRect, AccSaberCampaignBackgroundSizeInfo bgSize, AccSaberCampaignOffsetData offsetData, string bgUrl)
+            {
+                this.parent = parent;
+                sizeInfo = bgSize;
+                OffsetData = offsetData;
+
+                bg = new("CampaignMapBackground");
+
+                RectTransform rt = bg.AddComponent<RectTransform>();
+                bg.transform.SetParent(parent, false);
+
+                rt.anchorMin = new(0.5f, 0.5f);
+                rt.anchorMax = new(0.5f, 0.5f);
+                rt.pivot = new(0.5f, 0.5f);
+                rt.localScale = Vector3.one;
+
+                bg.AddComponent<LayoutElement>().ignoreLayout = true;
+
+                ImageView image = bg.AddComponent<ImageView>();
+                image.material = Utilities.ImageResources.NoGlowMat;
+                image.type = Image.Type.Simple;
+                image.raycastTarget = false;
+
+                imageTokenSource = new();
+                image.LoadImage(bgUrl, imageTokenSource.Token).GetAwaiter().GetResult(); // This has to be awaited for so that resizing is correct.
+
+                const float sqrt3over2 = 0.86602540378443864676372317075294f; // The best kind of kill is overkill.
+
+                widthToHeight = sqrt3over2 * image.sprite.textureRect.height / image.sprite.textureRect.width;
+
+                bg.transform.SetAsFirstSibling();
+
+                imageTiler = ImageViewTiler.Create(image, scrollRect);
+
+                offsetData.OnScaleChanging += OnOffsetDataUpdating;
+                offsetData.OnScaleChanged += OnOffsetDataUpdate;
+            }
+
+            private void OnOffsetDataUpdating()
+            {
+                const int columnNumber = 20;
+                float normalSizeX = OffsetData.OffsetSize * columnNumber;
+                float normalSizeY = normalSizeX * widthToHeight;
+
+                RectTransform rt = bg.GetComponent<RectTransform>();
+
+                Vector2 size = new(normalSizeX * sizeInfo.Scale, normalSizeY * sizeInfo.Scale);
+                rt.sizeDelta = size;
+                sizeInfo.Size = size;
+
+                LayoutElement le = bg.GetComponent<LayoutElement>();
+
+                le.preferredWidth = size.x;
+                le.preferredHeight = size.y;
+            }
+            private void OnOffsetDataUpdate()
+            {
+                RectTransform rt = bg.GetComponent<RectTransform>();
+
+                rt.anchoredPosition = new(
+                    sizeInfo.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x,
+                    -sizeInfo.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
+                );
+
+                imageTiler.Rebuild();
+            }
+
+            public void Dispose()
+            {
+                OffsetData.OnScaleChanged -= OnOffsetDataUpdate;
+                OffsetData.OnScaleChanging -= OnOffsetDataUpdating;
+
+                imageTokenSource.Cancel();
+                imageTokenSource.Dispose();
+
+                imageTiler?.Dispose();
+                imageTiler = null!;
+
+                UnityEngine.Object.Destroy(bg);
+            }
+        }
+        internal class CampaignMapNode : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
+        {
+            private static event Action? UpdateMapCovers;
+
+            private bool postParse = false;
+            private CancellationTokenSource? imageTaskToken;
+            private readonly AsyncLock onClickLock = new();
+
+            private readonly AccSaberCampaignFlow campaignFlow;
+            private readonly AccSaberCampaignMapViewController parent;
+            private readonly AccSaberCampaignViewController campaignController;
+            private readonly LevelUtils levelUtils;
+            private readonly SerializationHandler serialUtils;
+            private readonly Utils.Safety.MainThreadDispatcher threadDispatcher;
+            private readonly PluginConfig config;
+
+
+            public readonly AccSaberCampaignMap Map;
+            public readonly string Hash;
+            public readonly AccSaberCampaignOffsetData OffsetData;
+            public readonly NodeShape Shape;
+            private readonly bool requiresAllPrereqs;
+
+            public CampaignProgress.CampaignProgressValue Progress => parent.CampaignProgress.PlayerValues[Map.Id];
+
+
+            [UIObject("container")]
+            public readonly GameObject Container = null!;
+
+            [UIComponent("borderImage")]
+            private readonly ImageView BorderImage = null!;
+
+            [UIObject("coverContainer")]
+            private readonly GameObject CoverContainer = null!;
+
+            [UIComponent("coverImage")]
+            private readonly ClickableImage CoverImage = null!;
+
+            [UIComponent("terminalImage")]
+            private readonly ImageView TerminalImage = null!;
+
+            [UIComponent("completionImage")]
+            private readonly ImageView CompletionImage = null!;
+
+            [UIComponent("requiresAllImage")]
+            private readonly ImageView RequiresAllImage = null!;
+
+            [UIComponent("checkpointText")]
+            private readonly TextMeshProUGUI CheckpointText = null!;
+
+
+            [UIValue("NodeWidth")]
+            public float NodeWidth => Map.Scale * OffsetData.ScaleFactor;
+
+            [UIValue("NodeHeight")]
+            public float NodeHeight => Map.Scale * OffsetData.ScaleFactor;
+
+            [UIValue("NodeXPos")]
+            public float NodeXPos => Map.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x;
+
+            [UIValue("NodeYPos")]
+            public float NodeYPos => -Map.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y;
+
+
+            [UIValue("TerminalSrc")]
+            private const string TerminalSrc = ResourcePaths.TERMINAL;
+
+            [UIValue("CheckmarkSrc")]
+            private const string CheckmarkSrc = ResourcePaths.CHECKMARK;
+
+            [UIValue("RequiresAllSrc")]
+            private const string RequiresAllSrc = ResourcePaths.CAMPAIGN_ALL;
+
+            [UIValue("IsTerminal")]
+            private bool IsTerminal
+            {
+                get;
+                set
+                {
+                    if (field == value)
+                        return;
+
+                    field = value;
+                    NotifyPropertyChanged();
+                }
+            }
+
+            [UIValue("IsComplete")]
+            private bool IsComplete 
+            {
+                get;
+                set
+                {
+                    field = value;
+                    NotifyPropertyChanged();
+                }
+
+            }
+
+            [UIValue("ShowPrereqIndicator")]
+            private bool ShowPrereqIndicator
+            {
+                get;
+                set
+                {
+                    if (field == value)
+                        return;
+
+                    field = value;
+                    NotifyPropertyChanged();
+                }
+            }
+
+            public CampaignMapNode(
+            AccSaberCampaignMap map,
+            AccSaberCampaignMapViewController parent,
+            string mapHash,
+            AccSaberCampaignOffsetData offsetData,
+            AccSaberCampaignFlow flow,
+            AccSaberCampaignViewController campaignViewController,
+            LevelUtils levelUtils,
+            SerializationHandler serialUtils,
+            Utils.Safety.MainThreadDispatcher threadDispatcher,
+            PluginConfig config
+            )
+            {
+                Map = map;
+                this.parent = parent;
+                OffsetData = offsetData;
+                Hash = mapHash;
+                Shape = map.BorderShape switch
+                {
+                    "square" => NodeShape.Square,
+                    "diamond" => NodeShape.Diamond,
+                    "circle" => NodeShape.Circle,
+                    _ => NodeShape.Hexagon
+                };
+
+                campaignFlow = flow;
+                campaignController = campaignViewController;
+                this.levelUtils = levelUtils;
+                this.serialUtils = serialUtils;
+                this.threadDispatcher = threadDispatcher;
+                this.config = config;
+
+                IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
+                IsTerminal = config.ShowTerminalIndicator && Map.Terminal;
+                requiresAllPrereqs = map.PrerequisiteMode == CampaignPrerequisiteMode.AND;
+                ShowPrereqIndicator = config.ShowPrereqIndicator && requiresAllPrereqs;
+
+                if (!string.IsNullOrWhiteSpace(Map.CheckpointLabel) && !(Map.CheckpointLabelPosition == CampaignLabelPosition.NONE))
+                    offsetData.OnScaleChanging += UpdateCheckpointLabel;
+
+                offsetData.OnScaleChanged += OnOffsetDataChanged;
+                UpdateMapCovers += UpdateCover;
+                config.PropertyChanged += OnPluginUpdate;
+            }
+
+
+            [UIAction("#post-parse")]
+            private async void PostParse()
+            {
+                try
+                {
+                    BorderImage.sprite = await GetBorderSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame);
+                    BorderImage.raycastTarget = false;
+
+                    if (string.IsNullOrEmpty(Map.BorderColor))
+                        BorderImage.color = ColorUtils.GetColor(Map.Category).Color();
+                    else 
+                        BorderImage.color = Map.BorderColor!.Color();
+
+                    ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
+                    MaskImage.sprite = await GetFillSprite(Shape, config.CampaignMaxCoverageLoadsPerFrame);
+                    MaskImage.color = Color.white;
+                    MaskImage.material = Utilities.ImageResources.NoGlowMat;
+                    MaskImage.raycastTarget = false;
+
+                    Mask m = CoverContainer.AddComponent<Mask>();
+                    m.showMaskGraphic = false;
+
+                    CompletionImage.raycastTarget = false;
+                    TerminalImage.raycastTarget = false;
+
+                    LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
+                    mainLayout.preferredWidth = NodeWidth;
+                    mainLayout.preferredHeight = NodeHeight;
+
+                    RectTransform transform = (RectTransform)RequiresAllImage.transform;
+                    transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+
+                    if (Map.Terminal)
+                    {
+                        transform = (RectTransform)TerminalImage.transform;
+                        transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                    }
+
+                    postParse = true;
+                    SetupCheckpointLabel();
+                    UpdateCover();
+                    UpdateProgress();
+#if PRINT_DEBUG && DEBUG
+                Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
+#endif
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.Error(e);
+                }
+            }
+
+            [UIAction("OnClick")]
+            internal async void OnClick()
+            {
+                AsyncLock.Releaser? locker = await onClickLock.TryLockAsync();
+
+                if (locker is null)
+                    return;
+
+                using (locker.Value)
+                {
+#if NEW_VERSION
+                    BeatmapLevel? level = Loader.GetLevelByHash(Hash);
+#else
+                    IBeatmapLevel? level = (await Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(LevelUtils.header + Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
+#endif
+
+                    if (level is null)
+                    {
+                        Plugin.Log.Warn($"Cannot find level by hash \"{Hash}\", downloading...");
+
+                        // Map should be loaded at this point.
+                        level = await levelUtils.DownloadSong(serialUtils.GetMapByHash(Hash)!);
+
+                        UpdateMapCovers?.Invoke();
+
+                        if (level is null)
+                        {
+                            Plugin.Log.Critical("Level cannot be downloaded!");
+                            return;
+                        }
+                    }
+
+#if NEW_VERSION
+                    IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
+                    BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => string.Equals(c.serializedName, Map.Characteristic, StringComparison.OrdinalIgnoreCase));
+                    BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(Map.Difficulty));
+
+                    campaignFlow.ShowLeaderboard(key);
+
+                    await campaignController.SetMission(Map, key, level, Progress);
+#else
+                    BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(Map.Difficulty);
+                    IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals(Map.Characteristic, StringComparison.OrdinalIgnoreCase));
+                    IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == mapDiff);
+
+                    campaignFlow.ShowLeaderboard(diff);
+
+                    await campaignController.SetMission(Map, diff, Progress);
+#endif
+                }
+            }
+
+            private void SetupCheckpointLabel()
+            {
+                if (!postParse)
+                    return;
+
+                if (string.IsNullOrWhiteSpace(Map.CheckpointLabel) || Map.CheckpointLabelPosition == CampaignLabelPosition.NONE)
+                {
+                    CheckpointText.gameObject.SetActive(false);
+
+                    Map.Size = new(NodeWidth, NodeHeight);
+
+                    return;
+                }
+
+                CheckpointText.gameObject.SetActive(true);
+
+                // Make sure the text does not affect the stack layout.
+                LayoutElement layoutElement = CheckpointText.GetComponent<LayoutElement>();
+                layoutElement ??= CheckpointText.gameObject.AddComponent<LayoutElement>();
+
+                layoutElement.ignoreLayout = true;
+
+                CheckpointText.text = Map.CheckpointLabel;
+                CheckpointText.color = string.IsNullOrEmpty(Map.CheckpointColor) ? new Color32(99, 102, 241, 255) : Map.CheckpointColor!.Color();
+
+                CheckpointText.alignment = TextAlignmentOptions.Center;
+                CheckpointText.overflowMode = TextOverflowModes.Overflow;
+                CheckpointText.raycastTarget = false;
+
+#if V41
+                CheckpointText.textWrappingMode = TextWrappingModes.NoWrap;
+#else
+                CheckpointText.enableWordWrapping = false;
+#endif
+
+                RectTransform rectTransform = (RectTransform)CheckpointText.transform;
+                rectTransform.SetAsLastSibling();
+
+                rectTransform.localRotation = Quaternion.identity;
+                rectTransform.localScale = Vector3.one;
+
+                UpdateCheckpointLabel();
+            }
+            private void UpdateCheckpointLabel()
+            {
+                CheckpointText.fontSize = Math.Max(1, Map.CheckpointSize * OffsetData.ScaleFactor);
+
+                RectTransform rectTransform = (RectTransform)CheckpointText.transform;
+
+                float padding = NodeWidth * 0.05f;
+
+                Vector2 nodeSize;
+
+                switch (Map.CheckpointLabelPosition)
+                {
+                    case CampaignLabelPosition.UP:
+                        rectTransform.anchorMin = new Vector2(0.5f, 1f);
+                        rectTransform.anchorMax = new Vector2(0.5f, 1f);
+                        rectTransform.pivot = new Vector2(0.5f, 0f);
+                        rectTransform.anchoredPosition = new Vector2(0f, padding);
+                        nodeSize = new Vector2(0f, NodeHeight + padding * 2);
+                        break;
+
+                    case CampaignLabelPosition.DOWN:
+                        rectTransform.anchorMin = new Vector2(0.5f, 0f);
+                        rectTransform.anchorMax = new Vector2(0.5f, 0f);
+                        rectTransform.pivot = new Vector2(0.5f, 1f);
+                        rectTransform.anchoredPosition = new Vector2(0f, -padding);
+                        nodeSize = new Vector2(0f, NodeHeight + padding * 2);
+                        break;
+
+                    case CampaignLabelPosition.LEFT:
+                        rectTransform.anchorMin = new Vector2(0f, 0.5f);
+                        rectTransform.anchorMax = new Vector2(0f, 0.5f);
+                        rectTransform.pivot = new Vector2(1f, 0.5f);
+                        rectTransform.anchoredPosition = new Vector2(-padding, 0f);
+                        nodeSize = new Vector2(NodeWidth + padding * 2, 0f);
+                        break;
+
+                    case CampaignLabelPosition.RIGHT:
+                        rectTransform.anchorMin = new Vector2(1f, 0.5f);
+                        rectTransform.anchorMax = new Vector2(1f, 0.5f);
+                        rectTransform.pivot = new Vector2(0f, 0.5f);
+                        rectTransform.anchoredPosition = new Vector2(padding, 0f);
+                        nodeSize = new Vector2(NodeWidth + padding * 2, 0f);
+                        break;
+
+                    default:
+                        CheckpointText.gameObject.SetActive(false);
+                        return;
+                }
+
+                CheckpointText.ForceMeshUpdate();
+
+                rectTransform.sizeDelta = new Vector2(
+                    Mathf.Max(CheckpointText.preferredWidth, CheckpointText.fontSize),
+                    Mathf.Max(CheckpointText.preferredHeight, CheckpointText.fontSize)
+                );
+
+                Map.Size = rectTransform.rect.size + nodeSize;
+            }
+
+            private void OnPluginUpdate(object sender, PropertyChangedEventArgs args)
+            {
+                if (args.PropertyName.Equals(nameof(PluginConfig.ShowTerminalIndicator)))
+                    IsTerminal = Map.Terminal && config.ShowTerminalIndicator;
+                else if (args.PropertyName.Equals(nameof(PluginConfig.ShowPrereqIndicator)))
+                    ShowPrereqIndicator = requiresAllPrereqs && config.ShowPrereqIndicator;
+            }
+            private void UpdateCover()
+            {
+                if (!postParse)
+                    return;
+
+                if (imageTaskToken is not null)
+                {
+                    imageTaskToken.Cancel();
+                    imageTaskToken.Dispose();
+                }
+
+                imageTaskToken = new();
+
+                _ = string.IsNullOrEmpty(Map.CheckpointAvatarUrl) ?
+                    (Map.NodeBorderUrl is null ? CoverImage.LoadCoverImage(Hash, Map.CoverUrl, imageTaskToken.Token) : CoverImage.LoadImage(Map.NodeBorderUrl!, imageTaskToken.Token)) :
+                    CoverImage.LoadImage(Map.CheckpointAvatarUrl!, imageTaskToken.Token);
+            }
+
+            public void UpdateProgress()
+            {
+                if (!postParse)
+                    return;
+
+                CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
+
+                IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
+
+                if (IsComplete)
+                    ((RectTransform)CompletionImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+            }
+            private void OnOffsetDataChanged()
+            {
+                ((RectTransform)CompletionImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                ((RectTransform)RequiresAllImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+                ((RectTransform)TerminalImage.transform).sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
+
+                LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
+                mainLayout.preferredWidth = NodeWidth;
+                mainLayout.preferredHeight = NodeHeight;
+
+                NotifyPropertyChanged(nameof(NodeWidth));
+                NotifyPropertyChanged(nameof(NodeHeight));
+                NotifyPropertyChanged(nameof(NodeXPos));
+                NotifyPropertyChanged(nameof(NodeYPos));
+            }
+
+            public void Dispose()
+            {
+                OffsetData.OnScaleChanging -= UpdateCheckpointLabel;
+                OffsetData.OnScaleChanged -= OnOffsetDataChanged;
+                UpdateMapCovers -= UpdateCover;
+                config.PropertyChanged -= OnPluginUpdate;
+
+                if (imageTaskToken is not null)
+                {
+                    imageTaskToken.Cancel();
+                    imageTaskToken.Dispose();
+                    imageTaskToken = null;
+                }
+
+                UnityEngine.Object.Destroy(Container);
+            }
+        }
+
+        internal class CampaignMapBarrier : IDisposable
+        {
+            public const float WIDTH = 5f;
+            public const float FONT_SIZE = 15f;
+
+            private const float TEXT_MARGIN = 4f;
+
+            // Extra padding around text collision boxes.
+            // Increase this if labels are still visually too close.
+            private const float TEXT_COLLISION_PADDING = 2f;
+
+            private static readonly List<CampaignMapBarrier> ActiveBarriers = [];
+            private static bool resolvingTextCollisions;
+
+            public readonly AccSaberCampaignBarrier Barrier;
+            public readonly AccSaberCampaignOffsetData OffsetData;
+
+            private readonly AccSaberCampaignMapViewController parentVC;
+
+            public readonly GameObject obj;
+            public readonly GameObject textObj;
+
+            private readonly RectTransform barrierRt;
+            private readonly RectTransform textRt;
+
+            private readonly LayoutElement barrierLayout;
+            private readonly LayoutElement textLayout;
+
+            private readonly TextMeshProUGUI text;
+
+            // false = Vector3.down end
+            // true  = Vector3.up end, aka flipped 180 degrees
+            private bool textOnOppositeEnd;
+
+            public string ProgressText => text.text;
+
+            public CampaignProgress.CampaignProgressValue Progress => parentVC.CampaignProgress.PlayerValues[Barrier.Id];
+
+            public Quaternion Rotation
+            {
+                get => barrierRt.localRotation;
+                set
+                {
+                    barrierRt.localRotation = value;
+
+                    UpdateBarrierSizeBounds();
+                    UpdateTextPos();
+                }
+            }
+
+            public Vector2 SizeDelta
+            {
+                get => barrierRt.sizeDelta;
+                set
+                {
+                    barrierRt.sizeDelta = value;
+
+                    barrierLayout.preferredWidth = value.x;
+                    barrierLayout.preferredHeight = value.y;
+
+                    UpdateBarrierSizeBounds();
+                    UpdateTextPos();
+                }
+            }
+
+            public Vector2 Position => barrierRt.anchoredPosition;
+
+            public CampaignMapBarrier(AccSaberCampaignBarrier barrier, Transform parent, AccSaberCampaignMapViewController parentVC, AccSaberCampaignOffsetData offsetData)
+            {
+                Barrier = barrier;
+                OffsetData = offsetData;
+                this.parentVC = parentVC;
+
+                obj = new GameObject("AccSaberCampaignBarrier", typeof(RectTransform));
+                obj.transform.SetParent(parent, false);
+
+                barrierRt = (RectTransform)obj.transform;
+                SetupManualRectTransform(barrierRt);
+                barrierRt.localRotation = Quaternion.identity;
+
+                barrierLayout = obj.AddComponent<LayoutElement>();
+                barrierLayout.ignoreLayout = true;
+
+                ClickableImage image = obj.AddComponent<ClickableImage>();
+                image.sprite = Utilities.ImageResources.WhitePixel;
+                image.material = Utilities.ImageResources.NoGlowMat;
+                image.type = Image.Type.Simple;
+                image.DefaultColor = barrier.BorderColor?.Color() ?? Color.red;
+                image.HighlightColor = (barrier.BorderColor ?? "#F00").BrightenColor(5).Color();
+                image.OnClickEvent += OnClick;
+
+
+#if V41
+                text = BeatSaberUI.CreateCurvedUIText(parent as RectTransform, "Hello");
+                text.alignment = TextAlignmentOptions.Center;
+                text.textWrappingMode = TextWrappingModes.NoWrap;
+#else
+                text = BeatSaberUI.CreateText(parent as RectTransform, "Hello", Vector2.zero);
+                text.alignment = TextAlignmentOptions.Center;
+                text.enableWordWrapping = false;
+#endif
+
+                textObj = text.gameObject;
+                textObj.name = "AccSaberCampaignBarrierText";
+
+                textRt = (RectTransform)textObj.transform;
+                SetupManualRectTransform(textRt);
+                textRt.localRotation = Quaternion.identity;
+
+                textLayout = textObj.AddComponent<LayoutElement>();
+                textLayout.ignoreLayout = true;
+
+                // This is done so the text does not block clicking the barrier/map.
+                text.raycastTarget = false;
+
+                // Keep the label visually above the barrier.
+                textRt.SetAsLastSibling();
+
+                ActiveBarriers.Add(this);
+
+                OffsetData.OnScaleChanging += OnOffsetDataUpdateStarted;
+                OffsetData.OnScaleChanged += OnOffsetDataUpdateFinished;
+                OnOffsetDataUpdateFinished();
+
+#if PRINT_DEBUG && DEBUG
+        Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
+#endif
+            }
+
+            public void UpdateProgress()
+            {
+                UpdateText();
+                UpdateTextSize();
+                UpdateTextPos();
+            }
+
+            private static void SetupManualRectTransform(RectTransform rt)
+            {
+                rt.anchorMin = new(0.5f, 0.5f);
+                rt.anchorMax = new(0.5f, 0.5f);
+                rt.pivot = new(0.5f, 0.5f);
+                rt.localScale = Vector3.one;
+            }
+
+            private void OnOffsetDataUpdateStarted()
+            {
+                SizeDelta = new(
+                    WIDTH * OffsetData.ScaleFactor,
+                    Barrier.Scale * OffsetData.ScaleFactor
+                );
+
+                text.fontSize = FONT_SIZE * OffsetData.ScaleFactor;
+
+                UpdateText();
+                UpdateTextSize();
+
+                // This updates Barrier.Size to include:
+                // - the rotated barrier rectangle
+                // - the label on the default end
+                // - the label on the opposite end
+                //
+                // Including both ends is important because text collision resolution
+                // may flip the label after the parent has already calculated bounds.
+                UpdateBarrierSizeBounds();
+
+                // Apply current visual position using the current/old offset.
+                // Do not force collision resolution here; final positions are not ready yet.
+                UpdateTextPos();
+            }
+
+            private void OnOffsetDataUpdateFinished()
+            {
+                barrierRt.anchoredPosition = new(
+                    Barrier.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x,
+                    -Barrier.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
+                );
+
+                // Text is a separate object under the same parent, so it must be moved
+                // after the barrier anchored position changes.
+                UpdateTextPos();
+            }
+
+            private void UpdateTextSize()
+            {
+                text.ForceMeshUpdate();
+
+                // Use a large available area instead of infinity because some TMP/Unity versions
+                // behave oddly with Mathf.Infinity.
+                Vector2 preferredSize = text.GetPreferredValues(text.text, 10000f, 10000f);
+
+                float padding = 2f * OffsetData.ScaleFactor;
+                preferredSize.x += padding;
+                preferredSize.y += padding;
+
+                textLayout.preferredWidth = preferredSize.x;
+                textLayout.preferredHeight = preferredSize.y;
+
+                textRt.sizeDelta = preferredSize;
+
+                UpdateBarrierSizeBounds();
+            }
+
+            private void UpdateTextPos()
+            {
+                if (textRt is null || barrierRt is null)
+                    return;
+
+                ApplyTextPosition();
+            }
+
+            private void ApplyTextPosition()
+            {
+                Vector2 textSize = textRt.sizeDelta;
+
+                Vector2 endDirection = GetTextEndDirection(textOnOppositeEnd);
+
+                float barrierHalfLength = SizeDelta.y * 0.5f;
+
+                // The text remains unrotated/upright.
+                // Because of that, calculate the axis-aligned half-extent of the text
+                // in the direction we are moving it.
+                float textHalfExtentInDirection =
+                    Mathf.Abs(endDirection.x) * textSize.x * 0.5f +
+                    Mathf.Abs(endDirection.y) * textSize.y * 0.5f;
+
+                float margin = TEXT_MARGIN * OffsetData.ScaleFactor;
+
+                textRt.anchoredPosition =
+                    barrierRt.anchoredPosition +
+                    endDirection * (barrierHalfLength + textHalfExtentInDirection + margin);
+
+                // Keep the text readable.
+                textRt.localRotation = Quaternion.identity;
+
+                // Keep it above the barrier in the hierarchy.
+                textRt.SetAsLastSibling();
+            }
+
+            internal static void ResolveTextCollisions()
+            {
+                if (resolvingTextCollisions)
+                    return;
+
+                resolvingTextCollisions = true;
+
+                try
+                {
+                    ActiveBarriers.RemoveAll(barrier => !IsValidBarrier(barrier));
+
+                    if (ActiveBarriers.Count <= 1)
+                        return;
+
+                    // Start from a deterministic layout:
+                    // every label goes back to its default end first.
+                    foreach (CampaignMapBarrier barrier in ActiveBarriers)
+                    {
+                        barrier.textOnOppositeEnd = false;
+                        barrier.UpdateTextPos();
+                    }
+
+                    // Iteratively resolve because flipping one label can create a new collision
+                    // with another label that was checked earlier.
+                    int maxIterations = ActiveBarriers.Count + 1;
+
+                    for (int iteration = 0; iteration < maxIterations; iteration++)
+                    {
+                        bool changedSomething = false;
+
+                        for (int i = 0; i < ActiveBarriers.Count; i++)
+                        {
+                            CampaignMapBarrier a = ActiveBarriers[i];
+
+                            for (int j = i + 1; j < ActiveBarriers.Count; j++)
+                            {
+                                CampaignMapBarrier b = ActiveBarriers[j];
+
+                                if (!TextRectsOverlap(a, b))
+                                    continue;
+
+                                // Collision found.
+                                // Move both colliding labels to the other end of their barriers.
+                                if (!a.textOnOppositeEnd)
+                                {
+                                    a.textOnOppositeEnd = true;
+                                    a.UpdateTextPos();
+                                    changedSomething = true;
+                                }
+
+                                if (!b.textOnOppositeEnd)
+                                {
+                                    b.textOnOppositeEnd = true;
+                                    b.UpdateTextPos();
+                                    changedSomething = true;
+                                }
+                            }
+                        }
+
+                        if (!changedSomething)
+                            break;
+                    }
+
+                    foreach (CampaignMapBarrier barrier in ActiveBarriers)
+                    {
+                        barrier.UpdateBarrierSizeBounds();
+                        barrier.textRt.SetAsLastSibling();
+                    }
+                }
+                finally
+                {
+                    resolvingTextCollisions = false;
+                }
+            }
+
+            private void UpdateBarrierSizeBounds()
+            {
+                if (barrierRt is null || textRt is null)
+                    return;
+
+                Barrier.Size = CalculateRequiredBarrierSize();
+            }
+
+            private Vector2 CalculateRequiredBarrierSize()
+            {
+                Vector2 totalHalfExtents = GetRotatedBarrierHalfExtents();
+
+                // Include the text on the default end.
+                ExpandHalfExtentsToIncludeTextEnd(ref totalHalfExtents, oppositeEnd: false);
+
+                // Also include the text on the opposite end.
+                //
+                // This is intentionally conservative. It prevents the parent view from
+                // calculating bounds that are too small before collision resolution flips
+                // the text to the other side.
+                ExpandHalfExtentsToIncludeTextEnd(ref totalHalfExtents, oppositeEnd: true);
+
+                // Barrier.Size is the full bounding-box size, not half-extents.
+                return totalHalfExtents * 2f;
+            }
+
+            private Vector2 GetRotatedBarrierHalfExtents()
+            {
+                Vector2 size = SizeDelta;
+
+                float halfWidth = size.x * 0.5f;
+                float halfHeight = size.y * 0.5f;
+
+                Vector3 right3D = barrierRt.localRotation * Vector3.right;
+                Vector3 up3D = barrierRt.localRotation * Vector3.up;
+
+                Vector2 right = new(right3D.x, right3D.y);
+                Vector2 up = new(up3D.x, up3D.y);
+
+                // Axis-aligned half extents of a rotated rectangle.
+                return new Vector2(
+                    Mathf.Abs(right.x) * halfWidth + Mathf.Abs(up.x) * halfHeight,
+                    Mathf.Abs(right.y) * halfWidth + Mathf.Abs(up.y) * halfHeight
+                );
+            }
+
+            private void ExpandHalfExtentsToIncludeTextEnd(ref Vector2 totalHalfExtents, bool oppositeEnd)
+            {
+                Vector2 textSize = textRt.sizeDelta;
+                Vector2 endDirection = GetTextEndDirection(oppositeEnd);
+
+                float barrierHalfLength = SizeDelta.y * 0.5f;
+
+                float textHalfExtentInDirection =
+                    Mathf.Abs(endDirection.x) * textSize.x * 0.5f +
+                    Mathf.Abs(endDirection.y) * textSize.y * 0.5f;
+
+                float margin = TEXT_MARGIN * OffsetData.ScaleFactor;
+
+                Vector2 textCenterRelativeToBarrier =
+                    endDirection * (barrierHalfLength + textHalfExtentInDirection + margin);
+
+                float collisionPadding = TEXT_COLLISION_PADDING * OffsetData.ScaleFactor;
+
+                Vector2 textHalfExtents = new(
+                    textSize.x * 0.5f + collisionPadding,
+                    textSize.y * 0.5f + collisionPadding
+                );
+
+                // Because Barrier.Size is only a Vector2, it cannot represent an offset center.
+                // So we calculate a symmetric bounding box around the barrier center.
+                //
+                // This means:
+                // required half extent X = abs(text center X) + text half width
+                // required half extent Y = abs(text center Y) + text half height
+                totalHalfExtents.x = Mathf.Max(
+                    totalHalfExtents.x,
+                    Mathf.Abs(textCenterRelativeToBarrier.x) + textHalfExtents.x
+                );
+
+                totalHalfExtents.y = Mathf.Max(
+                    totalHalfExtents.y,
+                    Mathf.Abs(textCenterRelativeToBarrier.y) + textHalfExtents.y
+                );
+            }
+
+            private Vector2 GetTextEndDirection(bool oppositeEnd)
+            {
+                // Default end is down. Opposite end is up.
+                Vector3 localEndDirection = oppositeEnd ? Vector3.up : Vector3.down;
+
+                Vector3 endDirection3D = barrierRt.localRotation * localEndDirection;
+                Vector2 endDirection = new(endDirection3D.x, endDirection3D.y);
+
+                if (endDirection.sqrMagnitude < 0.0001f)
+                    return oppositeEnd ? Vector2.up : Vector2.down;
+
+                endDirection.Normalize();
+                return endDirection;
+            }
+
+            private static bool IsValidBarrier(CampaignMapBarrier barrier)
+            {
+                return barrier is not null &&
+                       barrier.obj is not null &&
+                       barrier.textObj is not null &&
+                       barrier.barrierRt is not null &&
+                       barrier.textRt is not null;
+            }
+
+            private static bool TextRectsOverlap(CampaignMapBarrier a, CampaignMapBarrier b)
+            {
+                Rect rectA = GetTextRect(a);
+                Rect rectB = GetTextRect(b);
+
+                return rectA.Overlaps(rectB);
+            }
+
+            private static Rect GetTextRect(CampaignMapBarrier barrier)
+            {
+                Vector2 pos = barrier.textRt.anchoredPosition;
+                Vector2 size = barrier.textRt.sizeDelta;
+
+                float padding = TEXT_COLLISION_PADDING * barrier.OffsetData.ScaleFactor;
+
+                return new Rect(
+                    pos.x - size.x * 0.5f - padding,
+                    pos.y - size.y * 0.5f - padding,
+                    size.x + padding * 2f,
+                    size.y + padding * 2f
+                );
+            }
+
+            private void UpdateText()
+            {
+                float progress = Progress.Progress[0].CurrentValue;
+
+                string value = Barrier.ConditionType switch
+                {
+                    BarrierConditionType.AVERAGE_ACC =>
+                        $"Average Accuracy\n<color={ColorUtils.LEVEL}>{progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
+
+                    BarrierConditionType.AVERAGE_AP =>
+                        $"Average Ap\n<color={ColorUtils.AP}>{progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
+
+                    BarrierConditionType.AP_MAX =>
+                        $"Max Ap\n<color={ColorUtils.AP}>{progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
+
+                    BarrierConditionType.ACC_MAX =>
+                        $"Max Accuracy\n<color={ColorUtils.LEVEL}>{progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
+
+                    BarrierConditionType.STREAK_115_AVERAGE =>
+                        $"Average streak\n<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
+
+                    BarrierConditionType.STREAK_115_MAX =>
+                        $"Max streak\n<color={ColorUtils.TECH}>{progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
+
+                    BarrierConditionType.FC =>
+                        $"FC maps\n<color={ColorUtils.RELOADED}>{progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
+
+                    BarrierConditionType.AVERAGE_RANK =>
+                        $"Average Rank\n<color={ColorUtils.RANK}>#{progress:0.##}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:0.##}</color>",
+
+                    BarrierConditionType.MAX_RANK =>
+                        $"Max Rank\n<color={ColorUtils.RANK}>#{progress:N0}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:N0}</color>",
+
+                    BarrierConditionType.COMPLETION_COUNT =>
+                        $"Nodes Completed\n<color={ColorUtils.GLOBAL}>{progress:N0}</color> / <color={ColorUtils.GLOBAL}>{Barrier.ConditionValue:N0}</color>",
+
+                    BarrierConditionType.PASS =>
+                        $"Nodes Passed\n<color={ColorUtils.RELOADED}>{progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
+
+                    _ => "Unknown type"
+                };
+
+                text.text = value;
+            }
+
+            private void OnClick(PointerEventData data)
+            {
+                parentVC.acvc.SetBarrierInfo(this, Progress);
+            }
+
+            public void Dispose()
+            {
+                OffsetData.OnScaleChanging -= OnOffsetDataUpdateStarted;
+                OffsetData.OnScaleChanged -= OnOffsetDataUpdateFinished;
+
+                ActiveBarriers.Remove(this);
+
+                UnityEngine.Object.Destroy(obj);
+                UnityEngine.Object.Destroy(textObj);
+            }
+        }
+
+        internal class CampaignMapText : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
+        {
+            private const float padding = 1f;
+
+            public readonly AccSaberCampaignText Text;
+            public readonly AccSaberCampaignOffsetData OffsetData;
+
+            public readonly TextMeshProUGUI TextObj;
+
+            public Vector2 Position { get; private set; }
+            public Vector2 RenderedSize
+            {
+                get
+                {
+#if NEW_VERSION
+                    TextObj.ForceMeshUpdate(true, true);
+#else
+                    TextObj.ForceMeshUpdate(true);
+#endif
+                    return TextObj.GetRenderedValues(false);
+                }
+            }
+            public Vector2 Size
+            {
+                get
+                {
+                    Rect rect = TextObj.rectTransform.rect;
+                    return rect.size;
+                }
+            }
+
+            public Rect GetRect()
+            {
+                Vector2 size = Size;
+
+                Vector2 min = Position - size * 0.5f;
+                Vector2 max = Position + size * 0.5f;
+
+                return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+            }
+
+            public CampaignMapText(AccSaberCampaignText text, RectTransform parent, AccSaberCampaignOffsetData offsetData)
+            {
+                Text = text;
+                OffsetData = offsetData;
+
+                string content = ParseGivenContent(text.Content);
+
+                if (!string.IsNullOrEmpty(text.Color))
+                    content = $"<color={text.Color}>{content}</color>";
+
+#if V41
+                TextObj = BeatSaberUI.CreateCurvedUIText(parent, content);
+#else
+                TextObj = BeatSaberUI.CreateText(parent, content, Vector2.zero);
+#endif
+
+                RectTransform rt = TextObj.rectTransform;
+
+                // Since map coordinates are centered on the parent plane, use center anchors.
+                rt.anchorMin = new Vector2(0.5f, 0.5f);
+                rt.anchorMax = new Vector2(0.5f, 0.5f);
+
+                // This makes anchoredPosition refer to the center of the text rect.
+                rt.pivot = new Vector2(0.5f, 0.5f);
+
+                // Center the actual text inside the RectTransform.
+                TextObj.alignment = TextAlignmentOptions.Center;
+
+                TextObj.raycastTarget = false;
+
+                if (!TextObj.TryGetComponent(out LayoutElement le))
+                    le = TextObj.gameObject.AddComponent<LayoutElement>();
+
+                le.ignoreLayout = true;
+
+                ApplyOffsetData();
+
+                OffsetData.OnScaleChanging += UpdateTextSize;
+                OffsetData.OnScaleChanged += ApplyOffsetData;
+            }
+
+            private void ApplyOffsetData()
+            {
+                UpdateTextSize();
+
+                Position = new(Text.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x, -Text.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y);
+
+                TextObj.rectTransform.anchoredPosition = Position;
+            }
+            private void UpdateTextSize()
+            {
+                const float FONT_SCALE = 7.5f;
+                const float BOUNDS_SCALE = 12f; // originally = 16
+                const float TRUE_BOUNDS_SCALE = FONT_SCALE * BOUNDS_SCALE;
+
+                TextObj.fontSize = Text.Scale * FONT_SCALE * OffsetData.ScaleFactor;
+
+                ResizeTextToFit(TRUE_BOUNDS_SCALE * Text.Scale * OffsetData.ScaleFactor);
+
+                Vector2 rectSize = TextObj.rectTransform.rect.size;
+
+#if PRINT_DEBUG && DEBUG
+                Plugin.Log.Info("text rect size = " + rectSize);
+#endif
+
+                if (padding != 0f)
+                    rectSize += new Vector2(padding, padding) * OffsetData.ScaleFactor;
+
+                Text.Size = rectSize;
+            }
+
+            private void ResizeTextToFit(float maxWidth = 0f)
+            {
+                RectTransform rt = TextObj.rectTransform;
+
+                bool useWrapping = maxWidth > 0f;
+
+                TextObj.overflowMode = TextOverflowModes.Overflow;
+
+#if V41
+                TextObj.textWrappingMode = useWrapping ? TextWrappingModes.PreserveWhitespace : TextWrappingModes.NoWrap;
+#else
+                TextObj.enableWordWrapping = useWrapping;
+#endif
+
+#if NEW_VERSION
+                TextObj.ForceMeshUpdate(true, true);
+#else
+                TextObj.ForceMeshUpdate(true);
+#endif
+
+                Vector2 preferredSize;
+
+                if (useWrapping)
+                {
+                    preferredSize = TextObj.GetPreferredValues(TextObj.text, maxWidth, Mathf.Infinity);
+
+                    preferredSize.x = Mathf.Min(preferredSize.x, maxWidth);
+                }
+                else
+                {
+                    preferredSize = TextObj.GetPreferredValues(TextObj.text, Mathf.Infinity, Mathf.Infinity);
+                }
+
+                preferredSize.x = Mathf.Ceil(preferredSize.x + padding * OffsetData.ScaleFactor);
+                preferredSize.y = Mathf.Ceil(preferredSize.y + padding * OffsetData.ScaleFactor);
+
+                rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, preferredSize.x);
+                rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, preferredSize.y);
+
+#if NEW_VERSION
+                TextObj.ForceMeshUpdate(true, true);
+#else
+                TextObj.ForceMeshUpdate(true);
+#endif
+            }
+
+            public void Dispose()
+            {
+                OffsetData.OnScaleChanging -= UpdateTextSize;
+                OffsetData.OnScaleChanged -= ApplyOffsetData;
+
+                if (TextObj is not null)
+                    UnityEngine.Object.Destroy(TextObj.gameObject);
+            }
+
+            private static readonly Regex TagMatcher = new(@"</?(?'name'[\w_]+) ?(?'content'[^>]+)?>");
+            private static readonly Regex ContentMatcher = new(@"(?'tag'[\w_]+)=(?'value'\d+|\w+|""[^""]+"")");
+
+            private static string ParseGivenContent(string givenStr)
+            {
+                givenStr = givenStr.Replace("\n", "");
+
+                MatchCollection mc = TagMatcher.Matches(givenStr);
+                Queue<(string oldStr, string newStr)> toReplace = [];
+                Stack<(string oldStr, string newStr)> closingTagReplacement = [];
+
+                foreach (Match m in mc)
+                {
+                    string tag = m.Groups["name"].Value;
+
+                    if (tag.Length < 2)
+                        continue;
+
+                    if (m.Value[1] == '/')
+                    {
+                        Stack<(string oldStr, string newStr)> temp = [];
+
+                        while (closingTagReplacement.Count > 0)
+                        {
+                            if (closingTagReplacement.Peek().oldStr.Equals(m.Value))
+                                break;
+
+                            temp.Push(closingTagReplacement.Pop());
+                        }
+
+                        if (closingTagReplacement.Count == 0)
+                            Plugin.Log.Warn("There was an error parsing the text content!\n" + givenStr);
+                        else
+                            toReplace.Enqueue(closingTagReplacement.Pop());
+
+                        while (temp.Count > 0)
+                            closingTagReplacement.Push(temp.Pop());
+
+                        continue;
+                    }
+
+                    Dictionary<string, string> values = m.Groups["content"].Success
+                        ? [with(ContentMatcher.Matches(m.Groups["content"].Value)
+#if !NEW_VERSION
+                        .Cast<Match>()
+#endif
+                        .Select(m => new KeyValuePair<string, string>(
+                            m.Groups["tag"].Value,
+                            m.Groups["value"].Value)))]
+                            : [];
+
+                    bool failed = true;
+                    bool endTagInstant = m.Value[^2] == '/';
+
+                    switch (tag)
+                    {
+                        case "span":
+                            if (values.TryGetValue("style", out string content))
+                            {
+                                failed = false;
+
+                                if (content[1..].StartsWith("color:rgb("))
+                                {
+                                    int current = 11, set = 0;
+                                    byte[] rgbVals = new byte[3];
+
+                                    for (int i = 0; i < 3; ++i, ++set)
+                                    {
+                                        while (current < content.Length && !char.IsDigit(content[current]))
+                                            ++current;
+
+                                        if (current >= content.Length)
+                                        {
+                                            Plugin.Log.Warn("Cannot parse the given content: " + content);
+                                            break;
+                                        }
+
+                                        int len = 0;
+
+                                        while (current < content.Length && char.IsDigit(content[current]))
+                                        {
+                                            ++len;
+                                            ++current;
+                                        }
+
+                                        rgbVals[i] = byte.Parse(content[(current - len)..current]);
+                                    }
+
+                                    if (set < 3)
+                                        break;
+
+                                    toReplace.Enqueue((m.Value, $"<color={new Color32(rgbVals[0], rgbVals[1], rgbVals[2], 255).Color()}{(endTagInstant ? "/" : "")}>"));
+
+                                    if (!endTagInstant)
+                                        closingTagReplacement.Push(("</span>", "</color>"));
+
+                                    break;
+                                }
+
+                                if (content[1..].StartsWith("font-size:"))
+                                {
+                                    toReplace.Enqueue((m.Value, $"<size={content[11..content.Length].Replace("\"", "")}{(endTagInstant ? "/" : "")}>"));
+
+                                    if (!endTagInstant)
+                                        closingTagReplacement.Push(("</span>", "</size>"));
+
+                                    break;
+                                }
+
+                                failed = true;
+                            }
+
+                            break;
+
+                        case "div" or "br":
+                            failed = false;
+
+                            toReplace.Enqueue((m.Value, endTagInstant ? "\n" : ""));
+
+                            if (!endTagInstant)
+                                closingTagReplacement.Push(($"</{tag}>", "\n"));
+                            break;
+                    }
+
+                    if (failed)
+                    {
+                        toReplace.Enqueue((m.Value, ""));
+
+                        if (!endTagInstant)
+                            closingTagReplacement.Push(($"</{tag}>", ""));
+                    }
+                }
+
+                while (closingTagReplacement.Count > 0)
+                    toReplace.Enqueue(closingTagReplacement.Pop());
+
+                while (toReplace.Count > 0)
+                {
+                    var (oldStr, newStr) = toReplace.Dequeue();
+                    givenStr = givenStr.ReplaceFirst(oldStr, newStr);
+                }
+
+                string outp = WebUtility.HtmlDecode(givenStr);
+
+#if PRINT_DEBUG && DEBUG
+                Plugin.Log.Info("Text: " + outp);
+#endif
+
+                return outp;
+            }
+        }
+    }
+
+    internal class UIArrow : IDisposable
+    {
+        private readonly Transform parent;
+        private readonly DependentPositionData StartPoint, EndPoint;
+        private readonly float shaftThickness, headLength, headWidth;
+        private readonly string name;
+
+        private GameObject? arrowObj;
+        private ImageView? headImg, shaftImg;
+
+        public Color Color
+        {
+            get;
+            set
+            {
+                if (field == value)
+                    return;
+
+                field = value;
+
+                if (headImg is not null && shaftImg is not null)
+                {
+                    headImg.color = value;
+                    shaftImg.color = value;
+                }
+            }
+        }
+        public GameObject? Arrow => arrowObj;
+
+        public UIArrow(Transform parent, DependentPositionData from, DependentPositionData to, Color color) :
+            this(parent, from, to, color, 5f, 20f, 20f, "UI Arrow") { }
+        public UIArrow(Transform parent, DependentPositionData from, DependentPositionData to, Color color, float shaftThickness, float headLength, float headWidth, string name)
+        {
+            this.parent = parent;
+            StartPoint = from; 
+            EndPoint = to;
+            Color = color;
+            this.shaftThickness = shaftThickness;
+            this.headLength = headLength;
+            this.headWidth = headWidth;
+            this.name = name;
+
+            from.OnParentUpdate += ModifyArrow;
+        }
+
+        public GameObject? CreateOrGetArrow()
+        {
+            if (arrowObj is null)
+                return CreateArrow();
+
+            return arrowObj;
+        }
+        public GameObject? CreateArrow()
+        {
+            PositionData from = StartPoint;
+            PositionData to = EndPoint;
+
+            float scale = StartPoint.Scale;
+
+            if (!TryGetClippedArrowPoints(from, to, out Vector2 fromPos, out Vector2 toPos))
             {
                 fromPos = from.Position;
                 toPos = to.Position;
@@ -758,21 +2683,24 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (length <= 0.001f)
                 return null;
 
-            shaftThickness *= scale;
-            headLength *= scale;
-            headWidth *= scale;
+            float shaftThickness = this.shaftThickness * scale;
+            float headLength = this.headLength * scale;
+            float headWidth = this.headWidth * scale;
 
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
             headLength = Mathf.Min(headLength, length);
             float shaftLength = Mathf.Max(0f, length - headLength);
 
-            GameObject arrow = new(name, typeof(RectTransform));
-            arrow.transform.SetParent(parent, false);
+            if (arrowObj is not null)
+                UnityEngine.Object.Destroy(arrowObj);
 
-            arrow.AddComponent<LayoutElement>().ignoreLayout = true;
+            arrowObj = new(name, typeof(RectTransform));
+            arrowObj.transform.SetParent(parent, false);
 
-            RectTransform arrowRect = arrow.GetComponent<RectTransform>();
+            arrowObj.AddComponent<LayoutElement>().ignoreLayout = true;
+
+            RectTransform arrowRect = arrowObj.GetComponent<RectTransform>();
             arrowRect.anchorMin = new Vector2(0.5f, 0.5f);
             arrowRect.anchorMax = new Vector2(0.5f, 0.5f);
             arrowRect.pivot = new Vector2(0f, 0.5f);
@@ -782,7 +2710,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             // Shaft
             GameObject shaft = new("Shaft", typeof(RectTransform));
-            shaft.transform.SetParent(arrow.transform, false);
+            shaft.transform.SetParent(arrowObj.transform, false);
 
             RectTransform shaftRect = shaft.GetComponent<RectTransform>();
             shaftRect.anchorMin = new Vector2(0f, 0.5f);
@@ -791,15 +2719,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             shaftRect.anchoredPosition = Vector2.zero;
             shaftRect.sizeDelta = new Vector2(shaftLength, shaftThickness);
 
-            ImageView shaftImage = shaft.AddComponent<ImageView>();
-            shaftImage.sprite = Utilities.ImageResources.WhitePixel;
-            shaftImage.material = Utilities.ImageResources.NoGlowMat;
-            shaftImage.color = color;
-            shaftImage.raycastTarget = false;
+            shaftImg = shaft.AddComponent<ImageView>();
+            shaftImg.sprite = Utilities.ImageResources.WhitePixel;
+            shaftImg.material = Utilities.ImageResources.NoGlowMat;
+            shaftImg.color = Color;
+            shaftImg.raycastTarget = false;
 
             // Arrow head
             GameObject head = new("Head", typeof(RectTransform));
-            head.transform.SetParent(arrow.transform, false);
+            head.transform.SetParent(arrowObj.transform, false);
 
             RectTransform headRect = head.GetComponent<RectTransform>();
             headRect.anchorMin = new Vector2(0f, 0.5f);
@@ -808,25 +2736,62 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             headRect.anchoredPosition = new Vector2(shaftLength, 0f);
             headRect.sizeDelta = new Vector2(headLength, headWidth);
 
-            ImageView headImage = head.AddComponent<ImageView>();
-            headImage.sprite = TriangleArrowHeadSprite;
-            headImage.material = Utilities.ImageResources.NoGlowMat;
-            headImage.type = Image.Type.Simple;
-            headImage.color = color;
-            headImage.raycastTarget = false;
+            headImg = head.AddComponent<ImageView>();
+            headImg.sprite = TriangleArrowHeadSprite;
+            headImg.material = Utilities.ImageResources.NoGlowMat;
+            headImg.type = Image.Type.Simple;
+            headImg.color = Color;
+            headImg.raycastTarget = false;
 
-            return arrow;
+            return arrowObj;
+        }
+        private void ModifyArrow()
+        {
+            if (arrowObj is null)
+                return;
+
+            PositionData from = StartPoint;
+            PositionData to = EndPoint;
+
+            float scale = StartPoint.Scale;
+
+            if (!TryGetClippedArrowPoints(from, to, out Vector2 fromPos, out Vector2 toPos))
+            {
+                fromPos = from.Position;
+                toPos = to.Position;
+            }
+
+            Vector2 direction = toPos - fromPos;
+            float length = direction.magnitude;
+
+            if (length <= 0.001f)
+                return;
+
+            float shaftThickness = this.shaftThickness * scale;
+            float headLength = this.headLength * scale;
+            float headWidth = this.headWidth * scale;
+
+            headLength = Mathf.Min(headLength, length);
+            float shaftLength = Mathf.Max(0f, length - headLength);
+
+            RectTransform arrow = (RectTransform)arrowObj.transform;
+            RectTransform shaft = (RectTransform)arrowObj.transform.Find("Shaft");
+            RectTransform head = (RectTransform)arrowObj.transform.Find("Head");
+
+            arrow.anchoredPosition = fromPos;
+            arrow.sizeDelta = new Vector2(length, headWidth);
+
+            shaft.sizeDelta = new(shaftLength, shaftThickness);
+
+            head.anchoredPosition = new(shaftLength, 0f);
+            head.sizeDelta = new(headLength, headWidth);
         }
 
-        private static bool TryGetClippedArrowPoints(
-            PositionData from,
-            NodeShape fromShape,
-            PositionData to,
-            NodeShape toShape,
-            out Vector2 arrowStart,
-            out Vector2 arrowEnd,
-            float padding = 0f)
+        private static bool TryGetClippedArrowPoints(PositionData from, PositionData to, out Vector2 arrowStart, out Vector2 arrowEnd, float padding = 0f)
         {
+            NodeShape fromShape = from.Shape;
+            NodeShape toShape = to.Shape;
+
             arrowStart = from.Position;
             arrowEnd = to.Position;
 
@@ -846,7 +2811,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             return true;
         }
-        private static bool TryGetClippedArrowPoints(
+        public static bool TryGetClippedArrowPoints(
             PositionData from,
             Quaternion fromRotation,
             PositionData to,
@@ -865,9 +2830,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Vector2 direction = delta.normalized;
 
-            arrowStart = GetRotatedShapeEdgePoint(from.Position, from.Size, from.Shape, fromRotation, direction, padding);
+            arrowStart = GetRotatedShapeEdgePoint(from, fromRotation, direction, padding);
 
-            arrowEnd = GetRotatedShapeEdgePoint(to.Position, to.Size, to.Shape, toRotation, -direction, padding);
+            arrowEnd = GetRotatedShapeEdgePoint(to, toRotation, -direction, padding);
 
             if (Vector2.Dot(arrowEnd - arrowStart, direction) <= 0.001f)
                 return false;
@@ -875,6 +2840,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             return true;
         }
 
+        private static Vector2 GetRotatedShapeEdgePoint(PositionData data, Quaternion rotation, Vector2 worldDirection, float padding = 0f) =>
+            GetRotatedShapeEdgePoint(data.Position, data.Size, data.Shape, rotation, worldDirection, padding);
         private static Vector2 GetRotatedShapeEdgePoint(Vector2 center, Vector2 size, NodeShape shape, Quaternion rotation, Vector2 worldDirection, float padding = 0f)
         {
             if (worldDirection.sqrMagnitude < 0.0001f)
@@ -902,18 +2869,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             localDirection.Normalize();
 
-            float distanceToEdge = GetShapeDistanceToEdge(
-                halfSize,
-                shape,
-                localDirection
-            );
+            float distanceToEdge = GetShapeDistanceToEdge(halfSize, shape, localDirection);
 
             return center + worldDirection * (distanceToEdge + padding);
         }
-        private static float GetShapeDistanceToEdge(
-            Vector2 halfSize,
-            NodeShape shape,
-            Vector2 localDirection)
+        private static float GetShapeDistanceToEdge(Vector2 halfSize, NodeShape shape, Vector2 localDirection)
         {
             return shape switch
             {
@@ -1084,725 +3044,16 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             return Sprite.Create(texture, new(0f, 0f, width, height), new(0f, 0.5f), 100f);
         }
-        public record struct PositionData(Vector2 Position, Vector2 Size, NodeShape Shape)
+
+        public void Dispose()
         {
-            internal PositionData(CampaignMapNode node) : this(new(node.NodeXPos, node.NodeYPos), new(node.NodeWidth, node.NodeHeight), node.Shape) { }
-            internal PositionData(CampaignMapBarrier node) : this(node.Position, node.SizeDelta, NodeShape.Square) { }
-        }
-        internal class CampaignMapNode : Utils.Safety.SafeNotifyPropertyChanged, IDisposable
-        {
-            private static event Action? UpdateMapCovers;
+            StartPoint.OnParentUpdate -= ModifyArrow;
 
-            private bool postParse = false;
-            private Coroutine? imageRoutine;
-            private readonly AsyncLock onClickLock = new();
-
-            private readonly AccSaberCampaignFlow campaignFlow;
-            private readonly AccSaberCampaignMapViewController parent;
-            private readonly AccSaberCampaignViewController campaignController;
-            private readonly LevelUtils levelUtils;
-            private readonly SerializationHandler serialUtils;
-            private readonly Utils.Safety.MainThreadDispatcher threadDispatcher;
-            private readonly PluginConfig config;
-
-
-            public readonly AccSaberCampaignMap Map;
-            public readonly string Hash;
-            public readonly AccSaberCampaignOffsetData OffsetData;
-            public readonly NodeShape Shape;
-            private readonly bool requiresAllPrereqs;
-
-            public CampaignProgress.CampaignProgressValue Progress => parent.CampaignProgress.PlayerValues[Map.Id];
-
-
-            [UIObject("container")]
-            private readonly GameObject Container = null!;
-
-            [UIComponent("borderImage")]
-            private readonly ImageView BorderImage = null!;
-
-            [UIObject("coverContainer")]
-            private readonly GameObject CoverContainer = null!;
-
-            [UIComponent("coverImage")]
-            private readonly ClickableImage CoverImage = null!;
-
-            [UIComponent("completionImage")]
-            private readonly ImageView CompletionImage = null!;
-
-            [UIComponent("requiresAllImage")]
-            private readonly ImageView RequiresAllImage = null!;
-
-
-            [UIValue("NodeWidth")]
-            public float NodeWidth => Map.Size * OffsetData.ScaleFactor;
-
-            [UIValue("NodeHeight")]
-            public float NodeHeight => Map.Size * OffsetData.ScaleFactor;
-
-            [UIValue("NodeXPos")]
-            public float NodeXPos => Map.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x;
-
-            [UIValue("NodeYPos")]
-            public float NodeYPos => -Map.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y;
-
-
-            [UIValue("CheckmarkSrc")]
-            private const string CheckmarkSrc = ResourcePaths.CHECKMARK;
-
-            [UIValue("RequiresAllSrc")]
-            private const string RequiresAllSrc = ResourcePaths.CAMPAIGN_ALL;
-
-            [UIValue("IsComplete")]
-            private bool IsComplete 
-            {
-                get;
-                set
-                {
-                    field = value;
-                    NotifyPropertyChanged();
-                }
-
-            }
-
-            [UIValue("ShowPrereqIndicator")]
-            private bool ShowPrereqIndicator
-            {
-                get;
-                set
-                {
-                    if (field == value)
-                        return;
-
-                    field = value;
-                    NotifyPropertyChanged();
-                }
-            }
-
-            public CampaignMapNode(
-            AccSaberCampaignMap map,
-            AccSaberCampaignMapViewController parent,
-            string mapHash,
-            AccSaberCampaignOffsetData offsetData,
-            AccSaberCampaignFlow flow,
-            AccSaberCampaignViewController campaignViewController,
-            LevelUtils levelUtils,
-            SerializationHandler serialUtils,
-            Utils.Safety.MainThreadDispatcher threadDispatcher,
-            PluginConfig config
-            )
-            {
-                Map = map;
-                this.parent = parent;
-                OffsetData = offsetData;
-                Hash = mapHash;
-                Shape = map.BorderShape switch
-                {
-                    "square" => NodeShape.Square,
-                    "diamond" => NodeShape.Diamond,
-                    "circle" => NodeShape.Circle,
-                    _ => NodeShape.Hexagon
-                };
-
-                campaignFlow = flow;
-                campaignController = campaignViewController;
-                this.levelUtils = levelUtils;
-                this.serialUtils = serialUtils;
-                this.threadDispatcher = threadDispatcher;
-                this.config = config;
-
-                IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
-                requiresAllPrereqs = map.PrerequisiteMode.Equals("AND");
-                ShowPrereqIndicator = config.ShowPrereqIndicator && requiresAllPrereqs;
-
-                offsetData.OnScaleChanged += OnOffsetDataChanged;
-                UpdateMapCovers += UpdateCover;
-                config.PropertyChanged += OnPluginUpdate;
-            }
-
-
-            [UIAction("#post-parse")]
-            private void PostParse()
-            {
-                try
-                {
-                    BorderImage.sprite = GetBorderSprite(Shape);
-                    BorderImage.raycastTarget = false;
-
-                    if (string.IsNullOrEmpty(Map.BorderColor))
-                    {
-                        // Fetching from cache is ok because the map will have been loaded at this point
-                        APCategory category = serialUtils.GetDiffById(Map.MapDifficultyId)?.Category ?? APCategory.Overall;
-                        BorderImage.color = ColorUtils.GetColor(category).Color();
-                    }
-                    else BorderImage.color = Map.BorderColor!.Color();
-
-                    ImageView MaskImage = CoverContainer.AddComponent<ImageView>();
-                    MaskImage.sprite = GetFillSprite(Shape);
-                    MaskImage.color = Color.white;
-                    MaskImage.material = Utilities.ImageResources.NoGlowMat;
-                    MaskImage.raycastTarget = false;
-
-                    Mask m = CoverContainer.AddComponent<Mask>();
-                    m.showMaskGraphic = false;
-
-                    CompletionImage.raycastTarget = false;
-
-                    LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
-                    mainLayout.preferredWidth = NodeWidth;
-                    mainLayout.preferredHeight = NodeHeight;
-
-                    RectTransform transform = (RectTransform)RequiresAllImage.transform;
-                    transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-#if !NEW_VERSION
-                    transform.anchorMin = new(0.75f, 0.75f);
-                    transform.anchorMax = new(1f, 1f);
-#endif
-
-                    postParse = true;
-                    UpdateCover();
-                    UpdateProgress();
-#if PRINT_DEBUG
-                Plugin.Log.Info($"Pos = ({Map.PositionX}, {Map.PositionY}) Node Pos = ({NodeXPos}, {NodeYPos}), Width = {NodeWidth}, Height = {NodeHeight}");
-#endif
-                }
-                catch (Exception e)
-                {
-                    Plugin.Log.Error(e);
-                }
-            }
-
-            [UIAction("OnClick")]
-            internal async void OnClick()
-            {
-                AsyncLock.Releaser? locker = await onClickLock.TryLockAsync();
-
-                if (locker is null)
-                    return;
-
-                using (locker.Value)
-                {
-#if NEW_VERSION
-                    BeatmapLevel? level = Loader.GetLevelByHash(Hash);
-#else
-                    IBeatmapLevel? level = (await Loader.BeatmapLevelsModelSO.GetBeatmapLevelAsync(LevelUtils.header + Hash.ToUpper(), CancellationToken.None)).beatmapLevel;
-#endif
-
-                    if (level is null)
-                    {
-                        Plugin.Log.Warn($"Cannot find level by hash \"{Hash}\", downloading...");
-
-                        // Map should be loaded at this point.
-                        level = await levelUtils.DownloadSong(serialUtils.GetMapByHash(Hash)!);
-
-                        UpdateMapCovers?.Invoke();
-
-                        if (level is null)
-                        {
-                            Plugin.Log.Critical("Level cannot be downloaded!");
-                            return;
-                        }
-                    }
-
-#if NEW_VERSION
-                    IEnumerable<BeatmapKey> keys = level.GetBeatmapKeys();
-                    BeatmapCharacteristicSO standard = level.GetCharacteristics().FirstOrDefault(c => c.serializedName == "Standard");
-                    BeatmapKey key = new(level.levelID, standard, EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty)));
-
-                    campaignFlow.ShowLeaderboard(key);
-
-                    campaignController.SetMission(Map, key, level, Progress);
-#else
-                    BeatmapDifficulty mapDiff = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(Map.Difficulty));
-                    IDifficultyBeatmapSet diffSet = level.beatmapLevelData.difficultyBeatmapSets.First(set => set.beatmapCharacteristic.serializedName.Equals("Standard", StringComparison.OrdinalIgnoreCase));
-                    IDifficultyBeatmap diff = diffSet.difficultyBeatmaps.First(difficulty => difficulty.difficulty == mapDiff);
-
-                    campaignFlow.ShowLeaderboard(diff);
-
-                    campaignController.SetMission(Map, diff, Progress);
-#endif
-                }
-            }
-
-            private void OnPluginUpdate(object sender, PropertyChangedEventArgs args)
-            {
-                if (args.PropertyName.Equals(nameof(PluginConfig.ShowPrereqIndicator)))
-                    ShowPrereqIndicator = requiresAllPrereqs && config.ShowPrereqIndicator;
-            }
-            private void UpdateCover()
-            {
-                if (!postParse)
-                    return;
-
-                if (imageRoutine is not null)
-                    threadDispatcher.StopCoroutine(imageRoutine);
-
-                imageRoutine = threadDispatcher.StartCoroutine(CoverImage.LoadCoverImageRoutine(Hash, Map.CoverUrl));
-            }
-
-            public void UpdateProgress()
-            {
-                if (!postParse)
-                    return;
-
-                CoverImage.DefaultColor = Progress.Completion == CampaignProgress.CompletionStatus.Incomplete ? new(0.25f, 0.25f, 0.25f) : Color.white;
-
-                IsComplete = Progress.Completion == CampaignProgress.CompletionStatus.Complete;
-
-                if (IsComplete)
-                {
-
-                    RectTransform transform = (CompletionImage.transform as RectTransform)!;
-
-                    transform.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-
-#if !NEW_VERSION
-                    transform.anchorMin = new(0.75f, 0f);
-                    transform.anchorMax = new(1f, 0.25f);
-#endif
-                }
-            }
-            private void OnOffsetDataChanged()
-            {
-                (CompletionImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-                (RequiresAllImage.transform as RectTransform)!.sizeDelta = new(NodeWidth / 4f, NodeHeight / 4f);
-
-                LayoutElement mainLayout = CoverContainer.GetComponent<LayoutElement>();
-                mainLayout.preferredWidth = NodeWidth;
-                mainLayout.preferredHeight = NodeHeight;
-
-                NotifyPropertyChanged(nameof(NodeWidth));
-                NotifyPropertyChanged(nameof(NodeHeight));
-                NotifyPropertyChanged(nameof(NodeXPos));
-                NotifyPropertyChanged(nameof(NodeYPos));
-            }
-
-            public void Dispose()
-            {
-                OffsetData.OnScaleChanged -= OnOffsetDataChanged;
-                UpdateMapCovers -= UpdateCover;
-                config.PropertyChanged -= OnPluginUpdate;
-
-                try
-                {
-                    if (imageRoutine is not null)
-                    {
-                        threadDispatcher.StopCoroutine(imageRoutine);
-                        imageRoutine = null;
-                    }
-                }
-                catch (Exception) { } // this is just in case the coroutine contains something that is null, to prevent the error from propagating.
-
-                UnityEngine.Object.Destroy(Container);
-            }
+            if (arrowObj is not null)
+                UnityEngine.Object.Destroy(arrowObj);
         }
 
-        internal class CampaignMapBarrier : IDisposable
-        {
-            public const float WIDTH = 5f;
-            public const float FONT_SIZE = 15f;
-
-            private const float TEXT_MARGIN = 4f;
-
-            // Extra padding around text collision boxes.
-            // Increase this if labels are still visually too close.
-            private const float TEXT_COLLISION_PADDING = 2f;
-
-            private static readonly List<CampaignMapBarrier> ActiveBarriers = [];
-            private static bool resolvingTextCollisions;
-
-            public readonly AccSaberCampaignBarrier Barrier;
-            public readonly AccSaberCampaignOffsetData OffsetData;
-
-            private readonly AccSaberCampaignMapViewController parentVC;
-
-            private readonly GameObject obj;
-            private readonly GameObject textObj;
-
-            private readonly RectTransform barrierRt;
-            private readonly RectTransform textRt;
-
-            private readonly LayoutElement barrierLayout;
-            private readonly LayoutElement textLayout;
-
-            private readonly TextMeshProUGUI text;
-
-            // false = Vector3.down end
-            // true  = Vector3.up end, aka flipped 180 degrees
-            private bool textOnOppositeEnd;
-
-            public string ProgressText => text.text;
-
-            public CampaignProgress.CampaignProgressValue Progress => parentVC.CampaignProgress.PlayerValues[Barrier.Id];
-
-            public Quaternion Rotation
-            {
-                get => barrierRt.localRotation;
-                set
-                {
-                    barrierRt.localRotation = value;
-                    UpdateTextPos();
-                }
-            }
-
-            public Vector2 SizeDelta
-            {
-                get => barrierRt.sizeDelta;
-                set
-                {
-                    barrierRt.sizeDelta = value;
-
-                    barrierLayout.preferredWidth = value.x;
-                    barrierLayout.preferredHeight = value.y;
-
-                    UpdateTextPos();
-                }
-            }
-
-            public Vector2 Position => barrierRt.anchoredPosition;
-
-            public CampaignMapBarrier(AccSaberCampaignBarrier barrier, Transform parent, AccSaberCampaignMapViewController parentVC, AccSaberCampaignOffsetData offsetData)
-            {
-                Barrier = barrier;
-                OffsetData = offsetData;
-                this.parentVC = parentVC;
-
-                obj = new GameObject("AccSaberCampaignBarrier", typeof(RectTransform));
-                obj.transform.SetParent(parent, false);
-
-                barrierRt = (RectTransform)obj.transform;
-                SetupManualRectTransform(barrierRt);
-                barrierRt.localRotation = Quaternion.identity;
-
-                barrierLayout = obj.AddComponent<LayoutElement>();
-                barrierLayout.ignoreLayout = true;
-
-                ClickableImage image = obj.AddComponent<ClickableImage>();
-                image.sprite = Utilities.ImageResources.WhitePixel;
-                image.material = Utilities.ImageResources.NoGlowMat;
-                image.type = Image.Type.Simple;
-                image.DefaultColor = barrier.BorderColor?.Color() ?? Color.red;
-                image.HighlightColor = (barrier.BorderColor ?? "#F00").BrightenColor(5).Color();
-                image.OnClickEvent += OnClick;
-
-
-#if V41
-                text = BeatSaberUI.CreateCurvedUIText(parent as RectTransform, "Hello");
-                text.alignment = TextAlignmentOptions.Center;
-                text.textWrappingMode = TextWrappingModes.NoWrap;
-#else
-                text = BeatSaberUI.CreateText(parent as RectTransform, "Hello", Vector2.zero);
-                text.alignment = TextAlignmentOptions.Center;
-                text.enableWordWrapping = false;
-#endif
-
-                textObj = text.gameObject;
-                textObj.name = "AccSaberCampaignBarrierText";
-
-                textRt = (RectTransform)textObj.transform;
-                SetupManualRectTransform(textRt);
-                textRt.localRotation = Quaternion.identity;
-
-                textLayout = textObj.AddComponent<LayoutElement>();
-                textLayout.ignoreLayout = true;
-
-                // This is done so the text does not block clicking the barrier/map.
-                text.raycastTarget = false;
-
-                // Keep the label visually above the barrier.
-                textRt.SetAsLastSibling();
-
-                ActiveBarriers.Add(this);
-
-                OffsetData.OnScaleChanged += OnOffsetDataUpdate;
-                OnOffsetDataUpdate();
-
-#if PRINT_DEBUG
-        Plugin.Log.Info($"Barrier: Pos = ({barrier.PositionX}, {barrier.PositionY}) Node Pos = ({Position.x}, {Position.y}), Width = {SizeDelta.x}, Height = {SizeDelta.y}");
-#endif
-            }
-
-            public void UpdateProgress()
-            {
-                RecalculateFCProgress();
-                UpdateText();
-                UpdateTextSize();
-                UpdateTextPos();
-            }
-            private void RecalculateFCProgress()
-            {
-                if (Barrier.ConditionType != AccSaberCampaignBarrier.BarrierConditionType.FC)
-                    return;
-
-                List<float> values = [.. Barrier.AffectedCampaignDifficultyIds
-                    .Select(id => parentVC.CampaignProgress.PlayerValues[id])
-                    .Where(val => val.Completion == CampaignProgress.CompletionStatus.Complete)
-                    .Select(val => val.Progress)];
-
-                CampaignProgress.CampaignProgressValue progess = parentVC.CampaignProgress.PlayerValues[Barrier.Id];
-                parentVC.CampaignProgress.PlayerValues[Barrier.Id] = new(values.Count, progess.Completion);
-            }
-
-            private static void SetupManualRectTransform(RectTransform rt)
-            {
-                rt.anchorMin = new(0.5f, 0.5f);
-                rt.anchorMax = new(0.5f, 0.5f);
-                rt.pivot = new(0.5f, 0.5f);
-                rt.localScale = Vector3.one;
-            }
-
-            private void OnOffsetDataUpdate()
-            {
-                barrierRt.anchoredPosition = new Vector2(
-                    Barrier.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x,
-                    -Barrier.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
-                );
-
-                SizeDelta = new Vector2(
-                    WIDTH * OffsetData.ScaleFactor,
-                    Barrier.Size * OffsetData.ScaleFactor
-                );
-
-                text.fontSize = FONT_SIZE * OffsetData.ScaleFactor;
-
-                UpdateProgress();
-            }
-
-            private void UpdateTextSize()
-            {
-                text.ForceMeshUpdate();
-
-                // Use a large available area instead of infinity because some TMP/Unity versions
-                // behave oddly with Mathf.Infinity.
-                Vector2 preferredSize = text.GetPreferredValues(text.text, 10000f, 10000f);
-
-                float padding = 2f * OffsetData.ScaleFactor;
-                preferredSize.x += padding;
-                preferredSize.y += padding;
-
-                textLayout.preferredWidth = preferredSize.x;
-                textLayout.preferredHeight = preferredSize.y;
-
-                textRt.sizeDelta = preferredSize;
-            }
-
-            private void UpdateTextPos() => UpdateTextPos(resolveCollisions: true);
-
-            private void UpdateTextPos(bool resolveCollisions)
-            {
-                if (textRt is null || barrierRt is null)
-                    return;
-
-                ApplyTextPosition();
-
-                if (resolveCollisions && !resolvingTextCollisions)
-                    ResolveTextCollisions();
-            }
-
-            private void ApplyTextPosition()
-            {
-                Vector2 textSize = textRt.sizeDelta;
-
-                // Default end is down. Opposite end is up.
-                // This flips the label placement direction 180 degrees without rotating the text itself.
-                Vector3 localEndDirection = textOnOppositeEnd ? Vector3.up : Vector3.down;
-
-                Vector3 endDirection3D = barrierRt.localRotation * localEndDirection;
-                Vector2 endDirection = new(endDirection3D.x, endDirection3D.y);
-
-                if (endDirection.sqrMagnitude < 0.0001f)
-                {
-                    endDirection = textOnOppositeEnd ? Vector2.up : Vector2.down;
-                }
-                else
-                {
-                    endDirection.Normalize();
-                }
-
-                float barrierHalfLength = SizeDelta.y * 0.5f;
-
-                // The text remains unrotated/upright.
-                // Because of that, we calculate the axis-aligned half extent of the text
-                // in the direction we are moving it.
-                float textHalfExtentInDirection =
-                    Mathf.Abs(endDirection.x) * textSize.x * 0.5f +
-                    Mathf.Abs(endDirection.y) * textSize.y * 0.5f;
-
-                float margin = TEXT_MARGIN * OffsetData.ScaleFactor;
-
-                textRt.anchoredPosition =
-                    barrierRt.anchoredPosition +
-                    endDirection * (barrierHalfLength + textHalfExtentInDirection + margin);
-
-                // Keep the text readable.
-                textRt.localRotation = Quaternion.identity;
-
-                // Keep it above the barrier in the hierarchy.
-                textRt.SetAsLastSibling();
-            }
-
-            private static void ResolveTextCollisions()
-            {
-                if (resolvingTextCollisions)
-                    return;
-
-                resolvingTextCollisions = true;
-
-                try
-                {
-                    ActiveBarriers.RemoveAll(barrier => !IsValidBarrier(barrier));
-
-                    if (ActiveBarriers.Count <= 1)
-                        return;
-
-                    // Start from a deterministic layout:
-                    // every label goes back to its default end first.
-                    foreach (CampaignMapBarrier barrier in ActiveBarriers)
-                    {
-                        barrier.textOnOppositeEnd = false;
-                        barrier.UpdateTextPos(resolveCollisions: false);
-                    }
-
-                    // Iteratively resolve because flipping one label can create a new collision
-                    // with another label that was checked earlier.
-                    int maxIterations = ActiveBarriers.Count + 1;
-
-                    for (int iteration = 0; iteration < maxIterations; iteration++)
-                    {
-                        bool changedSomething = false;
-
-                        for (int i = 0; i < ActiveBarriers.Count; i++)
-                        {
-                            CampaignMapBarrier a = ActiveBarriers[i];
-
-                            for (int j = i + 1; j < ActiveBarriers.Count; j++)
-                            {
-                                CampaignMapBarrier b = ActiveBarriers[j];
-
-                                if (!TextRectsOverlap(a, b))
-                                    continue;
-
-                                // Collision found.
-                                // Move both colliding labels to the other end of their barriers.
-                                if (!a.textOnOppositeEnd)
-                                {
-                                    a.textOnOppositeEnd = true;
-                                    a.UpdateTextPos(resolveCollisions: false);
-                                    changedSomething = true;
-                                }
-
-                                if (!b.textOnOppositeEnd)
-                                {
-                                    b.textOnOppositeEnd = true;
-                                    b.UpdateTextPos(resolveCollisions: false);
-                                    changedSomething = true;
-                                }
-                            }
-                        }
-
-                        if (!changedSomething)
-                            break;
-                    }
-
-                    foreach (CampaignMapBarrier barrier in ActiveBarriers)
-                        barrier.textRt.SetAsLastSibling();
-                }
-                finally
-                {
-                    resolvingTextCollisions = false;
-                }
-            }
-
-            private static bool IsValidBarrier(CampaignMapBarrier barrier)
-            {
-                return barrier is not null &&
-                       barrier.obj is not null &&
-                       barrier.textObj is not null &&
-                       barrier.barrierRt is not null &&
-                       barrier.textRt is not null;
-            }
-
-            private static bool TextRectsOverlap(CampaignMapBarrier a, CampaignMapBarrier b)
-            {
-                Rect rectA = GetTextRect(a);
-                Rect rectB = GetTextRect(b);
-
-                return rectA.Overlaps(rectB);
-            }
-
-            private static Rect GetTextRect(CampaignMapBarrier barrier)
-            {
-                Vector2 pos = barrier.textRt.anchoredPosition;
-                Vector2 size = barrier.textRt.sizeDelta;
-
-                float padding = TEXT_COLLISION_PADDING * barrier.OffsetData.ScaleFactor;
-
-                return new Rect(
-                    pos.x - size.x * 0.5f - padding,
-                    pos.y - size.y * 0.5f - padding,
-                    size.x + padding * 2f,
-                    size.y + padding * 2f
-                );
-            }
-
-            private void UpdateText()
-            {
-                string value = Barrier.ConditionType switch
-                {
-                    AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_ACC =>
-                        $"Average Accuracy\n<color={ColorUtils.LEVEL}>{Progress.Progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_AP =>
-                        $"Average Ap\n<color={ColorUtils.AP}>{Progress.Progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.AP_MAX =>
-                        $"Max Ap\n<color={ColorUtils.AP}>{Progress.Progress:0.##} ap</color> / <color={ColorUtils.AP}>{Barrier.ConditionValue:0.##} ap</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.ACC_MAX =>
-                        $"Max Accuracy\n<color={ColorUtils.LEVEL}>{Progress.Progress * 100f:N2}%</color> / <color={ColorUtils.LEVEL}>{Barrier.ConditionValue * 100f:N2}%</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_AVERAGE =>
-                        $"Average streak\n<color={ColorUtils.TECH}>{Progress.Progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.STREAK_115_MAX =>
-                        $"Max streak\n<color={ColorUtils.TECH}>{Progress.Progress:N0}x</color> / <color={ColorUtils.TECH}>{Barrier.ConditionValue:N0}x streak</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.FC =>
-                        $"FC maps\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.AVERAGE_RANK =>
-                        $"Average Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:0.##}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:0.##}</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.MAX_RANK =>
-                        $"Max Rank\n<color={ColorUtils.RANK}>#{Progress.Progress:N0}</color> / <color={ColorUtils.RANK}>#{Barrier.ConditionValue:N0}</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.COMPLETION_COUNT =>
-                        $"Nodes Completed\n<color={ColorUtils.GLOBAL}>{Progress.Progress:N0}</color> / <color={ColorUtils.GLOBAL}>{Barrier.ConditionValue:N0}</color>",
-
-                    AccSaberCampaignBarrier.BarrierConditionType.PASS =>
-                        $"Nodes Passed\n<color={ColorUtils.RELOADED}>{Progress.Progress:N0}</color> / <color={ColorUtils.RELOADED}>{Barrier.AffectedCampaignDifficultyIds.Count:N0}</color>",
-
-                    _ => "Unknown type"
-                };
-
-                text.text = value;
-            }
-
-            private void OnClick(PointerEventData data)
-            {
-                parentVC.acvc.SetBarrierInfo(this, Progress);
-            }
-
-            public void Dispose()
-            {
-                OffsetData.OnScaleChanged -= OnOffsetDataUpdate;
-
-                ActiveBarriers.Remove(this);
-
-                UnityEngine.Object.Destroy(obj);
-                UnityEngine.Object.Destroy(textObj);
-            }
-        }
+        public static implicit operator GameObject?(UIArrow arrow) => arrow.CreateOrGetArrow();
     }
 
     public static class NodeShapeTextures
@@ -1811,37 +3062,55 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         private static readonly ConcurrentDictionary<string, Sprite> _fillSpriteCache = [];
 
         private static bool _preloadedSprites = false;
+#if PRINT_DEBUG && DEBUG
+        private static int _extraFrames;
+#endif
 
-        public static void PreloadStandardSprites()
+        public static async Task PreloadStandardSprites(int maxCoverageLoads)
         {
             if (_preloadedSprites)
                 return;
             _preloadedSprites = true;
+#if PRINT_DEBUG && DEBUG
+            _extraFrames = 0;
+#endif
 
             NodeShape[] shapes = (NodeShape[])Enum.GetValues(typeof(NodeShape));
 
-            foreach (NodeShape shape in shapes)
+            IEnumerator LoadSlowly()
             {
-                GetBorderSprite(shape);
-                GetFillSprite(shape);
+                foreach (NodeShape shape in shapes)
+                {
+                    yield return GetBorderSprite(shape, maxCoverageLoads).WaitWithRoutine();
+                    yield return null;
+
+                    yield return GetFillSprite(shape, maxCoverageLoads).WaitWithRoutine();
+                    yield return null;
+                }
             }
+
+            await Coroutines.AsTask(LoadSlowly());
+
+#if PRINT_DEBUG && DEBUG
+            Plugin.Log.Info($"When preloading sprites, there were {_extraFrames + 2} frames of delay.");
+#endif
         }
 
-        public static Sprite GetBorderSprite(NodeShape shape, int size = 256, int borderPixels = 10)
+        public static async Task<Sprite> GetBorderSprite(NodeShape shape, int maxCoverageLoads, int size = 256, int borderPixels = 10)
         {
             string key = $"{shape}_{size}_{borderPixels}";
 
             if (_borderSpriteCache.TryGetValue(key, out Sprite cached))
                 return cached;
 
-            Texture2D texture = CreateBorderTexture(shape, size, borderPixels);
+            Texture2D texture = await CreateBorderTexture(shape, size, borderPixels, maxCoverageLoads);
             Sprite sprite = CreateSprite(texture);
 
             _borderSpriteCache[key] = sprite;
             return sprite;
         }
 
-        private static Texture2D CreateBorderTexture(NodeShape shape, int size, int borderPixels)
+        private static async Task<Texture2D> CreateBorderTexture(NodeShape shape, int size, int borderPixels, int maxCoverageLoads)
         {
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
             {
@@ -1854,40 +3123,59 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             float innerScale = 1f - borderPixels * 2f / size;
             innerScale = Mathf.Clamp01(innerScale);
 
-            for (int y = 0; y < size; y++)
+            IEnumerator LoadSlowly() 
             {
-                for (int x = 0; x < size; x++)
+                int coverages = 0;
+
+                for (int y = 0; y < size; y++)
                 {
-                    float outerCoverage = GetCoverage(x, y, size, shape, 1f);
-                    float innerCoverage = GetCoverage(x, y, size, shape, innerScale);
+                    for (int x = 0; x < size; x++)
+                    {
+                        float outerCoverage = GetCoverage(x, y, size, shape, 1f);
+                        float innerCoverage = GetCoverage(x, y, size, shape, innerScale);
 
-                    float alpha = Mathf.Clamp01(outerCoverage - innerCoverage);
+                        float alpha = Mathf.Clamp01(outerCoverage - innerCoverage);
 
-                    byte a = (byte)Mathf.RoundToInt(alpha * 255f);
-                    pixels[y * size + x] = new Color32(255, 255, 255, a);
+                        byte a = (byte)Mathf.RoundToInt(alpha * 255f);
+                        pixels[y * size + x] = new Color32(255, 255, 255, a);
+
+                        coverages += 2;
+
+                        if (coverages >= maxCoverageLoads)
+                        {
+                            coverages = 0;
+                            yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                            ++_extraFrames;
+#endif
+                        }
+                    }
                 }
+
+                texture.SetPixels32(pixels);
+                texture.Apply(false, true);
             }
 
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
+            await Coroutines.AsTask(LoadSlowly());
 
             return texture;
         }
 
-        public static Sprite GetFillSprite(NodeShape shape, int size = 256)
+        public static async Task<Sprite> GetFillSprite(NodeShape shape, int maxCoverageLoads, int size = 256)
         {
             string key = $"fill_{shape}_{size}";
 
             if (_fillSpriteCache.TryGetValue(key, out Sprite cached))
                 return cached;
 
-            Texture2D texture = CreateFillTexture(shape, size);
+            Texture2D texture = await CreateFillTexture(shape, size, maxCoverageLoads);
             Sprite sprite = CreateSprite(texture);
 
             _fillSpriteCache[key] = sprite;
             return sprite;
         }
-        private static Texture2D CreateFillTexture(NodeShape shape, int size)
+        private static async Task<Texture2D> CreateFillTexture(NodeShape shape, int size, int maxCoverageLoads)
         {
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
             {
@@ -1897,19 +3185,38 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             Color32[] pixels = new Color32[size * size];
 
-            for (int y = 0; y < size; y++)
+            IEnumerator LoadSlowly()
             {
-                for (int x = 0; x < size; x++)
-                {
-                    float coverage = GetCoverage(x, y, size, shape, 1f);
-                    byte a = (byte)Mathf.RoundToInt(coverage * 255f);
+                int coverages = 0;
 
-                    pixels[y * size + x] = new Color32(255, 255, 255, a);
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float coverage = GetCoverage(x, y, size, shape, 1f);
+                        byte a = (byte)Mathf.RoundToInt(coverage * 255f);
+
+                        pixels[y * size + x] = new Color32(255, 255, 255, a);
+
+                        ++coverages;
+
+                        if (coverages >= maxCoverageLoads)
+                        {
+                            coverages = 0;
+                            yield return null;
+
+#if PRINT_DEBUG && DEBUG
+                            ++_extraFrames;
+#endif
+                        }
+                    }
                 }
+
+                texture.SetPixels32(pixels);
+                texture.Apply(false, true);
             }
 
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
+            await Coroutines.AsTask(LoadSlowly());
 
             return texture;
         }

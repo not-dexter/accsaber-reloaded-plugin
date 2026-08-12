@@ -134,7 +134,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             {
                 field = value;
 
-                if (value == true)
+                if (value)
                     _ = SetEventInfo();
 
                 NotifyPropertyChanged(nameof(IsInEvent));
@@ -376,7 +376,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             if (CurrentEvent is not null)
             {
                 EventTitle = CurrentEvent.Event.Title;
-                EventDuration = $"Ends {MiscUtils.ToRelativeTime(CurrentEvent.Event.EndsAt, 2)}";
+                EventDuration = $"Ends {CurrentEvent.Event.EndsAt.ToRelativeTime(2)}";
                 EventCurrentWeek = $"Week {CurrentEvent.Event.CurrentWeek} of {CurrentEvent.Event.TotalWeeks}";
                 EventDescription = CurrentEvent.Event.Description;
             } 
@@ -403,6 +403,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 try
                 {
                     DateTime expiration = ((MissionCell?)_eventCells.FirstOrDefault())?.Data.ExpiresAt ?? DateTime.MinValue;
+
+                    if (IsInEvent)
+                        await SetEventInfo();
 
                     List<AccSaberEventMe> missions = await _accSaberStore.GetEventMissions(WeekPage, false, overrideCache: _lastUpdate < SerializationHandler.LastScoreTime);
 

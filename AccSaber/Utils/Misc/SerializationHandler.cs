@@ -255,19 +255,28 @@ namespace AccSaber.Utils.Misc
 
         }
 
-        public async Task<AccSaberBasicDifficulty?> GetDiffByIdAsync(Guid id)
+        public async Task<AccSaberBasicDifficulty?> GetDiffByIdAsync(Guid id, bool printWarning = false)
+        {
+            var (outp, _) = await GetDiffByIdAsync(id, 0, printWarning);
+            return outp;
+        }
+        public async Task<(AccSaberBasicDifficulty? Diff, int Loads)> GetDiffByIdAsync(Guid id, int loads, bool printWarning = false)
         {
             if (cachedDifficulties.TryGetValue(id, out AccSaberBasicDifficulty diff))
-                return diff;
+                return (diff, loads);
+
+            if (printWarning)
+                Plugin.Log.Warn($"The map difficulty of id \"{id}\" was not found in cache, manually loading it...");
 
             AccSaberDifficulty? fullDiff = await APIHandler.CallAPI_Json<AccSaberDifficulty>(string.Format(HelpfulPaths.APAPI_DIFF_ID, id), AccsaberAPI.Throttler);
+            // if an api call happens, then we have reached a different frame, so set load counter to -1 to indicate this.
 
             if (fullDiff is null)
-                return null;
+                return (null, -1);
 
             await GetMapByMapIdOrSongNameAsync(fullDiff.MapId, fullDiff.SongName);
 
-            return cachedDifficulties[fullDiff.DifficultyId];
+            return (cachedDifficulties[fullDiff.DifficultyId], -1);
         }
         public AccSaberBasicDifficulty? GetDiffById(Guid id) => cachedDifficulties[id];
 

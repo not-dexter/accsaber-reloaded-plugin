@@ -170,6 +170,15 @@
         /// </remarks>
         public const string APAPI_LEADERBOARD_DIFF_COUNTRY = APAPI + "maps/difficulties/{0}/scores?country={1}&page={2}&size={3}"; //diff_id, country, page (zero indexed), count
 
+
+        /// <summary>
+        /// Retrieves leaderboard of a category (paged).
+        /// </summary>
+        /// <remarks>
+        /// Format parameters: category_id, page (zero-indexed).
+        /// </remarks>
+        public const string APAPI_LEADERBOARD_CATEGORY = APAPI + "leaderboards/{0}?page={1}&size=5"; //category_id, page
+
         /// <summary>
         /// Retrieves a user's milestones (paged).
         /// </summary>
@@ -231,7 +240,7 @@
         /// <summary>
         /// Retrieves all campaign entries.
         /// </summary>
-        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns"; //no params
+        public const string APAPI_CAMPAIGNS_ALL = APAPI + "campaigns?size=1000"; //no params
 
         /// <summary>
         /// Retrieves specified campaign entries.
@@ -264,6 +273,7 @@
         /// </remarks>
         public const string APAPI_START_CAMPAIGN = APAPI + "campaigns/{0}/start";
 
+        public const string APAPI_CAMPAIGN_TAGS = APAPI + "campaigns/tags";
         /// <summary>
         /// Retrieves specified campaign.
         /// </summary>
@@ -272,7 +282,7 @@
         /// </remarks>
         public const string APAPI_CAMPAIGN = APAPI + "campaigns/{0}"; //campaign_id
 
-        public const string APAPI_CAMPAIGN_PROGRESS = APAPI + "campaigns/me/progress?ids={0}"; //campaign_id
+        public const string APAPI_CAMPAIGN_PROGRESS = APAPI + "campaigns/{0}/me/progress"; //campaign_id
 
 
         /// <summary>
