@@ -64,7 +64,7 @@ namespace AccSaber.Models
         public BeatmapDifficulty Difficulty;
 
         [JsonProperty("characteristic")]
-        public string Characteristic { get; set; } = "Standard";
+        public string Characteristic { get; set; } = "";
 
         [JsonProperty("complexity")]
         public float Complexity { get; set; }
@@ -94,6 +94,9 @@ namespace AccSaber.Models
 
             if (CategoryCode is not null)
                 Category = EnumUtils.ReloadedCategoryToCategory(CategoryCode.Value);
+
+            if (string.IsNullOrEmpty(Characteristic))
+                Characteristic = "Standard";
         }
 
         [OnSerializing]

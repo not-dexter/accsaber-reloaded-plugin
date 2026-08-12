@@ -30,58 +30,58 @@
           <page-button event-click='campaign-list#PageDown' direction='Down' pref-height='3' pref-width='4' />
         </vertical>
       </horizontal>
-		<vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
-			<vertical pref-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
-				<text text='Welcome to AccSaber Campaigns!' font-size='5' align='Center' word-wrapping='true' />
-				<text text='Here you will find custom campaigns ranging in difficulty and category made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber website' font-size='3.5' align='Center' word-wrapping='true' />
-			</vertical>
-			<horizontal active='~CampaignIsSelected' pref-width='100' horizontal-fit='PreferredSize'>
-			    <vertical pref-width='60' preferred-height='70'>
-					<horizontal pref-width='60' pad='2' horizontal-fit='PreferredSize'>
-                      <img preserve-aspect='true' id='CampaignImage' pref-width='15' pref-height='15' />
-                      <vertical pref-width='30'>
-                      <text text='~CampaignTitle' align='Left' font-size='4' overflow-mode='Ellipsis' />
-                      <text text='~CampaignCreator' align='Left' font-size='3.5' />
-                      <text text='~CampaignCategory' align='Left' font-size='3.5' />
-                    </vertical>
-                    </horizontal>
-					<vertical pref-height='30' pref-width='60'>
-                    <text id='campaign-description' text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
-				    </vertical>
-					<vertical preferred-height='5'></vertical>
-				</vertical>	
-				<vertical pref-width='40'>
-					<vertical pref-height='15' vertical-fit='PreferredSize'>
-					    <vertical pref-height='15' vertical-fit='PreferredSize'>
-					        <text text='Objective' align='Center' font-size='4'/>
-                            <text text='~CampaignCompletion' align='Center' font-size='3.5'/>
-					    </vertical>
-					</vertical>
-					<vertical pref-height='15' vertical-fit='PreferredSize'>
-					    <vertical pref-height='15' vertical-fit='PreferredSize' active='~campaign-curated' child-expand-height='false'>
-                          <text text='Completion Rewards' font-size='4' />
-                          <text text='~CampaignRewards' align='Center' font-size='3.5' />
-					    </vertical>
-					</vertical>
-					<vertical pref-height='30' vertical-fit='PreferredSize'>
-						<vertical pref-height='15' vertical-fit='PreferredSize' active='~ShouldShowStatus'>
-							<text text='Status' align='Center'/>
-							<text text='~CampaignCompletionStatus' font-size='3' align='Center'/>
-							<horizontal spacing='2'>
-								<horizontal pad='0' pref-width='25' horizontal-fit='PreferredSize' child-expand-width='false' child-control-width='false'>
-                                  <image id='PercentBarTop' src='AccSaber.Resources.Pixel.png' pref-height='1' />
-                                  <image id='PercentBarBottom' src='AccSaber.Resources.Pixel.png' pref-height='1' />
-                                </horizontal>
-							    <text text='~CampaignCompletionCount' font-size='3'/>
-							</horizontal>
-						</vertical>
-						<vertical pref-height='20' vertical-fit='PreferredSize'>
-					        <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' pref-width='30' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />      
-					    </vertical>
-					</vertical>
-				</vertical>
-			</horizontal>
-		</vertical>
+      <vertical bg='round-rect-panel' pref-width='100' pref-height='70' pad='2' active='~not-in-campaign'>
+        <vertical pref-width='100' pref-height='40' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~NoCampaignSelected'>
+          <text text='Welcome to AccSaber Campaigns!' font-size='5' align='Center' word-wrapping='true' />
+          <text text='Here you will find custom campaigns ranging in difficulty and category made by the AccSaber community and staff. If you would like to create your own campaign, you can do so on the AccSaber website' font-size='3.5' align='Center' word-wrapping='true' />
+        </vertical>
+        <horizontal active='~CampaignIsSelected' pref-width='100' horizontal-fit='PreferredSize'>
+          <vertical pref-width='60' preferred-height='70'>
+            <horizontal pref-width='60' pad='2' horizontal-fit='PreferredSize'>
+              <img preserve-aspect='true' id='CampaignImage' pref-width='15' pref-height='15' />
+              <vertical pref-width='30'>
+                <text text='~CampaignTitle' align='Left' font-size='4' overflow-mode='Ellipsis' />
+                <text text='~CampaignCreator' align='Left' font-size='3.5' />
+                <text text='~CampaignCategory' align='Left' font-size='3.5' />
+              </vertical>
+            </horizontal>
+            <vertical pref-height='30' pref-width='60'>
+              <text id='campaign-description' text='~CampaignDescription' align='Center' word-wrapping='true' font-size='3.5' />
+            </vertical>
+            <vertical preferred-height='5'></vertical>
+          </vertical>
+          <vertical pref-width='40'>
+            <vertical pref-height='15' vertical-fit='PreferredSize'>
+              <vertical pref-height='15' vertical-fit='PreferredSize'>
+                <text text='Objective' align='Center' font-size='4' />
+                <text text='~CampaignCompletion' align='Center' font-size='3.5' />
+              </vertical>
+            </vertical>
+            <vertical pref-height='15' vertical-fit='PreferredSize'>
+              <vertical pref-height='15' vertical-fit='PreferredSize' active='~campaign-curated' child-expand-height='false'>
+                <text text='Completion Rewards' font-size='4' />
+                <text text='~CampaignRewards' align='Center' font-size='3.5' />
+              </vertical>
+            </vertical>
+            <vertical pref-height='30' vertical-fit='PreferredSize'>
+              <vertical pref-height='15' vertical-fit='PreferredSize' active='~ShouldShowStatus'>
+                <text text='Status' align='Center' />
+                <text text='~CampaignCompletionStatus' font-size='3' align='Center' />
+                <horizontal spacing='2'>
+                  <horizontal pad='0' pref-width='25' horizontal-fit='PreferredSize' child-expand-width='false' child-control-width='false'>
+                    <image id='PercentBarTop' src='AccSaber.Resources.Pixel.png' pref-height='1' />
+                    <image id='PercentBarBottom' src='AccSaber.Resources.Pixel.png' pref-height='1' />
+                  </horizontal>
+                  <text text='~CampaignCompletionCount' font-size='3' />
+                </horizontal>
+              </vertical>
+              <vertical pref-height='20' vertical-fit='PreferredSize'>
+                <button id='CampaignButton' text='Play Campaign' on-click='PlayCampaign' font-size='4' pref-width='30' pref-height='10' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' active='~campaign-selected' />
+              </vertical>
+            </vertical>
+          </vertical>
+        </horizontal>
+      </vertical>
       <vertical active='~in-campaign'>
         <vertical id='CampaignMapContainer' pref-width='80' pref-height='70' pad='2' />
         <horizontal vertical-fit='PreferredSize' pref-height='15'>
@@ -110,7 +110,7 @@
           </vertical>
         </horizontal>
       </vertical>
-      <vertical pref-width='10' active='~in-map-or-barrier'/>
+      <vertical pref-width='10' active='~in-map-or-barrier' />
       <vertical pref-width='60' spacing='5' pref-height='65' bg='round-rect-panel' active='~in-map-or-barrier' pad='4' child-expand-height='false' child-expand-width='false'>
 
         <vertical pref-width='42' pref-height='15' vertical-fit='PreferredSize' active='~in-map'>

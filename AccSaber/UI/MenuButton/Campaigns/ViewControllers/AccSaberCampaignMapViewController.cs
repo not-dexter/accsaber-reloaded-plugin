@@ -321,6 +321,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                                     yield break;
                             }
                         }
+
+                        CurrentOffsetData.OnScaleChanged += CampaignMapBarrier.ResolveTextCollisions;
                     }
 
                     foreach (AccSaberCampaignMap map in campaign.Difficulties)
@@ -580,10 +582,15 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             foreach (var (_, _, arrow) in mapNodeArrows)
                 arrow.Dispose();
 
-            if (CurrentOffsetData is not null && UpdateArrowClipping is not null)
+            if (CurrentOffsetData is not null)
             {
-                CurrentOffsetData.OnScaleChanged -= UpdateArrowClipping;
-                UpdateArrowClipping = null;
+                CurrentOffsetData.OnScaleChanged -= CampaignMapBarrier.ResolveTextCollisions;
+
+                if (UpdateArrowClipping is not null)
+                {
+                    CurrentOffsetData.OnScaleChanged -= UpdateArrowClipping;
+                    UpdateArrowClipping = null;
+                }
             }
 
             backgroundTiler?.Dispose();
@@ -630,8 +637,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
             content.sizeDelta = newContentSize;
 
-            if (NodeContainer.TryGetComponent(out CustomBackground bg) && bg.Background is not null)
-                bg.Background.rectTransform.sizeDelta = newContentSize;
+            //if (NodeContainer.TryGetComponent(out CustomBackground bg) && bg.Background is not null)
+            //    bg.Background.rectTransform.sizeDelta = newContentSize;
 
             backgroundTiler?.RequestRebuild();
 
@@ -1324,7 +1331,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     -sizeInfo.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y
                 );
 
-                Canvas.ForceUpdateCanvases();
                 imageTiler.Rebuild();
             }
 
@@ -1945,7 +1951,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 // Apply current visual position using the current/old offset.
                 // Do not force collision resolution here; final positions are not ready yet.
-                UpdateTextPos(resolveCollisions: false);
+                UpdateTextPos();
             }
 
             private void OnOffsetDataUpdateFinished()
@@ -1980,17 +1986,12 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 UpdateBarrierSizeBounds();
             }
 
-            private void UpdateTextPos() => UpdateTextPos(resolveCollisions: true);
-
-            private void UpdateTextPos(bool resolveCollisions)
+            private void UpdateTextPos()
             {
                 if (textRt is null || barrierRt is null)
                     return;
 
                 ApplyTextPosition();
-
-                if (resolveCollisions && !resolvingTextCollisions)
-                    ResolveTextCollisions();
             }
 
             private void ApplyTextPosition()
@@ -2021,7 +2022,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 textRt.SetAsLastSibling();
             }
 
-            private static void ResolveTextCollisions()
+            internal static void ResolveTextCollisions()
             {
                 if (resolvingTextCollisions)
                     return;
@@ -2040,7 +2041,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     foreach (CampaignMapBarrier barrier in ActiveBarriers)
                     {
                         barrier.textOnOppositeEnd = false;
-                        barrier.UpdateTextPos(resolveCollisions: false);
+                        barrier.UpdateTextPos();
                     }
 
                     // Iteratively resolve because flipping one label can create a new collision
@@ -2067,14 +2068,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                                 if (!a.textOnOppositeEnd)
                                 {
                                     a.textOnOppositeEnd = true;
-                                    a.UpdateTextPos(resolveCollisions: false);
+                                    a.UpdateTextPos();
                                     changedSomething = true;
                                 }
 
                                 if (!b.textOnOppositeEnd)
                                 {
                                     b.textOnOppositeEnd = true;
-                                    b.UpdateTextPos(resolveCollisions: false);
+                                    b.UpdateTextPos();
                                     changedSomething = true;
                                 }
                             }
@@ -2378,7 +2379,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 UpdateTextSize();
 
                 Position = new(Text.PositionX * OffsetData.OffsetSize + OffsetData.Offset.x, -Text.PositionY * OffsetData.OffsetSize - OffsetData.Offset.y);
-                //Position = new Vector2(Text.PositionX * OffsetData.OffsetSize, -Text.PositionY * OffsetData.OffsetSize) + OffsetData.Offset;
 
                 TextObj.rectTransform.anchoredPosition = Position;
             }
@@ -2392,15 +2392,11 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                 ResizeTextToFit(TRUE_BOUNDS_SCALE * Text.Scale * OffsetData.ScaleFactor);
 
-                Canvas.ForceUpdateCanvases();
-#if NEW_VERSION
-                TextObj.ForceMeshUpdate(true, true);
-#else
-                TextObj.ForceMeshUpdate(true);
-#endif
-
                 Vector2 rectSize = TextObj.rectTransform.rect.size;
 
+#if PRINT_DEBUG && DEBUG
+                Plugin.Log.Info("text rect size = " + rectSize);
+#endif
 
                 if (padding != 0f)
                     rectSize += new Vector2(padding, padding) * OffsetData.ScaleFactor;

@@ -552,7 +552,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
                         newText.text = tag.Name;
                         newText.fontSize = 2.5f;
-                        newText.alignment = TMPro.TextAlignmentOptions.Center;
+                        newText.alignment = TextAlignmentOptions.Center;
                         newText.gameObject.SetActive(true);
 
                         newText.OnClickEvent += (pointerData) => OnTagClicked(tag, newText);
@@ -573,8 +573,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (_includedTags.Contains(tag.Id))
             {
                 _includedTags.Remove(tag.Id);
-                text.color = ColorUtils.Color("#ffffff");
-                text.DefaultColor = ColorUtils.Color("#ffffff");
+                text.color = Color.white;
+                text.DefaultColor = Color.white;
             }
             else
             {
@@ -1032,6 +1032,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
 
         public async Task UpdateCampaign(AccSaberCampaign campaign)
         {
+            Utils.Safety.MainThreadDispatcher.AssertOnMainThread();
+
             CampaignCategory = "";
             CampaignTitle = campaign.Name;
             CampaignCreator = campaign.CreatorAlias ?? campaign.CreatorName;
@@ -1091,27 +1093,32 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             else
                 StartCoroutine(_campaignImage.LoadImageRoutine(campaign.IconUrl));
 
-            JObject? campaignObj = await APIHandler.CallAPI_Json<JObject>(
-            string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler);
+            JObject? campaignObj = await APIHandler.CallAPI_Json<JObject>(string.Format(HelpfulPaths.APAPI_CAMPAIGN_PROGRESS, campaign.Id), AccsaberAPI.Throttler);
 
             if (campaignObj is not null)
             {
                 JToken? campaignInfo = campaignObj["campaign"];
 
-                float completedDiffs = (float)campaignObj!["completedDifficulties"]!;
-                int totalDiffs = (int)campaignInfo!["difficultyCount"]!;
+                if (campaignInfo is null)
+                    return;
+
+                float completedDiffs = (float)(campaignObj["completedDifficulties"] ?? -1f);
+                int totalDiffs = (int)(campaignInfo["difficultyCount"] ?? -1);
 
                 CampaignCompletionCount = $"{(int)completedDiffs}/{totalDiffs}";
 
-                ShouldShowStatus = (string)campaignObj["progressStatus"]! == "IN_PROGRESS";
-
-                CampaignCompletionStatus = (string)campaignObj["progressStatus"]! switch
+                if (campaignObj["progressStatus"] is not null && Enum.TryParse((string)campaignObj["progressStatus"]!, out UserCampaignProgress progress))
                 {
-                    "IN_PROGRESS" => $"<color={ColorUtils.STANDARD}>In Progress</color>",
-                    "COMPLETED" => $"<color={ColorUtils.TRUE}>Completed</color>",
-                    "ABANDONED" => $"<color={ColorUtils.TECH}>Abandoned</color>",
-                    _ => throw new NotImplementedException(),
-                };
+                    CampaignCompletionStatus = progress switch
+                    {
+                        UserCampaignProgress.IN_PROGRESS => $"<color={ColorUtils.STANDARD}>In Progress</color>",
+                        UserCampaignProgress.COMPLETED => $"<color={ColorUtils.TRUE}>Completed</color>",
+                        UserCampaignProgress.ABANDONED => $"<color={ColorUtils.TECH}>Abandoned</color>",
+                        _ => throw new NotImplementedException(),
+                    };
+
+                    ShouldShowStatus = progress == UserCampaignProgress.IN_PROGRESS;
+                }
 
                 PercentBarTop.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 25f * (completedDiffs / totalDiffs));
                 PercentBarBottom.transform.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, 25f * (1 - (completedDiffs / totalDiffs)));

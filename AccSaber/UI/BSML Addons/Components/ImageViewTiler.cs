@@ -14,8 +14,8 @@ namespace AccSaber.UI.BSML_Addons.Components
         public ImageView sourceImageView = null!;
         public AxisFilteredScrollRect? scrollRect;
 
-        public float maxTileWidth = 100f;
-        public float maxTileHeight = 100f;
+        public float maxTileWidth = 800f;
+        public float maxTileHeight = 800f;
 
         public bool disableSourceImage = true;
         public bool registerTilesForCulling = true;
@@ -36,7 +36,7 @@ namespace AccSaber.UI.BSML_Addons.Components
         private bool _rebuildQueued;
         private bool _disposed;
 
-        public static ImageViewTiler Create(ImageView sourceImageView, AxisFilteredScrollRect scrollRect, float maxTileSize = 100f)
+        public static ImageViewTiler Create(ImageView sourceImageView, AxisFilteredScrollRect scrollRect, float maxTileSize = 800f)
         {
             ImageViewTiler tiler = sourceImageView.GetComponent<ImageViewTiler>() ?? sourceImageView.gameObject.AddComponent<ImageViewTiler>();
 
@@ -104,8 +104,6 @@ namespace AccSaber.UI.BSML_Addons.Components
         {
             yield return null;
 
-            Canvas.ForceUpdateCanvases();
-
             _rebuildQueued = false;
 
             if (!_disposed)
@@ -126,8 +124,6 @@ namespace AccSaber.UI.BSML_Addons.Components
 
             if (sourceSprite is null)
                 return;
-
-            Canvas.ForceUpdateCanvases();
 
             Vector2 size = _sourceRectTransform.rect.size;
 
