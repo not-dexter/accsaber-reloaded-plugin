@@ -294,7 +294,6 @@ namespace AccSaber.Models
             OffsetSize = SHAPE_OFFSET * CampaignModel.DEFAULT_NODE_SIZE * scaleFactor + NODE_PADDING;
 
             OnScaleChanging?.Invoke();
-            Plugin.Log.Info("Scale changing called.");
 
             float left = float.PositiveInfinity;
             float right = float.NegativeInfinity;
@@ -330,9 +329,7 @@ namespace AccSaber.Models
 
             Offset = -boundsCenter;
 
-            Plugin.Log.Info("Scale changed called.");
             OnScaleChanged?.Invoke();
-            Plugin.Log.Info("Scale changed finished.");
 
 #if PRINT_DEBUG && DEBUG
         Plugin.Log.Info($"BoundsMin = {BoundsMin}, BoundsMax = {BoundsMax}");
