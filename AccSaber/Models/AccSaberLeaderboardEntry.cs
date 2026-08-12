@@ -302,7 +302,7 @@ namespace AccSaber.Models
 
         private void OnSettingsUpdate(object sender, PropertyChangedEventArgs args)
         {
-            if (!(Container?.gameObject.activeInHierarchy ?? false))
+            if (!(Container?.gameObject?.activeInHierarchy ?? false))
                 return;
 
             switch (args.PropertyName)
