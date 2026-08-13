@@ -50,12 +50,15 @@
       <Output TaskParameter="Branch" PropertyName="Branch" />
       <Output TaskParameter="Modified" PropertyName="GitModified" />
     </GetCommitInfo>
-    <PropertyGroup>
+    <PropertyGroup Condition="'$(ShortZipName)' != 'true' OR '$(GameVersion)' == ''">
       <!--Build name for artifact/zip file-->
       <ArtifactName>$(AssemblyName)</ArtifactName>
       <ArtifactName Condition="'$(PluginVersion)' != ''">$(ArtifactName)-$(PluginVersion)</ArtifactName>
       <ArtifactName Condition="'$(GameVersion)' != ''">$(ArtifactName)-bs$(GameVersion)</ArtifactName>
       <ArtifactName Condition="'$(CommitHash)' != '' AND '$(CommitHash)' != 'local'">$(ArtifactName)-$(CommitHash)</ArtifactName>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(ShortZipName)' == 'true' AND '$(GameVersion)' != ''">
+      <ArtifactName>$(GameVersion)</ArtifactName>
     </PropertyGroup>
   </Target>
   <!--Build target for Continuous Integration builds. Set up for GitHub Actions.-->

@@ -15,7 +15,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TMPro;
-using Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
@@ -136,7 +135,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 		[Inject] private readonly AccSaberPlaylistModalController playlistModal = null!;
 		[Inject] private readonly LevelUtils levelUtils = null!;
 		[Inject] private readonly AccSaberMainFlowCoordinator parentCoordinator = null!;
-        [Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
+        //[Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
         [Inject] private readonly PluginConfig PC = null!;
 		[Inject] private readonly PlayerSocialLife playerInfo = null!;

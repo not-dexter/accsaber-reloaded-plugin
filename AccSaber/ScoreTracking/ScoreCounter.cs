@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using Zenject;
 
@@ -17,7 +18,16 @@ namespace AccSaber.ScoreTracking
 {
     internal class ScoreCounter : IInitializable, IDisposable
     {
-        public static event Action<AccSaberScore, bool>? OnScoreSubmit;
+        /// <summary>
+        /// Called whenever the ScoreCounter tries to submit a score.
+        /// </summary>
+        /// <remarks>
+        /// The variables are: <br/>
+        /// 1. The score that was attempted to be submitted.<br/>
+        /// 2. Whether or not the score beat the currently saved score.<br/>
+        /// 3. Whether or not the submission attempt was successful.
+        /// </remarks>
+        public static event Action<AccSaberScore, bool, bool>? OnScoreSubmitCall;
 
         [Inject] private readonly IReadonlyBeatmapData beatmapData = null!;
 
@@ -31,37 +41,73 @@ namespace AccSaber.ScoreTracking
         private GameEnergyCounter? energy = null;
         private AccSaberStore? store = null;
 
-        private static readonly HashSet<string> AllowedModes = [ "Solo", "Multiplayer" ];
+        private static readonly HashSet<string> AllowedModes = [with(StringComparer.Ordinal), "Solo", "Multiplayer"];
 
         private AccSaberScore score = null!;
         private AccSaberBasicDifficulty? currentMap;
-        private AccsaberAPI api = null!;
         private AccSaberLeaderboardViewController aslvc = null!;
         private Configuration.PluginConfig config = null!;
+        private Task initTask = null!;
 
         private int current115Streak, combo, notes, totalNotes;
         private readonly object submitLock = new();
-        private bool transitionFinished, counterDisposed, failed;
+        private bool transitionFinished, counterDisposed, scoreSubmitStarted, failed, disposing, subscribed;
         private string? gamemode = null;
 
         public event Action? OnMistake;
 
         private bool AtEndsOfMap => notes == 0 || notes == totalNotes;
 
-        public async void Initialize()
+        public void Initialize()
+        {
+            disposing = false;
+            initTask = InitializeInternalSafe();
+        }
+        private async Task InitializeInternalSafe()
+        {
+            try
+            {
+                await InitializeInternal();
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.Error("ScoreCounter initialization failed:\n" + e);
+            }
+        }
+        private async Task InitializeInternal()
         {
             SubmissionPatch.EnableSubmissions();
 
+            subscribed = false;
             transitionFinished = false;
             counterDisposed = false;
+            scoreSubmitStarted = false;
             failed = false;
+            currentMap = null;
+
+            current115Streak = 0;
+            combo = 0;
+            totalNotes = 0;
+            notes = 0;
+
+            score = new();
 
             transition = Resources.FindObjectsOfTypeAll<StandardLevelScenesTransitionSetupDataSO>().FirstOrDefault();
             store ??= Plugin.Container.TryResolve<AccSaberStore>();
-            api ??= Plugin.Container.TryResolve<AccsaberAPI>();
             aslvc ??= Plugin.Container.TryResolve<AccSaberLeaderboardViewController>();
             config ??= Plugin.Container.TryResolve<Configuration.PluginConfig>();
 
+            if (store is null || aslvc is null || config is null)
+            {
+                Plugin.Log.Error("A built in dependency is not able to be resolved. There is a bug in the code, please report this.");
+                return;
+            }
+
+            if (transition is null)
+            {
+                Plugin.Log.Critical("The level scenes transition is null!!! This should not be possible, stopping score submission.");
+                return;
+            }
 
             if (mods.noFailOn0Energy)
                 energy = Resources.FindObjectsOfTypeAll<GameEnergyCounter>().LastOrDefault(x => x.isActiveAndEnabled);
@@ -76,11 +122,23 @@ namespace AccSaber.ScoreTracking
             if (store.CurrentRankedMap is null && (!Plugin.Container.TryResolve<AccSaberCampaignViewController>()?.MapStarted ?? true))
                 return;
 
+            transition.didFinishEvent += OnTransitionSetupOnDidFinishEvent;
+            sc.scoringForNoteFinishedEvent += NoteScoring;
+            bomb.noteWasCutEvent += OnBombHit;
+            wall.headDidEnterObstacleEvent += OnWallHit;
+            pause.didResumeEvent += OnUnpause;
+            energy?.gameEnergyDidReach0Event += OnFail;
+            subscribed = true;
+
             currentMap = store.CurrentRankedMap ?? await store.GetCurrentMap();
+
+            if (disposing)
+                goto onDisposed;
 
             if (currentMap is null)
             {
                 Plugin.Log.Warn("Somehow the current map is null after null checks happened. This is a bug.");
+                Unsubscribe();
                 return;
             }
 
@@ -95,10 +153,10 @@ namespace AccSaber.ScoreTracking
                 if (transition.beatmapLevel is null)
                 {
                     Plugin.Log.Critical("The beatmap transition beatmap level is somehow null, this should not be possible.");
-                    return false;
+                    return true;
                 }
 
-                string currentHash = transition.beatmapLevel.levelID.ToLower();
+                string currentHash = transition.beatmapLevel.levelID.ToLowerInvariant();
                 
                 if (currentHash.StartsWith(AccSaberManager.CUSTOM_LEVEL_HASH))
                     currentHash = currentHash[AccSaberManager.CUSTOM_LEVEL_HASH.Length..];
@@ -108,7 +166,13 @@ namespace AccSaber.ScoreTracking
 #else
             bool IsInvalidLevel()
             {
-                string currentHash = transition.difficultyBeatmap.level.levelID.ToLower();
+                if (transition.difficultyBeatmap is null)
+                {
+                    Plugin.Log.Critical("The beatmap transition beatmap level is somehow null, this should not be possible.");
+                    return true;
+                }
+
+                string currentHash = transition.difficultyBeatmap.level.levelID.ToLowerInvariant();
 
                 if (currentHash.StartsWith(AccSaberManager.CUSTOM_LEVEL_HASH))
                     currentHash = currentHash[AccSaberManager.CUSTOM_LEVEL_HASH.Length..];
@@ -124,10 +188,20 @@ namespace AccSaber.ScoreTracking
 #if NEW_VERSION
                 Plugin.Log.Info($"transition level id = {transition.beatmapLevel?.levelID}, transition difficulty = {transition.beatmapKey.difficulty}");
 #else
-                Plugin.Log.Info($"transition level id = {transition.difficultyBeatmap.level.levelID}, transition difficulty = {transition.difficultyBeatmap.difficulty}");
+                Plugin.Log.Info($"transition level id = {transition.difficultyBeatmap?.level?.levelID}, transition difficulty = {transition.difficultyBeatmap?.difficulty}");
 #endif
 
                 Plugin.Log.Info($"current level id = {currentMap.ParentInfo?.Hash}, current difficulty = {currentMap.Difficulty}");
+
+#if !NEW_VERSION
+                if (transition.difficultyBeatmap is null)
+                {
+                    Plugin.Log.Info("The transition's difficulty beatmap is null, no way to identify the map to retry. Disabling score submission.");
+                    currentMap = null;
+                    Unsubscribe();
+                    return;
+                }
+#endif
 
                 PlatformLeaderboardViewController? viewController = Plugin.Container.TryResolve<PlatformLeaderboardViewController>();
 
@@ -154,6 +228,9 @@ namespace AccSaber.ScoreTracking
                         {
                             Models.CacheModels.AccSaberBasicMap? map = await serialHandler.GetMapByHashAsync(hash);
 
+                            if (disposing)
+                                goto onDisposed;
+
                             if (map is not null)
                             {
                                 BeatmapDifficulty diff = key.difficulty;
@@ -168,6 +245,9 @@ namespace AccSaber.ScoreTracking
                         Plugin.Log.Warn("Failed to directly get map from cache, attempting to get it from the store.");
 
                         currentMap = store.CurrentRankedMap ?? await store.GetCurrentMap();
+
+                        if (disposing)
+                            goto onDisposed;
                     }
                 }
 
@@ -175,40 +255,39 @@ namespace AccSaber.ScoreTracking
                 {
                     Plugin.Log.Critical("Current map was still not updated correctly, score submission disabled for this map.");
                     currentMap = null;
+                    Unsubscribe();
                     return;
                 }
                 else
                     Plugin.Log.Warn("Current map was fixed.");
             }
 
-            score = new()
-            {
-                MapDifficultyId = currentMap.DifficultyId,
-                Headset = (await store.GetCurrentUserAsync()).Headset
-            };
+            score.MapDifficultyId = currentMap.DifficultyId;
+            score.Headset = (await store.GetCurrentUserAsync()).Headset;
 
-            current115Streak = 0;
-            combo = 0;
-            notes = 0;
-
-            transition.didFinishEvent += OnTransitionSetupOnDidFinishEvent;
-            sc.scoringForNoteFinishedEvent += NoteScoring;
-            bomb.noteWasCutEvent += OnBombHit;
-            wall.headDidEnterObstacleEvent += OnWallHit;
-            pause.didResumeEvent += OnUnpause;
-            energy?.gameEnergyDidReach0Event += OnFail;
-        }
-        public void Dispose()
-        {
-            if (currentMap is null)
+            if (!disposing)
                 return;
 
-            transition.didFinishEvent -= OnTransitionSetupOnDidFinishEvent;
-            sc.scoringForNoteFinishedEvent -= NoteScoring;
-            bomb.noteWasCutEvent -= OnBombHit;
-            wall.headDidEnterObstacleEvent -= OnWallHit;
-            pause.didResumeEvent -= OnUnpause;
-            energy?.gameEnergyDidReach0Event -= OnFail;
+        onDisposed:
+            Plugin.Log.Warn("Disposed before init task in score submission finished!");
+            currentMap = null;
+            return;
+        }
+        public async void Dispose()
+        {
+            disposing = true;
+
+            if (subscribed)
+                Unsubscribe();
+
+            if (initTask is not null)
+                await initTask;
+
+            if (subscribed)
+                Unsubscribe();
+
+            if (currentMap is null)
+                return;
 
             score.ModifierCodes = mods.ToModCodes(failed);
 
@@ -220,16 +299,34 @@ namespace AccSaber.ScoreTracking
             score.MaxCombo = Math.Max(score.MaxCombo, combo);
             score.Streak115 = Math.Max(score.Streak115, current115Streak);
 
+            bool shouldSubmit;
+
             lock (submitLock)
             {
                 counterDisposed = true;
-                if (transitionFinished)
-                    SubmitScore();
+                shouldSubmit = MarkSubmitIfReady();
             }
+
+            if (shouldSubmit)
+                _ = SubmitScore();
+        }
+        private void Unsubscribe()
+        {
+            transition?.didFinishEvent -= OnTransitionSetupOnDidFinishEvent;
+            sc.scoringForNoteFinishedEvent -= NoteScoring;
+            bomb.noteWasCutEvent -= OnBombHit;
+            wall.headDidEnterObstacleEvent -= OnWallHit;
+            pause.didResumeEvent -= OnUnpause;
+            energy?.gameEnergyDidReach0Event -= OnFail;
+
+            subscribed = false;
         }
 
         private void NoteScoring(ScoringElement scoringElement)
         {
+            if (disposing)
+                return;
+
             NoteData currentNote = scoringElement.noteData;
 
             if (currentNote.gameplayType == NoteData.GameplayType.Bomb)
@@ -241,6 +338,9 @@ namespace AccSaber.ScoreTracking
                 return;
 
             notes++;
+
+            if (st == NoteData.ScoringType.NoScore)
+                return; // NoScore only appears on bombs, but this check is just to be on the safe side.
 
             bool miss = false;
 
@@ -255,50 +355,44 @@ namespace AccSaber.ScoreTracking
                 miss = true;
             }
 
-            if (st == NoteData.ScoringType.NoScore || miss)
+            if (miss)
             {
-                score.MaxCombo = Math.Max(score.MaxCombo, combo);
-                combo = 0;
-                current115Streak = 0;
+                ResetCombo();
 
                 OnMistake?.Invoke();
                 return;
             }
-            else combo++;
+            else 
+                combo++;
 
             if (scoringElement.cutScore != 115)
-            {
-                if (current115Streak > 0)
-                {
-                    score.Streak115 = Math.Max(current115Streak, score.Streak115);
-                    current115Streak = 0;
-                }
-            }
-            else current115Streak++;
+                ResetStreak();
+            else
+                current115Streak++;
         }
         private void OnBombHit(NoteController nc, in NoteCutInfo nci)
         {
-            if (nc.noteData.gameplayType != NoteData.GameplayType.Bomb || AtEndsOfMap)
+            if (disposing || nc.noteData.gameplayType != NoteData.GameplayType.Bomb || AtEndsOfMap)
                 return;
 
-            combo = 0;
+            ResetCombo();
             score.BombHits++;
 
             OnMistake?.Invoke();
         }
         private void OnWallHit(ObstacleController oc)
         {
-            if (AtEndsOfMap)
+            if (disposing || AtEndsOfMap)
                 return;
 
-            combo = 0;
+            ResetCombo();
             score.WallHits++;
 
             OnMistake?.Invoke();
         }
         private void OnUnpause()
         {
-            if (AtEndsOfMap)
+            if (disposing || AtEndsOfMap)
                 return;
 
             score.Pauses++;
@@ -313,18 +407,55 @@ namespace AccSaber.ScoreTracking
 
             gamemode = data.gameMode;
 
+            bool shouldSubmit;
+
             lock (submitLock)
             {
                 transitionFinished = true;
-                if (counterDisposed)
-                    SubmitScore();
+                shouldSubmit = MarkSubmitIfReady();
             }
+
+            if (shouldSubmit)
+                _ = SubmitScore();
         }
-        private async void SubmitScore()
+
+        private void ResetCombo()
+        {
+            score.MaxCombo = Math.Max(score.MaxCombo, combo);
+            combo = 0;
+
+            ResetStreak();
+        }
+        private void ResetStreak()
+        {
+            if (current115Streak > 0)
+                score.Streak115 = Math.Max(current115Streak, score.Streak115);
+
+            current115Streak = 0;
+        }
+
+        private bool MarkSubmitIfReady()
+        {
+            if (!scoreSubmitStarted && counterDisposed && transitionFinished)
+            {
+                scoreSubmitStarted = true;
+                return true;
+            }
+
+            return false;
+        }
+        private async Task SubmitScore()
         {
             try
             {
                 const float completionPercent = 0.75f;
+                const int minNotesInMap = 115;
+
+                if (totalNotes < minNotesInMap || notes > totalNotes)
+                {
+                    Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
+                    return;
+                }
 
                 float completion = (float)notes / totalNotes;
 
@@ -362,12 +493,6 @@ namespace AccSaber.ScoreTracking
                     return;
                 }
 
-                if (totalNotes < 115 || notes > totalNotes)
-                {
-                    Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
-                    return;
-                }
-
                 bool mapIncomplete = score.UncompletedMap!.Value;
 
                 if (!config.SubmitOnIncompletePlay && mapIncomplete)
@@ -379,14 +504,14 @@ namespace AccSaber.ScoreTracking
                 bool scoreBeaten = false;
 
                 if (!mapIncomplete)
-                    scoreBeaten = aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score, true, TimeSpan.FromSeconds(7));
+                    scoreBeaten = aslvc.LoadUntilNextRefreshIfScoreBeaten((int)score.Score, overridePlayerScore: true, TimeSpan.FromSeconds(7));
 
                 score.BeatPreviousScore = scoreBeaten;
 
                 bool submitted = await submission.AttemptSubmitScore(score);
                 SerializationHandler.LastScoreTime = DateTime.UtcNow;
 
-                OnScoreSubmit?.Invoke(score, scoreBeaten);
+                OnScoreSubmitCall?.Invoke(score, scoreBeaten, submitted);
 
                 if (!submitted && ScoreSubmissionHandler.CheckFullSubmissionFailure(score))
                     aslvc.ForceShowLeaderboard();
