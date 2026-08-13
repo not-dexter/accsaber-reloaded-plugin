@@ -29,6 +29,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using Zenject;
 
+#if NEW_VERSION
+using BeatSaberMarkupLanguage;
+#endif
+
 using static AccSaber.Managers.CampaignProgress;
 using static AccSaber.Models.CampaignModel;
 
