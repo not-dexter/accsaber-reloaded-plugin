@@ -218,6 +218,7 @@ namespace AccSaber.ScoreTracking
             score.ScoreNoMods = sc.multipliedScore >= 0 ? (uint)sc.multipliedScore : 0;
 
             score.MaxCombo = Math.Max(score.MaxCombo, combo);
+            score.Streak115 = Math.Max(score.Streak115, current115Streak);
 
             lock (submitLock)
             {
