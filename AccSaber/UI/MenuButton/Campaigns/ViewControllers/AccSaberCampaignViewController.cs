@@ -8,7 +8,6 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
-using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using BeatSaberMarkupLanguage.Tags;
@@ -1493,7 +1492,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     UpdateCampaign();
             }
         }
-        private async void OnPlayerScoreSubmit(AccSaberScore score, bool scoreBeaten)
+        private async void OnPlayerScoreSubmit(AccSaberScore score, bool scoreBeaten, bool scoreSubmitted)
         {
             if (CurrentMap is not null && _currentCampaign is not null && _currentCampaign.Difficulties is not null)
             {
@@ -1704,7 +1703,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void Initialize()
         {
             AccSaberStore.OnPlayerScoreUpdated += OnPlayerScore;
-            ScoreTracking.ScoreCounter.OnScoreSubmit += OnPlayerScoreSubmit;
+            ScoreTracking.ScoreCounter.OnScoreSubmitCall += OnPlayerScoreSubmit;
 
             _config.PropertyChanged += OnPluginConfigChanged;
 
@@ -1726,7 +1725,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public void Dispose()
         {
             AccSaberStore.OnPlayerScoreUpdated -= OnPlayerScore;
-            ScoreTracking.ScoreCounter.OnScoreSubmit -= OnPlayerScoreSubmit;
+            ScoreTracking.ScoreCounter.OnScoreSubmitCall -= OnPlayerScoreSubmit;
 
             _config.PropertyChanged -= OnPluginConfigChanged;
         }
