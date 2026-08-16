@@ -652,9 +652,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor < _config.CampaignMaxZoomValue)
             {
                 _campaignMapViewController.UpdateScalingDelta(_config.CampaignZoomIncrementValue);
-
-                if (InMap && CurrentMap is not null)
-                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
             }
         }
 
@@ -664,9 +661,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (_currentCampaign is not null && _campaignMapViewController.CurrentOffsetData?.ScaleFactor > _config.CampaignMinZoomValue)
             {
                 _campaignMapViewController.UpdateScalingDelta(-_config.CampaignZoomIncrementValue);
-
-                if (InMap && CurrentMap is not null)
-                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
             }
         }
 
@@ -676,9 +670,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (_currentCampaign is not null)
             {
                 _campaignMapViewController.UpdateScaling(_config.CampaignDefaultZoomValue);
-
-                if (InMap && CurrentMap is not null)
-                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
             }
         }
 
@@ -688,9 +679,6 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             if (_currentCampaign is not null)
             {
                 _campaignMapViewController.UpdateScaling(_config.CampaignMinZoomValue);
-
-                if (InMap && CurrentMap is not null)
-                    _campaignMapViewController.ScrollToNode(CurrentMap.Id);
             }
         }
 
