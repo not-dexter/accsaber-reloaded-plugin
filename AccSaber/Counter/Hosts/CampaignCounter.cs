@@ -37,6 +37,7 @@ namespace AccSaber.Counter.Hosts
         [Inject] private readonly ScoreController sc = null!;
         [Inject] private readonly ComboController cc = null!;
         [Inject] private readonly ScoreCounter myScoreCounter = null!;
+        [Inject] private readonly PauseController pauseController = null!;
         private GameEnergyCounter energy = null!;
 
         [Inject] private readonly SerializationHandler serialhandler = null!;
@@ -44,7 +45,7 @@ namespace AccSaber.Counter.Hosts
         private TMP_Text DisplayText = null!;
         private ImageView Checkmark = null!;
         private int max115Streak = 0, current115Streak = 0;
-        private int bombHits = 0, mistakes = 0;
+        private int bombHits = 0, mistakes = 0, pauses = 0;
         private LineInfo[] lineData = null!;
         private AccSaberCampaignTarget[] targets = null!;
         private readonly List<Action> cleanupActions = [];
@@ -178,7 +179,7 @@ namespace AccSaber.Counter.Hosts
                         sc.scoreDidChangeEvent += action2;
                         cleanupActions.Add(() => sc.scoreDidChangeEvent -= action2);
 
-                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} score", "{0:N0} <= {2:N0} score", "{1:N0} <= {0:N0} <= {2:N0} score", "{0:N0} = {1:N0} score"));
+                        lineData[i] = new(SelectContent(i, "N0", "score"));
                         break;
                     case CampaignModel.CampaignRequirementType.STREAK_115:
                         action10 = ActionEvent1<ScoringElement>(StreakCounter);
@@ -214,24 +215,31 @@ namespace AccSaber.Counter.Hosts
                         cc.comboBreakingEventHappenedEvent += action0;
                         cleanupActions.Add(() => cc.comboBreakingEventHappenedEvent -= action0);
 
-                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} combo", "{0:N0} <= {2:N0} combo", "{1:N0} <= {0:N0} <= {2:N0} combo", "{0:N0} = {1:N0} combo"));
+                        lineData[i] = new(SelectContent(i, "N0", "combo"));
                         break;
                     case CampaignModel.CampaignRequirementType.BOMB_HITS:
                         action10 = ActionEvent1<ScoringElement>(BombHitCounter);
                         sc.scoringForNoteFinishedEvent += action10;
                         cleanupActions.Add(() => sc.scoringForNoteFinishedEvent -= action10);
 
-                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} bombs", "{0:N0} <= {2:N0} bombs", "{1:N0} <= {0:N0} <= {2:N0} bombs", "{0:N0} = {1:N0} bombs"));
+                        lineData[i] = new(SelectContent(i, "N0", "bombs"));
                         break;
                     case CampaignModel.CampaignRequirementType.MISTAKES:
                         action0 = ActionEvent0(MistakeCounter);
                         myScoreCounter.OnMistake += action0;
                         cleanupActions.Add(() => myScoreCounter.OnMistake -= action0);
 
-                        lineData[i] = new(SelectContent(i, "{0:N0} / {1:N0} mistakes", "{0:N0} <= {2:N0} mistakes", "{1:N0} <= {0:N0} <= {2:N0} mistakes", "{0:N0} = {1:N0} mistakes"));
+                        lineData[i] = new(SelectContent(i, "N0", "mistakes"));
+                        break;
+                    case CampaignModel.CampaignRequirementType.PAUSES:
+                        action0 = ActionEvent0(PauseCounter);
+                        pauseController.didPauseEvent += action0;
+                        cleanupActions.Add(() => pauseController.didPauseEvent -= action0);
+
+                        lineData[i] = new(SelectContent(i, "N0", "pauses"));
                         break;
 
-                    default: // TODO: Add Rank (or maybe just don't worry about that one)
+                    default: // Add Rank (or maybe just don't worry about that one)
                         break;
                 }
             }
@@ -323,8 +331,23 @@ namespace AccSaber.Counter.Hosts
 
             UpdateInfo(index, success: DoNormalComp(index, mistakes));
         }
+        private void PauseCounter(int index)
+        {
+            lineData[index].CurrentValue = ++pauses;
+
+            UpdateInfo(index, success: DoNormalComp(index, pauses));
+        }
 
 
+        private string SelectContent(int index, string format, string label)
+        {
+            return SelectContent(index, 
+                $"{{0:{format}}} / {{1:{format}}} {label}",
+                $"{{0:{format}}} <= {{2:{format}}} {label}",
+                $"{{1:{format}}} <= {{0:{format}}} <= {{2:{format}}} {label}",
+                $"{{0:{format}}} = {{1:{format}}} {label}"
+                );
+        }
         private string SelectContent(int index, string minOnly, string maxOnly, string minMax, string minMaxEqual)
         {
             if (targets[index].RequirementValueMax is null)
@@ -332,6 +355,7 @@ namespace AccSaber.Counter.Hosts
 
             if (Mathf.Approximately(targets[index].RequirementValue, 0f))
                 return maxOnly;
+
             // requirementValueMax cannot be null, otherwise the previous if statement would have been true, so we can safely use !.Value here
             if (Mathf.Approximately(targets[index].RequirementValue, targets[index].RequirementValueMax!.Value))
                 return minMaxEqual;

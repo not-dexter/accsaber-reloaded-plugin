@@ -604,7 +604,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             campaignMapTexts.Clear();
             mapNodeArrows.Clear();
 
-            scrollRect.ClearCullTargets();
+            scrollRect?.ClearCullTargets();
         }
         private void UpdateContainerValues(bool resetScrollbars)
         {

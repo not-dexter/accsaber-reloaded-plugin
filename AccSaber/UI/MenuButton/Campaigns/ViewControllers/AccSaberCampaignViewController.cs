@@ -1219,6 +1219,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                 float progress = val.Progress.CurrentValue;
                 string progressStr, objectiveStr;
 
+                string minValS = Mathf.Approximately(target.RequirementValue, 1f) ? "s" : "";
+                string maxValS = target.RequirementValueMax is not null && Mathf.Approximately(target.RequirementValueMax.Value, 1f) ? "s" : "";
+
                 if (target.RequirementValueMax is null)
                 {
                     progressStr = target.RequirementType switch
@@ -1230,9 +1233,10 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         CampaignRequirementType.SCORE => $"<color={ColorUtils.GREY}>{progress:N0}</color> / <color={ColorUtils.GREY}>{target.RequirementValue:N0}</color>",
                         CampaignRequirementType.FC => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>FC</color>",
                         CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
-                        CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
-                            $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color>",
-                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistakes",
+                        CampaignRequirementType.COMBO => $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Combo",
+                        CampaignRequirementType.BOMB_HITS => $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Bomb{minValS}",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> / <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistake{minValS}",
+                        CampaignRequirementType.PAUSES => $"<color={ColorUtils.STANDARD}>{progress:N0}</color> / <color={ColorUtils.STANDARD}>{target.RequirementValue:N0}</color> Pause{minValS}",
                         _ => $"{progress} / {target.RequirementValue}"
                     };
 
@@ -1241,13 +1245,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         CampaignRequirementType.ACC => $"Set a score with at least <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy.",
                         CampaignRequirementType.AP => $"Set a score worth at least <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>.",
                         CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> or better on the map.",
-                        CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row.",
-                        CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points or higher.",
+                        CampaignRequirementType.STREAK_115 => $"Hit <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115{minValS} in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> point{minValS} or higher.",
                         CampaignRequirementType.FC => "Set a Full Combo.",
                         CampaignRequirementType.PASS => "Pass the map without no fail.",
                         CampaignRequirementType.COMBO => $"Set a score with a combo of at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> combo.",
-                        CampaignRequirementType.BOMB_HITS => $"Hit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bombs.",
-                        CampaignRequirementType.MISTAKES => $"Commit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistakes.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bomb{minValS}.",
+                        CampaignRequirementType.MISTAKES => $"Commit at least <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistake{minValS}.",
+                        CampaignRequirementType.PAUSES => $"Commit at least <color={ColorUtils.STANDARD}>{target.RequirementValue:N0}</color> pause{minValS}.",
                         _ => $"Get something with a requirement value of {target.RequirementValue:N0}."
                     };
                 }
@@ -1264,7 +1269,8 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
                         CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
                             $"<color={ColorUtils.RANK}>{progress:N0}</color> = <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color>",
-                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> = <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistakes",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> = <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> Mistake{minValS}",
+                        CampaignRequirementType.PAUSES => $"<color={ColorUtils.STANDARD}>{progress:N0}</color> = <color={ColorUtils.STANDARD}>{target.RequirementValue:N0}</color> Pause{minValS}",
                         _ => $"{progress} = {target.RequirementValue}"
                     };
 
@@ -1273,13 +1279,14 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         CampaignRequirementType.ACC => $"Set a score with exactly <color={ColorUtils.RANK}>{target.RequirementValue * 100:N2}%</color> accuracy.",
                         CampaignRequirementType.AP => $"Set a score worth exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0} AP</color>.",
                         CampaignRequirementType.RANK => $"Get exactly rank <color={ColorUtils.RANK}>#{target.RequirementValueMax:N0}</color> on the map.",
-                        CampaignRequirementType.STREAK_115 => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115s in a row.",
-                        CampaignRequirementType.SCORE => $"Set a score of exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> points.",
+                        CampaignRequirementType.STREAK_115 => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> 115{minValS} in a row.",
+                        CampaignRequirementType.SCORE => $"Set a score of exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> point{minValS}.",
                         CampaignRequirementType.FC => "Set a Full Combo.",
                         CampaignRequirementType.PASS => "Pass the map without no fail.",
                         CampaignRequirementType.COMBO => $"Set a score with a combo of exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> combo.",
-                        CampaignRequirementType.BOMB_HITS => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bombs.",
-                        CampaignRequirementType.MISTAKES => $"Commit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistakes.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> bomb{minValS}.",
+                        CampaignRequirementType.MISTAKES => $"Commit exactly <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> mistake{minValS}.",
+                        CampaignRequirementType.PAUSES => $"Commit exactly <color={ColorUtils.STANDARD}>{target.RequirementValue:N0}</color> pause{minValS}.",
                         _ => $"Get something with a requirement value of {target.RequirementValue:N0}."
                     };
                 }
@@ -1296,22 +1303,24 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         CampaignRequirementType.PASS => $"<color={(completion.Completion == CompletionStatus.Complete ? "#5F5" : "#F55")}>Pass</color>",
                         CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
                             $"<color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color>",
-                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> Mistakes",
+                        CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> Mistake{maxValS}",
+                        CampaignRequirementType.PAUSES => $"<color={ColorUtils.STANDARD}>{progress:N0}</color> <= <color={ColorUtils.STANDARD}>{target.RequirementValueMax:N0}</color> Pause{maxValS}",
                         _ => $"{progress} <= {target.RequirementValueMax}"
                     };
 
                     objectiveStr = target.RequirementType switch
                     {
-                        CampaignRequirementType.ACC => $"Set a score with at most <color={ColorUtils.RANK}>{target.RequirementValueMax * 100:N2}%</color> accuracy.",
-                        CampaignRequirementType.AP => $"Set a score worth at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0} AP</color>.",
+                        CampaignRequirementType.ACC => $"Get at most <color={ColorUtils.RANK}>{target.RequirementValueMax * 100:N2}%</color> accuracy.",
+                        CampaignRequirementType.AP => $"Get at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0} AP</color>.",
                         CampaignRequirementType.RANK => $"Get rank <color={ColorUtils.RANK}>#{target.RequirementValue:N0}</color> or worse on the map.",
-                        CampaignRequirementType.STREAK_115 => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> 115s in a row.",
-                        CampaignRequirementType.SCORE => $"Set a score of <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> points or lower.",
+                        CampaignRequirementType.STREAK_115 => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> 115{maxValS} in a row.",
+                        CampaignRequirementType.SCORE => $"Get <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> points or lower.",
                         CampaignRequirementType.FC => "Set a Full Combo.",
                         CampaignRequirementType.PASS => "Pass the map without no fail.",
-                        CampaignRequirementType.COMBO => $"Set a score with a combo of at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> combo.",
-                        CampaignRequirementType.BOMB_HITS => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> bombs.",
-                        CampaignRequirementType.MISTAKES => $"Commit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> mistakes.",
+                        CampaignRequirementType.COMBO => $"Get at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> combo.",
+                        CampaignRequirementType.BOMB_HITS => $"Hit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> bomb{maxValS}.",
+                        CampaignRequirementType.MISTAKES => $"Commit at most <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> mistake{maxValS}.",
+                        CampaignRequirementType.PAUSES => $"Commit at most <color={ColorUtils.STANDARD}>{target.RequirementValueMax:N0}</color> pause{maxValS}.",
                         _ => $"Get something with a max requirement value of {target.RequirementValueMax:N0}."
                     };
                 }
@@ -1329,6 +1338,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         CampaignRequirementType.COMBO or CampaignRequirementType.BOMB_HITS =>
                             $"<color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color>",
                         CampaignRequirementType.MISTAKES => $"<color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.RANK}>{progress:N0}</color> <= <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> Mistakes",
+                        CampaignRequirementType.PAUSES => $"<color={ColorUtils.STANDARD}>{target.RequirementValue:N0}</color> <= <color={ColorUtils.STANDARD}>{progress:N0}</color> <= <color={ColorUtils.STANDARD}>{target.RequirementValueMax:N0}</color> Pauses",
                         _ => $"{target.RequirementValue} <= {progress} <= {target.RequirementValueMax}"
                     };
 
@@ -1344,6 +1354,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                         CampaignRequirementType.COMBO => $"Set a score between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> combo.",
                         CampaignRequirementType.BOMB_HITS => $"Hit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> bombs.",
                         CampaignRequirementType.MISTAKES => $"Commit between <color={ColorUtils.RANK}>{target.RequirementValue:N0}</color> and <color={ColorUtils.RANK}>{target.RequirementValueMax:N0}</color> mistakes.",
+                        CampaignRequirementType.PAUSES => $"Commit between <color={ColorUtils.STANDARD}>{target.RequirementValue:N0}</color> and <color={ColorUtils.STANDARD}>{target.RequirementValueMax:N0}</color> pauses.",
                         _ => $"Get something with a requirement value between {target.RequirementValueMax:N0} and {target.RequirementValue:N0}."
                     };
                 }
@@ -1584,8 +1595,9 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
                     CampaignRequirementType.COMBO => score.MaxCombo,
                     CampaignRequirementType.BOMB_HITS => score.BombHits,
                     CampaignRequirementType.MISTAKES => score.Mistakes,
+                    CampaignRequirementType.PAUSES => score.Pauses,
                     _ => -1f
-                };
+                }; // no RANK here, I cannot calculate that with local data.
 
                 if (val < 0f)
                 {
