@@ -72,6 +72,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
         public AccSaberCampaignMap? CurrentMap;
         public int CurrentMaxNoteCount;
         public bool MapStarted { get; private set; } = false;
+        public bool CampaignSubmission { get; set; } = false;
         public AccSaberCampaign? CurrentCampaign => _currentCampaign;
 
         [UIObject("CampaignMapContainer")]
@@ -783,6 +784,7 @@ namespace AccSaber.UI.MenuButton.Campaigns.ViewControllers
             : null;
 
             MapStarted = true;
+            CampaignSubmission = true;
 
             RecordPlayMethod?.Invoke(null, null);
 
