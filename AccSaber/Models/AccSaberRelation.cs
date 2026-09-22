@@ -40,7 +40,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            Relation = (RelationType)Enum.Parse(typeof(RelationType), Type);
+            Relation = Enum.TryParse(Type, out RelationType typeEnum) ? typeEnum : default;
         }
     }
 }
