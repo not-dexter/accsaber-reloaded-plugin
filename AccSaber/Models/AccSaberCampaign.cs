@@ -45,13 +45,16 @@ namespace AccSaber.Models
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java
         // On modification, check the following places:
-        // CampaignCounter line 153
-        // AccSaberCampaignViewController line 1073, 1283
+        // CampaignCounter line 158
+        // AccSaberCampaignViewController line 1224 (a total 8 switch statements to update)
+        // AccSaberCampaignViewController line 1587
         /// <summary>
         /// The types of requirements that can be set for a campaign node. These are used to determine if a player meets
         /// the requirements to access a node. See below for the places where this enum is used and should be updated if
-        /// modified.<br/> - <see cref="Counter.Hosts.CampaignCounter"/> at line 153<br/> -
-        /// <see cref="UI.MenuButton.Campaigns.ViewControllers.AccSaberCampaignViewController"/> at line 1073 and 1283
+        /// modified.<br/> - <see cref="Counter.Hosts.CampaignCounter"/> at line 158<br/> -
+        /// <see cref="UI.MenuButton.Campaigns.ViewControllers.AccSaberCampaignViewController"/> at line 1224 (a total 8
+        /// switch statements to update)
+        /// <see cref="UI.MenuButton.Campaigns.ViewControllers.AccSaberCampaignViewController"/> at line 1587
         /// </summary>
         public enum CampaignRequirementType
         {
@@ -64,7 +67,8 @@ namespace AccSaber.Models
             PASS,
             COMBO,
             BOMB_HITS,
-            MISTAKES
+            MISTAKES,
+            PAUSES
         }
 
         // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/campaign/CampaignRequirementType.java#L15

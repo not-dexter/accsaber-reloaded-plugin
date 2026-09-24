@@ -45,6 +45,7 @@ namespace AccSaber.ScoreTracking
         private AccSaberScore score = null!;
         private AccSaberBasicDifficulty? currentMap;
         private AccSaberLeaderboardViewController aslvc = null!;
+        private AccSaberCampaignViewController? campaignVC = null!;
         private Configuration.PluginConfig config = null!;
         private Task initTask = null!;
 
@@ -94,6 +95,7 @@ namespace AccSaber.ScoreTracking
             transition = Resources.FindObjectsOfTypeAll<StandardLevelScenesTransitionSetupDataSO>().FirstOrDefault();
             store ??= Plugin.Container.TryResolve<AccSaberStore>();
             aslvc ??= Plugin.Container.TryResolve<AccSaberLeaderboardViewController>();
+            campaignVC ??= Plugin.Container.TryResolve<AccSaberCampaignViewController>();
             config ??= Plugin.Container.TryResolve<Configuration.PluginConfig>();
 
             if (store is null || aslvc is null || config is null)
@@ -450,6 +452,17 @@ namespace AccSaber.ScoreTracking
                 const float completionPercent = 0.75f;
                 const int minNotesInMap = 115;
 
+                bool mapIncomplete = score.UncompletedMap!.Value;
+
+                if ((!config.SubmitOnIncompletePlay || campaignVC!.CampaignSubmission) && mapIncomplete)
+                {
+                    Plugin.Log.Info("No score submit: Incomplete score submission has been disabled.");
+                    campaignVC!.CampaignSubmission = false;
+                    return;
+                }
+
+                campaignVC!.CampaignSubmission = false;
+
                 if (totalNotes < minNotesInMap || notes > totalNotes)
                 {
                     Plugin.Log.Critical("There is an issue with this map and score submission! The note amounts do not align with expected bounds.");
@@ -489,14 +502,6 @@ namespace AccSaber.ScoreTracking
                 if (score.Score == 0)
                 {
                     Plugin.Log.Debug("No score submit: The score was 0.");
-                    return;
-                }
-
-                bool mapIncomplete = score.UncompletedMap!.Value;
-
-                if (!config.SubmitOnIncompletePlay && mapIncomplete)
-                {
-                    Plugin.Log.Info("No score submit: Incomplete score submission has been disabled.");
                     return;
                 }
 

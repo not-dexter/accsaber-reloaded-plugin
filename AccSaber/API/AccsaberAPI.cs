@@ -1191,6 +1191,9 @@ namespace AccSaber.API
             [JsonIgnore]
             public DateTime ExpirationDate { get; set; }
 
+            [JsonProperty("roles")]
+            public List<string>? Roles { get; set; }
+
             [JsonProperty("userId")]
             public string UserId { get; set; } = null!;
 

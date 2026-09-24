@@ -326,7 +326,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             set
             {
                 field = value;
-                WeekPagnation = $"{value}/4";
+                WeekPagnation = $"{value}/{CurrentEvent?.Event.TotalWeeks}";
                 WeekCurrent = $"Week {value}";
                 _ = SetEventMissions(false);
             }
@@ -347,7 +347,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 if (WeekPage - 1 == 1)
                     _eventPrev.enabled = false;
 
-                WeekPagnation = $"{WeekPage}/{4}";
+                WeekPagnation = $"{WeekPage}/{CurrentEvent.Event.TotalWeeks}";
                 ShowLock = WeekPage > CurrentEvent.Event.CurrentWeek;
             }
         }
@@ -366,7 +366,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _eventNext.enabled = false;
 
 
-                WeekPagnation = $"{WeekPage}/{4}";
+                WeekPagnation = $"{WeekPage}/{CurrentEvent.Event.TotalWeeks}";
                 ShowLock = WeekPage > CurrentEvent.Event.CurrentWeek;
             }
         }

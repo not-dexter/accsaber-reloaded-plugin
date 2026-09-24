@@ -23,10 +23,6 @@ using AccSaber.Utils.Misc;
 using System.Threading;
 using BeatSaberMarkupLanguage.Components;
 
-
-
-
-
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
 #endif
@@ -683,8 +679,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 				"legend" => "#f97316",
 				"transcendent" => "#22d3ee",
 				"mythic" => "#ef4444",
-				"ascendant" => "#22d3ee",
-				_ => "#f472b6",
+				"ascendant" => "#f472b6",
+                "fabled" => "#62d98a",
+                "exalted" => "#e9e7f4",
+                "titanic" => "#8da3c0",
+                "promethean" => "#ff5c33",
+                "supreme" => "#ffffff",
+                _ => "#f472b6",
 			};
 
 			PageNumber = 0;
@@ -710,6 +711,10 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			// this stat diff positioning fix is so lazy LMAO
 
 			Username = $"{userInfo.PlayerName}";
+
+  //          if (!playerInfo.AuthInfo!.Roles!.IsEmpty())
+  //              Username += $" | <color={ColorUtils.RANK}>{playerInfo.AuthInfo!.Roles!.FirstOrDefault().Replace("_", " ")}</color>";
+
 			Rank = stats.StatDiffs.RankingDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.RankingDiff * -1)}</size></color>  #{stats.Rank}  {StatDiffInt(stats.StatDiffs.RankingDiff * -1)}" : $"#{stats.Rank}";
 			Country = stats.StatDiffs.CountryDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.CountryDiff * -1)}</size></color>  #{stats.CountryRank}  {StatDiffInt(stats.StatDiffs.CountryDiff * -1)}" : $"#{stats.CountryRank}";
 			Ap = stats.StatDiffs.ApDiff != 0 ? $"<color=#FFFFFF00><size=75%>▼{Math.Abs(stats.StatDiffs.ApDiff * -1):F2}</size></color>  {stats.AP:N2} AP  {StatDiff(stats.StatDiffs.ApDiff)}" : $"{stats.AP:N2} AP";
