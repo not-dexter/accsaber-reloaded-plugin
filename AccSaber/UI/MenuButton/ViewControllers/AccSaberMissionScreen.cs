@@ -753,7 +753,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
             [UIValue("mission")] public string Mission = $"{data.Name} <size=80%><color={ColorUtils.GetColor(data.Category)}>{data.Category.ToString().ToUpper()}</color></size>";
 
-            [UIValue("missionBand")] public string MissionBand => $"<color={color}>{Data.Band.ToString().ToUpper()}</color>";
+            private readonly string Band = data.Pool switch
+            {
+                "community" => $"<color={ColorUtils.TRUE}>Community</color>",
+                _ => ""
+            };
+
+            [UIValue("missionBand")]  public string MissionBand => (Data.Pool == "community" || Data.Pool == "event") ? Band : $"<color={color}>{Data.Band.ToString().ToUpper()}</color>";
 
             [UIValue("description")] public string Description => $"<color={ColorUtils.GREY}>{DescriptionParser()}</color>";
 
