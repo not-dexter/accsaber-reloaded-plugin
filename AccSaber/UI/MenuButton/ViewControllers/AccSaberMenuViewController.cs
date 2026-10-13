@@ -23,6 +23,7 @@ using AccSaber.Utils.Misc;
 using System.Threading;
 using BeatSaberMarkupLanguage.Components;
 
+
 #if NEW_VERSION
 using BeatSaberMarkupLanguage;
 #endif
@@ -37,6 +38,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private AccSaberPlayer? _user;
         private bool _parsed;
         private bool _firstLoad;
+        private bool _hasClan;
         private bool _isLoading;
 		private bool _isScoresLoading;
         private bool _isRankingLoading;
@@ -47,7 +49,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private APCategory _categoryValue = APCategory.Overall;
         private string _rankingCategory = string.Empty;
         private string _username = "";
-		private string _pagnation = "";
+        private string _clan = "";
+        private string _pagnation = "";
         private string _rankingsPagnation = "";
         private string _rank = null!;
         private string _country = null!;
@@ -139,6 +142,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly AccSaberStore accSaberStore = null!;
         [Inject] private readonly SerializationHandler serialHandler = null!;
 
+
+        [UIComponent("clan-container")]
+        private readonly Backgroundable _clanContainer = null!;
 
         [UIValue("score-cells")]
         private readonly List<ICellDataSource> _scoreCells = [];
@@ -282,7 +288,29 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			}
 		}
 
-		[UIValue("rank")]
+        [UIValue("has-clan")]
+        private bool HasClan 
+        {
+            get => _hasClan;
+            set
+            {
+                _hasClan = value;
+                NotifyPropertyChanged(nameof(HasClan));
+            }
+        }
+
+        [UIValue("clan")]
+        private string Clan
+        {
+            get => _clan;
+            set
+            {
+                _clan = value;
+                NotifyPropertyChanged(nameof(Clan));
+            }
+        }
+
+        [UIValue("rank")]
 		private string Rank
 		{
 			get => _rank;
@@ -722,6 +750,13 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 			Xp = $"{userInfo.LevelData.XPForCurrentLevel:N0} / {userInfo.LevelData.XPForNextLevel:N0} XP";
 			Plays = $"{stats.Plays} ranked plays";
 			Headset = userInfo.Headset ?? "";
+
+            if (userInfo.Clan is not null)
+            {
+                HasClan = true;
+                Clan = userInfo.Clan.Tag;
+                _clanContainer.ApplyColor(ColorUtils.Color(userInfo.Clan.TagColor));
+            }
 
 			if (titleRoutine is not null)
 				StopCoroutine(titleRoutine);

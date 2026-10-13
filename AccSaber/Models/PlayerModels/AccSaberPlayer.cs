@@ -51,6 +51,9 @@ namespace AccSaber.Models.PlayerModels
         [JsonProperty("avatarUrl")]
         public string? AvatarUrl { get; set; }
 
+        [JsonProperty("clan")]
+        public AccSaberClan Clan { get; set; } = null!;
+
         [JsonProperty("banned")]
         public bool Banned { get; set; }
 

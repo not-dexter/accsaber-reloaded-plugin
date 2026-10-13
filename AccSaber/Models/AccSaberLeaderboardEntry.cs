@@ -34,6 +34,9 @@ namespace AccSaber.Models
         [JsonProperty("avatarUrl")]
         public string AvatarURL { get; set; } = null!;
 
+        [JsonProperty("clan")]
+        public AccSaberClan Clan { get; set; } = null!;
+
         [JsonProperty("badCuts")]
         public int BadCuts { get; set; }
 
