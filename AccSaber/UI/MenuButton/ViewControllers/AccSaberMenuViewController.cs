@@ -268,7 +268,7 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             get => _categoryValue.ToString();
             set
             {
-                _categoryValue = (APCategory)Enum.Parse(typeof(APCategory), value);
+                _categoryValue = MiscUtils.ParseEnumDefault(value, APCategory.Overall);
                 NotifyPropertyChanged(nameof(CategoryValue));
 				WaitThenUpdateUserInfo();
             }

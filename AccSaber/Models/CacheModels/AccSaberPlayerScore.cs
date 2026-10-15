@@ -59,7 +59,7 @@ namespace AccSaber.Models.CacheModels
             AP = score.AP;
             WeightedAp = score.WeightedAp;
             TimeSet = score.TimeSet;
-            Difficulty = EnumUtils.ReloadedDiffToDiff(MiscUtils.ParseEnum<ReloadedDifficulty>(score.Difficulty));
+            Difficulty = EnumUtils.ReloadedDiffToDiff((ReloadedDifficulty?)MiscUtils.ParseEnumGeneric<ReloadedDifficulty>(score.Difficulty));
             Category = EnumUtils.ReloadedCategoryIdToCategory(score.CategoryId);
         }
         internal AccSaberPlayerScore(AccSaberBasicPlayerScore score)

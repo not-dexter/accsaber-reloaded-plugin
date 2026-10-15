@@ -127,8 +127,8 @@ namespace AccSaber.UI.ViewControllers
 			get => _categoryValue.ToString();
 			set
 			{
-				_categoryValue = (APCategory)Enum.Parse(typeof(APCategory), value);
-				NotifyPropertyChanged(nameof(CategoryValue));
+				_categoryValue = MiscUtils.ParseEnumDefault(value, APCategory.Overall);
+                NotifyPropertyChanged(nameof(CategoryValue));
 				_ = UpdateUserInfo();
 			}
 		}

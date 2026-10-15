@@ -163,7 +163,8 @@ namespace AccSaber.Utils
                 }
 
                 string playerId = args[2 + offset];
-                APCategory category = (APCategory)Enum.Parse(typeof(APCategory), args[3 + offset]);
+                APCategory category = (APCategory?)MiscUtils.ParseEnumGeneric<APCategory>(args[3 + offset]) ?? 
+                    throw new ArgumentException($"The category \"{args[3 + offset]}\" cannot be parsed!");
                 string type = args[4 + offset];
 
                 ComparisonType compType = comp.FromComparisonString();

@@ -33,7 +33,8 @@ namespace AccSaber.Models.JsonConverters
             if (!nameExists)
                 return fallbackValue;
 
-            return (T)Enum.Parse(typeof(T), value, _ignoreCase);
+            object? outp = Enum.TryParse(typeof(T), value, _ignoreCase, out object item) ? item : null;
+            return (T?)outp;
         }
 
         public override void WriteJson(JsonWriter writer, T? value, JsonSerializer serializer)
@@ -74,7 +75,8 @@ namespace AccSaber.Models.JsonConverters
             if (!nameExists)
                 return fallbackValue;
 
-            return (T)Enum.Parse(typeof(T), value, _ignoreCase);
+            object? outp = Enum.TryParse(typeof(T), value, _ignoreCase, out object item) ? item : null;
+            return (T?)outp;
         }
 
         public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
