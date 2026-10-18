@@ -4,6 +4,7 @@ using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace AccSaber.Models
 {
@@ -74,8 +75,21 @@ namespace AccSaber.Models
         [JsonProperty("repeatable")]
         public bool Repeatable { get; set; }
 
+        [JsonProperty("endsWithWeek")]
+        public bool EndsWithWeek { get; set; } = false;
+
+        [JsonProperty("weekLocked")]
+        public bool WeekLocked { get; set; } = false;
+
         [JsonProperty("maxCompletions")]
         public int MaxCompletions { get; set; }
+
+        [OnDeserialized]
+        private void OnDeserialized(StreamingContext context)
+        {
+            if (WeekLocked || EndsWithWeek)
+                WeekLocked = EndsWithWeek = true;
+        }
 
     }
 

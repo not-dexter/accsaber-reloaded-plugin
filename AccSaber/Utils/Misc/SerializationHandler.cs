@@ -543,9 +543,10 @@ namespace AccSaber.Utils.Misc
             
             DateTime now = DateTime.UtcNow;
             for (int i = eventMissions.Count - 1; i >= 0; --i)
-                if (eventMissions[i].Mission.CompletableUntil < now)
+                if (eventMissions[i].Mission.CompletableUntil < now && !eventMissions[i].Mission.EndsWithWeek)
                 {
                     Plugin.Log.Critical("There is a bug with the events/missions/me endpoint! Please report this on Discord.");
+                    Plugin.Log.Debug($"Mission completable until: {eventMissions[i].Mission.CompletableUntil}, mission ID: {eventMissions[i].Mission.Id}");
                     eventMissions.RemoveAt(i);
                 }
 
