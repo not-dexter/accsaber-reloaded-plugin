@@ -333,6 +333,9 @@ namespace AccSaber.ScoreTracking
             if (currentNote.gameplayType == NoteData.GameplayType.Bomb)
                 return;
 
+            if (currentNote.gameplayType == NoteData.GameplayType.BurstSliderElement)
+                return; // do not count burst slider elements as notes, they are not counted in the total notes either.
+
             NoteData.ScoringType st = currentNote.scoringType;
 
             if (st == NoteData.ScoringType.Ignore)
