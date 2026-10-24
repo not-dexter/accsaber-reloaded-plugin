@@ -308,7 +308,7 @@ namespace AccSaber.Models
             if (!(Container?.gameObject?.activeInHierarchy ?? false))
                 return;
 
-            switch (args.PropertyName)
+            switch (args?.PropertyName)
             {
                 case nameof(PluginConfig.ShowCombo):
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowCombo)));
@@ -319,6 +319,9 @@ namespace AccSaber.Models
                 case nameof(PluginConfig.AccDecimals):
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Acc)));
                     break;
+                default:
+                    Plugin.Log.Critical("Unhandled property changed in AccSaberLeaderboardEntry: " + args?.PropertyName);
+                    return;
             }
 
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NameWidth)));

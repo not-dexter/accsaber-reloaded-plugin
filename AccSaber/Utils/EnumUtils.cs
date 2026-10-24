@@ -39,7 +39,7 @@ namespace AccSaber.Utils
     // (not exactly the same since "event" cannot be made an enum)
     public enum MissionPool
     {
-        Daily, Weekly, Event
+        Daily, Weekly, Event, Community, Clan
     }
 
     // From: https://github.com/accsaber/accsaber-reloaded-backend/blob/main/src/main/java/com/accsaber/backend/model/entity/mission/MissionBand.java

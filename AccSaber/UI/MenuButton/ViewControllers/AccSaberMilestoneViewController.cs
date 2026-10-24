@@ -10,10 +10,13 @@ using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.Components;
 using HMUI;
 using IPA.Utilities;
+using IPA.Utilities.Async;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
@@ -28,10 +31,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
     {
         private static readonly Dictionary<Guid, AccSaberFullMilestone> MilestoneCache = [];
 
-		private bool _parsed;
+        private IEnumerator? _updateTimeRoutine;
+        private CancellationTokenSource? TimeUpdaterCanceller = null;
+        public event Action? OnTimerUpdate;
+        public event Action? OnDailyRefresh;
+
+        private bool _parsed;
 		private bool _isLoading;
         private CategoryTab _currentTab;
         private MilestoneTab _currentMilestoneTab = 0;
+        private int _currentMissionTab = 0;
 
         private CategoryTab CurrentTab
         {
@@ -71,7 +80,8 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [Inject] private readonly AccSaberStore accSaberStore = null!;
         [Inject] private readonly AccSaberMainFlowCoordinator parentFlowCoordinator = null!;
         [Inject] private readonly AccSaberPlaylistSettingsModalController aspsmc = null!;
-        [Inject] private readonly AccSaberMissionScreen mc = null!;
+        [Inject] private readonly AccSaberPlayerMissionController playerMission = null!;
+        [Inject] private readonly AccSaberEventMissionController eventMission = null!;
         [Inject] private readonly AccSaberNotificationModal asnm = null!;
         [Inject] private readonly LevelUtils levelUtils = null!;
         [Inject] private readonly PluginConfig PC = null!;
@@ -146,12 +156,12 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                 _parsed = true;
 
             VersionUtils.Parse(ResourcePaths.ACC_SABER_PLAYLIST_SETTINGS_MODAL, _container, aspsmc);
-            VersionUtils.Parse(ResourcePaths.ACC_SABER_MISSION_SCREEN, _contentContainer, mc);
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_PLAYER_MISSION_SCREEN, _contentContainer, playerMission);
+            VersionUtils.Parse(ResourcePaths.ACC_SABER_EVENT_MISSION_SCREEN, _contentContainer, eventMission);
 
             if (!_milestonesList.TableView().canSelectSelectedCell)
                 _milestonesList.TableView().SetField("_canSelectSelectedCell", true);
 
-            mc.IsInEvent = false;
             CurrentTab = 0;
 
             _ = SetMilestones(0);
@@ -186,7 +196,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         [UIAction("missions-tab-selected")]
         private void MissionsTabSelected(SegmentedControl segmentedControl, int index)
         {
-            mc.IsInEvent = index == 1;
+            _currentMissionTab = index;
+
+            UpdateMissionTab();
         }
 
         [UIAction("milestone-selected")]
@@ -203,6 +215,22 @@ namespace AccSaber.UI.MenuButton.ViewControllers
         private void ShowPlaylistSettings()
         {
             aspsmc.Show();
+        }
+
+        private void UpdateMissionTab()
+        {
+            playerMission.HideMissions();
+            eventMission.HideMissions();
+
+            switch (_currentMissionTab)
+            {
+                case 0:
+                    playerMission.ShowMissions();
+                    break;
+                case 1:
+                    eventMission.ShowMissions();
+                    break;
+            }
         }
 
         private static readonly Regex ApRegex = new(@"(?<=\W|^)[Aa][Pp](?=\W|$)");
@@ -250,13 +278,75 @@ namespace AccSaber.UI.MenuButton.ViewControllers
                     _ = SetMilestones(_currentMilestoneTab);
                     break;
                 case CategoryTab.Missions:
-                    mc.ShowMissions();
+                    UpdateMissionTab();
                     break;
             }
         }
+
         public void StopTimer()
         {
-            mc.StopTimer();
+            if (TimeUpdaterCanceller is null)
+                return;
+
+            if (_updateTimeRoutine is not null)
+            {
+                IEnumerator currentRoutine = _updateTimeRoutine;
+                _mainThreadDispatcher.EnqueueStopRoutine(currentRoutine);
+                _updateTimeRoutine = null;
+            }
+
+            TimeUpdaterCanceller.Cancel();
+            TimeUpdaterCanceller.Dispose();
+            TimeUpdaterCanceller = null;
+        }
+        public void UpdateTimer()
+        {
+            if (TimeUpdaterCanceller is not null)
+            {
+                TimeUpdaterCanceller.Cancel();
+                TimeUpdaterCanceller.Dispose();
+            }
+            TimeUpdaterCanceller = new();
+
+            CancellationToken ct = TimeUpdaterCanceller.Token;
+
+            WaitForEndOfFrame WaitInstruction = new();
+            WaitForSeconds DelayInstruction = new(1);
+
+            IEnumerator UpdateTime()
+            {
+
+                yield return WaitInstruction;
+
+                OnTimerUpdate?.Invoke();
+
+                if (playerMission.DailyRefreshDate <= DateTime.UtcNow && OnDailyRefresh is not null)
+                {
+                    StopTimer();
+                    UnityMainThreadTaskScheduler.Factory.StartNew(OnDailyRefresh.Invoke).ContinueWith(finish => UpdateTimer());
+                }
+
+                if (ct.IsCancellationRequested)
+                    yield break;
+
+                yield return DelayInstruction;
+            }
+
+            IEnumerator Clock()
+            {
+                while (!ct.IsCancellationRequested)
+                    yield return UpdateTime();
+            }
+
+            if (_updateTimeRoutine is not null)
+            {
+                IEnumerator currentRoutine = _updateTimeRoutine;
+                _mainThreadDispatcher.EnqueueStopRoutine(currentRoutine);
+            }
+
+            _updateTimeRoutine = Clock();
+
+            _mainThreadDispatcher.EnqueueRoutine(_updateTimeRoutine);
         }
 
         private async Task SetMilestones(MilestoneTab tab)

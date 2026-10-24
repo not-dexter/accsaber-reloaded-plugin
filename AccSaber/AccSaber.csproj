@@ -278,4 +278,7 @@
   <ItemGroup Condition="$(DefineConstants.Contains('NEW_VERSION')) == true">
     <Compile Remove="Utils\OldVersion\*.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="UI\MenuButton\ClanWars\Views\" />
+  </ItemGroup>
 </Project>

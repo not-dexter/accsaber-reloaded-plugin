@@ -34,7 +34,7 @@
         <page-button event-click='milestone-list#PageDown' direction='Down' pref-height='3' pref-width='4'/>
       </vertical>
     </horizontal>
-    <vertical id='content-container' pref-width='135' pref-height='55' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-mission-tab'/>
+    <stack id='content-container' pref-width='135' pref-height='55' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-mission-tab'/>
     
   </vertical>
 </bg>

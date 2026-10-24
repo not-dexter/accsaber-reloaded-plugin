@@ -75,6 +75,9 @@
 				</horizontal>	
 			</vertical>
 		</horizontal>
+    <vertical pref-width='25' pref-height='9' vertical-fit='PreferredSize' horizontal-fit='PreferredSize' anchored-position-x='45' anchored-position-y='25.5' ignore-layout='true' bg='round-rect-panel'>
+      <button text='Clan Wars' align='Center' on-click='show-clan-wars'/>
+    </vertical>
 		<!--RANKINGS TAB-->
 		<horizontal pref-width='120' spacing='1' horizontal-fit='PreferredSize' vertical-fit='PreferredSize' active='~is-rankings-tab'>
 			  <vertical id='selectorContainer' vertical-fit='PreferredSize' pref-height='40' pref-width='12' bg='round-rect-panel'>

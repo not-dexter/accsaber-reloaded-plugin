@@ -224,6 +224,8 @@
         /// </remarks>
         public const string APAPI_MISSIONS_POOL = APAPI + "users/me/missions?pool={1}"; //pool
 
+        public const string APAPI_CLAN_MISSIONS = APAPI + "clans/{0}/missions"; // clan_id
+
         /// <summary>
         /// Retrieves all news entries.
         /// </summary>

@@ -107,7 +107,7 @@ namespace AccSaber.Models
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
-            MissionPool = Enum.TryParse(Pool, true, out MissionPool pool) ? pool : MissionPool.Event;
+            MissionPool = Enum.TryParse(Pool, true, out MissionPool pool) ? pool : MissionPool.Daily;
             Category = EnumUtils.ReloadedCategoryIdToCategory(CategoryId);
         }
     }

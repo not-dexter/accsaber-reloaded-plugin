@@ -4,6 +4,8 @@ using AccSaber.UI;
 using AccSaber.UI.MenuButton;
 using AccSaber.UI.MenuButton.Campaigns;
 using AccSaber.UI.MenuButton.Campaigns.ViewControllers;
+using AccSaber.UI.MenuButton.ClanWars;
+using AccSaber.UI.MenuButton.ClanWars.ViewControllers;
 using AccSaber.UI.MenuButton.ViewControllers;
 using AccSaber.UI.ViewControllers;
 using AccSaber.Utils;
@@ -38,9 +40,10 @@ namespace AccSaber.Installers
             Container.Bind<MainThreadDispatcher>().FromNewComponentOnNewGameObject().AsSingle();
 
             Container.BindInterfacesTo<MenuButtonManager>().AsSingle();
-            Container.Bind<AccSaberMissionScreen>().AsSingle();
+            Container.BindInterfacesAndSelfTo<AccSaberPlayerMissionController>().AsSingle();
+			Container.Bind<AccSaberEventMissionController>().AsSingle();
 
-			Container.BindInterfacesAndSelfTo<LevelUtils>().AsSingle();
+            Container.BindInterfacesAndSelfTo<LevelUtils>().AsSingle();
 
 			Container.BindInterfacesAndSelfTo<AccSaberCampaignViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberCampaignMapViewController>().AsSingle();
@@ -49,7 +52,10 @@ namespace AccSaber.Installers
 			Container.Bind<AccSaberCampaignZoomModalController>().AsSingle();
 			Container.Bind<AccSaberCampaignFlow>().FromNewComponentOnNewGameObject().AsSingle();
 
-			Container.Bind<AccSaberNewsViewController>().FromNewComponentAsViewController().AsSingle();
+			Container.BindInterfacesAndSelfTo<AccSaberClanWarsController>().FromNewComponentAsViewController().AsSingle();
+			Container.Bind<AccSaberClanWarsFlow>().FromNewComponentOnNewGameObject().AsSingle();
+
+            Container.Bind<AccSaberNewsViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberMenuViewController>().FromNewComponentAsViewController().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberPlaylistModalController>().AsSingle();
 			Container.BindInterfacesAndSelfTo<AccSaberPlaylistSettingsModalController>().AsSingle();

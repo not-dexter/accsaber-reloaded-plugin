@@ -22,6 +22,8 @@ using AccSaber.Configuration;
 using AccSaber.Utils.Misc;
 using System.Threading;
 using BeatSaberMarkupLanguage.Components;
+using AccSaber.UI.MenuButton.ClanWars;
+
 
 
 #if NEW_VERSION
@@ -130,8 +132,9 @@ namespace AccSaber.UI.MenuButton.ViewControllers
 
 		private readonly AsyncLock refreshLock = new();
 
-		[Inject] private readonly AccSaberCampaignFlow campaignFlow = null!;
-		[Inject] private readonly AccSaberPlaylistModalController playlistModal = null!;
+        [Inject] private readonly AccSaberCampaignFlow campaignFlow = null!;
+		[Inject] private readonly AccSaberClanWarsFlow clanWarsFlow = null!;
+        [Inject] private readonly AccSaberPlaylistModalController playlistModal = null!;
 		[Inject] private readonly LevelUtils levelUtils = null!;
 		[Inject] private readonly AccSaberMainFlowCoordinator parentCoordinator = null!;
         //[Inject] private readonly TimeTweeningManager _timeTweeningManager = null!;
@@ -531,11 +534,16 @@ namespace AccSaber.UI.MenuButton.ViewControllers
             }
         }
 
-        // unused for now
         [UIAction("show-campaign")]
         private void ShowCampaign()
         {
             campaignFlow.PresentFlowCoordinator();
+        }
+
+        [UIAction("show-clan-wars")]
+        private void ShowClanWars()
+        {
+            clanWarsFlow.PresentFlowCoordinator();
         }
 
         [UIAction("show-playlist-modal")]
