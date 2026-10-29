@@ -22,6 +22,7 @@ namespace AccSaber.Consts
         public const string PLAYER_ICON = RESOURCE_PATH + ".PlayerIcon.png";
         //public const string SWAP = RESOURCE_PATH + ".swap.png";
         public const string RIVALS = RESOURCE_PATH + ".rivals.png";
+        public const string DUEL = RESOURCE_PATH + ".duel.png";
         public const string FOLLOWED = RESOURCE_PATH + ".followed.png";
         public const string RELATIONS = RESOURCE_PATH + ".relations.png";
         public const string TOP_ARROW = RESOURCE_PATH + ".topArrow.png";

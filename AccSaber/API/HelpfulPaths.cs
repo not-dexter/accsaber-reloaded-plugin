@@ -207,6 +207,27 @@
         public const string APAPI_MILESTONE_INCOMPLETE = APAPI + "users/{0}/milestones/uncompleted"; //user_id
 
         /// <summary>
+        /// Represents the API endpoint URL for retrieving open clan wars with a specified clan ID.
+        /// </summary>
+        /// <remarks>
+        /// params: clanId, page, size
+        /// </remarks>
+        public const string APAPI_CLAN_WARS = APAPI + "clans/wars?clanId={0}&page={1}&size={2}&open=true"; // clan_id, page, size
+        
+        public const string APAPI_CLAN_WAR_DETAILS = APAPI + "clans/wars/{0}"; // war_id
+
+        /// <summary>
+        /// Gets the scores for a specific clan war and difficulty.
+        /// </summary>
+        /// <remarks>
+        /// params: diff_id, war_id, page, size example url:
+        /// https://api.accsaber.com/v1/maps/difficulties/6f5caa7e-d799-4fea-82f1-7a60ac8732d3/scores?warId=eb5fc0d5-d0c4-4b1d-a545-f91e2bb6b38c&page=0&size=10
+        /// </remarks>
+        public const string APAPI_CLAN_WAR_SCORES = APAPI + "maps/difficulties/{0}/scores?warId={1}&page={2}&size={3}"; // diff_id, war_id, page, size
+
+        public const string APAPI_CLAN_MEMBERS = APAPI + "clans/{0}/members?page={1}&size={2}"; // clan_id, page, size
+
+        /// <summary>
         /// Retrieves a users missions.
         /// </summary>
         public const string APAPI_MISSIONS = APAPI + "users/me/missions";

@@ -22,7 +22,7 @@ namespace AccSaber.Utils.Misc
     ///   (after removing expired items); items with expiration dates are yielded in order of expiration,
     ///   followed by permanent or non-expiring items.
     /// </remarks>
-    public class ObjectCacher<K, V>(TimeSpan? defaultItemLifespan = null) : IEnumerable<KeyValuePair<K,V>> where K : notnull where V : notnull
+    public class ObjectCacher<K, V>(TimeSpan? defaultItemLifespan = null) : IEnumerable<KeyValuePair<K,V>>, IDictionary<K,V> where K : notnull where V : notnull
     {
         /// <summary>
         /// Primary store for cached items.
@@ -49,6 +49,16 @@ namespace AccSaber.Utils.Misc
         /// Lock object that serializes access to internal collections to provide thread-safety.
         /// </summary>
         private readonly object cacheLock = new();
+
+        ICollection<K> IDictionary<K, V>.Keys => cache.Keys;
+
+        ICollection<V> IDictionary<K, V>.Values => cache.Values;
+
+        int ICollection<KeyValuePair<K, V>>.Count => cache.Count;
+
+        bool ICollection<KeyValuePair<K, V>>.IsReadOnly => false;
+
+        V IDictionary<K, V>.this[K key] { get => GetCachedItem(key); set => CacheItem(key, value); }
 
         /// <summary>
         /// Add or replace an item in the cache with an optional custom lifespan.
@@ -83,9 +93,9 @@ namespace AccSaber.Utils.Misc
         /// <summary>
         /// Cache an item without an expiration (permanent until explicitly removed or cache cleared).
         /// </summary>
-        /// <param name="item">Value to cache.</param>
         /// <param name="key">Key under which the value will be stored.</param>
-        public void CacheItemPermanently(V item, K key)
+        /// <param name="item">Value to cache.</param>
+        public void CacheItemPermanently(K key, V item)
         {
             lock (cacheLock)
             {
@@ -126,13 +136,13 @@ namespace AccSaber.Utils.Misc
         /// <param name="key">Key of the item to retrieve.</param>
         /// <param name="val">When this method returns, contains the cached value if found; otherwise the default value for <typeparamref name="V"/>.</param>
         /// <returns><c>true</c> if the key was present; otherwise <c>false</c>.</returns>
-        public bool TryGetCachedItem(K key, out V? val)
+        public bool TryGetCachedItem(K key, out V val)
         {
             lock (cacheLock)
             {
                 CleanOutCache();
 
-                val = default;
+                val = default!;
 
                 return cache.TryGetValue(key, out val);
             }
@@ -257,6 +267,27 @@ namespace AccSaber.Utils.Misc
             }
         }
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        bool IDictionary<K, V>.ContainsKey(K key) => ContainsKey(key);
+
+        void IDictionary<K, V>.Add(K key, V value) => CacheItem(key, value);
+
+        bool IDictionary<K, V>.Remove(K key) => RemoveItem(key);
+
+        bool IDictionary<K, V>.TryGetValue(K key, out V value) => TryGetCachedItem(key, out value);
+
+        void ICollection<KeyValuePair<K, V>>.Add(KeyValuePair<K, V> item) => CacheItem(item.Key, item.Value);
+
+        void ICollection<KeyValuePair<K, V>>.Clear() => ClearCache();
+
+        bool ICollection<KeyValuePair<K, V>>.Contains(KeyValuePair<K, V> item) => TryGetCachedItem(item.Key, out V val) && EqualityComparer<V>.Default.Equals(val, item.Value);
+
+        void ICollection<KeyValuePair<K, V>>.CopyTo(KeyValuePair<K, V>[] array, int arrayIndex) => throw new NotImplementedException();
+
+        bool ICollection<KeyValuePair<K, V>>.Remove(KeyValuePair<K, V> item) => 
+            TryGetCachedItem(item.Key, out V val) && EqualityComparer<V>.Default.Equals(val, item.Value) && RemoveItem(item.Key);
+
+        IEnumerator<KeyValuePair<K, V>> IEnumerable<KeyValuePair<K, V>>.GetEnumerator() => GetEnumerator();
 
         /// <summary>
         /// Internal struct that represents an expiration event for a specific cache key.

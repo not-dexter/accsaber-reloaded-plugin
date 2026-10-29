@@ -3,6 +3,9 @@ using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Managers;
 using AccSaber.Models;
+using AccSaber.Models.PlayerModels;
+using AccSaber.Models.WarModels;
+using AccSaber.UI.MenuButton.ClanWars.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
 using AccSaber.Utils.Safety;
@@ -49,6 +52,8 @@ namespace AccSaber.UI.ViewControllers
 
         #region Instance Variables & Fields
 
+        private readonly Dictionary<Guid, Func<AccSaberLeaderboardEntry, bool>> enemyDataCache = [];
+        private readonly Stack<int> previousPages = [];
         private readonly List<LeaderboardEntryDisplay> scoreDatas = [];
         private int page, nextPage, currentPage = -1, currentPlayerPage;
         private AccSaberLeaderboardEntry? currentPlayerScore;
@@ -89,6 +94,7 @@ namespace AccSaber.UI.ViewControllers
                 return DisplayType switch
                 {
                     LeaderboardDisplayType.Global => null,
+                    LeaderboardDisplayType.Enemies => enemyDataCache.TryGetValue(clanWarsController.WarCacher.FirstOrDefault().Value?.War.Id ?? default, out var outp) ? outp : null,
                     LeaderboardDisplayType.Country => currentPlayerScore is null ? null : api.CountryFilterMaker(currentPlayerScore.Country),
                     _ => token => playerInfo.GetIds_Internal(DisplayType)!.Contains(token.PlayerId) //GetIds Internal only returns null if input isn't a valid enum.
                 };
@@ -134,6 +140,7 @@ namespace AccSaber.UI.ViewControllers
         [Inject] private readonly AccSaberPanelViewController aspvc = null!;
         [Inject] private readonly LeaderboardScoreModalController lsmc = null!;
         [Inject] private readonly LeaderboardSettingsModalController lbsmc = null!;
+        [Inject] private readonly AccSaberClanWarsController clanWarsController = null!;
         private MainThreadDispatcher MainThreadDispatcher => _mainThreadDispatcher;
 
         #endregion Injects
@@ -381,7 +388,11 @@ namespace AccSaber.UI.ViewControllers
 
             Interlocked.Increment(ref refreshVersion);
 
-            --page;
+            if (DisplayType == LeaderboardDisplayType.Enemies && previousPages.Count > 0)
+                page = previousPages.Pop();
+            else
+                --page;
+
             ReloadLeaderboard();
         }
 
@@ -399,8 +410,11 @@ namespace AccSaber.UI.ViewControllers
         [UIAction("OnPageDown")]
         private void OnPageDown()
         {
-            if (scoreDatas.Count < PAGE_LENGTH || CurrentHash is null)
+            if (scoreDatas.Count < PAGE_LENGTH || CurrentHash is null || nextPage <= page)
                 return;
+
+            if (DisplayType == LeaderboardDisplayType.Enemies)
+                previousPages.Push(page);
 
             Interlocked.Increment(ref refreshVersion);
 
@@ -415,7 +429,7 @@ namespace AccSaber.UI.ViewControllers
         private void ShowFollowed() => ChangeFilter(LeaderboardDisplayType.Followed);
 
         [UIAction("ShowRivals")]
-        private void ShowRivals() => ChangeFilter(LeaderboardDisplayType.Rivals);
+        private void ShowRivals() => ChangeFilter(LeaderboardDisplayType.Enemies);
 
         [UIAction("ShowRelations")]
         private void ShowRelations() => ChangeFilter(LeaderboardDisplayType.Relations);
@@ -562,6 +576,8 @@ namespace AccSaber.UI.ViewControllers
                 return;
 
             Interlocked.Increment(ref refreshVersion);
+
+            previousPages.Clear();
 
             page = 1;
             currentPage = 0;
@@ -958,6 +974,7 @@ namespace AccSaber.UI.ViewControllers
                 Guid? difficultyId = DifficultyId;
                 int requestedPage = page;
                 LeaderboardDisplayType requestedDisplayType = DisplayType;
+                int currentNextPage = requestedPage + 1;
 
                 if (difficultyId is null)
                     return;
@@ -966,7 +983,7 @@ namespace AccSaber.UI.ViewControllers
 
                 await playerInfo.LoadTask;
 
-                AccSaberLeaderboardEntry[]? scores;
+                AccSaberLeaderboardEntry[]? scores = null;
 
                 switch (requestedDisplayType)
                 {
@@ -981,6 +998,46 @@ namespace AccSaber.UI.ViewControllers
                     case LeaderboardDisplayType.Followed:
                     case LeaderboardDisplayType.Rivals:
                         scores = await api.GetScoreData(requestedPage, difficultyId.Value, requestedDisplayType.Convert());
+                        break;
+
+                    case LeaderboardDisplayType.Enemies:
+                        AccSaberPlayer player = await store.GetCurrentUserAsync();
+                        Guid clanId = clanWarsController.PlayerClan;
+
+                        AccSaberClanWar? war = clanWarsController.WarCacher.FirstOrDefault().Value?.War;
+                        if (war is null)
+                        {
+                            Plugin.Log.Warn("No active clan war found for the player's clan. Cannot load enemies leaderboard.");
+                            break;
+                        }
+
+                        bool isPlayerClanAttacking = war.AttackingClanData.ClanIds.Contains(clanId);
+                        IEnumerable<Guid> otherClanIds = isPlayerClanAttacking ? war.DefendingClanData.ClanIds : war.AttackingClanData.ClanIds;
+                        HashSet<string> enemyIds = [player.PlayerId];
+
+                        if (!enemyDataCache.TryGetValue(war.Id, out var filter))
+                        {
+                            foreach (Guid otherClanId in otherClanIds)
+                            {
+                                AccSaberPagedContent<AccSaberPlayer>? enemies = await APIHandler.CallAPI_Json<AccSaberPagedContent<AccSaberPlayer>>(
+                                    string.Format(HelpfulPaths.APAPI_CLAN_MEMBERS, otherClanId, 0, 50), AccsaberAPI.Throttler);
+                                if (enemies is null || enemies.Content is null)
+                                    continue;
+
+                                enemyIds.UnionWith(enemies.Content.Select(player => player.PlayerId));
+                            }
+
+                            filter = entry => enemyIds.Contains(entry.PlayerId);
+                            enemyDataCache.Add(war.Id, filter);
+                        }
+
+                        string repString = string.Format(HelpfulPaths.APAPI_CLAN_WAR_SCORES, difficultyId, war.Id, "{0}", "{1}");
+
+                        (scores, currentNextPage) = await api.GetScoreData(requestedPage, difficultyId.Value, filter, LeaderboardDisplayType.Enemies, pageMult: 2, overrideCall: repString);
+                        ++currentNextPage;
+
+                        if (currentPlayerPage == 0 && scores.Any(score => score.PlayerId.Equals(player.PlayerId)))
+                            currentPlayerPage = requestedPage;
                         break;
 
                     case LeaderboardDisplayType.Country:
@@ -1016,7 +1073,7 @@ namespace AccSaber.UI.ViewControllers
                         refreshRequester.CancelRequest();
 
                         currentPage = requestedPage;
-                        nextPage = requestedPage + 1;
+                        nextPage = currentNextPage;
 
                         scoreDatas.Clear();
 
@@ -1049,7 +1106,7 @@ namespace AccSaber.UI.ViewControllers
         {
             Color greyedOut = GREYED_OUT.Color();
 
-            bool atTop = currentPage == 1, atBottom = scoreDatas.Count < PAGE_LENGTH;
+            bool atTop = currentPage == 1, atBottom = scoreDatas.Count < PAGE_LENGTH || nextPage <= page;
 
             if (!atTop)
             {
@@ -1111,7 +1168,7 @@ namespace AccSaber.UI.ViewControllers
 
             return DisplayType switch
             {
-                LeaderboardDisplayType.Global => (int)Math.Ceiling(currentPlayerScore.Rank / (float)PAGE_LENGTH),
+                LeaderboardDisplayType.Global or LeaderboardDisplayType.Enemies => (int)Math.Ceiling(currentPlayerScore.Rank / (float)PAGE_LENGTH),
                 _ => 0 // At this point, we do not have the information needed to get the rank of any other display type.
             };
         }

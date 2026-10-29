@@ -142,6 +142,8 @@ namespace AccSaber.API
                 return false;
             //Plugin.Log.Info("Passed check 2.");
 
+            filter ??= _ => true;
+
             // take all scores up to the player score, filter it using the filter, then since we know the target score in at the end, just return the length minus 1.
             rank = info.Data.Take(userIndex + 1).Count(filter) - 1;
 
@@ -231,6 +233,12 @@ namespace AccSaber.API
 
         public void InvalidateCache() => scoreInfoCacher.ClearCache();
 
+        public void InvalidateAllCache()
+        {
+            scoreInfoCacher.ClearCache();
+            playerInfoCacher.ClearCache();
+        }
+
         public void InvalidateCache(Guid diffId) => scoreInfoCacher.RemoveItem(diffId);
 
         public void RemovePlayerFromCache(string playerId)
@@ -257,12 +265,12 @@ namespace AccSaber.API
         }
 
         private (AccSaberLeaderboardEntry[] scores, bool success) SearchInCache(ScoreCache cache, ref int page, Func<AccSaberLeaderboardEntry, bool> filter, 
-            int pageLength, int scoresNeeded, int pageMult)
+            int pageLength, int scoresNeeded, int pageMult, int startOffset = 0)
         {
             List<AccSaberLeaderboardEntry>? currentCache = cache.Data;
             if (currentCache is not null && currentCache.Count / pageLength > page)
             {
-                IEnumerable<AccSaberLeaderboardEntry> cachedScores = currentCache.Skip(page * pageLength).Where(filter)!;
+                IEnumerable<AccSaberLeaderboardEntry> cachedScores = currentCache.Skip(page * pageLength + startOffset).Where(filter);
                 int cachedScoresLen = cachedScores.Count();
                 if (currentCache.Count == cache.GetLength(LeaderboardDisplayType.Global) || cachedScoresLen >= scoresNeeded)
                 {
@@ -324,9 +332,49 @@ namespace AccSaber.API
             }
         }
 
+        
+                /// <summary>
+        /// Retrieves leaderboard scores for a difficulty, applies the specified filter, and returns
+        /// enough matching entries to satisfy the requested count when possible.
+        /// </summary>
+        /// <param name="page">
+        /// The one-indexed leaderboard page from which to begin searching.
+        /// </param>
+        /// <param name="diffId">
+        /// The unique identifier of the leaderboard difficulty.
+        /// </param>
+        /// <param name="filter">
+        /// The predicate used to select leaderboard entries.
+        /// </param>
+        /// <param name="displayType">
+        /// The leaderboard display type used when caching retrieved entries.
+        /// </param>
+        /// <param name="scoresNeeded">
+        /// The maximum number of matching scores to return. Defaults to <see cref="PAGE_LENGTH"/>.
+        /// </param>
+        /// <param name="pageMult">
+        /// The number of leaderboard pages to request and process as a batch. Defaults to 
+        ///  <see cref="FILTER_PAGE_MULT"/>.
+        /// </param>
+        /// <param name="maxCalls">
+        /// The maximum number of leaderboard API calls to make. Defaults to five.
+        /// </param>
+        /// <param name="cacheBatch">
+        /// <see langword="true"/> to search cached scores and cache scores retrieved during this
+        /// operation; otherwise, <see langword="false"/> to bypass batch caching.
+        /// </param>
+        /// <param name="overrideCall">
+        /// An optional formatted leaderboard API route. The route must accept the zero-indexed
+        /// page number and requested page length as its first and second format arguments.
+        /// </param>
+        /// <returns>
+        /// A tuple containing the matching leaderboard scores and the one-indexed page associated
+        /// with the final returned score, or the next page to continue searching when the requested
+        /// number of scores could not be collected.
+        /// </returns>
         public async Task<(AccSaberLeaderboardEntry[] scores, int truePage)> GetScoreData(int page, Guid diffId, 
             Func<AccSaberLeaderboardEntry, bool> filter, LeaderboardDisplayType displayType, int scoresNeeded = PAGE_LENGTH,
-            int pageMult = FILTER_PAGE_MULT, int maxCalls = 10, bool cacheBatch = true)
+            int pageMult = FILTER_PAGE_MULT, int maxCalls = 5, bool cacheBatch = true, string? overrideCall = null)
         { // page is one indexed.
             try
             {
@@ -338,55 +386,61 @@ namespace AccSaber.API
 
                 List<AccSaberLeaderboardEntry> outp = [with(PAGE_LENGTH)];
 
-                List<AccSaberLeaderboardEntry>? toCache = null;
-                ScoreCache currentCacheData = scoreInfoCacher.GetCachedItem(diffId);
-                if (cacheBatch)
+                List<AccSaberLeaderboardEntry>? toCache = cacheBatch ? [with(pageLength)] : null;
+                if (cacheBatch && scoreInfoCacher.TryGetCachedItem(diffId, out ScoreCache currentCacheData))
                 {
-                    toCache = [with(pageLength)];
-                    var (scores, success) = SearchInCache(currentCacheData, ref page, filter, pageLength, scoresNeeded, pageMult);
+                    var (scores, success) = SearchInCache(currentCacheData, ref page, filter, pageLength, scoresNeeded, pageMult, (truePage - 1) % pageMult * PAGE_LENGTH);
                     if (success)
-                        return (scores, currentCacheData.Data.Count / PAGE_LENGTH);
+                        return (scores, Math.Min(currentCacheData.Data.Count / PAGE_LENGTH, (int)Math.Ceiling(scores.Last().Rank / (float)PAGE_LENGTH)));
                     else
                         outp.AddRange(scores);
                 }
 
                 int leaderboardSize = -1;
 
+                string apiCall = overrideCall ?? string.Format(APAPI_LEADERBOARD_DIFF, diffId, "{0}", "{1}");
+
                 do
                 {
-                    string? dataStr = await CallAPI_String(string.Format(APAPI_LEADERBOARD_DIFF, diffId, page, pageLength), Throttler).ConfigureAwait(false);
-                    if (string.IsNullOrEmpty(dataStr))
+                    AccSaberPagedContent<AccSaberLeaderboardEntry>? data = 
+                        await CallAPI_Json<AccSaberPagedContent<AccSaberLeaderboardEntry>>(string.Format(apiCall, page, pageLength), Throttler);
+
+                    if (data is null || data.Content is null)
                         throw new ArgumentNullException("The leaderboard api is not returning any data.");
 
-                    JToken response = JToken.Parse(dataStr!);
-                    if ((bool)response["empty"]!)
+                    if (data.Empty)
                         break;
 
                     if (leaderboardSize == -1)
-                        leaderboardSize = (int)response["totalElements"]!;
+                        leaderboardSize = data.TotalElements;
 
-                    IEnumerable<AccSaberLeaderboardEntry> tokens = response["content"]!.Children().Select(token => token.ToObject<AccSaberLeaderboardEntry>()!);
+                    IEnumerable<AccSaberLeaderboardEntry> scoreEntries = data.Content;
 
                     if (cacheBatch)
-                        toCache!.AddRange(tokens);
+                        toCache!.AddRange(scoreEntries);
 
-                    IEnumerable<AccSaberLeaderboardEntry> scores = tokens.Where(filter);
-                    int scoreLen = scores.Count();
-                    if (scoreLen >= scoresNeeded)
+                    if (truePage % pageMult != 1)
                     {
-                        scores = scores.Take(scoresNeeded);
-                        pageMult = (int)Math.Ceiling(scores.Last().Rank / (float)PAGE_LENGTH); // This is just to update truePage correctly.
+                        scoreEntries = scoreEntries.Skip((truePage - 1) % pageMult * PAGE_LENGTH);
+                        truePage += pageMult - truePage % pageMult + 1;
+                    }
+
+                    AccSaberLeaderboardEntry[] scores = [.. scoreEntries.Where(filter)];
+                    if (scores.Length >= scoresNeeded)
+                    {
+                        scores = scores[0..scoresNeeded];
                         outp.AddRange(scores);
+                        truePage = (int)Math.Ceiling(scores.Last().Rank / (float)PAGE_LENGTH);
                         scoresNeeded = 0;
                     }
                     else
                     {
                         outp.AddRange(scores);
-                        scoresNeeded -= scoreLen;
+                        scoresNeeded -= scores.Length;
+                        truePage += pageMult;
                     }
-                    truePage += pageMult;
 
-                    if ((bool)response["last"]!)
+                    if (data.LastPage)
                         break;
 
                     page++;

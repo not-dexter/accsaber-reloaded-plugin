@@ -1,4 +1,5 @@
-﻿using AccSaber.Configuration;
+﻿using AccSaber.API;
+using AccSaber.Configuration;
 using AccSaber.Consts;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
@@ -85,6 +86,13 @@ namespace AccSaber.UI.ViewControllers
         {
             get => !PC.SubmitOnIncompletePlay; set => PC.SubmitOnIncompletePlay = !value;
         }
+
+        [UIAction("ClearCache")]
+        private void ClearCache()
+        {
+            Plugin.Container.TryResolve<AccsaberAPI>()?.InvalidateAllCache();
+        }
+
         public void ShowModal(Transform parentTransform)
         {
             Parse(parentTransform);

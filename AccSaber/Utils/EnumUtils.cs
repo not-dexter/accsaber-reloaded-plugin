@@ -24,7 +24,7 @@ namespace AccSaber.Utils
     }
     public enum LeaderboardDisplayType
     {
-        Global = 1, Country = 2, Followed = 4, Rivals = 8, Relations = Followed | Rivals | 16, Blocked = 32
+        Global = 1, Country = 2, Followed = 4, Rivals = 8, Enemies = 16, Relations = Followed | Rivals | 32, Blocked = 64
     }
     public enum MapStatus
     {
