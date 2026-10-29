@@ -24,5 +24,11 @@ namespace AccSaber.UI.MenuButton.ClanWars
         {
             _parentFlow.PresentFlowCoordinator(this, finishedCallback: callback, immediately: instant);
         }
+
+        protected override void BackButtonWasPressed(ViewController topViewController)
+        {
+            _parentFlow.DismissFlowCoordinator(this, ViewController.AnimationDirection.Horizontal);
+        }
+
     }
 }
