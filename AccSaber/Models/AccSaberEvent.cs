@@ -1,4 +1,4 @@
-﻿using AccSaber.Models.Base;
+using AccSaber.Models.Base;
 using AccSaber.Models.ItemModels;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
@@ -94,7 +94,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class EventMissionTargets
+    internal class EventMissionTargets : IModel
     {
         [JsonProperty("categoryId")]
         public Guid CategoryId { get; set; }
@@ -129,7 +129,7 @@ namespace AccSaber.Models
 
 
     [UsedImplicitly]
-    internal class AccSaberEventResponse
+    internal class AccSaberEventResponse : IModel
     {
         [JsonProperty("event")]
         public AccSaberEvent Event { get; set; } = null!;
@@ -158,7 +158,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberEventBegun
+    internal class AccSaberEventBegun : IModel
     {
         [JsonProperty("begun")]
         public bool Begun { get; set; }

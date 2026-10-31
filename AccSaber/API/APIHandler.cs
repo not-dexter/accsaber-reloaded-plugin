@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 
 namespace AccSaber.API
 {
+    /// <summary>Provides shared HTTP helpers for sending requests to AccSaber services.</summary>
     internal static class APIHandler
     {
         private static readonly TimeSpan badHealthTimeout = TimeSpan.FromMinutes(10);
@@ -20,10 +21,20 @@ namespace AccSaber.API
             get => client.Timeout;
             set { client.Timeout = value; }
         }
-        private static readonly HttpClient client = new()
+        private static HttpClient client = new()
         {
             Timeout = TimeSpan.FromSeconds(5)
         };
+
+        // Allows the test assembly to exercise the real request/retry code without network access.
+        internal static void SetHttpMessageHandlerForTests(HttpMessageHandler handler)
+        {
+            client.Dispose();
+            client = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(5)
+            };
+        }
 
         public static event Action<string, bool>? OnHealthUpdated;
 
@@ -73,7 +84,7 @@ namespace AccSaber.API
             bool closeRequest = false;
             if (ct.IsCancellationRequested)
             {
-                Plugin.Log.Warn("API call skipped due to CancellationToken.");
+                Plugin.Log?.Warn("API call skipped due to CancellationToken.");
                 return (false, null);
             }
 
@@ -94,7 +105,7 @@ namespace AccSaber.API
                     if (throttler is not null)
                         await throttler.Call();
 
-                    Plugin.Log.Debug("API Call: " + request.RequestUri);
+                    Plugin.Log?.Debug("API Call: " + request.RequestUri);
 
                     
                     if (closeRequest)
@@ -111,7 +122,7 @@ namespace AccSaber.API
                     {
                         if (!quiet)
                         {
-                            Plugin.Log.Error("API request failed, skipping retries due to error code (" + status + ").\nPath: " + request.RequestUri);
+                            Plugin.Log?.Error("API request failed, skipping retries due to error code (" + status + ").\nPath: " + request.RequestUri);
 
                             string errorContentStr = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                             
@@ -119,7 +130,7 @@ namespace AccSaber.API
                             {
                                 JObject errorContent = JObject.Parse(errorContentStr);
 
-                                Plugin.Log.Debug($"API failure reason: {errorContent["message"]}");
+                                Plugin.Log?.Debug($"API failure reason: {errorContent["message"]}");
                             }
                         }
                         break;
@@ -134,13 +145,13 @@ namespace AccSaber.API
                     {
                         if (ct.IsCancellationRequested)
                         {
-                            Plugin.Log.Warn("API call has been canceled through cancel token.");
+                            Plugin.Log?.Warn("API call has been canceled through cancel token.");
                             break;
                         }
                         if (!quiet)
                         {
-                            Plugin.Log.Error($"API request failed with a TaskCanceledException, meaning the request almost certainly timed out. Clearing pool and retrying one more time.");
-                            Plugin.Log.Debug(e);
+                            Plugin.Log?.Error($"API request failed with a TaskCanceledException, meaning the request almost certainly timed out. Clearing pool and retrying one more time.");
+                            Plugin.Log?.Debug(e);
                         }
 
                         if (closeRequest)
@@ -152,21 +163,21 @@ namespace AccSaber.API
                     }
                     if (!quiet)
                     {
-                        Plugin.Log.Error($"API request failed (attempt {attempt}/{maxRetries})\nPath: {request.RequestUri}\nError: {e.Message}");
-                        Plugin.Log.Debug(e);
+                        Plugin.Log?.Error($"API request failed (attempt {attempt}/{maxRetries})\nPath: {request.RequestUri}\nError: {e.Message}");
+                        Plugin.Log?.Debug(e);
                     }
 
                     if (attempt < maxRetries)
                     {
                         // Exponential backoff delay
                         int delay = initialRetryDelayMs * (int)Math.Pow(2, attempt - 1);
-                        if (!quiet) Plugin.Log.Info($"Retrying in {delay} ms...");
+                        if (!quiet) Plugin.Log?.Info($"Retrying in {delay} ms...");
                         await Task.Delay(delay).ConfigureAwait(false);
                     }
                     else
                     {
                         if (!quiet)
-                            Plugin.Log.Error($"API request failed after {maxRetries} attempts. Returning failure.");
+                            Plugin.Log?.Error($"API request failed after {maxRetries} attempts. Returning failure.");
                         return (false, response);
                     }
                 }
@@ -204,7 +215,7 @@ namespace AccSaber.API
         {
             if (!await CheckDomain(request.RequestUri.Host))
             {
-                Plugin.Log.Warn($"Aborting API call to {request.RequestUri} since the server is currently unhealthy.");
+                Plugin.Log?.Warn($"Aborting API call to {request.RequestUri} since the server is currently unhealthy.");
                 return (false, null);
             }
 
@@ -241,7 +252,7 @@ namespace AccSaber.API
             }
             catch (Exception ex)
             {
-                Plugin.Log.Error("There was an issue parsing the json into the provided object:\n" + ex);
+                Plugin.Log?.Error("There was an issue parsing the json into the provided object:\n" + ex);
                 return default;
             }
         }
@@ -272,7 +283,7 @@ namespace AccSaber.API
                     if (success || response is not null)
                         return success;
 
-                    Plugin.Log.Warn("Health check failed for " + domain + ", however a retry is allowed since there was no response.");
+                    Plugin.Log?.Warn("Health check failed for " + domain + ", however a retry is allowed since there was no response.");
                     await Task.Delay(msDelay, ct).ConfigureAwait(false);
                 }
 
@@ -289,7 +300,7 @@ namespace AccSaber.API
                 serverHealthCache[domain] = (DateTime.UtcNow, isHealthy);
                 if (!isHealthy)
                 {
-                    Plugin.Log.Critical($"Server {domain} is currently unhealthy. API calls will be blocked.");
+                    Plugin.Log?.Critical($"Server {domain} is currently unhealthy. API calls will be blocked.");
                     OnHealthUpdated?.Invoke(domain, false);
                     return false;
                 }

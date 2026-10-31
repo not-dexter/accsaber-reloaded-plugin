@@ -1,4 +1,5 @@
-﻿using JetBrains.Annotations;
+using AccSaber.Models.Base;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.Runtime.Serialization;
 namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
-    internal class AccSaberItemFill : IEquatable<AccSaberItemFill>
+    internal class AccSaberItemFill : IModel, IEquatable<AccSaberItemFill>
     {
         [JsonProperty("type")]
         public string? Type { get; set; }

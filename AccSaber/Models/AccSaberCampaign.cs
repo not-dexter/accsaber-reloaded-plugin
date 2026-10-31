@@ -1,4 +1,4 @@
-﻿//#define PRINT_DEBUG
+//#define PRINT_DEBUG
 
 using AccSaber.Models.Base;
 using AccSaber.Utils;
@@ -13,6 +13,7 @@ using UnityEngine;
 
 namespace AccSaber.Models
 {
+    [UsedImplicitly]
     public abstract class CampaignModel : IModel 
     {
         public const float DEFAULT_NODE_SIZE = 48f;
@@ -230,8 +231,10 @@ namespace AccSaber.Models
         [JsonIgnore]
         public AccSaberCampaignOffsetData? OffsetData { get; set; }
     }
+    [UsedImplicitly]
     internal class AccSaberCampaign : AccSaberCampaign<AccSaberCampaignMap>;
 
+    [UsedImplicitly]
     internal class AccSaberCampaignBackgroundSizeInfo : CampaignModel, IAccSaberCampaignSizable, IAccSaberCampaignScalable
     {
         [JsonProperty("size")]
@@ -253,7 +256,8 @@ namespace AccSaber.Models
         }
     }
 
-    internal class AccSaberCampaignOffsetData
+    [UsedImplicitly]
+    internal class AccSaberCampaignOffsetData : CampaignModel
     {
         public const float NODE_PADDING = 0f;
         public const int NODE_CONTAINER_PADDING = 5;
@@ -697,6 +701,7 @@ namespace AccSaber.Models
         public string Effects { get; set; } = null!;
     }
 
+    [UsedImplicitly]
     internal class AccSaberCampaignPaged<T> : CampaignModel where T : Utils.Misc.INode<Guid>
     {
         [JsonProperty("id")]
@@ -708,6 +713,7 @@ namespace AccSaber.Models
         [JsonProperty("progressStatus")]
         public string? ProgressStatus { get; set; }
     }
+    [UsedImplicitly]
     internal class AccSaberCampaignPaged : CampaignModel
     {
         [JsonProperty("id")]
@@ -730,7 +736,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberCampaignNode
+    internal class AccSaberCampaignNode : IModel
     {
         [JsonProperty("node")]
         public AccSaberCampaignMap Node { get; set; } = null!;

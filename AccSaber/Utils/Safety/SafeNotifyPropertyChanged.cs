@@ -4,6 +4,7 @@ using Zenject;
 
 namespace AccSaber.Utils.Safety
 {
+    /// <summary>Raises property change notifications safely on Unity's main thread.</summary>
     internal abstract class SafeNotifyPropertyChanged : INotifyPropertyChanged
     {
         [Inject] protected readonly MainThreadDispatcher _mainThreadDispatcher = null!;
@@ -12,6 +13,7 @@ namespace AccSaber.Utils.Safety
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        /// <summary>Notifies subscribers that a property changed, dispatching to the main thread when needed.</summary>
         protected void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
         {
             try

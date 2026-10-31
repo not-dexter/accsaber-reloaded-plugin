@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace AccSaber.Counter
 {
+    /// <summary>Loads AccSaber scoring curves and calculates performance points and accuracy weights.</summary>
     internal class APCalc
     {
         private List<Vector2> PointList = null!;
@@ -14,10 +15,12 @@ namespace AccSaber.Counter
 
         private float weight_x0, weight_k, weight_top;
 
+        /// <summary>Starts loading the scoring and weighting curves from the API.</summary>
         public APCalc()
         {
             Task.Run(Load);
         }
+        /// <summary>Fetches and parses the scoring and leaderboard weighting curves.</summary>
         private async Task Load()
         {
             AccSaberCurve? curve;
@@ -80,7 +83,9 @@ namespace AccSaber.Counter
                 Plugin.Log.Error(e);
             }
         }
+        /// <summary>Calculates performance points for an accuracy and map complexity.</summary>
         public float GetAp(float acc, float complexity) => GetCurve(acc) * (complexity - shift) * scale;
+        /// <summary>Converts deflated performance points back to accuracy, optionally rounded as a percentage.</summary>
         public float GetAccDeflated(float deflatedPp, float complexity, int precision = -1)
         {
             if (deflatedPp > GetAp(1.0f, complexity)) return precision < 0 ? 1.0f : 100.0f;
@@ -88,14 +93,18 @@ namespace AccSaber.Counter
             return precision < 0 ? outp : (float)Math.Round(outp * 100.0f, precision);
         }
 
+        /// <summary>Returns the leaderboard weight for a zero-based score rank.</summary>
         public float GetWeight(int rank)
         { // rank is zero-indexed, meaning a player's top play is rank 0
             float bottom = 1 + Mathf.Exp(weight_k * (rank - weight_x0));
             return weight_top / bottom;
         }
 
+        /// <summary>Evaluates the loaded scoring curve at the given accuracy.</summary>
         public float GetCurve(float acc) => GetCurve(acc, PointList);
+        /// <summary>Finds the accuracy corresponding to an output on the loaded scoring curve.</summary>
         public float InvertCurve(double curveOutput) => GetInvertCurve(curveOutput, PointList);
+        /// <summary>Linearly interpolates a scoring curve at the requested accuracy.</summary>
         public static float GetCurve(float acc, List<Vector2> curve)
         {
             int i = 1;
@@ -103,6 +112,7 @@ namespace AccSaber.Counter
             double middle_dis = (acc - curve[i - 1].x) / (curve[i].x - curve[i - 1].x);
             return (float)(curve[i - 1].y + middle_dis * (curve[i].y - curve[i - 1].y));
         }
+        /// <summary>Linearly interpolates the inverse of a scoring curve at the requested output.</summary>
         public static float GetInvertCurve(double curveOutput, List<Vector2> curve)
         {
             int i = 1;

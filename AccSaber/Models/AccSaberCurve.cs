@@ -1,4 +1,5 @@
-﻿using JetBrains.Annotations;
+using AccSaber.Models.Base;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -6,8 +7,9 @@ using UnityEngine;
 
 namespace AccSaber.Models
 {
+    /// <summary>Represents the scoring curve and parameters returned by the AccSaber API.</summary>
     [UsedImplicitly]
-    internal class AccSaberCurve
+    internal class AccSaberCurve : IModel
     {
         [JsonProperty("id")]
         public Guid Id { get; set; }

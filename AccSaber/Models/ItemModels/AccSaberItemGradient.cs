@@ -1,4 +1,5 @@
-﻿using JetBrains.Annotations;
+using AccSaber.Models.Base;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.Collections.Generic;
 namespace AccSaber.Models.ItemModels
 {
     [UsedImplicitly]
-    internal class AccSaberItemGradient : IEquatable<AccSaberItemGradient>
+    internal class AccSaberItemGradient : IModel, IEquatable<AccSaberItemGradient>
     {
         [JsonProperty("type")]
         public string Type { get; set; } = null!;
@@ -31,7 +32,7 @@ namespace AccSaber.Models.ItemModels
     }
 
     [UsedImplicitly]
-    internal class AccSaberItemGradientStop : IEquatable<AccSaberItemGradientStop>
+    internal class AccSaberItemGradientStop : IModel, IEquatable<AccSaberItemGradientStop>
     {
         [JsonProperty("hex")]
         public string Color { get; set; } = null!;

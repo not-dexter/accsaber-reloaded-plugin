@@ -6,10 +6,12 @@ using Zenject;
 
 namespace AccSaber.Utils.Safety
 {
+    /// <summary>Ensures view notifications and coroutine starts follow Unity main-thread requirements.</summary>
     internal class BSMLSafeAutomaticViewController : BSMLAutomaticViewController
     {
         [Inject] protected readonly MainThreadDispatcher _mainThreadDispatcher = null!;
 
+        /// <summary>Raises a view property notification on Unity's main thread.</summary>
         protected new void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
         {
             try
@@ -28,6 +30,7 @@ namespace AccSaber.Utils.Safety
             }
         }
 
+        /// <summary>Starts a coroutine and rejects calls made outside the main thread.</summary>
         public new Coroutine StartCoroutine(IEnumerator routine)
         {
             if (!IPA.Utilities.UnityGame.OnMainThread)

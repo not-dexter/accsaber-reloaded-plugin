@@ -1,0 +1,105 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <Nullable>enable</Nullable>
+    <WarningsAsErrors>Nullable;IDE0057</WarningsAsErrors>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <IsPackable>false</IsPackable>
+    <LocalRefsDir Condition="Exists('..\Refs')">..\Refs</LocalRefsDir>
+    <BeatSaberDir>$(LocalRefsDir)</BeatSaberDir>
+    <AssemblyName>AccSaber.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <Import Project="..\AccSaber\AccSaber.csproj.user" Condition="Exists('..\AccSaber\AccSaber.csproj.user')" />
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="3.2.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5" />
+    <PackageReference Include="JetBrains.Annotations" Version="2022.3.1" />
+    <PackageReference Include="NETStandard.Library" Version="2.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AccSaber\AccSaber.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="mscorlib">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\mscorlib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\System.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Core">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\System.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Net.Http">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\System.Net.Http.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+
+  <ItemGroup Condition="Exists('$(BeatSaberDir)\Beat Saber_Data\Managed\Zenject-usage.dll')">
+    <Reference Include="Zenject-usage">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Zenject-usage.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(BeatSaberDir)\Beat Saber_Data\Managed\DataModels.dll')">
+    <Reference Include="DataModels">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\DataModels.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(BeatSaberDir)\Plugins\SiraUtil.dll')">
+    <Reference Include="SiraUtil">
+      <HintPath>$(BeatSaberDir)\Plugins\SiraUtil.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(BeatSaberDir)\Beat Saber_Data\Managed\Main.dll')">
+    <Reference Include="Main">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Main.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(BeatSaberDir)\Plugins\BSML.dll')">
+    <Reference Include="BSML">
+      <HintPath>$(BeatSaberDir)\Plugins\BSML.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Content Include="$(BeatSaberDir)\Plugins\BSML.dll">
+      <Link>BSML.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('$(BeatSaberDir)\Plugins\LeaderboardCore.dll')">
+    <Reference Include="LeaderboardCore">
+      <HintPath>$(BeatSaberDir)\Plugins\LeaderboardCore.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Content Include="$(BeatSaberDir)\Plugins\LeaderboardCore.dll">
+      <Link>LeaderboardCore.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

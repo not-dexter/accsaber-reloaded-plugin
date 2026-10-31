@@ -22,6 +22,7 @@ using System.Collections;
 
 namespace AccSaber.Utils
 {
+    /// <summary>Provides compatibility helpers for APIs that differ between supported game versions.</summary>
     internal static class VersionUtils
     {
 #if NEW_VERSION

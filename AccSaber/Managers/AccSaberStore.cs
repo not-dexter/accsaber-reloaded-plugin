@@ -26,7 +26,7 @@ using OculusStudios.Platform.Core;
 
 namespace AccSaber.Managers
 {
-	internal sealed class AccSaberStore : IInitializable, IDisposable
+	internal sealed class AccSaberStore : IInitializable, IDisposable, ScoreTracking.ScoreCounter.IScoreCounterStore
 	{
 		private readonly SiraLog _log;
 #if V41
@@ -68,6 +68,8 @@ namespace AccSaber.Managers
         internal const int SendBufferSize = 16;
         private static readonly TimeSpan WebsocketIdleTimeout = TimeSpan.FromMinutes(10);
 
+        private readonly Func<IScoreWebSocket> _webSocketFactory;
+
         private static readonly AsyncLock listenerLock = new();
 
         private AccSaberBasicDifficulty? _currentRankedMap;
@@ -84,6 +86,18 @@ namespace AccSaber.Managers
             _api = api;
             _serialHandler = serialHandler;
             _leaderboardVC = leaderboardVC;
+            _webSocketFactory = () => new ClientScoreWebSocket();
+        }
+
+        internal AccSaberStore(Func<IScoreWebSocket> webSocketFactory)
+        {
+            _webSocketFactory = webSocketFactory;
+            _log = null!;
+            _platformUserModel = default!;
+            _playerInfo = null!;
+            _api = null!;
+            _serialHandler = null!;
+            _leaderboardVC = null!;
         }
 
 		public AccSaberBasicDifficulty? CurrentRankedMap
@@ -567,23 +581,23 @@ namespace AccSaber.Managers
                 }
             }
         }
-        private async Task ListenForScores(CancellationToken ct)
+        internal async Task ListenForScores(CancellationToken ct)
         {
-            ClientWebSocket? webSocket = null;
+            IScoreWebSocket? webSocket = null;
 
             CancellationTokenSource? receiveCts = null;
 
             try
             {
-                webSocket = new();
-                webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+                webSocket = _webSocketFactory();
+                webSocket.KeepAliveInterval = TimeSpan.FromSeconds(30);
 
                 using CancellationTokenSource connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 connectCts.CancelAfter(TimeSpan.FromSeconds(30));
 
-                await webSocket.ConnectAsync(new(HelpfulPaths.APAPI_WEBSOCKET), connectCts.Token);
+                await webSocket.ConnectAsync(new Uri(HelpfulPaths.APAPI_WEBSOCKET), connectCts.Token);
 
-                Plugin.Log.Info("Websocket connected.");
+                Plugin.Log?.Info("Websocket connected.");
 
                 byte[] buffer = new byte[ReceiveBufferSize];
                 ArraySegment<byte> clientBuffer = new(buffer);
@@ -608,7 +622,7 @@ namespace AccSaber.Managers
 
                         if (result.MessageType == WebSocketMessageType.Close)
                         {
-                            Plugin.Log.Warn($"Websocket closed by server. Status: {result.CloseStatus}, Description: {result.CloseStatusDescription}");
+                                Plugin.Log?.Warn($"Websocket closed by server. Status: {result.CloseStatus}, Description: {result.CloseStatusDescription}");
 
                             using CancellationTokenSource closeCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                             closeCts.CancelAfter(TimeSpan.FromSeconds(5));
@@ -619,7 +633,7 @@ namespace AccSaber.Managers
                             }
                             catch (OperationCanceledException) when (closeCts.IsCancellationRequested && !ct.IsCancellationRequested)
                             {
-                                Plugin.Log.Warn("Timed out while responding to websocket close frame.");
+                                Plugin.Log?.Warn("Timed out while responding to websocket close frame.");
                             }
                             
                             return;
@@ -641,24 +655,24 @@ namespace AccSaber.Managers
 
                             if (entry is null)
                             {
-                                Plugin.Log.Error("The websocket message deserialized to null.");
+                                Plugin.Log?.Error("The websocket message deserialized to null.");
                                 continue;
                             }
                         }
                         catch (Exception e)
                         {
-                            Plugin.Log.Error("There was an error deserializing the websocket message.\n" + e);
+                            Plugin.Log?.Error("There was an error deserializing the websocket message.\n" + e);
                             continue;
                         }
 
                         try
                         {
                             OnScoreUpdated?.Invoke(entry);
-                            Plugin.Log.Info("Websocket recieved score.");
+                            Plugin.Log?.Info("Websocket recieved score.");
                         }
                         catch (Exception e)
                         {
-                            Plugin.Log.Error("There was an issue sending the score update out!\n" + e);
+                            Plugin.Log?.Error("There was an issue sending the score update out!\n" + e);
                         }
                     }
                 }
@@ -669,24 +683,44 @@ namespace AccSaber.Managers
             }
             catch (OperationCanceledException) when (receiveCts?.IsCancellationRequested ?? false)
             {
-                Plugin.Log.Info("Websocket timed out waiting for a new score.");
+                Plugin.Log?.Info("Websocket timed out waiting for a new score.");
             }
             catch (OperationCanceledException)
             {
-                Plugin.Log.Warn("Websocket timed out or was abandoned. Restarting.");
+                Plugin.Log?.Warn("Websocket timed out or was abandoned. Restarting.");
             }
             catch (Exception e)
             {
-                Plugin.Log.Error("There was an error with the websocket!\n" + e);
+                Plugin.Log?.Error("There was an error with the websocket!\n" + e);
             }
             finally
             {
                 receiveCts?.Dispose();
 
-                Plugin.Log.Warn($"ListenForScores exiting. Websocket state: {webSocket?.State}");
+                Plugin.Log?.Warn($"ListenForScores exiting. Websocket state: {webSocket?.State}");
 
                 webSocket?.Dispose();
             }
+        }
+
+        internal interface IScoreWebSocket : IDisposable
+        {
+            TimeSpan KeepAliveInterval { get; set; }
+            WebSocketState State { get; }
+            Task ConnectAsync(Uri uri, CancellationToken cancellationToken);
+            Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken);
+            Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken);
+        }
+
+        private sealed class ClientScoreWebSocket : IScoreWebSocket
+        {
+            private readonly ClientWebSocket _client = new();
+            public TimeSpan KeepAliveInterval { get => _client.Options.KeepAliveInterval; set => _client.Options.KeepAliveInterval = value; }
+            public WebSocketState State => _client.State;
+            public Task ConnectAsync(Uri uri, CancellationToken cancellationToken) => _client.ConnectAsync(uri, cancellationToken);
+            public Task<WebSocketReceiveResult> ReceiveAsync(ArraySegment<byte> buffer, CancellationToken cancellationToken) => _client.ReceiveAsync(buffer, cancellationToken);
+            public Task CloseOutputAsync(WebSocketCloseStatus closeStatus, string? statusDescription, CancellationToken cancellationToken) => _client.CloseOutputAsync(closeStatus, statusDescription, cancellationToken);
+            public void Dispose() => _client.Dispose();
         }
         private void UpdatePlayerScore(AccSaberLeaderboardEntry score)
         {

@@ -1,4 +1,4 @@
-﻿using AccSaber.Models.Base;
+using AccSaber.Models.Base;
 using AccSaber.Models.ItemModels;
 using AccSaber.Utils;
 using JetBrains.Annotations;
@@ -113,7 +113,7 @@ namespace AccSaber.Models
     }
 
     [UsedImplicitly]
-    internal class AccSaberMissionResponse
+    internal class AccSaberMissionResponse : IModel
     {
 
         [JsonProperty("userId")]

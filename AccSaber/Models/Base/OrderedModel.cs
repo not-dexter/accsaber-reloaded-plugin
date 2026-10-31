@@ -1,7 +1,10 @@
 ﻿using System;
 
+using JetBrains.Annotations;
+
 namespace AccSaber.Models.Base
 {
+    [UsedImplicitly]
     internal abstract class OrderedModel<T> : IModel, IComparable<T>, IEquatable<T>
     {
         public abstract int CompareTo(T other);
