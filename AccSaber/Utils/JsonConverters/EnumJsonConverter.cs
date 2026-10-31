@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Linq;
-using Newtonsoft.Json;
 
-namespace AccSaber.Models.JsonConverters
+namespace AccSaber.Utils.JsonConverters
 {
 #if NEW_VERSION
     public sealed class EnumJsonConverter<T>(bool ignoreCase) : JsonConverter<T?> where T : struct, Enum

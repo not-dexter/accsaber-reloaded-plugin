@@ -1,8 +1,8 @@
 ﻿//#define PRINT_DEBUG
 
 using AccSaber.Models.Base;
-using AccSaber.Models.JsonConverters;
 using AccSaber.Utils;
+using AccSaber.Utils.JsonConverters;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using System;

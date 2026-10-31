@@ -1,10 +1,12 @@
 ﻿using AccSaber.Models.ItemModels.Base;
 using AccSaber.Utils;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using TMPro;
 
 namespace AccSaber.Models.ItemModels.ValueTypes.States
 {
+    [UsedImplicitly]
     internal class AccSaberColorState : ItemStateModel<AccSaberColorState>
     {
         [JsonProperty("color")]

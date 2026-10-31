@@ -5,6 +5,7 @@ using AccSaber.Managers;
 using AccSaber.Models;
 using AccSaber.Models.PlayerModels;
 using AccSaber.Models.WarModels;
+using AccSaber.UI.Cells;
 using AccSaber.UI.MenuButton.ClanWars.ViewControllers;
 using AccSaber.Utils;
 using AccSaber.Utils.Misc;
