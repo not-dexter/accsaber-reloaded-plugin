@@ -1,4 +1,5 @@
 ﻿using AccSaber.API;
+using IPA.Utilities.Async;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,9 +17,11 @@ namespace AccSaber.Utils.Misc
         public event Action? OnRelationChanged;
 
         private readonly AsyncLock loadLock = new();
+        private readonly object loadLockObj = new();
         private readonly AsyncLock changeRelationLock = new();
         private Task? loadTask = null;
         public Task LoadTask => LoadInfo();
+        private bool allowLoad = true;
 
         private HashSet<string>? PlayerFollowed = null;
         private HashSet<string>? PlayerRivals = null;
@@ -113,14 +116,14 @@ namespace AccSaber.Utils.Misc
         }
         public async Task LoadInfo()
         {
-            if (loadTask is not null)
-            {
-                await loadTask;
-                return;
-            }
-            lock (loadLock)
-                Monitor.Wait(loadLock);
-            await loadTask!;
+            if (loadTask is null)
+                lock (loadLockObj)
+                    if (loadTask is null) // check this again after locking, in case it was set while waiting for the lock
+                        Monitor.Wait(loadLockObj);
+
+            AsyncLock.Releaser locker = await loadLock.LockAsync();
+            using (locker)
+                await loadTask!;
         }
         private async Task LoadInfoTask(int retries = 3)
         {
@@ -128,10 +131,15 @@ namespace AccSaber.Utils.Misc
             {
                 AuthInfo = await api.Authenticate();
 
-                (exposeFollowed, exposeRivals) = await api.ExposeRelations();
-
                 if (AuthInfo is not null)
+                {
+                    (exposeFollowed, exposeRivals) = await api.ExposeRelations();
+                    allowLoad = false;
+
                     await SetRelations(AuthInfo.UserId);
+                }
+                else 
+                    (exposeFollowed, exposeRivals) = (false, false);
             } 
             catch (Exception e)
             {
@@ -139,7 +147,16 @@ namespace AccSaber.Utils.Misc
                 Plugin.Log.Debug(e);
 
                 if (retries == 0)
+                {
+                    Plugin.Log.Error("Failed to load player info after 3 retries.");
+                    _ = UnityMainThreadTaskScheduler.Factory.StartNew(async () =>
+                    {
+                        allowLoad = true;
+
+                        await SetLoadInfoTask();
+                    });
                     return;
+                }
 
                 await Task.Delay(1000);
                 await LoadInfoTask(retries - 1);
@@ -172,11 +189,19 @@ namespace AccSaber.Utils.Misc
 
         public void Initialize()
         {
-            if (loadTask is not null)
-                return;
-            loadTask = LoadInfoTask();
-            lock (loadLock)
-                Monitor.PulseAll(loadLock);
+            _ = SetLoadInfoTask();
+        }
+        public async Task SetLoadInfoTask()
+        {
+            AsyncLock.Releaser locker = await loadLock.LockAsync();
+            using (locker)
+            {
+                if (!allowLoad || (loadTask is not null && !loadTask.IsCompleted))
+                    return;
+                loadTask = LoadInfoTask();
+                lock (loadLockObj)
+                    Monitor.PulseAll(loadLockObj);
+            }
         }
         /*public void Dispose() // This is currently unused, as it just returns a 500.
         {

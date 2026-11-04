@@ -47,6 +47,8 @@ namespace AccSaber.API
 
         public static List<AccSaberModifier>? Modifiers { get; private set; } = null;
         private readonly AsyncLock PlayerLoadLock = new();
+        private readonly AsyncLock AuthLock = new();
+        private DateTime LastAuthAttempt = DateTime.MinValue;
 
         public enum LoginState
         {
@@ -1097,10 +1099,19 @@ namespace AccSaber.API
 
         public async Task<AuthInfo?> Authenticate()
         {
+            AsyncLock.Releaser locker = await AuthLock.LockAsync();
             try
             {
-                if (playerInfo.AuthInfo is not null && playerInfo.AuthInfo.ExpirationDate > DateTime.Now)
+                if (playerInfo.AuthInfo is not null && playerInfo.AuthInfo.ExpirationDate > DateTime.UtcNow)
                     return playerInfo.AuthInfo;
+
+                if (DateTime.UtcNow - LastAuthAttempt < TimeSpan.FromSeconds(60))
+                {
+                    Plugin.Log.Warn("Auth attempted too quickly after last attempt, returning null.");
+                    return null;
+                }
+
+                LastAuthAttempt = DateTime.UtcNow;
 
                 SetLoginState(LoginState.InProgress);
 
@@ -1182,6 +1193,10 @@ namespace AccSaber.API
                 Plugin.Log.Error("There was an error doing auth!\n" + e);
                 SetLoginState(LoginState.Failed);
                 return null;
+            }
+            finally
+            {
+                locker.Dispose();
             }
         }
 #if !NEW_VERSION

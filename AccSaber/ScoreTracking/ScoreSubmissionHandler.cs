@@ -12,11 +12,10 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Zenject;
+using System.IO;
 
 namespace AccSaber.ScoreTracking
 {
-    using System.Collections.Concurrent;
-
     internal class ScoreSubmissionHandler : IInitializable, IDisposable
     {
         private static readonly TimeSpan WaitDelayThreshold = TimeSpan.FromMilliseconds(500);
@@ -33,10 +32,17 @@ namespace AccSaber.ScoreTracking
         private static readonly TimeSpan LoopDelayThreshold = TimeSpan.FromMinutes(5);
 #endif
 
-        private readonly ConcurrentQueue<AccSaberScore> ScoresToSubmit = new();
+        public SubmissionLoopState LoopState { get; private set; } = SubmissionLoopState.NotRunning;
+
+        private readonly Queue<AccSaberScore> ScoresToSubmit = new();
 
         private readonly object activeSubmissionTasksLock = new();
+        private readonly object queueStateLock = new();
         private readonly HashSet<Task> activeSubmissionTasks = [];
+
+        private DateTime lastWrite = DateTime.MinValue;
+        private readonly TimeSpan writeDelay = TimeSpan.FromSeconds(5);
+        private int writtenQueueCount = 0;
 
         private DateTime lastChecked = DateTime.UtcNow;
 
@@ -53,6 +59,8 @@ namespace AccSaber.ScoreTracking
 
 #if TEST_SUBMISSION
             TestSubmission();
+#else
+            ReadQueueState();
 #endif
         }
 
@@ -133,20 +141,58 @@ namespace AccSaber.ScoreTracking
 
         private void RequeueScore(AccSaberScore score)
         {
-            ScoresToSubmit.Enqueue(score);
+            lock (queueStateLock)
+                ScoresToSubmit.Enqueue(score);
+        }
+
+        private void WriteQueueState()
+        {
+            lock (queueStateLock)
+            {
+                if (DateTime.UtcNow - lastWrite < writeDelay)
+                    return;
+
+                if (ScoresToSubmit.Count != writtenQueueCount) 
+                {
+                    AccSaberScore[] arr = [.. ScoresToSubmit];
+                    File.WriteAllText(Consts.ResourcePaths.SUBMISSION_QUEUE_CACHE_PATH, JsonConvert.SerializeObject(arr));
+                    writtenQueueCount = arr.Length;
+                }
+
+                lastWrite = DateTime.UtcNow;
+            }
+        }
+        private void ReadQueueState()
+        {
+            lock (queueStateLock)
+            {
+                if (!File.Exists(Consts.ResourcePaths.SUBMISSION_QUEUE_CACHE_PATH))
+                    return;
+
+                string json = File.ReadAllText(Consts.ResourcePaths.SUBMISSION_QUEUE_CACHE_PATH);
+
+                AccSaberScore[] arr = JsonConvert.DeserializeObject<AccSaberScore[]>(json) ?? [];
+                writtenQueueCount = arr.Length;
+
+                foreach (AccSaberScore score in arr)
+                    ScoresToSubmit.Enqueue(score);
+            }
         }
 
         private void LogRemainingQueuedScores()
         {
-            if (ScoresToSubmit.IsEmpty)
+            if (ScoresToSubmit.Count == 0)
                 return;
 
             Plugin.Log.Warn(
                 "There are still failed submissions left!!!\n" +
                 "Please send this log to a developer to get these scores submitted.");
 
-            while (ScoresToSubmit.TryDequeue(out AccSaberScore score))
-                Plugin.Log.Debug(JsonConvert.SerializeObject(score));
+            lock (queueStateLock)
+            {
+                while (ScoresToSubmit.TryDequeue(out AccSaberScore score))
+                    Plugin.Log.Debug(JsonConvert.SerializeObject(score));
+            }
         }
 
 #if TEST_SUBMISSION
@@ -205,6 +251,9 @@ namespace AccSaber.ScoreTracking
 
             RequeueScore(score);
 
+            if (LoopState != SubmissionLoopState.Submitting)
+                WriteQueueState();
+
             // Not actually a submission failure, but the caller needs to treat it as not submitted.
             return false;
         }
@@ -215,7 +264,7 @@ namespace AccSaber.ScoreTracking
             {
                 ct.ThrowIfCancellationRequested();
 
-                score.Nonce = MiscUtils.GenerateNonce(64);
+                score.Nonce = MiscUtils.GenerateNonce(64); // ALWAYS regenerate nonce on submission, even if re-submitting a failed score.
 
                 using HttpRequestMessage request = new(HttpMethod.Post, HelpfulPaths.APAPI_SCORE_SUBMIT)
                 {
@@ -229,7 +278,7 @@ namespace AccSaber.ScoreTracking
                 await SubmitThrottler.Call(ct).ConfigureAwait(false);
                 bool success = true;
 #else
-            var (success, _) = await APIHandler.CallAPI(request, SubmitThrottler, maxRetries: 1, ct: ct).ConfigureAwait(false);
+                var (success, _) = await APIHandler.CallAPI(request, SubmitThrottler, maxRetries: 1, ct: ct).ConfigureAwait(false);
 #endif
 
                 if (success)
@@ -275,17 +324,22 @@ namespace AccSaber.ScoreTracking
 
         private async Task ClearFailedSubmissions(CancellationToken ct)
         {
+            WriteQueueState();
+
             lastChecked = DateTime.UtcNow;
 
             List<Task<bool>> tasks = [with(ScoresToSubmit.Count)];
 
             Plugin.Log.Info("Attempting to submit a previously failed score(s)...");
 
-            while (!ct.IsCancellationRequested && ScoresToSubmit.TryDequeue(out AccSaberScore score))
+            lock (queueStateLock)
             {
-                Plugin.Log.Debug(JsonConvert.SerializeObject(score));
+                while (!ct.IsCancellationRequested && ScoresToSubmit.TryDequeue(out AccSaberScore score))
+                {
+                    Plugin.Log.Debug(JsonConvert.SerializeObject(score));
 
-                tasks.Add(TrackSubmissionTask(SubmitScore(score, false, ct)));
+                    tasks.Add(TrackSubmissionTask(SubmitScore(score, false, ct)));
+                }
             }
 
             if (tasks.Count == 0)
@@ -306,12 +360,17 @@ namespace AccSaber.ScoreTracking
 
                     if (timeSinceUpdate < LoopDelayThreshold)
                     {
+                        LoopState = SubmissionLoopState.Waiting;
+
                         TimeSpan delay = LoopDelayThreshold - timeSinceUpdate;
                         await Task.Delay(delay, ct).ConfigureAwait(false);
                     }
 
                     if (!ct.IsCancellationRequested)
+                    {
+                        LoopState = SubmissionLoopState.Submitting;
                         await ClearFailedSubmissions(ct).ConfigureAwait(false);
+                    }
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -322,6 +381,15 @@ namespace AccSaber.ScoreTracking
             {
                 Plugin.Log.Error("There was an error with the failed submissions loop!\n" + e);
             }
+            finally
+            {
+                LoopState = SubmissionLoopState.NotRunning;
+            }
+        }
+
+        public enum SubmissionLoopState
+        {
+            NotRunning, Waiting, Submitting
         }
     }
 }

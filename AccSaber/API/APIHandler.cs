@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -16,6 +17,8 @@ namespace AccSaber.API
         private static readonly TimeSpan badHealthTimeout = TimeSpan.FromMinutes(10);
         private static readonly ConcurrentDictionary<string, (DateTime lastFailedCheck, bool isHealthy)> serverHealthCache = [];
         private static readonly AsyncLock serverHealthLock = new();
+        private static readonly HashSet<string> blockedEndpoints401 = [];
+        private static bool hasAuth = false;
         internal static TimeSpan ClientTimeout
         {
             get => client.Timeout;
@@ -50,6 +53,7 @@ namespace AccSaber.API
         {
             client.DefaultRequestHeaders.Add("Cookie", $"accessToken={authInfo.AccessToken}; refreshToken={authInfo.RefreshToken}");
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authInfo.AccessToken);
+            hasAuth = true;
         }
         /// <summary>
         /// Sends the given <see cref="HttpRequestMessage"/> using the shared HTTP client with built-in
@@ -82,10 +86,32 @@ namespace AccSaber.API
         {
             const int initialRetryDelayMs = 500;
             bool closeRequest = false;
+            string endpoint = request.RequestUri.AbsolutePath;
+
             if (ct.IsCancellationRequested)
             {
                 Plugin.Log?.Warn("API call skipped due to CancellationToken.");
                 return (false, null);
+            }
+
+            {
+                int questionMarkIndex = endpoint.IndexOf('?');
+                if (questionMarkIndex >= 0)
+                    endpoint = endpoint[..questionMarkIndex];
+            }
+
+            if (blockedEndpoints401.Contains(endpoint))
+            {
+                if (hasAuth)
+                {
+                    Plugin.Log?.Info("Auth has been restored, clearing blocked endpoints.");
+                    blockedEndpoints401.Clear();
+                }
+                else
+                {
+                    Plugin.Log?.Warn($"API call to {endpoint} skipped since the endpoint is currently blocked due to previous failures.");
+                    return (false, null);
+                }
             }
 
             HttpRequestMessage Clone()
@@ -133,7 +159,41 @@ namespace AccSaber.API
                                 Plugin.Log?.Debug($"API failure reason: {errorContent["message"]}");
                             }
                         }
-                        break;
+
+                        if (status == 401)
+                        {
+                            PlayerSocialLife? playerInfo = Plugin.Container.TryResolve<PlayerSocialLife>();
+                            if (playerInfo is null)
+                            {
+                                Plugin.Log?.Critical("API request failed with 401 Unauthorized, but PlayerSocialLife is not available to handle re-authentication. Blocking endpoint until auth is back.");
+                                blockedEndpoints401.Add(endpoint);
+                                break;
+                            }
+
+                            await playerInfo.LoadTask;
+
+                            if (playerInfo.AuthInfo is not null && playerInfo.AuthInfo.ExpirationDate > DateTime.UtcNow)
+                                continue;
+
+                            Plugin.Log?.Warn("API request failed with 401 Unauthorized. This may indicate that the access token has expired or is invalid, attempting a re-authentication.");
+                            hasAuth = false;
+
+                            await playerInfo.SetLoadInfoTask();
+                            await playerInfo.LoadTask;
+
+                            if (playerInfo.AuthInfo is not null)
+                            {
+                                Plugin.Log?.Info("Re-authentication successful, continuing original request and clearing blocked endpoints.");
+                                blockedEndpoints401.Clear();
+                            }
+                            else
+                            {
+                                Plugin.Log?.Critical("Authentication Failed! Blocking endpoint until auth is back.");
+                                blockedEndpoints401.Add(endpoint);
+                                break;
+                            }
+                        }
+                        else break;
                     }
                     response.EnsureSuccessStatusCode();
 

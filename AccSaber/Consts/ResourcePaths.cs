@@ -89,6 +89,9 @@ namespace AccSaber.Consts
         public const string MISSION_CACHE_NAME = "MissionCache";
         public const string EVENTS_CACHE_NAME = "EventsCache";
 
+        public const string SUBMISSION_QUEUE_CACHE_NAME = "SubmissionCache";
+        public static readonly string SUBMISSION_QUEUE_CACHE_PATH = Path.Combine(Environment.CurrentDirectory, "UserData", FOLDER_NAME, SUBMISSION_QUEUE_CACHE_NAME + ".json");
+
         public static readonly string ACC_SABER_DATA_FOLDER = Path.Combine(Environment.CurrentDirectory, "UserData", FOLDER_NAME);
 
         public static readonly string CUSTOM_SONGS = Path.Combine(Environment.CurrentDirectory, "Beat Saber_Data", "CustomLevels");
